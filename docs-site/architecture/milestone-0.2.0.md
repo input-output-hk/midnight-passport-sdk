@@ -78,8 +78,10 @@ owner signing. The reference demo has not wired the browser journal or completed
 
 The source-only named NIGHT orchestrator can now receive the account owner's
 finalized-ID callback, recheck the reviewed name at that point and fence the
-withdrawal in the browser journal before dispatch. It retains lost-response IDs
-and blocks an interrupted no-ID intent from starting a replacement withdrawal.
+withdrawal in the browser journal before dispatch. It retains lost-response IDs.
+A name refusal before entering the owner API can retire its unsubmitted intent
+into audit history. A durable owner-start marker keeps later no-ID outcomes
+blocked, including a callback refusal.
 A source helper maps the reviewed NIGHT amount and bridge to one selected JubJub
 account. The demo has not wired that helper, a bridge/finality adapter or a
 named-send UI; this route has no native/provider qualification.

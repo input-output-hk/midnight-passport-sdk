@@ -195,3 +195,149 @@ test('the owner callback durably fences the original in the browser journal befo
   assert.equal(withdrawals, 1);
   journal.close();
 });
+
+test('a submit port that ignores callback refusal cannot retire an uncertain withdrawal', async () => {
+  const factory = new IDBFactory();
+  const scope = { networkId: 'undeployed' as const, source, credentialId: '1'.repeat(64) };
+  const journal = await openBrowserNightSendJournal(factory, scope);
+  const { account } = owner();
+  let currentTarget = intent.target;
+  let dispatches = 0;
+  account.withdrawUnshielded = async (_request, options) => {
+    currentTarget = 'e'.repeat(64);
+    assert.ok(options?.beforeSubmit);
+    try {
+      await options.beforeSubmit({
+        networkId: 'undeployed',
+        account: source,
+        circuit: 'withdraw_unshielded_with_jubjub',
+        transactionHash: 'f'.repeat(64),
+        identifiers: ['00' + 'f'.repeat(64)],
+      });
+    } catch {
+      dispatches++;
+      throw new Error('lost response after a nonconforming dispatch');
+    }
+    throw new Error('The callback unexpectedly approved the repointed route.');
+  };
+  const names = createMidnamesNameService(
+    { networkId: 'undeployed', namespace: 'night', registryAddress: 'd'.repeat(64) },
+    {
+      async readTarget() {
+        return { kind: 'contract', address: currentTarget } as const;
+      },
+      async isSupportedAccount() {
+        return true;
+      },
+    },
+  );
+  const ports = () => ({
+    names,
+    journal,
+    async isSupportedRecipient() {
+      return true;
+    },
+    async readSourceBalance() {
+      return 10n;
+    },
+    async review() {
+      return true;
+    },
+    submitWithdrawal: createNightOwnerWithdrawal(account),
+    async prepareDeposit() {
+      throw new Error('Deposit cannot begin before withdrawal finality.');
+    },
+    async finalized() {
+      return false;
+    },
+  });
+  await assert.rejects(sendNightByName(intent, ports()), /lost response/);
+  assert.equal(dispatches, 1);
+  const active = await journal.readActive();
+  assert.deepEqual(active?.intent, intent);
+  assert.ok(Number.isFinite(Date.parse(active?.ownerStartedAt ?? '')));
+  assert.equal(await journal.readRefused(intent.requestId), undefined);
+  await assert.rejects(journal.retireRefused(intent, 'name-recheck'), /exact unsubmitted/);
+  await assert.rejects(sendNightByName(intent, ports()), /no transaction ID/);
+  await assert.rejects(
+    sendNightByName(intent, {
+      ...ports(),
+      submitWithdrawal: undefined,
+      async prepareWithdrawal() {
+        dispatches++;
+        throw new Error('The legacy route must never run for an uncertain owner intent.');
+      },
+    }),
+    /no transaction ID/,
+  );
+  assert.equal(dispatches, 1);
+  journal.close();
+});
+
+test('a name change before entering the owner port is audited and permits a new request', async () => {
+  const factory = new IDBFactory();
+  const scope = { networkId: 'undeployed' as const, source, credentialId: '1'.repeat(64) };
+  const journal = await openBrowserNightSendJournal(factory, scope);
+  const { account } = owner();
+  let currentTarget = intent.target;
+  let changeAtReview = true;
+  let ownerCalls = 0;
+  account.withdrawUnshielded = async (_request, options) => {
+    ownerCalls++;
+    assert.ok(options?.beforeSubmit);
+    await options.beforeSubmit({
+      networkId: 'undeployed',
+      account: source,
+      circuit: 'withdraw_unshielded_with_jubjub',
+      transactionHash: 'f'.repeat(64),
+      identifiers: ['00' + 'f'.repeat(64)],
+    });
+    return { txHash: 'f'.repeat(64), nextUseCounter: 2n };
+  };
+  const names = createMidnamesNameService(
+    { networkId: 'undeployed', namespace: 'night', registryAddress: 'd'.repeat(64) },
+    {
+      async readTarget() {
+        return { kind: 'contract', address: currentTarget } as const;
+      },
+      async isSupportedAccount() {
+        return true;
+      },
+    },
+  );
+  const ports = () => ({
+    names,
+    journal,
+    async isSupportedRecipient() {
+      return true;
+    },
+    async readSourceBalance() {
+      return 10n;
+    },
+    async review() {
+      if (changeAtReview) {
+        currentTarget = 'e'.repeat(64);
+        changeAtReview = false;
+      }
+      return true;
+    },
+    submitWithdrawal: createNightOwnerWithdrawal(account),
+    async prepareDeposit() {
+      throw new Error('Deposit cannot begin before withdrawal finality.');
+    },
+    async finalized() {
+      return false;
+    },
+  });
+  await assert.rejects(sendNightByName(intent, ports()), /scope changed/);
+  assert.equal(ownerCalls, 0);
+  assert.equal(await journal.readActive(), undefined);
+  assert.equal((await journal.readRefused(intent.requestId))?.reason, 'name-recheck');
+  await assert.rejects(sendNightByName(intent, ports()), /already archived/);
+
+  currentTarget = intent.target;
+  const next = { ...intent, requestId: 'b1234567-a123-4123-8123-a123456789ab' };
+  assert.equal((await sendNightByName(next, ports())).phase, 'withdrawal-pending');
+  assert.equal(ownerCalls, 1);
+  journal.close();
+});

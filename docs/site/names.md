@@ -516,7 +516,9 @@ An optional source-only owner port now connects that callback to the named NIGHT
 orchestrator. The callback checks the finalized network, source ACC and JubJub
 withdrawal circuit, re-resolves the reviewed name, then fences the exact original
 withdrawal identifiers before allowing dispatch. A lost response keeps the
-original; a retained intent with no transaction ID refuses an automatic retry.
+original. A name refusal before entering the owner API can retire the
+unsubmitted intent with an audit record. A durable owner-start marker keeps
+later no-ID outcomes blocked, including a callback refusal.
 A source helper maps the selected JubJub account to the reviewed NIGHT amount and
 bridge address. The demo still needs to wire it with a bridge/finality adapter
 and UI. This composition has no native or real-provider result.
