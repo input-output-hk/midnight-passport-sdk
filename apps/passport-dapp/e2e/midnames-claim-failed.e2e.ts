@@ -110,7 +110,7 @@ try {
   browser = await openBrowser();
   const resumed = await browser.newPage();
   await openClaim(resumed, origin);
-  await resumed.locator('#claim-check-availability').click();
+  await resumed.locator('#claim-recovery-check').click();
   await status(resumed, /^A failed original is retained in local history/);
   const archived = await resumed.evaluate(
     async ({ registry, name, account, digest }) => {
