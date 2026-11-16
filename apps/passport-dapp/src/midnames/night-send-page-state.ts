@@ -19,6 +19,35 @@ export function localNightEndpoint(value: string | undefined, scheme: 'http' | '
   }
 }
 
+export function localNightChain(config: {
+  readonly indexerUri: string;
+  readonly indexerWsUri: string;
+  readonly nodeUri: string;
+}): boolean {
+  return (
+    localNightEndpoint(config.indexerUri, 'http') &&
+    localNightEndpoint(config.indexerWsUri, 'ws') &&
+    localNightEndpoint(config.nodeUri, 'http')
+  );
+}
+
+/** A local name lookup and the ACC/finality reader must use the same primary indexer. */
+export function sameLocalNightIndexer(
+  config: { readonly indexerUri: string; readonly indexerWsUri: string; readonly nodeUri: string },
+  namingHttp: string | undefined,
+  namingWs: string | undefined,
+): boolean {
+  return (
+    localNightChain(config) &&
+    namingHttp !== undefined &&
+    namingWs !== undefined &&
+    localNightEndpoint(namingHttp, 'http') &&
+    localNightEndpoint(namingWs, 'ws') &&
+    new URL(namingHttp).href === new URL(config.indexerUri).href &&
+    new URL(namingWs).href === new URL(config.indexerWsUri).href
+  );
+}
+
 export function namedNightStatus(record: BrowserNightSendRecord | undefined): string {
   if (!record) return 'No named NIGHT payment is pending for this account.';
   const intent = record.intent;

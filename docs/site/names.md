@@ -580,7 +580,9 @@ before passing its proof-server URL to the worker.
 The source-only named NIGHT control is on **Passport account → Withdraw**. It is
 enabled only for the local `undeployed` JubJub demo with an external Midnames
 reader, pinned `standalone-0.35` registry profile, loopback service/indexer/
-chain endpoints, and `VITE_MIDNAMES_NIGHT_SEND=1`. It checks the recipient ACC
+chain endpoints, and `VITE_MIDNAMES_NIGHT_SEND=1`. The Midnames primary HTTP/WS
+indexer pair must match the service-discovered ACC/finality indexer pair;
+a separate verification reader may remain distinct. It checks the recipient ACC
 and source balance, shows the full named route and both ACC operations, then
 stages that exact route for the actual owner credential review. It retains
 original transaction IDs across reloads and refuses an automatic second owner

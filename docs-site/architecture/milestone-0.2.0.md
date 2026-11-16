@@ -120,8 +120,9 @@ scope-bound IndexedDB journal, finality reader, unbound deposit proof and
 device-held wallet. It reopens the journal after an interrupted deposit proof
 without repeating the withdrawal. It rejects a mismatched account credential
 scope or wallet chain configuration. An opt-in local page control now shows the
-named route and original IDs and uses this host. Its proof adapter has no native
-or real-provider acceptance yet.
+named route and original IDs and uses this host. It requires the configured
+Midnames primary indexer to match the service-discovered ACC/finality indexer;
+its proof adapter has no native or real-provider acceptance yet.
 
 Qualify the original demo's **post-ACC name claim step** under [#316](https://github.com/input-output-hk/midnight-passport-sdk/issues/316). The source path reuses the opt-in preparation and sponsor fence after the ACC address is known, retains the selected name across reload for the same credential and network, and shows *pending Passport setup* until the original claim and current registry record agree. The fresh browser fixture covers the claim transport and recovery, but not the new panel's complete create/open handoff. Name-owner total-loss recovery, human review with a real provider and sponsor-issued quote, and the public namespace remain open gates.
 

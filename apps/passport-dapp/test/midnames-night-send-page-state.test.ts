@@ -3,10 +3,12 @@ import { test } from 'node:test';
 import { NIGHT_SEND_OPERATIONS } from '../src/midnames/night-send.js';
 import type { BrowserNightSendRecord } from '../src/midnames/night-send-journal.js';
 import {
+  localNightChain,
   localNightEndpoint,
   localNightNetwork,
   namedNightStatus,
   newNamedNightRequest,
+  sameLocalNightIndexer,
 } from '../src/midnames/night-send-page-state.js';
 
 const request = {
@@ -42,6 +44,26 @@ test('opt-in named NIGHT payment accepts only local demo endpoints', () => {
   assert.equal(localNightEndpoint('ws://localhost:6300', 'ws'), true);
   assert.equal(localNightEndpoint('wss://localhost:6300', 'ws'), false);
   assert.equal(localNightEndpoint(undefined, 'ws'), false);
+  const serviceConfig = {
+    indexerUri: 'http://127.0.0.1:6300',
+    indexerWsUri: 'ws://127.0.0.1:6300',
+    nodeUri: 'http://127.0.0.1:19944',
+  };
+  assert.equal(localNightChain(serviceConfig), true);
+  assert.equal(localNightChain({ ...serviceConfig, nodeUri: 'ws://127.0.0.1:19944' }), false);
+  assert.equal(localNightChain({ ...serviceConfig, nodeUri: 'https://node.example' }), false);
+  assert.equal(
+    sameLocalNightIndexer(serviceConfig, serviceConfig.indexerUri, serviceConfig.indexerWsUri),
+    true,
+  );
+  assert.equal(
+    sameLocalNightIndexer(serviceConfig, 'http://127.0.0.1:18088', serviceConfig.indexerWsUri),
+    false,
+  );
+  assert.equal(
+    sameLocalNightIndexer(serviceConfig, serviceConfig.indexerUri, 'ws://127.0.0.1:18088'),
+    false,
+  );
 });
 
 test('page validates the human request before name lookup or owner approval', () => {

@@ -16,9 +16,9 @@ import {
 } from './night-send-journal.js';
 import { NightDepositInterrupted, type NightSendIntent } from './night-send.js';
 import {
-  localNightEndpoint,
   namedNightStatus,
   newNamedNightRequest,
+  sameLocalNightIndexer,
 } from './night-send-page-state.js';
 import { registryProfile } from './registry-pins.js';
 
@@ -76,11 +76,13 @@ async function connectedPageSend(
     { fetch: tracedFetch },
   );
   if (
-    !localNightEndpoint(config.indexerUri, 'http') ||
-    !localNightEndpoint(config.indexerWsUri, 'ws') ||
-    !localNightEndpoint(config.nodeUri, 'ws')
+    !sameLocalNightIndexer(
+      config,
+      import.meta.env.VITE_MIDNAMES_INDEXER_URL,
+      import.meta.env.VITE_MIDNAMES_INDEXER_WS_URL,
+    )
   )
-    throw new Error('Named NIGHT payment requires the owned local demo chain endpoints.');
+    throw new Error('Named NIGHT payment requires one matching local Midnames and ACC indexer.');
   checkScope();
   const network = {
     networkId: scope.networkId,

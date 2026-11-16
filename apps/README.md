@@ -978,7 +978,9 @@ With a configured local Midnames 2.1.0 reader, the pinned `standalone-0.35`
 registry profile, `?signing=jubjub` and the owned `undeployed` demo stack,
 set `VITE_MIDNAMES_NIGHT_SEND=1` when building the page. The Passport service,
 Midnames HTTP/WS indexer and service-discovered chain endpoints must be on
-loopback. Open a JubJub ACC, connect the built-in wallet and use **Passport
+loopback. The configured Midnames primary HTTP/WS indexer URLs must exactly
+match the service-discovered indexer pair; a separate verification reader may
+remain distinct. Open a JubJub ACC, connect the built-in wallet and use **Passport
 account → Withdraw → Send NIGHT to a Passport name**. Enter a canonical `.night`
 name and a positive amount in NIGHT smallest units. The page checks a deployed
 compatible recipient and source balance, then shows the full route, registry,
