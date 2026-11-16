@@ -8,8 +8,8 @@ import { claimQuoteDigest } from '../../apps/passport-dapp/src/midnames/claim-qu
 import { saveIsolationReceipt } from '../../scripts/qualification/native-isolation-files.mjs';
 import { openClaimDispatch } from './claim-dispatch.mts';
 
-/** Qualify the exact partial result when a sponsored claim loses a parent-policy race.
- * Its retained original is never released or replayed. */
+/** Qualify the exact claim-segment failure when a sponsored claim loses a
+ * parent-policy race. Its retained original is not replayed by this probe. */
 export async function qualifyPartialClaim({
   output,
   quote,
@@ -83,7 +83,7 @@ export async function qualifyPartialClaim({
   step('reconcile-exact-original-partial-status');
   const until = Date.now() + 120_000;
   const query =
-    'query MidnamesClaim($offset: TransactionOffset!) { transactions(offset:$offset) { __typename protocolVersion hash raw ... on RegularTransaction { identifiers transactionResult { status } } } }';
+    'query MidnamesClaim($offset: TransactionOffset!) { transactions(offset:$offset) { __typename protocolVersion hash raw ... on RegularTransaction { identifiers transactionResult { status segments { id success } } } } }';
   while (Date.now() < until) {
     let rows;
     try {
@@ -122,14 +122,15 @@ export async function qualifyPartialClaim({
         evidence.admission,
       );
       evidence.indexerStatus = row.transactionResult?.status;
+      evidence.indexerSegments = row.transactionResult?.segments;
       save();
       assert.equal(evidence.indexerStatus, 'PARTIAL_SUCCESS');
-      assert.equal(await readClaimFinality(process.env.MN_INDEXER_URL, receipt), 'conflict');
+      assert.equal(await readClaimFinality(process.env.MN_INDEXER_URL, receipt), 'claim-failed');
       assert.equal(await reads.readClaim(quote.name, profile), undefined);
       assert.equal(evidence.attempts, 1);
-      evidence.result = 'partial-success-refused';
+      evidence.result = 'claim-segment-failed';
       save();
-      return { indexedPartialSuccessRefused: true, originalDispatches: evidence.attempts };
+      return { indexedClaimFailure: true, originalDispatches: evidence.attempts };
     }
     await delay(1500);
   }
