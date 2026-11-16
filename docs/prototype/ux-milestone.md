@@ -229,3 +229,8 @@ credential scope. It refuses another request while the original is active;
 both legs must pass a finality check before the host can archive it. The
 owner-send page and its passkey/bridge adapters remain to be connected and
 qualified, so this storage path is not a completed demo send journey.
+An opt-in source API now gives the host finalized unshielded-withdrawal IDs
+before submission and awaits its durable callback. Unsupported chain adapters
+refuse before owner signing. The browser journal still needs to be connected to
+this callback and to the second payment leg; no new native/provider run qualifies
+that composition.

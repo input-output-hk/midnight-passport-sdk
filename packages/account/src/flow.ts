@@ -2,9 +2,9 @@
 // with exactly one `end` or `error` of the same id; events carry no secret.
 import type {
   CreateAccountStep,
-  FlowOptions,
   PassportEvent,
   PassportStep,
+  FlowOptions,
 } from '@input-output-hk/mn-passport-protocol';
 import { toHex } from './codec.js';
 import { PassportConnectorError, toPassportError } from './errors.js';

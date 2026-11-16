@@ -21,6 +21,20 @@ export interface FlowOptions {
   readonly onEvent?: (event: PassportEvent) => void;
 }
 
+/** Finalized public identity of one ACC value transaction, before its first dispatch. */
+export interface PreparedValueSubmission {
+  readonly networkId: string;
+  readonly account: string;
+  readonly circuit: string;
+  readonly transactionHash: string;
+  readonly identifiers: readonly string[];
+}
+
+export interface ValueFlowOptions extends FlowOptions {
+  /** Persist the original transaction identity before dispatch; rejection prevents submission. */
+  readonly beforeSubmit?: (submission: PreparedValueSubmission) => Promise<void>;
+}
+
 export interface CreateAccountOptions extends FlowOptions {
   readonly userName: string;
   /** Retire the maintenance authority at deploy. Irreversible, so required, with no default (D-11). */
@@ -233,7 +247,7 @@ export interface PassportAccount {
   /** Spend a confirmed unshielded ACC balance to a Midnight user address as its owner. */
   withdrawUnshielded?(
     request: PassportUnshieldedWithdrawal,
-    options?: FlowOptions,
+    options?: ValueFlowOptions,
   ): Promise<PassportOwnerTransferResult>;
   /** Spend one qualified shielded coin with a witness bound to the owner signature. */
   withdrawShielded?(

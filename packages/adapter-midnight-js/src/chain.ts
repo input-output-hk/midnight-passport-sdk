@@ -19,12 +19,18 @@ import type {
   JubjubPureCircuits,
   Chain,
   FeeSponsor,
+  MutationSubmissionContext,
   NetworkConfig,
   Prover,
   QualifiedShieldedCoin,
   Submitter,
 } from '@input-output-hk/mn-passport-account/ports';
-import type { PassportEvent, PassportStep } from '@input-output-hk/mn-passport-protocol';
+import type {
+  AbortSignalLike,
+  PassportEvent,
+  PassportStep,
+  PreparedValueSubmission,
+} from '@input-output-hk/mn-passport-protocol';
 import { Transaction } from '@midnightntwrk/ledger-v9';
 
 interface LedgerShape {
@@ -62,6 +68,30 @@ function deviceEntries(ledger: LedgerShape): Uint8Array[] {
     if (entry.length !== 32) throw new Error('ACC has a malformed device commitment');
     return entry.slice();
   });
+}
+
+async function readAccLedger(
+  provider: PublicDataProvider,
+  binding: MidnightBinding,
+  network: NetworkConfig,
+  address: string,
+  options?: { readonly includeInbox?: boolean; readonly includeDevices?: boolean },
+): Promise<AccLedgerView | undefined> {
+  setNetworkId(network.networkId);
+  const state = await provider.queryContractState(address);
+  if (!state) return undefined;
+  const ledger = binding.ledger(state.data) as LedgerShape;
+  return {
+    booted: ledger.booted,
+    authNonce: ledger.auth_nonce,
+    deviceEpoch: ledger.device_epoch,
+    entryCount: Number(ledger.devices.size()),
+    specVersion: Number(ledger.spec_version),
+    encKey: ledger.enc_key,
+    ...(options?.includeInbox && { inboxEntries: inboxEntries(ledger) }),
+    ...(options?.includeDevices && { deviceEntries: deviceEntries(ledger) }),
+    hasEntry: (entry) => ledger.devices.member(entry),
+  };
 }
 
 /** The generated binding is loaded by the host, normally with import(). */
@@ -118,6 +148,81 @@ export function createHeldCoinWitness(heldCoin?: QualifiedShieldedCoin) {
   };
 }
 
+/** Await the host's durable original-ID fence before handing finalized bytes to the submitter. */
+export async function submitFencedValueCall(
+  tx: {
+    serialize(): Uint8Array;
+    transactionHash(): string;
+    identifiers(): string[];
+  },
+  identity: Pick<PreparedValueSubmission, 'networkId' | 'account' | 'circuit'>,
+  beforeSubmit: NonNullable<PreparedValueSubmissionFence>,
+  dispatch: (bytes: Uint8Array) => Promise<string>,
+): Promise<string> {
+  const transactionHash = tx.transactionHash();
+  const identifiers = tx.identifiers();
+  if (
+    !/^[a-f0-9]{64}$/.test(transactionHash) ||
+    !Array.isArray(identifiers) ||
+    identifiers.length < 1 ||
+    identifiers.length > 32 ||
+    identifiers.some((id) => !/^[a-f0-9]{66}$/.test(id)) ||
+    new Set(identifiers).size !== identifiers.length
+  )
+    throw new PassportConnectorError(
+      'TransferInvalid',
+      'The finalized withdrawal has no usable transaction identity.',
+    );
+  await beforeSubmit({ ...identity, transactionHash, identifiers: [...identifiers] });
+  return dispatch(tx.serialize());
+}
+
+type PreparedValueSubmissionFence = (submission: PreparedValueSubmission) => Promise<void>;
+
+function requireSupportedFence(
+  beforeSubmit: PreparedValueSubmissionFence | undefined,
+  substitutedCall: boolean,
+  circuit: string,
+): void {
+  if (beforeSubmit && (substitutedCall || !circuit.startsWith('withdraw_unshielded_')))
+    throw new PassportConnectorError(
+      'BindingUnsupported',
+      'This chain call cannot fence a finalized withdrawal before submission.',
+    );
+}
+
+async function dispatchCall(
+  tx: {
+    serialize(): Uint8Array;
+    transactionHash(): string;
+    identifiers(): string[];
+  },
+  identity: Pick<PreparedValueSubmission, 'networkId' | 'account' | 'circuit'>,
+  beforeSubmit: PreparedValueSubmissionFence | undefined,
+  submitter: Submitter,
+  mutation: MutationSubmissionContext | undefined,
+  signal: AbortSignalLike | undefined,
+): Promise<string> {
+  const dispatch = (bytes: Uint8Array) => {
+    if (signal?.aborted)
+      throw new PassportConnectorError('Aborted', 'The flow was aborted before submission.');
+    return submitter.submit(
+      bytes,
+      mutation
+        ? {
+            mutation,
+            address: identity.account,
+            circuit: identity.circuit,
+            ...(signal && { signal }),
+          }
+        : undefined,
+    );
+  };
+  return beforeSubmit
+    ? submitFencedValueCall(tx, identity, beforeSubmit, dispatch)
+    : dispatch(tx.serialize());
+}
+
 /** Injects the heavy Midnight call pipeline behind the account core's Chain port. */
 export function createMidnightChain(opts: {
   network: NetworkConfig;
@@ -156,25 +261,21 @@ export function createMidnightChain(opts: {
   });
 
   return {
-    async readAccount(address, options): Promise<AccLedgerView | undefined> {
+    ...(opts.submit ? {} : { supportsBeforeSubmit: true as const }),
+    readAccount: (address, options) =>
+      readAccLedger(publicDataProvider, binding, network, address, options),
+    async call({
+      address,
+      circuit,
+      args,
+      heldCoin,
+      onEvent,
+      mutation,
+      beforeSubmit,
+      ...flowOptions
+    }) {
       setNetworkId(network.networkId);
-      const state = await publicDataProvider.queryContractState(address);
-      if (!state) return undefined;
-      const ledger = binding.ledger(state.data) as LedgerShape;
-      return {
-        booted: ledger.booted,
-        authNonce: ledger.auth_nonce,
-        deviceEpoch: ledger.device_epoch,
-        entryCount: Number(ledger.devices.size()),
-        specVersion: Number(ledger.spec_version),
-        encKey: ledger.enc_key,
-        ...(options?.includeInbox && { inboxEntries: inboxEntries(ledger) }),
-        ...(options?.includeDevices && { deviceEntries: deviceEntries(ledger) }),
-        hasEntry: (entry) => ledger.devices.member(entry),
-      };
-    },
-    async call({ address, circuit, args, heldCoin, onEvent, mutation, ...flowOptions }) {
-      setNetworkId(network.networkId);
+      requireSupportedFence(beforeSubmit, opts.submit !== undefined, circuit);
       const shieldedSpend = circuit.startsWith('withdraw_shielded');
       if (shieldedSpend !== (heldCoin !== undefined))
         throw new PassportConnectorError(
@@ -231,6 +332,7 @@ export function createMidnightChain(opts: {
         }
       };
       let finality: ReturnType<typeof report> | undefined;
+      let submissionAttempted = false;
       const providers = {
         publicDataProvider,
         zkConfigProvider,
@@ -260,19 +362,22 @@ export function createMidnightChain(opts: {
             ),
         }),
         midnightProvider: createMidnightProvider(async (tx) => {
+          if (beforeSubmit && submissionAttempted)
+            throw new PassportConnectorError(
+              'TransferInvalid',
+              'The call attempted a second submission.',
+            );
+          submissionAttempted = beforeSubmit !== undefined;
           const id = await track(
             'sponsor.submit',
             () =>
-              submitter.submit(
-                tx.serialize(),
-                mutation
-                  ? {
-                      mutation,
-                      address,
-                      circuit,
-                      ...(flowOptions.signal && { signal: flowOptions.signal }),
-                    }
-                  : undefined,
+              dispatchCall(
+                tx,
+                { networkId: network.networkId, account: address, circuit },
+                beforeSubmit,
+                submitter,
+                mutation,
+                flowOptions.signal,
               ),
             (txId) => ({ txId, circuit }),
           );

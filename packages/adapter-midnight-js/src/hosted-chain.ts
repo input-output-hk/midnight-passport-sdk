@@ -89,7 +89,12 @@ export function createHostedAccChain(options: HostedAccChainOptions): Chain {
         hasEntry: (entry: Uint8Array) => ledger.devices.member(entry),
       };
     },
-    async call({ address, circuit, args, heldCoin, signal, onEvent }) {
+    async call({ address, circuit, args, heldCoin, signal, onEvent, beforeSubmit }) {
+      if (beforeSubmit)
+        throw new PassportConnectorError(
+          'BindingUnsupported',
+          'The hosted ACC handle cannot fence a finalized withdrawal before submission.',
+        );
       if (heldCoin)
         throw new PassportConnectorError(
           'BindingUnsupported',

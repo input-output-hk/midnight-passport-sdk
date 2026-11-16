@@ -14,6 +14,7 @@ import type { Flow } from './flow.js';
 import { fromHex, toHex } from './codec.js';
 import { PassportConnectorError } from './errors.js';
 import { prepareShieldedWithdrawal, prepareUnshieldedWithdrawal } from './unshielded-withdrawal.js';
+import { requireValueSubmissionChain } from './value-submit.js';
 import { readQualifiedHolding } from './holdings.js';
 type JubjubHint = AccountHint & {
   readonly scheme: 'jubjub-schnorr';
@@ -53,6 +54,7 @@ export function jubjubWithdrawals(context: {
           );
         if (record.status !== 'active')
           throw new PassportConnectorError('AccountNotFound', 'The JubJub ACC is not active.');
+        const valueChain = await requireValueSubmissionChain(readChain, options.beforeSubmit);
         recordPure.set(record, pure);
         return authoriser.withKeySession!(
           async () => {
@@ -104,9 +106,7 @@ export function jubjubWithdrawals(context: {
                 'The signature names another device.',
               );
             flow.checkpoint();
-            const tx = await (
-              await readChain()
-            ).call({
+            const tx = await valueChain.call({
               address: record.address,
               circuit,
               args: [
@@ -120,6 +120,7 @@ export function jubjubWithdrawals(context: {
                 signed.grindNonce,
               ],
               ...flow.ports,
+              ...(options.beforeSubmit && { beforeSubmit: options.beforeSubmit }),
             });
             return { ...tx, nextUseCounter: counter + 1n };
           },
