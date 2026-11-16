@@ -8,6 +8,11 @@ import {
   sendNightByName,
 } from '../../apps/passport-dapp/src/midnames/night-send.ts';
 import { createMidnamesNameService } from '../../apps/passport-dapp/src/midnames/resolver.ts';
+import {
+  assertExactNightBridgeSpend,
+  exactNightBridgeOutput,
+  hasExactNightBridgeCoin,
+} from '../../apps/passport-dapp/src/midnames/night-bridge-output.ts';
 import { readHostConfirmation } from '../../apps/passport-service/src/host-confirmation.ts';
 import { prepareLocalnetNight } from '../../apps/passport-funding-service/src/night-preparation.ts';
 
@@ -77,14 +82,6 @@ async function canonicalReceipt(original, ledger, versionOfRecord) {
   };
 }
 
-function unshieldedOffers(transaction) {
-  return [...transaction.intents].flatMap(([segment, intent]) =>
-    [intent.guaranteedUnshieldedOffer, intent.fallibleUnshieldedOffer]
-      .filter(Boolean)
-      .map((offer) => ({ offer, intentHash: intent.intentHash(segment) })),
-  );
-}
-
 export async function qualifyNightSend({
   output,
   get,
@@ -121,6 +118,7 @@ export async function qualifyNightSend({
   const color = new Uint8Array(32);
   const bridgeBytes = walletModule.userAddressBytes(wallet);
   const bridge = Buffer.from(bridgeBytes).toString('hex');
+  const bridgeWalletOwner = wallet.unshieldedKeystore.getBech32Address().asString();
   const fund = 10n,
     amount = 4n;
   const state = async (address) =>
@@ -279,25 +277,14 @@ export async function qualifyNightSend({
         'binding',
         readFileSync(join(directory, 'withdraw-' + withdrawal.hash + '.private.bin')),
       );
-      assert.equal(original.transactionHash(), withdrawal.hash);
-      const offers = unshieldedOffers(original).filter(({ offer }) => offer.outputs.length > 0);
-      assert.equal(offers.length, 1);
-      const [{ intentHash, offer }] = offers;
-      assert.equal(offer.outputs.length, 1);
-      assert.equal(offer.outputs[0].value, BigInt(intent.amount));
-      assert.equal(offer.outputs[0].owner, bridge);
-      const matches = (coin) =>
-        coin.intentHash === intentHash &&
-        coin.outputNo === 0 &&
-        coin.value === BigInt(intent.amount) &&
-        coin.type === offer.outputs[0].type;
+      const expected = exactNightBridgeOutput(intent, withdrawal, original);
       assert.ok(
-        await until(async () => (await availableNight()).some(({ utxo }) => matches(utxo))),
+        await until(async () =>
+          hasExactNightBridgeCoin(await availableNight(), expected, bridgeWalletOwner),
+        ),
       );
       const balanced = await makeCall(target, intent.operations[1], [color, BigInt(intent.amount)]);
-      const inputs = unshieldedOffers(balanced.tx).flatMap(({ offer: item }) => item.inputs);
-      assert.equal(inputs.length, 1);
-      assert.ok(matches(inputs[0]), 'Deposit must consume the original exact NIGHT output');
+      assertExactNightBridgeSpend(balanced.tx, expected, ledger.addressFromKey);
       return prepared('deposit', balanced);
     },
     async finalized(original) {

@@ -251,3 +251,9 @@ withdraw/deposit operations. An opt-in finalized callback checks that approved
 scope again before the journal fence. The ACC signs the bridge withdrawal;
 the name and recipient ACC remain host-checked rather than signed circuit
 fields. This is a composition seam, not a connected demo screen or native run.
+
+The local NIGHT fixture now uses a reusable source guard for the exact bridge
+output and balanced deposit input. It refuses a different withdrawal identity,
+extra output or substituted deposit coin before the second dispatch. The
+browser deposit wallet and send control remain open work; source tests do not
+establish another native payment.
