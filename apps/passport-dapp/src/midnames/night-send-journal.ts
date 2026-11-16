@@ -24,12 +24,18 @@ interface StoredNightSend {
   readonly version: 1;
   readonly credentialId: string;
   readonly intent: NightSendIntent;
+  readonly ownerStartedAt?: string;
   readonly withdrawal?: NightSendLeg;
   readonly deposit?: NightSendLeg;
 }
 
 interface ArchivedNightSend extends StoredNightSend {
   readonly archivedAt: string;
+}
+
+interface RefusedNightSend extends StoredNightSend {
+  readonly refusedAt: string;
+  readonly reason: 'name-recheck';
 }
 
 function checkedIntent(value: unknown, scope: BrowserNightSendScope): NightSendIntent {
@@ -97,6 +103,11 @@ function checkedRow(value: unknown, scope: BrowserNightSendScope): StoredNightSe
   const row = value as Record<string, unknown>;
   if (row.version !== 1 || !hex32(row.credentialId))
     throw new Error('Stored NIGHT payment is invalid.');
+  if (
+    row.ownerStartedAt !== undefined &&
+    (typeof row.ownerStartedAt !== 'string' || !Number.isFinite(Date.parse(row.ownerStartedAt)))
+  )
+    throw new Error('Stored NIGHT owner attempt is invalid.');
   if (row.credentialId !== scope.credentialId)
     throw new Error('The original NIGHT payment belongs to another credential.');
   const intent = checkedIntent(row.intent, scope);
@@ -108,6 +119,7 @@ function checkedRow(value: unknown, scope: BrowserNightSendScope): StoredNightSe
     version: 1,
     credentialId: scope.credentialId,
     intent,
+    ...(row.ownerStartedAt && { ownerStartedAt: row.ownerStartedAt }),
     ...(withdrawal && { withdrawal }),
     ...(deposit && { deposit }),
   };
@@ -176,6 +188,98 @@ function readArchivedPayment(
   });
 }
 
+function readRefusedPayment(
+  db: IDBDatabase,
+  scope: BrowserNightSendScope,
+  key: string,
+  requestId: string,
+): Promise<RefusedNightSend | undefined> {
+  if (!uuid(requestId)) throw new Error('Invalid NIGHT payment request ID.');
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(historyStore, 'readonly');
+    let result: RefusedNightSend | undefined;
+    let failure: unknown;
+    tx.oncomplete = () => resolve(result);
+    tx.onabort = () => reject(failure ?? new Error('NIGHT payment history is unavailable.'));
+    const request = tx.objectStore(historyStore).get(key);
+    request.onsuccess = () => {
+      try {
+        if (request.result === undefined) return;
+        const row = checkedRow(request.result, scope);
+        const { refusedAt, reason } = request.result as RefusedNightSend;
+        if (
+          !row ||
+          row.ownerStartedAt ||
+          row.withdrawal ||
+          row.deposit ||
+          row.intent.requestId !== requestId ||
+          reason !== 'name-recheck' ||
+          typeof refusedAt !== 'string' ||
+          !Number.isFinite(Date.parse(refusedAt))
+        )
+          throw new Error('Stored NIGHT refusal history is invalid.');
+        result = { ...row, refusedAt, reason };
+      } catch (error) {
+        failure = error;
+        tx.abort();
+      }
+    };
+  });
+}
+
+type JournalAccess = <T>(
+  update: (row: StoredNightSend | undefined, tx: IDBTransaction, fail: (error: Error) => void) => T,
+  write?: boolean,
+  withHistory?: boolean,
+) => Promise<T>;
+
+function ownerAttemptMethods(
+  access: JournalAccess,
+  scope: BrowserNightSendScope,
+  key: string,
+  historyKey: (requestId: string) => string,
+): Required<Pick<NightSendJournal, 'markOwnerStarted' | 'retireRefused'>> {
+  return {
+    markOwnerStarted: async (value) => {
+      const intent = checkedIntent(value, scope);
+      await access((row, tx) => {
+        if (
+          !row ||
+          row.ownerStartedAt ||
+          row.withdrawal ||
+          row.deposit ||
+          !same(row.intent, intent)
+        )
+          throw new Error('The owner attempt cannot start for this NIGHT intent.');
+        tx.objectStore(activeStore).put({ ...row, ownerStartedAt: new Date().toISOString() }, key);
+      }, true);
+    },
+    retireRefused: async (value, reason) => {
+      if (reason !== 'name-recheck') throw new Error('Unknown NIGHT refusal reason.');
+      const intent = checkedIntent(value, scope);
+      await access(
+        (row, tx) => {
+          if (
+            !row ||
+            row.ownerStartedAt ||
+            row.withdrawal ||
+            row.deposit ||
+            !same(row.intent, intent)
+          )
+            throw new Error('Only the exact unsubmitted NIGHT intent can be retired.');
+          tx.objectStore(historyStore).add(
+            { ...row, refusedAt: new Date().toISOString(), reason } satisfies RefusedNightSend,
+            historyKey(row.intent.requestId),
+          );
+          tx.objectStore(activeStore).delete(key);
+        },
+        true,
+        true,
+      );
+    },
+  };
+}
+
 /** One active original per ACC on this origin, serialized by IndexedDB across tabs. */
 export async function openBrowserNightSendJournal(
   factory: IDBFactory,
@@ -222,7 +326,7 @@ export async function openBrowserNightSendJournal(
     });
   }
 
-  const journal: NightSendJournal = {
+  const journal = {
     readIntent: () => access((row) => row?.intent),
     createIntent: async (value) => {
       const intent = checkedIntent(value, scope);
@@ -264,7 +368,8 @@ export async function openBrowserNightSendJournal(
         );
       }, true);
     },
-  };
+    ...ownerAttemptMethods(access, scope, key, historyKey),
+  } satisfies NightSendJournal;
 
   return {
     ...journal,
@@ -302,6 +407,8 @@ export async function openBrowserNightSendJournal(
     },
     readArchived: (requestId: string) =>
       readArchivedPayment(db, scope, historyKey(requestId), requestId),
+    readRefused: (requestId: string) =>
+      readRefusedPayment(db, scope, historyKey(requestId), requestId),
     close: () => db.close(),
   };
 }

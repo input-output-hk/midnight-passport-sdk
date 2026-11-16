@@ -81,6 +81,58 @@ test('each transaction fence is durable, ordered and never replaced after a lost
   journal.close();
 });
 
+test('a known pre-owner refusal retires only the exact no-leg intent and retains its audit', async () => {
+  const factory = new IDBFactory();
+  let journal = await openBrowserNightSendJournal(factory, scope);
+  await journal.createIntent(intent);
+  await assert.rejects(
+    journal.retireRefused({ ...intent, bridge: 'e'.repeat(64) }, 'name-recheck'),
+    /exact unsubmitted/,
+  );
+  assert.deepEqual(await journal.readIntent(), intent);
+  await journal.retireRefused(intent, 'name-recheck');
+  assert.equal(await journal.readActive(), undefined);
+  journal.close();
+
+  journal = await openBrowserNightSendJournal(factory, scope);
+  const refused = await journal.readRefused(intent.requestId);
+  assert.equal(refused?.reason, 'name-recheck');
+  assert.deepEqual(refused?.intent, intent);
+  assert.equal(refused?.withdrawal, undefined);
+  assert.equal(refused?.deposit, undefined);
+  assert.ok(Number.isFinite(Date.parse(refused?.refusedAt ?? '')));
+  await assert.rejects(journal.createIntent(intent), /already archived/);
+  const next = { ...intent, requestId: 'b1234567-a123-4123-8123-a123456789ab' };
+  await journal.createIntent(next);
+  assert.deepEqual(await journal.readIntent(), next);
+  await assert.rejects(journal.retireRefused(intent, 'name-recheck'), /exact unsubmitted/);
+  journal.close();
+
+  const other = await openBrowserNightSendJournal(new IDBFactory(), scope);
+  await other.createIntent(intent);
+  await other.fenceLeg('withdraw', withdrawal);
+  await assert.rejects(other.retireRefused(intent, 'name-recheck'), /exact unsubmitted/);
+  assert.deepEqual(await other.readLeg('withdraw'), withdrawal);
+  other.close();
+});
+
+test('an owner-start marker survives reload and prevents retiring an uncertain no-ID attempt', async () => {
+  const factory = new IDBFactory();
+  let journal = await openBrowserNightSendJournal(factory, scope);
+  await journal.createIntent(intent);
+  await journal.markOwnerStarted(intent);
+  await assert.rejects(journal.markOwnerStarted(intent), /cannot start/);
+  await assert.rejects(journal.retireRefused(intent, 'name-recheck'), /exact unsubmitted/);
+  journal.close();
+
+  journal = await openBrowserNightSendJournal(factory, scope);
+  assert.ok(Number.isFinite(Date.parse((await journal.readActive())?.ownerStartedAt ?? '')));
+  assert.equal(await journal.readRefused(intent.requestId), undefined);
+  await journal.fenceLeg('withdraw', withdrawal);
+  assert.deepEqual(await journal.readLeg('withdraw'), withdrawal);
+  journal.close();
+});
+
 test('completed original is archived without losing its IDs; a new request can then start', async () => {
   const factory = new IDBFactory();
   const journal = await openBrowserNightSendJournal(factory, scope);

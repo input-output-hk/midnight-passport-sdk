@@ -921,8 +921,10 @@ passes the account API's `beforeSubmit` callback through. Immediately before the
 owner dispatch, it checks the finalized network, source ACC and JubJub withdrawal
 circuit, re-resolves the reviewed name, then transactionally fences the original
 hash and watch IDs in the browser journal. A lost submit response retains those
-IDs; an intent interrupted without an ID refuses a new owner attempt until it is
-inspected. A separate source helper maps the reviewed amount and bridge address to
+IDs. A name recheck that refuses before the owner API starts can atomically
+retire the unsubmitted intent with an audit record. Once the owner API starts,
+a durable marker keeps any no-ID outcome blocked, including a callback refusal.
+A separate source helper maps the reviewed amount and bridge address to
 the selected JubJub account's unshielded NIGHT withdrawal. The reference demo
 still has no named-send page or connected bridge/finality adapter, and this path
 has no native/provider qualification.

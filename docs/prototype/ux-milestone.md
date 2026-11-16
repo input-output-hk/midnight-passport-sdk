@@ -237,8 +237,10 @@ journal and second payment leg; no new native/provider run qualifies that path.
 
 The source-only NIGHT orchestrator now accepts an account-owner callback path:
 it rechecks the named route at the finalized pre-submit point and commits the
-original withdrawal IDs before dispatch. An interrupted intent without those IDs
-blocks a new attempt, and a lost reply retains the original for lookup. A source
+original withdrawal IDs before dispatch. A name refusal before entering the
+owner API can retire the unsubmitted intent into audit history. A durable
+owner-start marker keeps later no-ID outcomes blocked; a lost reply retains
+the original for lookup. A source
 helper binds the selected JubJub ACC to the reviewed NIGHT amount and bridge.
 The demo still needs to wire that helper, the bridge/finality adapter, send control
 and browser qualification.

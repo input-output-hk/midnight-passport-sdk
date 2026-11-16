@@ -195,7 +195,7 @@ test('an unknown withdrawal remains original-only and cannot fund the next leg',
   assert.equal(legs.size, 1);
 });
 
-test('a retained intent cannot be rewritten through the host review callback', async () => {
+test('a retained no-ID intent refuses another review or withdrawal preparation', async () => {
   const { state, calls, ports, legs } = fixture();
   state.duringWithdrawalProof = () => {
     throw new Error('preparation interrupted');
@@ -205,16 +205,14 @@ test('a retained intent cannot be rewritten through the host review callback', a
   await assert.rejects(
     sendNightByName(request, {
       ...ports(),
-      async review(reviewed) {
-        calls.push('review');
-        assert.equal(Reflect.set(reviewed, 'target', 'f'.repeat(64)), false);
-        state.address = 'f'.repeat(64);
+      async review() {
+        calls.push('unexpected-review');
         return true;
       },
     }),
-    /scope changed/,
+    /no transaction ID/,
   );
-  assert.deepEqual(calls, ['review', 'sign', 'review']);
+  assert.deepEqual(calls, ['review', 'sign']);
   assert.equal(legs.size, 0);
 });
 
@@ -283,6 +281,41 @@ test('the account owner callback fences the finalized original before dispatch a
   assert.deepEqual(calls, ['review', 'owner-sign', 'fence', 'withdraw']);
   assert.equal((await sendNightByName(request, owner)).phase, 'withdrawal-pending');
   assert.equal(executions, 1, 'the unknown original is looked up without another owner send');
+});
+
+test('a changed host port cannot switch an approved owner withdrawal to an unfenced path', async () => {
+  const { calls, ports, legs } = fixture();
+  let substituted = 0;
+  const owner: Parameters<typeof sendNightByName>[1] = {
+    ...ports(),
+    prepareWithdrawal: undefined,
+    async review() {
+      calls.push('review');
+      Object.assign(owner, {
+        async submitWithdrawal() {
+          substituted++;
+        },
+        async prepareWithdrawal() {
+          substituted++;
+        },
+      });
+      return true;
+    },
+    async submitWithdrawal(_, beforeSubmit) {
+      calls.push('original-owner');
+      await beforeSubmit({
+        networkId: request.networkId,
+        account: request.source,
+        circuit: 'withdraw_unshielded_with_jubjub',
+        transactionHash: withdrawal.hash,
+        identifiers: withdrawal.identifiers,
+      });
+    },
+  };
+  assert.equal((await sendNightByName(request, owner)).phase, 'withdrawal-pending');
+  assert.deepEqual(calls, ['review', 'original-owner']);
+  assert.equal(substituted, 0);
+  assert.deepEqual(legs.get('withdraw'), withdrawal);
 });
 
 test('the owner callback rechecks a repointed name before fencing or dispatch', async () => {
