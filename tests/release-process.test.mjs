@@ -44,8 +44,8 @@ function environment(/** @type {string} */ root, mode = 'wait') {
     PASSPORT_PROCESS_FIXTURE_MODE: mode,
   };
 }
-async function wait(/** @type {()=>boolean} */ predicate) {
-  const end = performance.now() + 5_000;
+async function wait(/** @type {()=>boolean} */ predicate, timeoutMs = 5_000) {
+  const end = performance.now() + timeoutMs;
   while (!predicate() && performance.now() < end) await delay(10);
   assert.equal(predicate(), true, 'Owned process deadline expired');
 }
@@ -244,7 +244,9 @@ for (const mode of ['no-go', 'admitted', 'before-claim', 'before-record', 'lost-
         assert.equal((await closeRecordedProcess(r.directory, r.launchSha256)).closed, true);
       }
     });
-    await wait(() => ready);
+    // The first detached worker can cold-start slowly on a loaded CI runner.
+    await wait(() => ready || closed, 20_000);
+    assert.equal(ready, true, 'Parent exited before worker readiness');
     const reference = JSON.parse(readFileSync(join(root, 'reference.json'), 'utf8'));
     if (mode === 'before-claim' || mode === 'before-record') {
       const boundary = JSON.parse(readFileSync(join(root, 'early-boundary.json'), 'utf8'));

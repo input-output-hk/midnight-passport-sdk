@@ -35,4 +35,11 @@ post-proof fixture quote did not establish pre-proof user review. It used
 fixture login and a virtual passkey. The shielded
 deposit and two-leg NIGHT payment have standalone Node fixtures. Online profiles
 and real passkey provider recovery require separate qualification.
+At signed `b87ed6c`, the independent sender fixture also displayed the exact
+named shielded deposit in its own localhost browser before preparation. An
+automated approval led to one finalized dispatch and a separately verified
+recipient holding on isolated `undeployed`. The browser received public target
+details only; recipient secrets stayed with the owner. Human review, a sender
+page in the Passport demo, MIP-0007 delegated routing and public `passport.night`
+are still open.
 See the [demo configuration and evidence](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/site/names.md#source-preview-midnames-210).

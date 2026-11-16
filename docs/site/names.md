@@ -409,6 +409,17 @@ PR #341) passed the same one-dispatch owner-holding checks. It is an
 earlier-head native result, separate from the later `9a19757` browser-claim
 qualification.
 
+At signed source `b87ed6c`, a separate sender displayed that resolved intent
+on its own localhost browser page before preparing the named deposit. An
+automated Chromium click approved it. The isolated `undeployed` run finalized
+one dispatch, and the recipient verified the original output against its
+decrypted, still-held coin. The runner verified unchanged inputs and exact
+owned cleanup. This is browser rendering and ordering evidence, not a human
+approval or an online `passport.night` run. The sender page has only public
+resolution fields; payment authority stays in the sender process, while
+recipient signing, viewing and name-ownership secrets remain with the owner. See the
+[browser review recipe](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local#review-the-named-deposit-in-the-sender-browser).
+
 Run the [standalone fixture](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local)
 from a source checkout containing #317. The fixture uses local `.night` on
 `undeployed` and a self-hosted indexer and proof server. Public
