@@ -69,11 +69,11 @@ assert.ok(
     'claim-handoff',
     'claim-browser',
     'claim-owner-browser',
-    'claim-failure-probe',
+    'claim-partial-probe',
   ].includes(mode),
 );
 const browserOwner = mode === 'claim-owner-browser' || mode === 'claim-browser';
-const claimFixture = mode === 'claim-handoff' || browserOwner || mode === 'claim-failure-probe';
+const claimFixture = mode === 'claim-handoff' || browserOwner || mode === 'claim-partial-probe';
 const receipt = { transactions: [], steps: [], passed: false, mode };
 const save = () => saveIsolationReceipt(join(output, 'worker.json'), receipt);
 const step = (label) => {
@@ -306,7 +306,7 @@ try {
   if (claimFixture) {
     const { qualifyClaimHandoff } = await import('./claim-handoff-fixture.mjs');
     let dispatch;
-    if (mode === 'claim-browser' || mode === 'claim-failure-probe') {
+    if (mode === 'claim-browser' || mode === 'claim-partial-probe') {
       const { delegateClaimDust } = await import('./claim-dust-fixture.mjs');
       receipt.availableDust = await delegateClaimDust({
         wallet,
@@ -350,9 +350,9 @@ try {
             readLive,
           });
       } else {
-        const { qualifyIndexedFailure } = await import('./claim-failure-probe.mjs');
+        const { qualifyPartialClaim } = await import('./claim-partial-probe.mjs');
         dispatch = (quote, original, fixtureQuote) =>
-          qualifyIndexedFailure({
+          qualifyPartialClaim({
             output,
             quote,
             receipt: original,
@@ -394,8 +394,8 @@ try {
     step(
       mode === 'claim-browser'
         ? 'verified-browser-claim'
-        : mode === 'claim-failure-probe'
-          ? 'verified-indexed-failed-original'
+        : mode === 'claim-partial-probe'
+          ? 'verified-indexed-partial-original-refusal'
           : 'verified-prepared-claim-handoff',
     );
   } else if (mode === 'named-night-send') {
