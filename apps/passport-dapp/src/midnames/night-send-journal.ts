@@ -20,7 +20,7 @@ export interface BrowserNightSendScope {
   readonly credentialId: string;
 }
 
-interface StoredNightSend {
+export interface BrowserNightSendRecord {
   readonly version: 1;
   readonly credentialId: string;
   readonly intent: NightSendIntent;
@@ -28,6 +28,7 @@ interface StoredNightSend {
   readonly withdrawal?: NightSendLeg;
   readonly deposit?: NightSendLeg;
 }
+type StoredNightSend = BrowserNightSendRecord;
 
 interface ArchivedNightSend extends StoredNightSend {
   readonly archivedAt: string;

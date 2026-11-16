@@ -111,8 +111,15 @@ balance and sign one exact ACC deposit call, expose its original for a durable
 host fence, independently read that committed IndexedDB record, and attempt
 that original's dispatch once. Wallet connection checks
 the pinned v1 service configuration before using the proof-server URL. The
-public connector remains read-only; the browser send control, proven call
-preparation and native browser payment qualification are still open.
+public connector remains read-only; the browser send control and native
+proven-call/payment qualification are still open.
+
+A source-only host now composes the selected JubJub ACC, Midnames resolver,
+scope-bound IndexedDB journal, finality reader, unbound deposit proof and
+device-held wallet. It reopens the journal after an interrupted deposit proof
+without repeating the withdrawal. It rejects a mismatched account credential
+scope or wallet chain configuration. This host is not wired to a page control, and its
+proof adapter has no native or real-provider acceptance yet.
 
 Qualify the original demo's **post-ACC name claim step** under [#316](https://github.com/input-output-hk/midnight-passport-sdk/issues/316). The source path reuses the opt-in preparation and sponsor fence after the ACC address is known, retains the selected name across reload for the same credential and network, and shows *pending Passport setup* until the original claim and current registry record agree. The fresh browser fixture covers the claim transport and recovery, but not the new panel's complete create/open handoff. Name-owner total-loss recovery, human review with a real provider and sponsor-issued quote, and the public namespace remain open gates.
 

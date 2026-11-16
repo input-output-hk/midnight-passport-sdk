@@ -555,8 +555,18 @@ signs and retains one exact prepared `deposit_unshielded` original, then accepts
 one dispatch of that original after independently reading the host's durable
 IndexedDB fence. It rejects extra
 ACC actions, other unshielded inputs and change outputs. The demo still needs
-the connected send control, proof-call preparation and native browser
-qualification; these source tests are not a new native result.
+the connected send control and native browser qualification; these source tests
+are not a new native result.
+
+A source-only host composition now joins the selected JubJub ACC, configured
+Midnames resolver, scope-bound browser journal, canonical-block finality reader,
+unbound `deposit_unshielded` prover and device-held wallet. It derives the bridge
+output from the original finalized withdrawal, then asks the worker to prepare
+one exact deposit and fences that deposit before dispatch. Each attempt opens
+and closes its own journal handle, so a failed proof can resume from the stored
+withdrawal without a second withdrawal. The proof adapter has no native or
+real-provider qualification yet, and the reference page has no connected send
+control. Transaction inclusion still relies on the configured indexer.
 
 The demo wallet's separate internal worker port can report its raw bridge
 address and whether this exact output is available after NIGHT sync. It checks

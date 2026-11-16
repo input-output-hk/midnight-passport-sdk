@@ -963,6 +963,14 @@ It also exposes the guarded internal deposit methods; the public DApp Connector
 remains read-only. Wallet connection now checks the pinned v1 service binding,
 manifest and artefact URL before using its proof-server endpoint.
 
+The next source-only host composition joins that worker to the selected JubJub
+account, configured name resolver, original-only browser journal and finality
+reader. It prepares an unbound `deposit_unshielded` call for the device wallet to
+balance and sign, then fences the original before dispatch. Each attempt opens a
+fresh journal handle, retaining the withdrawal through proof failure and later
+resume. The host is not connected to a demo send button; native proof, connected
+browser payment and real-provider acceptance remain open.
+
 ### Standalone Midnames claim recovery
 
 An opt-in host can supply the demo's preparation adapter. The user reviews the

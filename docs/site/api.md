@@ -288,6 +288,19 @@ The `mn-passport-adapter-service` root exports `remoteV1Prover`, `remoteV1Deploy
 
 The separate `mn-passport-adapter-service/faucet` subpath exports `remoteFaucet` for `POST /v1/faucet/fund`. A caller supplies a stable UUID, pinned network/binding/manifest, ACC address, allowlisted asset color and decimal amount, plus a callback for fresh authorization headers. The result includes the transaction ID and confirmed credited ACC balance. `apps/passport-funding-service` composes the route with a dedicated wallet and durable reservations; the demo CLI can start it with `--funding`. On the qualified `undeployed` localnet it supports allowlisted NIGHT and non-native unshielded assets. NIGHT uses a journaled exact-value preparation transfer before deposit; an uncertain preparation/deposit must be reconciled under its original request ID. Other networks and shielded funding remain unqualified. See the [funding operator guide](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/passport-funding-service/README.md).
 
+### Unbound NIGHT deposit proof (source preview)
+
+The later source preview also exports `proveUnboundNightDeposit(request)` from
+`adapter-midnight-js` for the separate named NIGHT route. It accepts the pinned
+`undeployed`/`acc-s3r1.1` network and manifest, recipient ACC address, positive
+smallest-unit NIGHT amount, public device-wallet coin/encryption keys, generated
+binding and a replaceable `Prover`. It creates and proves only an unbound
+`deposit_unshielded` ACC call. The device-held wallet must still inspect the
+balanced transaction, bind its input to the journaled withdrawal output, sign
+and fence its original before submission. This source helper has not passed a
+native connected browser or real-provider qualification; it is absent from the
+published RC9 package.
+
 ### Shielded deposit sender boundary
 
 `depositShielded(request, ports)` from `mn-passport-account` prepares the pinned ACC `deposit_shielded` inputs and confirms the new encrypted coin description in the live inbox. The request contains the ACC address, stable UUID `requestId`, 32-byte asset color, positive 128-bit amount, and a stable 32-byte coin nonce. The host supplies `chain.readAccount`, `sealCoin` (for example `sealInboxCoin` from `mn-passport-keys`), `sender.depositShielded`, and `sleep`. The sender owns the value-bearing wallet, proof, fees, submission, and durable request-ID deduplication. It must prove and submit `deposit_shielded(coin, entry)` with the supplied coin and 192-byte entry. The account package cannot fund a deposit on its own.
