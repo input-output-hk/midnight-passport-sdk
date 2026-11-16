@@ -68,12 +68,14 @@ assert.ok(
     'named-night-send',
     'claim-handoff',
     'claim-browser',
+    'claim-preproof',
     'claim-owner-browser',
     'claim-partial-probe',
     'claim-retry',
   ].includes(mode),
 );
-const browserOwner = mode === 'claim-owner-browser' || mode === 'claim-browser';
+const browserOwner =
+  mode === 'claim-owner-browser' || mode === 'claim-browser' || mode === 'claim-preproof';
 const claimFixture =
   mode === 'claim-handoff' ||
   browserOwner ||
@@ -311,7 +313,12 @@ try {
   if (claimFixture) {
     const { qualifyClaimHandoff } = await import('./claim-handoff-fixture.mjs');
     let dispatch;
-    if (mode === 'claim-browser' || mode === 'claim-partial-probe' || mode === 'claim-retry') {
+    if (
+      mode === 'claim-browser' ||
+      mode === 'claim-preproof' ||
+      mode === 'claim-partial-probe' ||
+      mode === 'claim-retry'
+    ) {
       const { delegateClaimDust } = await import('./claim-dust-fixture.mjs');
       receipt.availableDust = await delegateClaimDust({
         wallet,
@@ -341,7 +348,7 @@ try {
         assert.equal(await reads.readClaim(quote.name, profile), undefined);
         assert.ok(await reads.isSupportedAccount(accountAddress, profile.networkId));
       };
-      if (mode === 'claim-browser') {
+      if (mode === 'claim-browser' || mode === 'claim-preproof') {
         const { qualifyBrowserClaim } = await import('./claim-browser-fixture.mjs');
         dispatch = (quote, original, fixtureQuote, ownerProofSha256) =>
           qualifyBrowserClaim({
@@ -422,16 +429,19 @@ try {
       step,
       dispatch,
       browserOwner,
+      preproofReview: mode === 'claim-preproof',
     });
     Object.assign(receipt, { ...handoff, passed: true });
     step(
-      mode === 'claim-browser'
-        ? 'verified-browser-claim'
-        : mode === 'claim-partial-probe'
-          ? 'verified-indexed-claim-segment-failure'
-          : mode === 'claim-retry'
-            ? 'verified-indexed-claim-failure-and-fresh-native-retry'
-            : 'verified-prepared-claim-handoff',
+      mode === 'claim-preproof'
+        ? 'verified-browser-preproof-claim'
+        : mode === 'claim-browser'
+          ? 'verified-browser-claim'
+          : mode === 'claim-partial-probe'
+            ? 'verified-indexed-claim-segment-failure'
+            : mode === 'claim-retry'
+              ? 'verified-indexed-claim-failure-and-fresh-native-retry'
+              : 'verified-prepared-claim-handoff',
     );
   } else if (mode === 'named-night-send') {
     const { qualifyNightSend } = await import('./night-send-fixture.mjs');
