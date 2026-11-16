@@ -448,6 +448,36 @@ try {
     const { JubjubDevice, jubjubChallenges } = await getReferenceSigner();
     const device = JubjubDevice.generate();
     const source = await deployAccount('source', device.pk, inbox.generateEncKeyPair().publicKey);
+    const browserRepoint = process.env.PASSPORT_MIDNAMES_BROWSER_REPOINT === '1';
+    const repointTarget = browserRepoint
+      ? await deployAccount('repoint', randomJubJubPoint(), inbox.generateEncKeyPair().publicKey)
+      : undefined;
+    const repointName = async () => {
+      assert.ok(repointTarget, 'A supported replacement ACC is required');
+      step('repoint-name-after-browser-review');
+      const live = registry.ledger(
+        (await providers.publicDataProvider.queryContractState(registryAddress)).data,
+      );
+      const nameId = live.name_to_id.lookup({ domain: nameKey, parent_id: rootId });
+      assert.deepEqual(live.id_to_data.lookup(nameId).target, target);
+      await contracts.submitCallTx(regProviders, {
+        compiledContract: compiled(rootSecret),
+        contractAddress: registryAddress,
+        circuitId: 'update_target',
+        privateStateId,
+        args: [
+          nameId,
+          new Uint8Array(Buffer.from(repointTarget, 'hex')),
+          registry.AddressType.ContractAddr,
+        ],
+      });
+      assert.equal((await reads.readClaim('alice.night', profile))?.target.address, repointTarget);
+      assert.equal(
+        (await service.resolve({ networkId: 'undeployed', name: 'alice.night' }))?.accountAddress,
+        repointTarget,
+      );
+      assert.ok(await reads.isSupportedAccount(repointTarget, 'undeployed'));
+    };
     const proofReceipt = await qualifyNightSend({
       output,
       get,
@@ -464,6 +494,8 @@ try {
       jubjubChallenges,
       registryAddress,
       target: accountAddress,
+      repointTarget,
+      repointName: browserRepoint ? repointName : undefined,
       defaultField,
       step,
     });
@@ -481,13 +513,22 @@ try {
         assert.deepEqual(proofReceipt.sent, { withdraw: 0, deposit: 0 });
         assert.deepEqual(proofReceipt.final, { source: '10', target: '0' });
         step('verified-browser-owner-decline-before-night-send');
+      } else if (browserRepoint) {
+        assert.equal(proofReceipt.repointed, true);
+        assert.equal(proofReceipt.approvals, 1);
+        assert.equal(proofReceipt.signatures, 0);
+        assert.deepEqual(proofReceipt.sent, { withdraw: 0, deposit: 0 });
+        assert.deepEqual(proofReceipt.final, { source: '10', target: '0', repoint: '0' });
+        step('verified-browser-owner-repoint-before-night-send');
       } else step('verified-browser-owner-review-before-night-send');
     }
     Object.assign(receipt, { ...proofReceipt, claimIdentifier, registryAddress, passed: true });
     step(
       proofReceipt.declined
         ? 'verified-native-named-night-decline'
-        : 'verified-native-named-night-send',
+        : proofReceipt.repointed
+          ? 'verified-native-named-night-repoint-refusal'
+          : 'verified-native-named-night-send',
     );
   } else {
     await wallet.wallet.stop();
