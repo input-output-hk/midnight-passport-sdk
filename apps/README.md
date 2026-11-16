@@ -925,6 +925,12 @@ clears review after the name changes, and checks that a synthetic pre-intent
 sponsor refusal needs a fresh quote. A successful retry keeps the same ACC and
 saves one original receipt. These checks do not establish native sponsor
 failure, real passkey consent, or transaction finality.
+The separate native `midnames-claim-preproof-` lane uses the deployed ACC and
+registry with a fixture-issued quote. Owner Chromium displays the quote and
+uses an automated approve click before naming PRF and proof; the resulting
+receipt has that quote's digest and one browser claim dispatch. Fresh signed
+`e456638` run `20261116b` passed its source and owned-resource checks. This is
+not the full demo's sponsor HTTP quote or real-provider create/open ceremony.
 An exact indexed `FAILURE`, or an exact `PARTIAL_SUCCESS` whose only failed
 segment is the standalone registration claim while the sponsor's DUST fee
 succeeds, can enable **Release failed original for a new attempt** when the

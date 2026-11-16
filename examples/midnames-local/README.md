@@ -246,6 +246,18 @@ on the isolated indexer. Inspect `native-claim-dispatch.json` and
 This test uses a virtual owner credential. Production credential enrollment
 and recovery after loss of that credential need separate qualification.
 
+Use a fresh output name starting with `midnames-claim-preproof-` for the
+bounded quote-before-naming-proof lane. After the ACC and registry exist, the
+fixture creates a quote with a distinct ID and displays its exact fields in
+the isolated owner Chromium page. The page checks that no naming proof request
+has occurred, then an automated approve click invokes `proveReviewedClaim`.
+That call rechecks the live parent terms before using the virtual credential's
+PRF and proving. The same quote digest is bound to the sponsor-prepared receipt;
+the existing browser recovery driver then checks one dispatch and restart
+recovery. This lane uses a fixture-issued quote and enrolls its virtual
+credential before displaying it. It does not exercise the sponsor HTTP quote
+endpoint, a human approval, or the full demo's ACC create/open page.
+
 Use an output name starting with `midnames-claim-owner-browser-` to prepare
 and retain the browser-proved claim without dispatch. This mode exercises
 the proof, credential continuity and sponsor balancing independently of
