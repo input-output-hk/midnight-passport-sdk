@@ -97,8 +97,12 @@ The source bridge-output guard is shared with the standalone NIGHT fixture:
 the fenced withdrawal must contain one exact controlled output, and the
 balanced deposit must consume only that output. A bounded browser finality
 reader also checks the original hash, ordered watch IDs, successful raw Ledger
-9 transaction and canonical finalized block. These source checks are not a
-connected browser deposit or a new native qualification.
+9 transaction and canonical finalized block. The indexer is still trusted for
+transaction inclusion; the node block check does not independently prove it.
+Before wallet signing, the worker re-reads the active journal and derives the
+expected output from the finalized, decoded withdrawal. It refuses a page
+request that pairs the journaled hash with another same-value coin. These source
+checks are not a connected browser deposit or a new native qualification.
 
 The demo's device-held wallet worker also exposes a separate internal raw
 bridge-address and exact-output observation port. It waits for a strictly synced

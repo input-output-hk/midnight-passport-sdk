@@ -28,7 +28,7 @@ import {
 import { devWalletSession, walletApiError as apiError } from './lifecycle.ts';
 import { walletSyncReady } from './sync.js';
 import { deviceNightDeposit } from './night-deposit.js';
-import { exactFencedNightDeposit } from './night-deposit-fence.js';
+import { exactFencedNightDeposit, journaledNightBridgeOutput } from './night-deposit-fence.js';
 
 import type { DevWallet, DevWalletConfig, DevWalletConnectedApi } from './contracts.js';
 const SYNC_TIMEOUT_MS = 120_000;
@@ -156,6 +156,8 @@ export async function createWalletRuntime(
     rawBridge,
     config.networkId,
     true,
+    (scope, target, output) =>
+      journaledNightBridgeOutput(scope, target, output, config.indexerUri, config.nodeUri),
     exactFencedNightDeposit,
   );
   return devWalletSession(config.networkId, connected, () => facade.stop(), {

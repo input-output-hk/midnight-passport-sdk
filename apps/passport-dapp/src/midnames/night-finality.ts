@@ -119,7 +119,7 @@ async function canonicalFinalizedBlock(
   return (await rpc('chain_getBlockHash', [blockHeight])) === `0x${blockHash}`;
 }
 
-/** A successful indexer result is advisory until its exact transaction is in the canonical finalized chain. */
+/** Trust the indexer for transaction inclusion; check its reported block against the node's finalized chain. */
 export async function readFinalizedNightLeg(
   indexerUrl: string,
   nodeUrl: string,

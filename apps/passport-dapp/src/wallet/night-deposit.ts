@@ -91,6 +91,11 @@ export function deviceNightDeposit(
   bridge: string,
   networkId: string,
   enabled: boolean,
+  verifyOutput: (
+    scope: BrowserNightSendScope,
+    target: string,
+    output: NightBridgeOutput,
+  ) => Promise<NightBridgeOutput>,
   fenced: (
     scope: BrowserNightSendScope,
     original: NightSendLeg,
@@ -122,8 +127,15 @@ export function deviceNightDeposit(
           networkId !== 'undeployed' ||
           !enabled ||
           !HEX.test(bridge) ||
-          request.output.owner !== bridge ||
-          !(await hasExactNightBridgeCoin(await available(), request.output))
+          request.output.owner !== bridge
+        )
+          throw new Error('The original controlled NIGHT output is unavailable to this wallet.');
+        const verified = checkedNightBridgeOutput(
+          await verifyOutput(request.scope, request.target, request.output),
+        );
+        if (
+          verified.owner !== bridge ||
+          !(await hasExactNightBridgeCoin(await available(), verified))
         )
           throw new Error('The original controlled NIGHT output is unavailable to this wallet.');
         const adopted = facade.adoptTransaction(request.proven, 'Unbound');
@@ -144,12 +156,17 @@ export function deviceNightDeposit(
           ...(signed.blockData && { blockData: signed.blockData }),
         });
         const transaction = decode(finalized.serialize());
-        assertExactNightDeposit(transaction, request.output, request.target, address);
+        assertExactNightDeposit(transaction, verified, request.target, address);
         const original = checkedDeviceNightLeg({
           hash: transaction.transactionHash(),
           identifiers: transaction.identifiers(),
         });
-        prepared = { finalized, original, request, attempted: false };
+        prepared = {
+          finalized,
+          original,
+          request: { ...request, output: verified },
+          attempted: false,
+        };
         return { hash: original.hash, identifiers: [...original.identifiers] };
       } catch (error) {
         if (reservation) await facade.revert(reservation).catch(() => undefined);

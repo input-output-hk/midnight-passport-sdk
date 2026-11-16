@@ -526,8 +526,10 @@ and UI. This composition has no native or real-provider result.
 A source-only browser finality reader can check the original hash, ordered watch
 IDs and decoded Ledger 9 transaction against a successful indexer row, then
 require the node's canonical finalized block at that height. It fails closed
-on missing, malformed or inconsistent evidence. The demo has not yet wired it
-into the named-send host or qualified it in a browser native payment.
+on missing, malformed or inconsistent evidence. The indexer remains a trusted
+source for transaction inclusion in that block; the node check does not
+independently prove inclusion. The demo has not yet wired it into the named-send
+host or qualified it in a browser native payment.
 
 The source owner-review model can also include the full named route in the
 actual credential ceremony: canonical name, registry, recipient ACC, bridge,
@@ -542,8 +544,11 @@ The source bridge-output guard is shared with the local NIGHT recipe. It binds
 the fenced withdrawal hash and watch IDs to a single exact controlled NIGHT
 output, observes that output in the wallet, then checks the balanced deposit's
 input before dispatch. A wallet balance alone cannot authorize a substitute
-coin. The browser still needs end-to-end qualification; this source guard is
-not a new native result.
+coin. Before wallet signing, the worker now re-reads the active journal and
+derives the expected output from the finalized, decoded original withdrawal.
+It refuses a page request that pairs the original hash with a different
+same-value bridge coin. The browser still needs end-to-end qualification;
+this source guard is not a new native result.
 
 The internal browser wallet now has a device-held deposit adapter. It balances,
 signs and retains one exact prepared `deposit_unshielded` original, then accepts
