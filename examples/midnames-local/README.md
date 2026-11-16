@@ -175,6 +175,16 @@ the source and target ACC balances remain 10/0, and the owner signature,
 payment-leg dispatch and durable payment journal counts remain zero. A timeout
 or page close is an error, never evidence of an explicit decline.
 
+For a name-change negative run, use a fresh output name beginning with
+`midnames-night-browser-repoint-` and the same command and pinned inputs. The
+browser approves the original `alice.night` target. Before the owner signs, the
+fixture activates another ACC and changes the root-owned registry record to
+that ACC on-chain. The run passes only if a fresh resolution sees the new
+target, the durable intent still names the original target, neither payment
+leg dispatches, no owner payment signature occurs, and the source, original
+target and new target balances remain 10/0/0. The changed mapping refuses
+that reviewed intent; start a fresh review for any new payment.
+
 The signed `ec83ce9` native run `midnames-night-browser-20261116a` passed on
 isolated `undeployed`. Its `night-send/browser-review.json` recorded zero owner
 signatures and zero payment dispatches at review. After the automated click,
@@ -193,6 +203,16 @@ signatures, zero withdrawal/deposit dispatches and no admitted payment intent
 or leg. The parent verified unchanged inputs, stopped its three owned
 containers, retained volumes, controlled no unrelated resources and released
 the native lease. This is automated local refusal evidence, not human consent.
+
+The signed `e8fd610` run `midnames-night-browser-repoint-20261116b` passed on
+isolated `undeployed`. After an automated browser approval, an on-chain
+`update_target` changed `alice.night` to a third activated ACC. Fresh resolution
+observed the new target, while the original journal retained the reviewed
+target. The payment then refused with zero owner signatures, zero withdrawal
+and deposit dispatches, and 10/0/0 ACC balances. The parent verified unchanged
+inputs, stopped its three owned containers, retained volumes, controlled no
+unrelated resources and released the lease. This tests one local registry
+repoint before payment; it is not human consent or online provider assurance.
 
 ### Run either value fixture with terminal review
 

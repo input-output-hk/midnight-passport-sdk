@@ -895,6 +895,12 @@ add a sender sheet or passkey ceremony to the Passport demo.
 The separate signed `a20a9b9` native decline run left 10/0 ACC balances with
 zero owner signatures, payment-leg dispatches and admitted payment journals.
 Timeout and page close fail the fixture rather than count as a Decline click.
+The separate signed `e8fd610` native run changed `alice.night` on-chain after
+the automated owner-browser approval. Fresh resolution saw the replacement
+ACC, while the original intent kept the reviewed recipient. It refused before
+any owner payment signature or payment-leg dispatch; source, old recipient and
+new recipient balances stayed 10/0/0. This remains a standalone fixture,
+without a Passport demo send page or qualified online provider.
 
 ### Standalone Midnames claim recovery
 

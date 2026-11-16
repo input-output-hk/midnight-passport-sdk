@@ -30,6 +30,15 @@ exact-owned cleanup and lease release. Timeout or page close is an error rather
 than evidence of an explicit decline. This does not establish human consent,
 real passkey custody, an in-app send page or online/delegated name routing.
 
+A separate signed `e8fd610` isolated #318 run updated the local root-owned
+`alice.night` record on-chain after automated browser approval. Fresh
+resolution returned a third activated ACC, while the original payment intent
+kept its reviewed recipient. The send refused before any owner signature or
+withdrawal/deposit dispatch, and all three ACC balances stayed 10/0/0. The
+runner verified unchanged inputs, exact-owned cleanup and lease release.
+This is a local repoint refusal, not online provider agreement, human consent
+or the architecture's operation-context resolver.
+
 ## Security promises in the pinned architecture
 
 The pinned [promises revision](https://github.com/midnightntwrk/passport/blob/99062671d939641cb9ed9274d3d18fce764d539a/docs/plans/PROMISES.md) specifies P5′ and P11–P16. These are product-level properties, not automatic effects of exposing an ACC circuit. The SDK's bounded status is:
