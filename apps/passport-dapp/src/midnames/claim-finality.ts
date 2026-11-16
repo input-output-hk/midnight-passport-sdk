@@ -80,12 +80,16 @@ function onlyClaimFailed(segments: unknown, claimId: number, feeId: number): boo
 
 /** The pinned Ledger 9 sponsor pays DUST in a separate guaranteed intent.
  * Its fee may succeed while the sole fallible registration intent fails. */
-function failedSponsoredClaimSegment(
+export function failedSponsoredClaimSegment(
   tx: ReturnType<typeof Transaction.deserialize>,
   segments: unknown,
 ): boolean {
   const ids = sponsoredClaimSegmentIds(tx);
   return !!ids && onlyClaimFailed(segments, ids[0], ids[1]);
+}
+
+function sameIndexedIdentifiers(value: unknown, decoded: string[]): boolean {
+  return Array.isArray(value) && JSON.stringify(value) === JSON.stringify(decoded);
 }
 
 async function readBounded(response: Response): Promise<unknown> {
@@ -160,6 +164,7 @@ export async function readClaimFinality(
     const ids = tx.identifiers();
     if (
       tx.transactionHash() !== row.hash ||
+      !sameIndexedIdentifiers(row.identifiers, ids) ||
       ids.length !== original.transaction.identifiers.length ||
       !original.transaction.identifiers.every((id) => ids.includes(id))
     )

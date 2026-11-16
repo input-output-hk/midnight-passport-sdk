@@ -3,7 +3,11 @@ import { test } from 'node:test';
 import { claimReceipt, claimDigest, normalizeClaimName } from '../src/midnames/claim-receipt.js';
 import type { AlignedValue, Op } from '@midnightntwrk/ledger-v9';
 import { matchesClaimWrites } from '../src/midnames/claim-transcript.js';
-import { confirmedClaim, readClaimFinality } from '../src/midnames/claim-finality.js';
+import {
+  confirmedClaim,
+  failedSponsoredClaimSegment,
+  readClaimFinality,
+} from '../src/midnames/claim-finality.js';
 import {
   claimQuote,
   claimQuoteDigest,
@@ -120,6 +124,69 @@ test('requires an exact successful indexed claim, and looks up the original iden
     ),
     false,
   );
+});
+
+test('only an isolated failed claim with a successful fee-only intent can unlock recovery', () => {
+  const claim = {
+    actions: [{}],
+    fallibleUnshieldedOffer: {},
+  };
+  const fee = {
+    actions: [],
+    dustActions: { spends: [{}, {}], registrations: [] },
+  };
+  const tx = (intents: [number, object][], effects: object = {}) =>
+    ({ intents: new Map(intents), ...effects }) as unknown as Parameters<
+      typeof failedSponsoredClaimSegment
+    >[0];
+  const original = tx([
+    [62361, claim],
+    [1, fee],
+  ]);
+  const segments = [
+    { id: 0, success: true },
+    { id: 1, success: true },
+    { id: 62361, success: false },
+  ];
+  assert.equal(failedSponsoredClaimSegment(original, segments), true);
+  for (const different of [
+    segments.slice(1),
+    [...segments, { id: 9, success: true }],
+    [segments[0], segments[1], segments[1]],
+    [{ id: 0, success: false }, ...segments.slice(1)],
+    [segments[0], { id: 1, success: false }, segments[2]],
+    [segments[0], segments[1], { id: 62361, success: true }],
+    [segments[0], segments[1], { id: '62361', success: false }],
+  ])
+    assert.equal(failedSponsoredClaimSegment(original, different), false);
+  for (const different of [
+    tx([[62361, claim]]),
+    tx([
+      [62361, claim],
+      [1, fee],
+      [9, fee],
+    ]),
+    tx([
+      [62361, claim],
+      [1, { ...fee, actions: [{}] }],
+    ]),
+    tx([
+      [62361, claim],
+      [1, { ...fee, dustActions: { spends: [{}], registrations: [] } }],
+    ]),
+    tx([
+      [62361, { ...claim, fallibleUnshieldedOffer: undefined }],
+      [1, fee],
+    ]),
+    tx(
+      [
+        [62361, claim],
+        [1, fee],
+      ],
+      { rewards: {} },
+    ),
+  ])
+    assert.equal(failedSponsoredClaimSegment(different, segments), false);
 });
 
 test('provider outage is distinct from an unconfirmed original claim', async () => {
