@@ -8,6 +8,8 @@ packages:
 minimumReleaseAge: 10080
 # No transitive dependencies from git/URL sources — registry only.
 blockExoticSubdeps: true
+overrides:
+  '@midnightntwrk/ledger-v9': 1.0.0
 # Updates may never weaken these settings.
 trustPolicy: no-downgrade
 minimumReleaseAgeExclude:
