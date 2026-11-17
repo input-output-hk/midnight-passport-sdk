@@ -15,7 +15,7 @@ import {
 import { basename, dirname, isAbsolute, join } from 'node:path';
 
 /** @param {string} path */
-export function loadOrCreateOwnerSecret(path) {
+export function loadOrCreateOwnerSecret(path, { create = true } = {}) {
   assert.ok(isAbsolute(path), 'Use an absolute naming-secret path.');
   const parent = realpathSync(dirname(path));
   assert.equal(join(parent, basename(path)), path, 'Use a canonical private path.');
@@ -30,6 +30,7 @@ export function loadOrCreateOwnerSecret(path) {
     fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
   } catch (error) {
     if (!(error instanceof Error && 'code' in error && error.code === 'ENOENT')) throw error;
+    if (!create) throw new Error('Existing owner secret required.');
     const secret = randomBytes(32);
     try {
       fd = openSync(path, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL, 0o600);

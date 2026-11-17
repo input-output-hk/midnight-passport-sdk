@@ -23,6 +23,9 @@ async function proveClaim(input) {
     price,
     childPrice = price,
     ownerSecretFile,
+    ownerSecretMustExist = false,
+    operation = 'create_domain',
+    newOwnerCommitment,
   } = input;
   const get = (name) =>
     import(import.meta.resolve(name, pathToFileURL(ref + '/package.json').href));
@@ -56,7 +59,7 @@ async function proveClaim(input) {
   };
   const proofProvider = httpClientProofProvider(proverUrl, await nodeZkConfigRegistry(assets));
   const witness = ownerSecretFile
-    ? loadOrCreateOwnerSecret(ownerSecretFile).secret
+    ? loadOrCreateOwnerSecret(ownerSecretFile, { create: !ownerSecretMustExist }).secret
     : new Uint8Array(randomBytes(32));
   try {
     const tag = Buffer.alloc(32);
@@ -69,23 +72,34 @@ async function proveClaim(input) {
     const nameKey = new Uint8Array(32).fill(255);
     nameKey.set(new TextEncoder().encode(label));
     phase = 'prepare';
+    assert.ok(operation === 'create_domain' || operation === 'transfer_domain');
+    if (operation === 'transfer_domain') assert.match(newOwnerCommitment ?? '', /^[0-9a-f]{64}$/);
+    const args =
+      operation === 'transfer_domain'
+        ? [
+            nameKey,
+            rootId,
+            new Uint8Array(Buffer.from(newOwnerCommitment, 'hex')),
+            { bytes: childOwnerAddress },
+          ]
+        : [
+            { bytes: childOwnerAddress },
+            nameKey,
+            BigInt(label.length),
+            rootId,
+            new Uint8Array(Buffer.from(accountAddress, 'hex')),
+            AddressType.ContractAddr,
+            { is_some: false, value: '' },
+            childPrice,
+            Array.from({ length: 10 }, () => ({ is_some: false, value: ['', ''] })),
+          ];
     const {
       private: { unprovenTx },
     } = await createUnprovenCallTx(providers, {
       compiledContract,
       contractAddress: registryAddress,
-      circuitId: 'create_domain',
-      args: [
-        { bytes: childOwnerAddress },
-        nameKey,
-        BigInt(label.length),
-        rootId,
-        new Uint8Array(Buffer.from(accountAddress, 'hex')),
-        AddressType.ContractAddr,
-        { is_some: false, value: '' },
-        childPrice,
-        Array.from({ length: 10 }, () => ({ is_some: false, value: ['', ''] })),
-      ],
+      circuitId: operation,
+      args,
     });
     phase = 'prove';
     const proven = await proofProvider.proveTx({ version: 'v9', tx: unprovenTx });

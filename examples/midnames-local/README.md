@@ -230,6 +230,41 @@ indexed after expiry. This is a rejected qualification, not evidence that
 describe error 104 as a gas-budget rejection for one known contract pattern;
 the cause of this claim rejection has not been established.
 
+For an operator-controlled local registry, a separate root-assisted fixture
+can issue the name without a paid claim. It proves `create_domain` under the
+root owner's existing witness, then proves `transfer_domain` to a distinct
+naming witness. The sponsor pays DUST, but the registry receives no name
+purchase payment. Keep the root and name witnesses as separate private
+32-byte files and use a previously funded sponsor seed. This is an explicit
+administrator issuance path, not proof that paid self-registration works.
+
+```sh
+PASSPORT_MIDNAMES_ADMIN_ISSUE=1 \
+PASSPORT_MIDNAMES_APPROVED_NAME=alice.night \
+PASSPORT_RC_LOCALNET=1 MIDNIGHT_NETWORK=local MN_NETWORK_ID=undeployed \
+MN_NODE_URL=http://127.0.0.1:9944 \
+MN_INDEXER_URL=http://127.0.0.1:8088/api/v4/graphql \
+MN_INDEXER_WS_URL=ws://127.0.0.1:8088/api/v4/graphql/ws \
+MN_PROOF_SERVER_URL=http://127.0.0.1:16320 \
+nix develop -c pnpm --filter passport-dapp exec node --import tsx \
+  --experimental-import-meta-resolve \
+  "$PWD/examples/midnames-local/qualify-admin-issued-name.mjs" \
+  "$PWD/review/midnames-admin-name-my-run" \
+  /absolute/path/to/prepared-registry \
+  /absolute/path/to/acc-reference/contract \
+  "$REGISTRY_CONTRACT_ADDRESS" "$ACC_CONTRACT_ADDRESS" alice \
+  /absolute/private/root-secret.private.bin \
+  /absolute/private/name-alice.private.bin \
+  /absolute/private/sponsor-seed.private.hex
+```
+
+The fixture refuses a name already present, checks the deployed registry and
+ACC, requires two DUST spends in each original transaction, and waits for
+indexed `SUCCESS` in a canonical finalized block before the next operation.
+If a submission is uncertain, it retains the native lease and original
+transaction bytes. Do not rerun blindly or describe a partially issued name
+as owner-held.
+
 This fixture gives a real local `.night` name an operator-held naming authority
 and a current ACC contract target. It does not exercise the full browser
 onboarding ceremony, passkey-based naming recovery, public `passport.night`
