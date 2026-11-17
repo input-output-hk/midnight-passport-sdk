@@ -108,6 +108,9 @@ const post = async (url, body) => {
   return data.result;
 };
 
+// Resolve the TypeScript source reader before claiming the native lease or opening
+// the sponsor wallet. The documented command installs the app's pinned tsx loader.
+const reader = await import('../../apps/passport-dapp/src/midnames/ledger-reader.ts');
 const pins = await verifyPreparedRegistry(prepared);
 const ready = await dedicatedIndexerReadiness(endpoints);
 assert.ok(ready.ready, 'The local indexer does not match the live finalized node.');
@@ -217,7 +220,7 @@ try {
   assert.equal(sha256(readFileSync(modulePath)), pins.compiled['contract/index.js']);
   const get = async (name) =>
     import(import.meta.resolve(name, pathToFileURL(join(reference, 'package.json')).href));
-  const [walletModule, registry, { CompiledContract }, contracts, ledger, zk, proof, reader] =
+  const [walletModule, registry, { CompiledContract }, contracts, ledger, zk, proof] =
     await Promise.all([
       import(pathToFileURL(join(reference, 'src/node/wallet.ts')).href),
       import(pathToFileURL(modulePath).href),
@@ -226,7 +229,6 @@ try {
       get('@midnightntwrk/ledger-v9'),
       get('@midnight-ntwrk/midnight-js-node-zk-config-provider'),
       get('@midnight-ntwrk/midnight-js-http-client-proof-provider'),
-      import('../../apps/passport-dapp/src/midnames/ledger-reader.ts'),
     ]);
   process.chdir(output);
   step('sync-bootstrap-wallet');

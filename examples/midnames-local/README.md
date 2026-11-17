@@ -73,8 +73,9 @@ MN_NODE_URL=http://127.0.0.1:19944 \
 MN_INDEXER_URL=http://127.0.0.1:18088/api/v4/graphql \
 MN_INDEXER_WS_URL=ws://127.0.0.1:18088/api/v4/graphql/ws \
 MN_PROOF_SERVER_URL=http://127.0.0.1:16300 \
-nix develop -c node --experimental-import-meta-resolve \
-  examples/midnames-local/bootstrap-registry.mjs \
+nix develop -c pnpm --filter passport-dapp exec node --import tsx \
+  --experimental-import-meta-resolve \
+  "$PWD/examples/midnames-local/bootstrap-registry.mjs" \
   "$PWD/review/midnames-bootstrap-my-run" \
   /absolute/path/to/prepared-registry \
   /absolute/path/to/acc-reference/contract \
