@@ -110,6 +110,19 @@ the isolated server's exact version and pins both the service and browser
 public proving URLs to it; a conflicting public URL is refused. It still verifies the owner's stack at
 its original endpoints. A successful proof and indexed account activation are
 required before registry bootstrap; the version check alone proves neither.
+The pinned ACC was compiled with Compact 0.35 and Compact.js 3.0.0-rc.3.
+On the current shared Ledger 9.1.0.1 node, a recovered activation proof can
+succeed on this compatibility prover but the node can still reject its
+transaction with `Custom error: 104` (`ran out of gas budget`).
+[Compact.js 3.0.0](https://docs.midnight.network/relnotes/compact-js/compact-js-3-0-0)
+fixes gas-budget checks for calls that overwrite ledger state, but requires
+Compact 0.36 artifacts. This is a compatibility lead, not a diagnosis of
+this rejected transaction. Replacing the runtime for an already deployed ACC
+without a verified maintenance migration is not a safe repair. Keep that
+ACC's address, passkey, original deployment records and failed submission
+diagnostics. Confirm `booted=true` from the v4 indexer before using it as a
+Midnames root. If activation is rejected, investigate the versioned artifact
+and maintenance path before retrying or deploying a replacement account.
 When the demo has drained and released its sponsor lease, stop only this
 isolated prover with the same Compose project and file. It has no volumes.
 
