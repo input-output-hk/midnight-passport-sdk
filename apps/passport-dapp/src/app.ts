@@ -42,8 +42,11 @@ import { unlockDemoSessionKey } from './session-key.js';
 import { sessionCheckpoint } from './session-checkpoint.js';
 import { demoOperationGuard } from './operation-guard.js';
 import { createMockNameService } from './mock-name-service.js';
+import type { PassportNameService } from '@input-output-hk/mn-passport-account/names';
 import { showDemoNameService, showNameConfigurationError } from './name-service.js';
 import { configureMidnames } from './midnames/config.js';
+import { createNamedNightPage } from './midnames/night-send-page.js';
+import { localNightEndpoint, localNightNetwork } from './midnames/night-send-page-state.js';
 import { demoClaimPreparation } from './midnames/claim-demo-owner.js';
 import { showClaimRecovery } from './midnames/claim-recovery-ui.js';
 import { createDemoWorkspace } from './workspace.js';
@@ -138,7 +141,7 @@ const ui = createUi(
         );
       if (
         approved &&
-        ['withdraw', 'startSession', 'spendGrant', 'fund'].includes(action) &&
+        ['withdraw', 'sendNamedNight', 'startSession', 'spendGrant', 'fund'].includes(action) &&
         session.snapshot().status === 'blocked'
       )
         throw new Error(
@@ -240,6 +243,8 @@ installLaceWallet(network, ui.showExternalWalletConnection);
 showDemoCapabilities(ARM);
 showSigningMode(SIGNING_MODE);
 let resetClaimRecovery: (() => void) | undefined;
+let namesForNight: PassportNameService | undefined;
+let namedNightPage: ReturnType<typeof createNamedNightPage> | undefined;
 try {
   const naming = configureMidnames(
     {
@@ -263,6 +268,19 @@ try {
     ),
   );
   showDemoNameService(naming ?? createMockNameService(network), network);
+  if (
+    naming?.provider.mode === 'external' &&
+    localNightNetwork(network) &&
+    ARM === 'jubjub' &&
+    import.meta.env.VITE_MIDNAMES_NIGHT_SEND === '1' &&
+    import.meta.env.VITE_MIDNAMES_REGISTRY_PROFILE === 'standalone-0.35' &&
+    localNightEndpoint(SERVICE_URL, 'http') &&
+    localNightEndpoint(import.meta.env.VITE_MIDNAMES_INDEXER_URL, 'http') &&
+    localNightEndpoint(import.meta.env.VITE_MIDNAMES_INDEXER_WS_URL, 'ws')
+  ) {
+    namesForNight = naming;
+    workspace.enableNamedNightSend(true);
+  }
   if (naming?.recovery) {
     workspace.enableNameSetup(Boolean(naming.recovery.preparation || naming.recovery.dispatch));
     resetClaimRecovery = showClaimRecovery(
@@ -458,6 +476,18 @@ const opened = async (a: PassportAccount, how: string, lastTx?: PassportTxResult
   });
   status(`Account ${a.address.slice(0, 12)}… is ${how}.`);
   workspace.showAccount();
+  void namedNightPage
+    ?.inspect()
+    .then((active) => {
+      if (active) workspace.enableNamedNightSend(!!namesForNight);
+      if (active) ui.refreshActions();
+    })
+    .catch(() => {
+      workspace.enableNamedNightSend(false);
+      ui.refreshActions();
+      byId('named-night-status').textContent =
+        'The saved NIGHT payment needs inspection. Preserve site data and do not start another payment.';
+    });
 };
 
 if (injected()) {
@@ -492,6 +522,7 @@ const devicesActions = new DeviceActions(actionHost);
 const grantsActions = new GrantActions(actionHost);
 const transfersActions = new TransferActions(actionHost);
 const walletActions = new WalletActions(actionHost);
+namedNightPage = createNamedNightPage(actionHost, () => namesForNight);
 ui.on('create', entryActions.create);
 ui.on('open', entryActions.open);
 ui.on('openAt', entryActions.openAt);
@@ -516,5 +547,6 @@ ui.on('startSession', transfersActions.startSession);
 ui.on('endSession', transfersActions.endSession);
 ui.on('revokeSession', transfersActions.revokeSession);
 ui.on('withdraw', transfersActions.withdraw);
+ui.on('sendNamedNight', namedNightPage.send);
 ui.on('wallet', walletActions.connect);
 ui.on('walletRefresh', walletActions.walletRefresh);

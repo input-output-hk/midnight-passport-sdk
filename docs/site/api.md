@@ -98,7 +98,7 @@ for persistence and teardown, separately from the demo's UI policy.
 | `openAccountAt(address, options?)` | `PassportAccount` | P-256 and JubJub: opens a live sealed ACC by address when its credential has no directory hint. Requires a live device entry and an envelope that opens the ledger `enc_key`. JubJub also checks one current matching device registration, then saves its hint and local use counter. |
 | `account.deviceRoster()` | `PassportDeviceRoster` | Public live device commitments and reader registrations, with completeness/ambiguity checks. Requires a chain view with device/inbox data; entry count alone is not a distinct-device roster. |
 | `account.state()`                                                 | `PassportAccountState`     | Reads `booted`, `authNonce`, `deviceEpoch`, `entryCount` and `specVersion`. `entryCount` counts entries, not distinct devices. |
-| `account.withdrawUnshielded({ color, amount, recipient }, options?)` | `PassportOwnerTransferResult` | P-256 and JubJub owners: signs the pinned `withdraw_unshielded` challenge and submits a transfer from ACC unshielded balance to a Midnight user address. The consent descriptor names the asset color, amount and recipient. Requires the `acc-s3r1.1` binding and an active live owner device. |
+| `account.withdrawUnshielded({ color, amount, recipient }, options?)` | `PassportOwnerTransferResult` | P-256 and JubJub owners: signs the pinned `withdraw_unshielded` challenge and submits a transfer from ACC unshielded balance to a Midnight user address. The consent descriptor names the asset color, amount and recipient. Requires the `acc-s3r1.1` binding and an active live owner device. Current source adds optional `beforeSubmit` for a host-owned durable original-ID fence; this is absent from published RC9. |
 | `account.withdrawShielded({ inboxIndex, color, amount, recipient }, options?)` | `PassportOwnerTransferResult` | Sealed P-256 and JubJub owners: selects one chain-matched qualified coin, binds it into the owner challenge and `held_coin` witness, then submits `withdraw_shielded_with_p256` or `withdraw_shielded_with_jubjub`. `recipient` is a 32-byte Zswap coin public key. Requires a `QualifiedHoldingSource`, owner key session, and chain adapter with a per-call witness. |
 | `account.rotateEncryptionKey(newKey, options?)`                   | `{ txHash, blockHeight? }` | Legacy P-256 accounts only. Sealed P-256 accounts use `rotateViewingKey` so readers and holdings receive the new secret. |
 | `account.rotateViewingKey(options?)`                              | `{ txHash, droppedDeviceEntries, sealedReadGrants, unsealedGrantIds }` | Sealed JubJub and P-256: seal a random secret to unique live devices and chain-confirmed read grantees, rotate the ACC key, then re-encrypt verified holdings. Requires host-backed holding and complete active read-grant sources; reports grants whose key opening or seal is unavailable. |
@@ -287,6 +287,19 @@ The same package exports `sponsorPolicy`, `viewOfLedgerTx`, and `guardedBalance`
 The `mn-passport-adapter-service` root exports `remoteV1Prover`, `remoteV1Deployer`, and `remoteV1Sponsor`. The first two submit a v1 job and poll it with a cursor, forwarding service progress and caller cancellation. The strict whole-observation deadline and batch admission described in the [source V1 contract]({{ '/service/#source-preview-v1-job-observation-lifetime' | relative_url }}) are hardening after RC7. The sponsor uses its separate synchronous v1 fee endpoints. Use the [HTTP client selection table]({{ '/service/#choose-an-http-client' | relative_url }}) for actual public import entries, budgets and retry boundaries. `fetchCheckedV1Config` checks the advertised network, binding, manifest, service API version and binding-specific artefact URL against host pins before a host uses these ports. The standalone browser demo uses these clients without changing the account core.
 
 The separate `mn-passport-adapter-service/faucet` subpath exports `remoteFaucet` for `POST /v1/faucet/fund`. A caller supplies a stable UUID, pinned network/binding/manifest, ACC address, allowlisted asset color and decimal amount, plus a callback for fresh authorization headers. The result includes the transaction ID and confirmed credited ACC balance. `apps/passport-funding-service` composes the route with a dedicated wallet and durable reservations; the demo CLI can start it with `--funding`. On the qualified `undeployed` localnet it supports allowlisted NIGHT and non-native unshielded assets. NIGHT uses a journaled exact-value preparation transfer before deposit; an uncertain preparation/deposit must be reconciled under its original request ID. Other networks and shielded funding remain unqualified. See the [funding operator guide](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/passport-funding-service/README.md).
+
+### Unbound NIGHT deposit proof (source preview)
+
+The later source preview also exports `proveUnboundNightDeposit(request)` from
+`adapter-midnight-js` for the separate named NIGHT route. It accepts the pinned
+`undeployed`/`acc-s3r1.1` network and manifest, recipient ACC address, positive
+smallest-unit NIGHT amount, public device-wallet coin/encryption keys, generated
+binding and a replaceable `Prover`. It creates and proves only an unbound
+`deposit_unshielded` ACC call. The device-held wallet must still inspect the
+balanced transaction, bind its input to the journaled withdrawal output, sign
+and fence its original before submission. This source helper has not passed a
+native connected browser or real-provider qualification; it is absent from the
+published RC9 package.
 
 ### Shielded deposit sender boundary
 

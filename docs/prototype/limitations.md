@@ -171,8 +171,9 @@ persistent state, ingress and transaction outcomes on the actual network before 
 - **Shielded partial spends.** The selected coin must exactly equal the withdrawal amount.
   Durable change recovery and spent-input reconciliation remain #201; full typed coverage of
   all contract circuits remains #82. Outstanding Lace live/value-host evidence remains #202.
-- **A wallet of its own.** The built-in wallet is a read-only stand-in. It proves and pays nothing.
-  lace-sdk is expected to replace it.
+- **A wallet of its own.** The built-in wallet is a demo stand-in. Its public connector is
+  read-only; an internal guarded NIGHT deposit path is not yet connected to a send control or
+  native-qualified. lace-sdk is expected to replace it.
 - **Browsers.** Real-passkey runs used Chrome on macOS only.
 - **Hardware.** P-256 proofs need about 13.5 GiB on the proof server, so Docker needs at least
   24 GiB. The artefacts take about 12 GB.

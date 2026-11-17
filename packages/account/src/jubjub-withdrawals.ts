@@ -14,6 +14,7 @@ import type { Flow } from './flow.js';
 import { fromHex, toHex } from './codec.js';
 import { PassportConnectorError } from './errors.js';
 import { prepareShieldedWithdrawal, prepareUnshieldedWithdrawal } from './unshielded-withdrawal.js';
+import { requireValueSubmissionChain } from './value-submit.js';
 import { readQualifiedHolding } from './holdings.js';
 type JubjubHint = AccountHint & {
   readonly scheme: 'jubjub-schnorr';
@@ -21,6 +22,14 @@ type JubjubHint = AccountHint & {
 };
 const samePoint = (a: { x: bigint; y: bigint }, b: { x: bigint; y: bigint }) =>
   a.x === b.x && a.y === b.y;
+
+function requireUnshieldedCircuit(bindingId: string, pure: JubjubPureCircuits): void {
+  if (bindingId !== 'acc-s3r1.1' || !pure.challenge_withdraw_unshielded_with_jubjub)
+    throw new PassportConnectorError(
+      'BindingUnsupported',
+      'JubJub withdrawal needs the pinned challenge circuit.',
+    );
+}
 
 type WithdrawalPorts = Pick<PassportPorts, 'authoriser' | 'network' | 'holdings'> & {
   viewingKey: NonNullable<PassportPorts['viewingKey']>;
@@ -42,17 +51,15 @@ export function jubjubWithdrawals(context: {
   const { authoriser, viewingKey, network } = ports;
   const { networkId } = network;
   return {
-    withdrawUnshielded: (request, options = {}) =>
-      run(options, async (flow) => {
+    withdrawUnshielded: (request, options = {}) => {
+      const beforeSubmit = options.beforeSubmit;
+      return run(options, async (flow) => {
         const transfer = prepareUnshieldedWithdrawal(request);
         const pure = requirePure((await readBinding()).pureCircuits);
-        if (network.bindingId !== 'acc-s3r1.1' || !pure.challenge_withdraw_unshielded_with_jubjub)
-          throw new PassportConnectorError(
-            'BindingUnsupported',
-            'JubJub withdrawal needs the pinned challenge circuit.',
-          );
+        requireUnshieldedCircuit(network.bindingId, pure);
         if (record.status !== 'active')
           throw new PassportConnectorError('AccountNotFound', 'The JubJub ACC is not active.');
+        const valueChain = await requireValueSubmissionChain(readChain, beforeSubmit);
         recordPure.set(record, pure);
         return authoriser.withKeySession!(
           async () => {
@@ -104,9 +111,7 @@ export function jubjubWithdrawals(context: {
                 'The signature names another device.',
               );
             flow.checkpoint();
-            const tx = await (
-              await readChain()
-            ).call({
+            const tx = await valueChain.call({
               address: record.address,
               circuit,
               args: [
@@ -120,6 +125,7 @@ export function jubjubWithdrawals(context: {
                 signed.grindNonce,
               ],
               ...flow.ports,
+              ...(beforeSubmit && { beforeSubmit }),
             });
             return { ...tx, nextUseCounter: counter + 1n };
           },
@@ -131,7 +137,8 @@ export function jubjubWithdrawals(context: {
             recipient: toHex(transfer.recipient.bytes),
           },
         );
-      }),
+      });
+    },
     withdrawShielded: (request, options = {}) =>
       run(options, async (flow) => {
         const transfer = prepareShieldedWithdrawal(request);

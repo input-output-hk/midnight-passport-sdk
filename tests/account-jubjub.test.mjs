@@ -493,6 +493,16 @@ test('JubJub owner withdrawal binds amount and recipient to consent and the sign
   assert.equal(signed.useCounter, 2n);
   const invalid = { ...request, amount: '0' };
   await assert.rejects(account.withdrawUnshielded(invalid), { code: 'TransferInvalid' });
+  const sessionsBeforeFence = w.sessionFlows.length;
+  const signaturesBeforeFence = w.signedRequests.length;
+  const unsafeOptions = { beforeSubmit: async () => {} };
+  const refused = account.withdrawUnshielded(request, unsafeOptions);
+  Reflect.set(unsafeOptions, 'beforeSubmit', undefined);
+  await assert.rejects(refused, {
+    code: 'BindingUnsupported',
+  });
+  assert.equal(w.sessionFlows.length, sessionsBeforeFence);
+  assert.equal(w.signedRequests.length, signaturesBeforeFence);
   assert.equal(w.calls.length, callsBefore + 1);
   assert.deepEqual(w.sessionFlows.at(-1), {
     kind: 'withdraw-unshielded',

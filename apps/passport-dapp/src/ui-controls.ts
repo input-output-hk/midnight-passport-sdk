@@ -29,7 +29,9 @@ export class ActionControls {
           ? CRITICAL_ACTIONS.has(action)
             ? action === 'withdraw'
               ? 'Approved scoped transfer: no passkey · owner transfer: fresh passkey'
-              : 'Fresh passkey approval for this critical action'
+              : action === 'sendNamedNight'
+                ? 'New payment: fresh passkey · original-leg recovery: no new owner signature'
+                : 'Fresh passkey approval for this critical action'
             : 'Uses unlocked keys · no new passkey request'
           : ['create', 'open', 'openAt'].includes(action)
             ? 'Passkey approval required'
@@ -128,6 +130,13 @@ export class ActionControls {
     this.dom.withdrawalSelect.disabled = busy || !this.model.account;
     this.dom.withdrawalAmount.disabled = busy || !this.model.account;
     this.dom.withdrawalRecipient.disabled = busy || !this.model.account;
+    byId<HTMLInputElement>('named-night-recipient').disabled = busy || !this.model.account;
+    byId<HTMLInputElement>('named-night-amount').disabled = busy || !this.model.account;
+    this.dom.buttons.sendNamedNight.disabled =
+      busy ||
+      !this.model.account ||
+      byId('account-named-night').dataset.available !== 'true' ||
+      byId('account-named-night').dataset.blocked === 'true';
     this.dom.buttons.withdraw
       .closest('li')
       ?.toggleAttribute('hidden', this.model.assetsByColor.size === 0);

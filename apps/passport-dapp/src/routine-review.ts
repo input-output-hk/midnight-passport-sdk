@@ -22,6 +22,7 @@ export const OWNER_ACTIONS = [
   'removeDevice',
   'rotate',
   'withdraw',
+  'sendNamedNight',
   'startSession',
   'revokeSession',
 ];

@@ -51,6 +51,45 @@ export async function createDevWallet(
       throw walletBackgroundError(error);
     }
   };
+  const nightBridge: NonNullable<DevWallet['nightBridge']> = {
+    async getAddress() {
+      try {
+        const result = await client.request('nightBridgeAddress', undefined);
+        if (typeof result !== 'string' || !/^[a-f0-9]{64}$/.test(result))
+          throw new Error('Invalid bridge address reply.');
+        return result;
+      } catch (error) {
+        throw walletBackgroundError(error);
+      }
+    },
+    async hasOutput(expected) {
+      try {
+        const result = await client.request('hasNightBridgeOutput', expected);
+        if (typeof result !== 'boolean') throw new Error('Invalid bridge output reply.');
+        return result;
+      } catch (error) {
+        throw walletBackgroundError(error);
+      }
+    },
+    async prepareDeposit(request) {
+      try {
+        const result = await client.request('prepareNightDeposit', request);
+        return checkedNightLegReply(result);
+      } catch (error) {
+        throw walletBackgroundError(error, 'deposit');
+      }
+    },
+    async submitDeposit(original) {
+      try {
+        const result = await client.request('submitNightDeposit', original);
+        if (typeof result !== 'string' || !/^[a-f0-9]{66}$/.test(result))
+          throw new Error('Invalid deposit submission reply.');
+        return result;
+      } catch (error) {
+        throw walletBackgroundError(error, 'deposit');
+      }
+    },
+  };
   return devWalletSession(
     config.networkId,
     {
@@ -66,18 +105,38 @@ export async function createDevWallet(
       // Termination releases owned sockets and any stalled sync without waiting two minutes.
       client.close();
     },
+    nightBridge,
   );
 }
 
+function checkedNightLegReply(value: unknown) {
+  if (!value || typeof value !== 'object' || Array.isArray(value))
+    throw new Error('Invalid deposit original reply.');
+  const row = value as Record<string, unknown>;
+  if (
+    typeof row.hash !== 'string' ||
+    !/^[a-f0-9]{64}$/.test(row.hash) ||
+    !Array.isArray(row.identifiers) ||
+    row.identifiers.length === 0 ||
+    row.identifiers.length > 32 ||
+    row.identifiers.some((id) => typeof id !== 'string' || !/^[a-f0-9]{66}$/.test(id)) ||
+    new Set(row.identifiers).size !== row.identifiers.length
+  )
+    throw new Error('Invalid deposit original reply.');
+  return { hash: row.hash, identifiers: [...row.identifiers] as string[] };
+}
+
 /** Preserve the connector error contract without exposing worker/provider exception text. */
-export function walletBackgroundError(error: unknown) {
+export function walletBackgroundError(error: unknown, operation: 'read' | 'deposit' = 'read') {
   const disconnected =
     error instanceof BackgroundError && ['Closed', 'Unavailable'].includes(error.code);
   return walletApiError(
     disconnected ? 'Disconnected' : 'InternalError',
-    disconnected
-      ? 'The wallet worker disconnected. Reconnect the built-in wallet.'
-      : 'The wallet background read failed. Refresh to retry.',
+    operation === 'deposit'
+      ? 'The NIGHT deposit outcome is unknown. Reconcile the fenced original before another payment.'
+      : disconnected
+        ? 'The wallet worker disconnected. Reconnect the built-in wallet.'
+        : 'The wallet background read failed. Refresh to retry.',
   );
 }
 

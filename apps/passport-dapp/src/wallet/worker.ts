@@ -1,6 +1,7 @@
 import '../polyfills.js';
 import { serveBackgroundTasks } from '@input-output-hk/mn-passport-account/background';
 import { browserBackgroundPort } from '@input-output-hk/mn-passport-adapter-browser/background';
+import { checkedNightBridgeOutput } from '../midnames/night-bridge-output.js';
 import type { DevWallet, DevWalletConfig, DevWalletConnectedApi } from './contracts.js';
 
 let wallet: DevWallet | undefined;
@@ -25,7 +26,7 @@ const methods: Record<string, (input: unknown) => Promise<unknown>> = {
         throw new Error('Invalid wallet configuration.');
       const value = input.config as Record<string, unknown>;
       if (
-        ['networkId', 'indexerUri', 'indexerWsUri', 'nodeUri'].some(
+        ['networkId', 'indexerUri', 'indexerWsUri', 'nodeUri', 'proofServerUri'].some(
           (key) =>
             typeof value[key] !== 'string' ||
             !(value[key] as string).length ||
@@ -38,6 +39,7 @@ const methods: Record<string, (input: unknown) => Promise<unknown>> = {
         indexerUri: value.indexerUri as string,
         indexerWsUri: value.indexerWsUri as string,
         nodeUri: value.nodeUri as string,
+        proofServerUri: value.proofServerUri as string,
       };
       const { createWalletRuntime } = await import('./runtime.js');
       wallet = await createWalletRuntime(seed, config);
@@ -52,6 +54,24 @@ const methods: Record<string, (input: unknown) => Promise<unknown>> = {
       seed?.fill(0);
       initializing = false;
     }
+  },
+  async nightBridgeAddress() {
+    if (!wallet?.nightBridge) throw new Error('Wallet unavailable.');
+    return wallet.nightBridge.getAddress();
+  },
+  async hasNightBridgeOutput(input) {
+    if (!wallet?.nightBridge) throw new Error('Wallet unavailable.');
+    return wallet.nightBridge.hasOutput(checkedNightBridgeOutput(input));
+  },
+  async prepareNightDeposit(input) {
+    if (!wallet?.nightBridge) throw new Error('Wallet unavailable.');
+    const { checkedDeviceNightDepositRequest } = await import('./night-deposit.js');
+    return wallet.nightBridge.prepareDeposit(checkedDeviceNightDepositRequest(input));
+  },
+  async submitNightDeposit(input) {
+    if (!wallet?.nightBridge) throw new Error('Wallet unavailable.');
+    const { checkedDeviceNightLeg } = await import('./night-deposit.js');
+    return wallet.nightBridge.submitDeposit(checkedDeviceNightLeg(input));
   },
 };
 const reads = [

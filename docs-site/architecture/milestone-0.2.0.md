@@ -46,6 +46,84 @@ Complete a safe local name-to-ACC journey, then qualify any online route against
 
 The [#244 adoption map](/architecture/adoption-gates) merged in [PR #336](https://github.com/input-output-hk/midnight-passport-sdk/pull/336) and its planning issue closed. Six implementation issues in this connected set remain open.
 
+The signed `a20a9b9` #318 native browser decline passed on isolated
+`undeployed`: Chromium displayed the exact two-leg NIGHT review and clicked
+**Decline**; source/recipient ACC balances stayed 10/0, with zero owner
+signatures, zero payment-leg dispatches and no admitted payment journal. The
+parent verified unchanged inputs, exact-owned cleanup and lease release.
+Timeout or page close now fails instead of qualifying as a decline. This is
+automated refusal evidence; human/real-passkey and provider acceptance remains
+open.
+
+The signed `e8fd610` #318 isolated repoint run added a distinct negative
+case. After automated owner-browser approval, the root-owned `alice.night`
+record changed on-chain to a third activated ACC. Fresh resolution saw the
+new target, but the original journal kept the reviewed target. The payment
+refused before owner signing or either payment dispatch, with source, old
+target and new target balances at 10/0/0. The parent verified unchanged
+inputs, exact-owned cleanup and lease release. It does not qualify human
+consent, online Midnames reads or a demo send page.
+
+A later source-only #318 browser journal adds one active named NIGHT intent
+per source ACC and network on the demo origin, credential-scoped retention,
+transactional per-leg fences and finality-gated archival of original IDs.
+Cross-tab/reload and corrupt-state checks pass with a synthetic IndexedDB.
+The opt-in local demo owner-send UI and two-leg host adapter now use it; the
+browser storage path has no native or provider qualification.
+
+The next source-only slice adds an opt-in finalized-ID callback for P-256 and
+JubJub unshielded owner withdrawals. The standard Midnight adapter awaits the
+host's fence before dispatch and other adapters refuse the opt-in call before
+owner signing. The opt-in local reference demo now uses the browser journal;
+#318 still needs native connected payment qualification.
+
+The source-only named NIGHT orchestrator can now receive the account owner's
+finalized-ID callback, recheck the reviewed name at that point and fence the
+withdrawal in the browser journal before dispatch. It retains lost-response IDs.
+A name refusal before entering the owner API can retire its unsubmitted intent
+into audit history. A durable owner-start marker keeps later no-ID outcomes
+blocked, including a callback refusal.
+A source helper maps the reviewed NIGHT amount and bridge to one selected JubJub
+account. The opt-in local demo now wires that helper, a bridge/finality adapter
+and a named-send UI; this route has no native/provider qualification.
+
+The source owner-review model can stage the exact name, registry, recipient
+ACC, bridge, amount and two operations in the actual credential ceremony.
+An opt-in finalized callback requires the same approved named scope before
+the journal fence. The ACC transaction signs its withdrawal to the bridge;
+the name and destination ACC are host-checked, not signed circuit fields.
+This remains a source seam until the demo UI and bridge/finality host are wired.
+
+The source bridge-output guard is shared with the standalone NIGHT fixture:
+the fenced withdrawal must contain one exact controlled output, and the
+balanced deposit must consume only that output. A bounded browser finality
+reader also checks the original hash, ordered watch IDs, successful raw Ledger
+9 transaction and canonical finalized block. The indexer is still trusted for
+transaction inclusion; the node block check does not independently prove it.
+Before wallet signing, the worker re-reads the active journal and derives the
+expected output from the finalized, decoded withdrawal. It refuses a page
+request that pairs the journaled hash with another same-value coin. These source
+checks are not a connected browser deposit or a new native qualification.
+
+The demo's device-held wallet worker also exposes a separate internal raw
+bridge-address and exact-output observation port. It waits for a strictly synced
+NIGHT snapshot and refuses another owner. Its separate internal deposit path can
+balance and sign one exact ACC deposit call, expose its original for a durable
+host fence, independently read that committed IndexedDB record, and attempt
+that original's dispatch once. Wallet connection checks
+the pinned v1 service configuration before using the proof-server URL. The
+public connector remains read-only. An opt-in local browser send control now
+uses the internal wallet port; native proven-call/payment qualification is open.
+
+A source-only host now composes the selected JubJub ACC, Midnames resolver,
+scope-bound IndexedDB journal, finality reader, unbound deposit proof and
+device-held wallet. It reopens the journal after an interrupted deposit proof
+without repeating the withdrawal. It rejects a mismatched account credential
+scope or wallet chain configuration. An opt-in local page control now shows the
+named route and original IDs and uses this host. It requires the configured
+Midnames primary indexer to match the service-discovered ACC/finality indexer;
+its proof adapter has no native or real-provider acceptance yet.
+
 Qualify the original demo's **post-ACC name claim step** under [#316](https://github.com/input-output-hk/midnight-passport-sdk/issues/316). The source path reuses the opt-in preparation and sponsor fence after the ACC address is known, retains the selected name across reload for the same credential and network, and shows *pending Passport setup* until the original claim and current registry record agree. The fresh browser fixture covers the claim transport and recovery, but not the new panel's complete create/open handoff. Name-owner total-loss recovery, human review with a real provider and sponsor-issued quote, and the public namespace remain open gates.
 
 The next host integration can bring [#317](https://github.com/input-output-hk/midnight-passport-sdk/issues/317)'s independent sender review into a human-run browser journey and expose [#318](https://github.com/input-output-hk/midnight-passport-sdk/issues/318)'s durable two-leg owner journey in a browser. The #317 sender and #318 owner localhost reviews have automated native passes only. Online activation still waits for [#315](https://github.com/input-output-hk/midnight-passport-sdk/issues/315)'s independently known name-to-contract read-only smoke and a supported authenticated provider. The historical Midnight-hosted preprod indexer used by the pinned SDK returns HTTP 410; [current endpoints](https://docs.midnight.network/relnotes/network) require a Blockfrost project token for Preprod/Mainnet and record a 6 November Preview reset. The pinned Preview registry returned no contract through the current v4 indexer on 14 November. No token or unverified online registry mapping is shipped to the browser. Native qualification uses a separately owned stack; neither a documentation build nor a synthetic browser test substitutes for it.

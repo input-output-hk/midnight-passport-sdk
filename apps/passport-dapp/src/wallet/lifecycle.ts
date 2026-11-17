@@ -13,6 +13,7 @@ export function devWalletSession(
   networkId: string,
   api: DevWalletConnectedApi,
   stopRuntime: () => Promise<void>,
+  nightBridge?: NonNullable<DevWallet['nightBridge']>,
 ): DevWallet {
   let stopped = false;
   let stopping: Promise<void> | undefined;
@@ -41,6 +42,28 @@ export function devWalletSession(
     getUnshieldedBalances: guard(() => api.getUnshieldedBalances()),
     getDustBalance: guard(() => api.getDustBalance()),
   };
+  const guardedDeposit = async (
+    original: Parameters<NonNullable<DevWallet['nightBridge']>['submitDeposit']>[0],
+  ) => {
+    assertOpen();
+    try {
+      const result = await nightBridge?.submitDeposit(original);
+      if (stopped)
+        throw walletApiError(
+          'Disconnected',
+          'The NIGHT deposit outcome is unknown. Reconcile its original.',
+        );
+      if (result === undefined) throw new Error('NIGHT bridge unavailable.');
+      return result;
+    } catch (error) {
+      if (stopped)
+        throw walletApiError(
+          'Disconnected',
+          'The NIGHT deposit outcome is unknown. Reconcile its original.',
+        );
+      throw error;
+    }
+  };
   return {
     descriptor: {
       name: 'Built-in dev wallet',
@@ -53,6 +76,16 @@ export function devWalletSession(
         return connected;
       },
     },
+    ...(nightBridge && {
+      nightBridge: {
+        getAddress: guard(() => nightBridge.getAddress()),
+        hasOutput: (expected: Parameters<typeof nightBridge.hasOutput>[0]) =>
+          guard(() => nightBridge.hasOutput(expected))(),
+        prepareDeposit: (request: Parameters<typeof nightBridge.prepareDeposit>[0]) =>
+          guard(() => nightBridge.prepareDeposit(request))(),
+        submitDeposit: guardedDeposit,
+      },
+    }),
     stop() {
       stopped = true;
       stopping ??= Promise.resolve().then(stopRuntime);

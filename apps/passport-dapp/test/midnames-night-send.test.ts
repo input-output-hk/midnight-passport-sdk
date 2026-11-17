@@ -9,6 +9,7 @@ import {
   type NightSendRequest,
 } from '../src/midnames/night-send.js';
 import { createMidnamesNameService } from '../src/midnames/resolver.js';
+import type { PreparedValueSubmission } from '@input-output-hk/mn-passport-protocol';
 
 const request: NightSendRequest = {
   requestId: 'a1234567-a123-4123-8123-a123456789ab',
@@ -74,7 +75,8 @@ function fixture() {
     async readSourceBalance() {
       return state.balance;
     },
-    async review(reviewed) {
+    async review(reviewed, observedBalance) {
+      assert.equal(observedBalance, state.balance);
       assert.equal(reviewed.target, target);
       assert.deepEqual(reviewed.operations, [
         'withdraw_unshielded_with_jubjub',
@@ -194,6 +196,27 @@ test('an unknown withdrawal remains original-only and cannot fund the next leg',
   assert.equal(legs.size, 1);
 });
 
+test('a retained no-ID intent refuses another review or withdrawal preparation', async () => {
+  const { state, calls, ports, legs } = fixture();
+  state.duringWithdrawalProof = () => {
+    throw new Error('preparation interrupted');
+  };
+  await assert.rejects(sendNightByName(request, ports()), /preparation interrupted/);
+  state.duringWithdrawalProof = () => {};
+  await assert.rejects(
+    sendNightByName(request, {
+      ...ports(),
+      async review() {
+        calls.push('unexpected-review');
+        return true;
+      },
+    }),
+    /no transaction ID/,
+  );
+  assert.deepEqual(calls, ['review', 'sign']);
+  assert.equal(legs.size, 0);
+});
+
 test('orphaned or duplicated leg receipts refuse before any owner approval', async () => {
   const { legs, ports, calls, state } = fixture();
   legs.set('deposit', deposit);
@@ -220,4 +243,135 @@ test('a well-formed target requires an independent binding check before approval
   await assert.rejects(sendNightByName(request, ports()), /not an activated, supported/);
   assert.deepEqual(calls, ['review', 'sign']);
   assert.equal(legs.size, 0);
+});
+
+test('the account owner callback fences the finalized original before dispatch and lost reply', async () => {
+  const { calls, ports, legs } = fixture();
+  const base = ports();
+  let executions = 0;
+  const owner: Parameters<typeof sendNightByName>[1] = {
+    ...base,
+    prepareWithdrawal: undefined,
+    journal: {
+      ...base.journal,
+      async fenceLeg(leg, original) {
+        calls.push('fence');
+        await base.journal.fenceLeg(leg, original);
+      },
+    },
+    async submitWithdrawal(
+      intent: NightSendIntent,
+      beforeSubmit: (submission: PreparedValueSubmission) => Promise<void>,
+    ) {
+      executions++;
+      calls.push('owner-sign');
+      assert.equal(intent.bridge, request.bridge);
+      await beforeSubmit({
+        networkId: request.networkId,
+        account: request.source,
+        circuit: 'withdraw_unshielded_with_jubjub',
+        transactionHash: withdrawal.hash,
+        identifiers: withdrawal.identifiers,
+      });
+      assert.deepEqual(legs.get('withdraw'), withdrawal);
+      calls.push('withdraw');
+      throw new Error('submission reply lost');
+    },
+  };
+  assert.equal((await sendNightByName(request, owner)).phase, 'withdrawal-pending');
+  assert.deepEqual(calls, ['review', 'owner-sign', 'fence', 'withdraw']);
+  assert.equal((await sendNightByName(request, owner)).phase, 'withdrawal-pending');
+  assert.equal(executions, 1, 'the unknown original is looked up without another owner send');
+});
+
+test('a changed host port cannot switch an approved owner withdrawal to an unfenced path', async () => {
+  const { calls, ports, legs } = fixture();
+  let substituted = 0;
+  const owner: Parameters<typeof sendNightByName>[1] = {
+    ...ports(),
+    prepareWithdrawal: undefined,
+    async review() {
+      calls.push('review');
+      Object.assign(owner, {
+        async submitWithdrawal() {
+          substituted++;
+        },
+        async prepareWithdrawal() {
+          substituted++;
+        },
+      });
+      return true;
+    },
+    async submitWithdrawal(_, beforeSubmit) {
+      calls.push('original-owner');
+      await beforeSubmit({
+        networkId: request.networkId,
+        account: request.source,
+        circuit: 'withdraw_unshielded_with_jubjub',
+        transactionHash: withdrawal.hash,
+        identifiers: withdrawal.identifiers,
+      });
+    },
+  };
+  assert.equal((await sendNightByName(request, owner)).phase, 'withdrawal-pending');
+  assert.deepEqual(calls, ['review', 'original-owner']);
+  assert.equal(substituted, 0);
+  assert.deepEqual(legs.get('withdraw'), withdrawal);
+});
+
+test('the owner callback rechecks a repointed name before fencing or dispatch', async () => {
+  const { state, calls, ports, legs } = fixture();
+  const owner: Parameters<typeof sendNightByName>[1] = {
+    ...ports(),
+    prepareWithdrawal: undefined,
+    async submitWithdrawal(_, beforeSubmit) {
+      calls.push('owner-sign');
+      state.address = 'f'.repeat(64);
+      await beforeSubmit({
+        networkId: request.networkId,
+        account: request.source,
+        circuit: 'withdraw_unshielded_with_jubjub',
+        transactionHash: withdrawal.hash,
+        identifiers: withdrawal.identifiers,
+      });
+      calls.push('withdraw');
+    },
+  };
+  await assert.rejects(sendNightByName(request, owner), /scope changed/);
+  assert.deepEqual(calls, ['review', 'owner-sign']);
+  assert.equal(legs.size, 0);
+  await assert.rejects(sendNightByName(request, owner), /no transaction ID/);
+  assert.deepEqual(calls, ['review', 'owner-sign'], 'a retained intent without an ID cannot retry');
+});
+
+test('the account owner route refuses a wrong finalized call or a missing callback', async () => {
+  for (const wrong of [true, false]) {
+    const { calls, ports, legs } = fixture();
+    const owner: Parameters<typeof sendNightByName>[1] = {
+      ...ports(),
+      prepareWithdrawal: undefined,
+      async submitWithdrawal(_, beforeSubmit) {
+        calls.push('owner-sign');
+        if (wrong)
+          await beforeSubmit({
+            networkId: request.networkId,
+            account: request.source,
+            circuit: 'withdraw_unshielded_with_p256',
+            transactionHash: withdrawal.hash,
+            identifiers: withdrawal.identifiers,
+          });
+        calls.push('withdraw-attempt');
+      },
+    };
+    await assert.rejects(
+      sendNightByName(request, owner),
+      wrong ? /differs from the reviewed source/ : /without an original transaction ID/,
+    );
+    assert.deepEqual(
+      calls,
+      wrong ? ['review', 'owner-sign'] : ['review', 'owner-sign', 'withdraw-attempt'],
+    );
+    assert.equal(legs.size, 0);
+    await assert.rejects(sendNightByName(request, owner), /no transaction ID/);
+  }
 });

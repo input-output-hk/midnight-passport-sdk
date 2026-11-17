@@ -3,7 +3,10 @@ import type {
   PassportUnshieldedWithdrawal,
 } from '@input-output-hk/mn-passport-protocol';
 import type { AuthenticatedJubjubOwner } from '@input-output-hk/mn-passport-keys';
+import { MidnightBech32m, UnshieldedAddress } from '@midnightntwrk/wallet-sdk-address-format';
 import { stageExactCredentialReview } from './consent.js';
+import type { NightSendIntent } from './midnames/night-send.js';
+import { withdrawalRequest } from './withdrawal.js';
 
 type OwnerLease = Pick<AuthenticatedJubjubOwner, 'context' | 'check'>;
 interface WithdrawalReview extends PassportUnshieldedWithdrawal {
@@ -84,6 +87,38 @@ export function createOwnerReview(ports: OwnerReviewPorts) {
     stageOwnerWithdrawalReview(current: PassportAccount, transfer: WithdrawalReview): void {
       const { context, check } = captureOwnerReview(ports, current);
       stageExactCredentialReview({ ...transfer, ...context, kind: 'withdraw' }, check);
+    },
+    stageNamedNightWithdrawalReview(
+      current: PassportAccount,
+      intent: NightSendIntent,
+      freshBalance: string,
+    ): void {
+      const { context, check } = captureOwnerReview(ports, current);
+      if (!/^[a-f0-9]{64}$/.test(intent.bridge))
+        throw new Error('The reviewed NIGHT bridge is invalid.');
+      const recipientAddress = MidnightBech32m.encode(
+        intent.networkId,
+        new UnshieldedAddress(Buffer.from(intent.bridge, 'hex')),
+      ).asString();
+      const transfer = withdrawalRequest(
+        intent.networkId,
+        '00'.repeat(32),
+        intent.amount,
+        recipientAddress,
+        freshBalance,
+      );
+      stageExactCredentialReview(
+        {
+          ...context,
+          ...transfer,
+          kind: 'withdraw',
+          recipientAddress,
+          balance: freshBalance,
+          outsideSession: false,
+          namedNight: intent,
+        },
+        check,
+      );
     },
     reviewScopedWithdrawal(current: PassportAccount, transfer: WithdrawalReview): boolean {
       if (ports.current() !== current) return changed();

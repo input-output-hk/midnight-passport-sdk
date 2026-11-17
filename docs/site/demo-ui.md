@@ -125,6 +125,10 @@ headless account capabilities with their own brand, layout and consent host.
 - **Withdraw** shows one form for the asset, amount in smallest units and an
   explicit unshielded Midnight recipient. The subsequent review chooses the
   applicable scoped-session or fresh-owner route; selecting a tab grants nothing.
+  In the opt-in local Midnames source preview, a separate named NIGHT form
+  resolves a `.night` contract target and reviews a two-leg ACC payment. It
+  keeps pending original IDs visible across reloads; it is not a wallet-address
+  transfer or an online-qualified payment.
 
 The open ACC/network stays above the selected form. **Balances**, **Deposit** and
 **Withdraw** appear beneath **Passport account** in the left navigation. Keyboard

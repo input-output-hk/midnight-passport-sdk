@@ -2,6 +2,7 @@ import {
   resolvePassportName,
   type PassportNameService,
 } from '@input-output-hk/mn-passport-account/names';
+import type { PreparedValueSubmission } from '@input-output-hk/mn-passport-protocol';
 
 const ADDRESS = /^[a-f0-9]{64}$/;
 const isToken = (value: unknown, pattern: RegExp): value is string =>
@@ -41,6 +42,10 @@ export interface NightSendJournal {
   readLeg(leg: 'withdraw' | 'deposit'): Promise<NightSendLeg | undefined>;
   /** Atomically and durably reserve a leg. A duplicate writer must fail. */
   fenceLeg(leg: 'withdraw' | 'deposit', original: NightSendLeg): Promise<void>;
+  /** Durably mark entry into the owner API before signing or submission can begin. */
+  markOwnerStarted?(intent: NightSendIntent): Promise<void>;
+  /** Archive a name-recheck refusal only before the owner API was entered. */
+  retireRefused?(intent: NightSendIntent, reason: 'name-recheck'): Promise<void>;
 }
 
 export class NightDepositInterrupted extends Error {
@@ -67,21 +72,41 @@ interface PreparedLeg {
   dispatch(): Promise<void>;
 }
 
-interface NightSendPorts {
+interface NightSendCorePorts {
   readonly names: PassportNameService;
   readonly journal: NightSendJournal;
   /** Verify the recipient activation and pinned binding independently of the name-service result. */
   isSupportedRecipient(address: string, networkId: string): Promise<boolean>;
   /** Return undefined for a source that fails the pinned binding and activation checks. */
   readSourceBalance(source: string): Promise<bigint | undefined>;
-  review(intent: NightSendIntent): Promise<boolean>;
-  /** Owner authorization and preparation of the exact reviewed withdrawal. */
-  prepareWithdrawal(intent: NightSendIntent): Promise<PreparedLeg>;
+  review(intent: NightSendIntent, observedBalance: bigint): Promise<boolean>;
   /** Prepare a deposit funded by the original withdrawal output to the controlled wallet. */
   prepareDeposit(intent: NightSendIntent, withdrawal: NightSendLeg): Promise<PreparedLeg>;
   /** Require canonical successful finality for the exact prepared transaction. */
   finalized(original: NightSendLeg): Promise<boolean>;
 }
+
+type NightSendPorts = NightSendCorePorts &
+  (
+    | {
+        /** Standalone wallet fixture, which prepares an original transaction before dispatch. */
+        prepareWithdrawal(intent: NightSendIntent): Promise<PreparedLeg>;
+        readonly submitWithdrawal?: undefined;
+      }
+    | {
+        /** Account API path: the callback must be awaited immediately before its only dispatch. */
+        submitWithdrawal(
+          intent: NightSendIntent,
+          beforeSubmit: (submission: PreparedValueSubmission) => Promise<void>,
+        ): Promise<void>;
+        readonly prepareWithdrawal?: undefined;
+      }
+  );
+
+type OwnerSubmit = NonNullable<NightSendPorts['submitWithdrawal']>;
+type PrepareWithdrawal = NonNullable<NightSendPorts['prepareWithdrawal']>;
+type MarkOwnerStarted = NonNullable<NightSendJournal['markOwnerStarted']>;
+type RetireRefusal = NonNullable<NightSendJournal['retireRefused']>;
 
 function validate(request: NightSendRequest) {
   if (
@@ -168,8 +193,77 @@ async function submitLeg(
   return original;
 }
 
+async function submitOwnerWithdrawal(
+  intent: NightSendIntent,
+  ports: NightSendPorts,
+  submitWithdrawal: OwnerSubmit,
+) {
+  let original: NightSendLeg | undefined;
+  try {
+    await submitWithdrawal(intent, async (submission) => {
+      if (original) throw new Error('The original NIGHT withdrawal is already fenced.');
+      if (
+        submission.networkId !== intent.networkId ||
+        submission.account !== intent.source ||
+        submission.circuit !== NIGHT_SEND_OPERATIONS[0]
+      )
+        throw new Error('The finalized NIGHT withdrawal differs from the reviewed source.');
+      const checked = checkedLeg({
+        hash: submission.transactionHash,
+        identifiers: submission.identifiers,
+      });
+      assertSameIntent(intent, await resolveIntent(intent, ports));
+      await ports.journal.fenceLeg('withdraw', checked);
+      original = checked;
+    });
+  } catch (error) {
+    // Once the original is durable, a lost submit response is uncertain: look it up, never resend.
+    if (!original) throw error;
+  }
+  if (!original)
+    throw new Error('The owner withdrawal returned without an original transaction ID.');
+  return original;
+}
+
+async function recheckBeforeOwnerWithdrawal(
+  intent: NightSendIntent,
+  request: NightSendRequest,
+  ports: NightSendPorts,
+  ownerRoute: boolean,
+  retireRefused: RetireRefusal | undefined,
+) {
+  try {
+    assertSameIntent(intent, await resolveIntent(request, ports));
+  } catch (error) {
+    if (ownerRoute) await retireRefused?.(intent, 'name-recheck');
+    throw error;
+  }
+}
+
+async function submitSelectedWithdrawal(
+  intent: NightSendIntent,
+  ports: NightSendPorts,
+  submitWithdrawal: OwnerSubmit | undefined,
+  prepareWithdrawal: PrepareWithdrawal | undefined,
+  markOwnerStarted: MarkOwnerStarted | undefined,
+  retireRefused: RetireRefusal | undefined,
+) {
+  if (submitWithdrawal) {
+    if (retireRefused && !markOwnerStarted)
+      throw new Error('The owner journal cannot mark a submission attempt.');
+    await markOwnerStarted?.(intent);
+    return submitOwnerWithdrawal(intent, ports, submitWithdrawal);
+  }
+  if (!prepareWithdrawal) throw new Error('The withdrawal preparation port is unavailable.');
+  return submitLeg('withdraw', intent, await prepareWithdrawal(intent), ports);
+}
+
 /** Standalone wallet-mediated NIGHT payment with original-only reconciliation. */
 export async function sendNightByName(input: NightSendRequest, ports: NightSendPorts) {
+  const submitWithdrawal = ports.submitWithdrawal?.bind(ports);
+  const prepareWithdrawal = ports.prepareWithdrawal?.bind(ports);
+  const markOwnerStarted = ports.journal.markOwnerStarted?.bind(ports.journal);
+  const retireRefused = ports.journal.retireRefused?.bind(ports.journal);
   const request = Object.freeze({
     requestId: input.requestId,
     source: input.source,
@@ -181,13 +275,17 @@ export async function sendNightByName(input: NightSendRequest, ports: NightSendP
   });
   validate(request);
   const retained = await ports.journal.readIntent();
-  const intent = retained ?? (await resolveIntent(request, ports));
+  const intent = retained
+    ? Object.freeze({ ...retained, operations: Object.freeze(retained.operations) })
+    : await resolveIntent(request, ports);
   // Preserve the stored scope even if the original name has moved since dispatch.
   assertSameIntent(intent, { ...intent, ...request, operations: NIGHT_SEND_OPERATIONS });
   const storedWithdrawal = await ports.journal.readLeg('withdraw');
   const storedDeposit = await ports.journal.readLeg('deposit');
   if ((storedWithdrawal && !retained) || (storedDeposit && (!retained || !storedWithdrawal)))
     throw new Error('The payment journal is incomplete. Inspect the original receipts.');
+  if (retained && !storedWithdrawal)
+    throw new Error('The original withdrawal has no transaction ID; inspect before retry.');
   let withdrawal = storedWithdrawal && checkedLeg(storedWithdrawal);
   let deposit = storedDeposit && checkedLeg(storedDeposit);
   if (withdrawal && deposit) requireDistinctLegs(withdrawal, deposit);
@@ -196,10 +294,23 @@ export async function sendNightByName(input: NightSendRequest, ports: NightSendP
     const balance = await ports.readSourceBalance(intent.source);
     if (balance === undefined || balance < BigInt(intent.amount))
       throw new Error('Unsupported source account or insufficient NIGHT balance.');
-    if ((await ports.review(intent)) !== true) throw new NightPaymentDeclined();
+    if ((await ports.review(intent, balance)) !== true) throw new NightPaymentDeclined();
     if (!retained) await ports.journal.createIntent(intent);
-    assertSameIntent(intent, await resolveIntent(request, ports));
-    withdrawal = await submitLeg('withdraw', intent, await ports.prepareWithdrawal(intent), ports);
+    await recheckBeforeOwnerWithdrawal(
+      intent,
+      request,
+      ports,
+      submitWithdrawal !== undefined,
+      retireRefused,
+    );
+    withdrawal = await submitSelectedWithdrawal(
+      intent,
+      ports,
+      submitWithdrawal,
+      prepareWithdrawal,
+      markOwnerStarted,
+      retireRefused,
+    );
   }
   const finalized = (original: NightSendLeg) => ports.finalized(original).catch(() => false);
   if (!(await finalized(withdrawal))) return { phase: 'withdrawal-pending' as const, withdrawal };

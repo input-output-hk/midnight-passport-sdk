@@ -12,6 +12,9 @@ const b = await import(
 const midnight = await import(
   new URL('../packages/adapter-midnight-js/dist/index.js', import.meta.url).href
 );
+const { submitFencedValueCall } = await import(
+  new URL('../packages/adapter-midnight-js/dist/chain.js', import.meta.url).href
+);
 // ledger-v9 is the browser adapter's prototype dependency.
 const ledger = await import(
   pathToFileURL(
@@ -615,7 +618,7 @@ test('the Midnight chain uses injected prover, sponsor and submitter ports', asy
   const compiledContracts = [];
   /** @type {import('../packages/protocol/dist/index.js').PassportEvent[]} */
   const events = [];
-  const chain = midnight.createMidnightChain({
+  const opts = {
     network: {
       networkId: 'undeployed',
       bindingId: 'acc-45721e1',
@@ -670,7 +673,23 @@ test('the Midnight chain uses injected prover, sponsor and submitter ports', asy
       await providers.midnightProvider.submitTx(balanced);
       return { public: { txHash: 'hash', blockHeight: 7 } };
     },
-  });
+  };
+  const chain = midnight.createMidnightChain(opts);
+  Reflect.set(opts, 'submit', undefined);
+  assert.equal(
+    chain.supportsBeforeSubmit,
+    undefined,
+    'a substituted call pipeline is not certified',
+  );
+  await assert.rejects(
+    chain.call({
+      address: 'addr',
+      circuit: 'withdraw_unshielded_with_p256',
+      args: [],
+      beforeSubmit: async () => {},
+    }),
+    { code: 'BindingUnsupported' },
+  );
   assert.deepEqual(
     await chain.call({
       address: 'addr',
@@ -737,6 +756,72 @@ test('the Midnight chain uses injected prover, sponsor and submitter ports', asy
     }),
     { txHash: 'hash', blockHeight: 7 },
   );
+});
+
+test('a finalized value identity is durably fenced before dispatch', async () => {
+  /** @type {string[]} */
+  const calls = [];
+  const transaction = {
+    transactionHash: () => 'ab'.repeat(32),
+    identifiers: () => ['00' + 'cd'.repeat(32)],
+    serialize: () => Uint8Array.of(1, 2),
+  };
+  const identity = {
+    networkId: 'undeployed',
+    account: '12'.repeat(32),
+    circuit: 'withdraw_unshielded_with_p256',
+  };
+  const dispatched = async (/** @type {Uint8Array} */ bytes) => {
+    calls.push('dispatch');
+    assert.deepEqual(bytes, Uint8Array.of(1, 2));
+    return 'submitted';
+  };
+  assert.equal(
+    await submitFencedValueCall(
+      transaction,
+      identity,
+      async (
+        /** @type {import('../packages/protocol/dist/index.js').PreparedValueSubmission} */ prepared,
+      ) => {
+        calls.push('fence');
+        assert.deepEqual(prepared, {
+          ...identity,
+          transactionHash: 'ab'.repeat(32),
+          identifiers: ['00' + 'cd'.repeat(32)],
+        });
+      },
+      dispatched,
+    ),
+    'submitted',
+  );
+  assert.deepEqual(calls, ['fence', 'dispatch']);
+  calls.length = 0;
+  await assert.rejects(
+    submitFencedValueCall(
+      transaction,
+      identity,
+      async () => {
+        calls.push('fence');
+        throw new Error('storage failed');
+      },
+      dispatched,
+    ),
+    /storage failed/,
+  );
+  assert.deepEqual(calls, ['fence'], 'failed persistence never dispatches');
+  calls.length = 0;
+  await assert.rejects(
+    submitFencedValueCall(
+      { ...transaction, identifiers: () => [] },
+      identity,
+      async () => {
+        calls.push('fence');
+      },
+      dispatched,
+    ),
+    { code: 'TransferInvalid' },
+  );
+  assert.deepEqual(calls, [], 'a missing original ID never dispatches');
 });
 
 test('deploy refuses an answer whose txHashes are not a list of strings', async () => {

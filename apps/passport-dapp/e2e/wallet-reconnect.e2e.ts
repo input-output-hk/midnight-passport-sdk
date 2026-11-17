@@ -61,6 +61,7 @@ const config = {
   indexerUri: process.env.MN_INDEXER_URL!,
   indexerWsUri: process.env.MN_INDEXER_WS_URL!,
   nodeUri: process.env.MN_NODE_URL!,
+  proofServerUri: process.env.MN_PROOF_SERVER_URL ?? 'http://localhost:6300',
 };
 const NIGHT = '00'.repeat(32);
 let wallet: DevWallet | undefined;

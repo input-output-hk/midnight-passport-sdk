@@ -50,7 +50,7 @@ export const RP_ID = 'localhost';
 /** The grants ACC binding this page deploys: the artefact build the manifest pin above names. */
 export const BINDING_ID = 'acc-s3r1.1';
 /** The host pins this separately from the service's discovery answer. */
-const ARTEFACT_URL =
+export const ARTEFACT_URL =
   import.meta.env.VITE_PASSPORT_ARTEFACT_URL ??
   `${SERVICE_URL.replace(/\/+$/, '')}/v1/zk/${BINDING_ID}`;
 const signing = demoSigningMode({

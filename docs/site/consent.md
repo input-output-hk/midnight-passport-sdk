@@ -114,6 +114,15 @@ and rechecks the selected export ID/account plus handoff network/binding before
 showing the sensitive opening. Missing review, changed fields, expiry or replacement
 refuses. The review is not a reusable next-credential token or a new signer permission.
 
+The source-only named NIGHT owner path can add the canonical `.night` name, pinned
+registry, full recipient ACC, bridge wallet and both ACC operations to this
+actual credential review. An opt-in finalized-withdrawal callback checks that
+approved named scope before the journal fence. The ACC signature binds the
+withdrawal to the bridge, while the name and recipient ACC are checked by the
+host; the current circuit does not sign those naming fields. The opt-in local
+demo control now uses this review seam. A native/provider payment has not been
+qualified through it.
+
 A matching scoped JubJub grant transfer keeps its standalone exact decision because
 it makes no native credential call. Other device/grant/rotation reviews remain where
 their final data arrives later. Viewing access may precede exact mutation details,

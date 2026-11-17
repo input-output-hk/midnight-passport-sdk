@@ -26,6 +26,7 @@ export const ACTIONS: readonly ActionId[] = [
   'walletRefresh',
   'fund',
   'withdraw',
+  'sendNamedNight',
 ];
 export const byId = <T extends HTMLElement = HTMLElement>(id: string): T => {
   const element = document.getElementById(id);

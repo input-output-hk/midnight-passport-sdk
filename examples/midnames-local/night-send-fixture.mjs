@@ -8,6 +8,11 @@ import {
   sendNightByName,
 } from '../../apps/passport-dapp/src/midnames/night-send.ts';
 import { createMidnamesNameService } from '../../apps/passport-dapp/src/midnames/resolver.ts';
+import {
+  assertExactNightBridgeSpend,
+  exactNightBridgeOutput,
+  hasExactNightBridgeCoin,
+} from '../../apps/passport-dapp/src/midnames/night-bridge-output.ts';
 import { readHostConfirmation } from '../../apps/passport-service/src/host-confirmation.ts';
 import { prepareLocalnetNight } from '../../apps/passport-funding-service/src/night-preparation.ts';
 
@@ -77,14 +82,6 @@ async function canonicalReceipt(original, ledger, versionOfRecord) {
   };
 }
 
-function unshieldedOffers(transaction) {
-  return [...transaction.intents].flatMap(([segment, intent]) =>
-    [intent.guaranteedUnshieldedOffer, intent.fallibleUnshieldedOffer]
-      .filter(Boolean)
-      .map((offer) => ({ offer, intentHash: intent.intentHash(segment) })),
-  );
-}
-
 export async function qualifyNightSend({
   output,
   get,
@@ -101,6 +98,8 @@ export async function qualifyNightSend({
   jubjubChallenges,
   registryAddress,
   target,
+  repointTarget,
+  repointName,
   defaultField,
   priorSplitId,
   step,
@@ -188,6 +187,11 @@ export async function qualifyNightSend({
   const finals = new Map();
   const browserReviewRequested = process.env.PASSPORT_MIDNAMES_BROWSER_REVIEW === '1';
   const manualBrowserReview = process.env.PASSPORT_MIDNAMES_BROWSER_MANUAL === '1';
+  const browserDecline = process.env.PASSPORT_MIDNAMES_BROWSER_DECISION === 'decline';
+  const browserRepoint = process.env.PASSPORT_MIDNAMES_BROWSER_REPOINT === '1';
+  assert.ok(!browserDecline || (browserReviewRequested && !manualBrowserReview));
+  assert.ok(!browserRepoint || (browserReviewRequested && !manualBrowserReview && !browserDecline));
+  assert.equal(!!repointName, browserRepoint);
   let browserReview;
   const openPorts = (beforeDeposit) => ({
     names,
@@ -208,7 +212,7 @@ export async function qualifyNightSend({
           intent,
           registryAddress,
           join(directory, 'browser-review.png'),
-          manualBrowserReview ? undefined : 'approve',
+          manualBrowserReview ? undefined : browserDecline ? 'decline' : 'approve',
         );
         assert.equal(signatures, 0);
         assert.deepEqual(sent, { withdraw: 0, deposit: 0 });
@@ -222,7 +226,10 @@ export async function qualifyNightSend({
             dispatchesBefore: sent,
           }),
         );
-        if (browserReview.approved) approvals++;
+        if (browserReview.approved) {
+          approvals++;
+          if (browserRepoint) await repointName();
+        }
         return browserReview.approved;
       }
       if (interactiveReviewRequested()) {
@@ -269,25 +276,10 @@ export async function qualifyNightSend({
         'binding',
         readFileSync(join(directory, 'withdraw-' + withdrawal.hash + '.private.bin')),
       );
-      assert.equal(original.transactionHash(), withdrawal.hash);
-      const offers = unshieldedOffers(original).filter(({ offer }) => offer.outputs.length > 0);
-      assert.equal(offers.length, 1);
-      const [{ intentHash, offer }] = offers;
-      assert.equal(offer.outputs.length, 1);
-      assert.equal(offer.outputs[0].value, BigInt(intent.amount));
-      assert.equal(offer.outputs[0].owner, bridge);
-      const matches = (coin) =>
-        coin.intentHash === intentHash &&
-        coin.outputNo === 0 &&
-        coin.value === BigInt(intent.amount) &&
-        coin.type === offer.outputs[0].type;
-      assert.ok(
-        await until(async () => (await availableNight()).some(({ utxo }) => matches(utxo))),
-      );
+      const expected = exactNightBridgeOutput(intent, withdrawal, original);
+      assert.ok(await until(async () => hasExactNightBridgeCoin(await availableNight(), expected)));
       const balanced = await makeCall(target, intent.operations[1], [color, BigInt(intent.amount)]);
-      const inputs = unshieldedOffers(balanced.tx).flatMap(({ offer: item }) => item.inputs);
-      assert.equal(inputs.length, 1);
-      assert.ok(matches(inputs[0]), 'Deposit must consume the original exact NIGHT output');
+      assertExactNightBridgeSpend(balanced.tx, expected, ledger.addressFromKey);
       return prepared('deposit', balanced);
     },
     async finalized(original) {
@@ -314,7 +306,7 @@ export async function qualifyNightSend({
     };
   }
   const interrupted = new Error('Injected interruption after withdrawal finality');
-  step('withdraw-then-interrupt-before-deposit');
+  step(browserDecline ? 'review-before-owner-signature' : 'withdraw-then-interrupt-before-deposit');
   /** @type {unknown} */ let failure;
   try {
     await sendNightByName(
@@ -337,7 +329,73 @@ export async function qualifyNightSend({
       join(directory, 'decline.json'),
       JSON.stringify({ reviewDecision: 'declined', approvals, signatures, sent }),
     );
-    throw failure;
+    if (!browserDecline) throw failure;
+    assert.equal(approvals, 0);
+    assert.deepEqual(browserReview, { approved: false, displayed: true, mode: 'automated' });
+    assert.equal(await openJournal(directory).readIntent(), undefined);
+    assert.equal(await openJournal(directory).readLeg('withdraw'), undefined);
+    assert.equal(await openJournal(directory).readLeg('deposit'), undefined);
+    const final = { source: String(await balance(source)), target: String(await balance(target)) };
+    assert.deepEqual(final, { source: '10', target: '0' });
+    return {
+      declined: true,
+      source,
+      target,
+      name: request.name,
+      fundingHash: funding.tx.transactionHash(),
+      browserReview,
+      approvals,
+      signatures,
+      sent,
+      final,
+    };
+  }
+  if (browserDecline) assert.fail('The browser decline did not stop the named payment.');
+  if (browserRepoint) {
+    assert.match(String(failure), /The original payment scope changed/);
+    assert.equal(approvals, 1);
+    assert.equal(signatures, 0);
+    assert.deepEqual(sent, { withdraw: 0, deposit: 0 });
+    assert.ok(repointTarget);
+    assert.equal(
+      (await names.resolve({ name: request.name, networkId }))?.accountAddress,
+      repointTarget,
+    );
+    const journal = openJournal(directory);
+    assert.equal((await journal.readIntent())?.target, target);
+    assert.equal(await journal.readLeg('withdraw'), undefined);
+    assert.equal(await journal.readLeg('deposit'), undefined);
+    const final = {
+      source: String(await balance(source)),
+      target: String(await balance(target)),
+      repoint: String(await balance(repointTarget)),
+    };
+    assert.deepEqual(final, { source: '10', target: '0', repoint: '0' });
+    createOnce(
+      join(directory, 'repoint.json'),
+      JSON.stringify({
+        name: request.name,
+        originalTarget: target,
+        repointTarget,
+        approvals,
+        signatures,
+        sent,
+        final,
+      }),
+    );
+    return {
+      repointed: true,
+      source,
+      target,
+      repointTarget,
+      name: request.name,
+      fundingHash: funding.tx.transactionHash(),
+      browserReview,
+      approvals,
+      signatures,
+      sent,
+      final,
+    };
   }
   assert.ok(failure instanceof Error);
   assert.equal(failure.cause, interrupted);

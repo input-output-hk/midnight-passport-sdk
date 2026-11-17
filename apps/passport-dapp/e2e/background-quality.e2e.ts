@@ -124,12 +124,32 @@ try {
         indexerUri: 'http://synthetic',
         indexerWsUri: 'ws://synthetic',
         nodeUri: 'http://synthetic',
+        proofServerUri: 'http://synthetic',
       });
       let ticks = 0;
       const timer = setInterval(() => ticks++, 5);
       let workerResult: unknown;
+      let bridge: NonNullable<typeof wallet.nightBridge> | undefined;
       try {
         const api = await wallet.descriptor.connect('undeployed');
+        bridge = wallet.nightBridge;
+        if (!bridge) throw Error('Internal NIGHT bridge port unavailable.');
+        const bridgeAddress = await bridge.getAddress();
+        const expected = {
+          transactionHash: 'e'.repeat(64),
+          intentHash: 'd'.repeat(64),
+          outputNo: 0,
+          owner: bridgeAddress,
+          type: '00'.repeat(32),
+          value: 4n,
+        };
+        const bridgeAvailable = await bridge.hasOutput(expected);
+        let malformedBridgeRejected = false;
+        try {
+          await bridge.hasOutput({ ...expected, owner: 'bad' });
+        } catch {
+          malformedBridgeRejected = true;
+        }
         const [balances, dust] = await Promise.all([
           api.getUnshieldedBalances(),
           api.getDustBalance(),
@@ -138,6 +158,10 @@ try {
           night: String(balances['00'.repeat(32)]),
           clearedWorkerSeed: dust.balance === 0n,
           callerSeedUnchanged: seed[0] === 4,
+          bridgeAddress,
+          bridgeAvailable,
+          malformedBridgeRejected,
+          connectorHasBridge: 'nightBridge' in api,
           ticks,
         };
       } finally {
@@ -150,6 +174,12 @@ try {
         await wallet.descriptor.connect('undeployed');
       } catch {
         stopped = true;
+      }
+      let stoppedBridge = false;
+      try {
+        await bridge?.getAddress();
+      } catch {
+        stoppedBridge = true;
       }
       const { createBrowserSecretStore } = await import(storageModule);
       const databaseName = 'passport-quality-' + crypto.randomUUID();
@@ -197,6 +227,7 @@ try {
       return {
         worker: workerResult,
         stopped,
+        stoppedBridge,
         indexedDB: {
           conflicts: writes.filter((r) => r.status === 'rejected').length,
           reopened: recovered.bytes instanceof Uint8Array,
@@ -219,8 +250,13 @@ try {
       clearedWorkerSeed: boolean;
       callerSeedUnchanged: boolean;
       ticks: number;
+      bridgeAddress: string;
+      bridgeAvailable: boolean;
+      malformedBridgeRejected: boolean;
+      connectorHasBridge: boolean;
     };
     stopped: boolean;
+    stoppedBridge: boolean;
     indexedDB: { conflicts: number; reopened: boolean };
     realImport: { imported: boolean; worker: boolean };
     messageChannel: { native: boolean };
@@ -229,7 +265,12 @@ try {
   assert.equal(result.worker.clearedWorkerSeed, true);
   assert.equal(result.worker.callerSeedUnchanged, true);
   assert.ok(result.worker.ticks >= 3);
+  assert.equal(result.worker.bridgeAddress, 'b'.repeat(64));
+  assert.equal(result.worker.bridgeAvailable, true);
+  assert.equal(result.worker.malformedBridgeRejected, true);
+  assert.equal(result.worker.connectorHasBridge, false);
   assert.equal(result.stopped, true);
+  assert.equal(result.stoppedBridge, true);
   assert.deepEqual(result.indexedDB, { conflicts: 1, reopened: true });
   assert.deepEqual(result.realImport, { imported: true, worker: true });
   assert.deepEqual(result.messageChannel, { native: true });

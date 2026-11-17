@@ -9,6 +9,7 @@ import {
   refuseExactReview,
   type ExactReview,
 } from './exact-review.js';
+import type { NightSendIntent } from './midnames/night-send.js';
 
 const PURPOSES: Partial<Record<ActionId, string>> = {
   unlockOwner:
@@ -47,9 +48,11 @@ const PURPOSES: Partial<Record<ActionId, string>> = {
   rotate:
     'Unlock reader keys to inspect holdings, devices and read grants. Then review the live snapshot before publishing fresh seals and switching the ACC viewing key. Each P-256 signed transaction may need another passkey prompt.',
   wallet:
-    'Derive the separate built-in HD wallet seed from this passkey’s PRF and sync its balances. This is not the ACC viewing secret, fee sponsor wallet or a recovery mechanism. The demo wallet is read-only.',
+    'Derive the separate built-in HD wallet seed from this passkey’s PRF and sync its balances. This is not the ACC viewing secret, fee sponsor wallet or a recovery mechanism. Its public connector is read-only; a separate internal NIGHT deposit path needs an exact reviewed payment.',
   withdraw:
     'An active, matching session uses its scoped JubJub grant after the exact transfer review. Outside its scope, or when you select owner approval, a fresh passkey is required. Review the exact network, ACC, recipient, asset and base-unit amount before signing an unshielded withdrawal. Reader-key derivation and P-256 signing are separate purposes. A timeout after submission does not mean no transfer.',
+  sendNamedNight:
+    'For a new named NIGHT payment, review the resolved Passport ACC, registry, bridge, smallest-unit amount and both contract operations before fresh owner passkey approval. A pending payment resumes only its original transaction IDs; resuming does not authorize another withdrawal.',
 };
 
 const CEREMONIES: Record<PasskeyCeremony['purpose'], string> = {
@@ -120,7 +123,8 @@ export function stageExactCredentialReview(input: ExactReview, check: () => void
   const scheme =
     context.ownerUnlocked || context.arm === 'jubjub' ? 'jubjub-schnorr' : 'p256-webauthn';
   if (
-    intent.kind !== consent.action ||
+    (intent.kind !== consent.action &&
+      !(consent.action === 'sendNamedNight' && intent.kind === 'withdraw')) ||
     intent.account !== context.account ||
     intent.networkId !== context.network ||
     intent.route !== route ||
@@ -159,6 +163,31 @@ export function assertExactWithdrawal(input: {
     return refuseExactReview();
 }
 
+/** The host must still match the named route after the actual owner credential approval. */
+export function assertExactNamedNight(intent: NightSendIntent): void {
+  const approved = approvedExact('withdraw');
+  if (
+    approved.kind !== 'withdraw' ||
+    !approved.namedNight ||
+    approved.account !== intent.source ||
+    approved.networkId !== intent.networkId ||
+    approved.color !== '00'.repeat(32) ||
+    approved.amount !== intent.amount ||
+    approved.recipient !== intent.bridge ||
+    approved.namedNight.requestId !== intent.requestId ||
+    approved.namedNight.name !== intent.name ||
+    approved.namedNight.asset !== intent.asset ||
+    approved.namedNight.providerId !== intent.providerId ||
+    approved.namedNight.namespace !== intent.namespace ||
+    approved.namedNight.target !== intent.target ||
+    approved.namedNight.operations.length !== intent.operations.length ||
+    approved.namedNight.operations.some(
+      (operation, index) => operation !== intent.operations[index],
+    )
+  )
+    return refuseExactReview();
+}
+
 export function assertExactGrantExport(account: string, grantId: string): void {
   const intent = approvedExact('exportGrant');
   if (intent.kind !== 'exportGrant' || intent.account !== account || intent.grantId !== grantId)
@@ -184,6 +213,8 @@ export async function reviewDemoAction(action: ActionId, input: ConsentContext):
       'Review the live devices, holdings and read grants before resealing and rotating viewing keys.',
     withdraw:
       'Review the exact network, account, recipient, asset and smallest-unit amount. Existing grant and unknown-transaction fences remain enforced.',
+    sendNamedNight:
+      'Review the full named NIGHT route and its withdrawal and deposit legs. A pending original must be reconciled, never sent again as a new withdrawal.',
     startSession:
       'Review and issue a separately scoped transfer permission for its own holder, caps and expiry.',
     revokeSession: 'Lock the local grant signer and revoke its on-chain permission after review.',

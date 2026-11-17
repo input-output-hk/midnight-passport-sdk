@@ -111,6 +111,7 @@ async function serviceRoute(h: JourneyHarness, route: Route, url: URL) {
         bindingId: 'acc-s3r1.1',
         manifestSha256: manifest,
         serviceApiVersion: '1.0.0',
+        apiVersions: ['1.0.0-pre.0'],
         artefactUrl: 'http://localhost:8787/v1/zk/acc-s3r1.1',
         indexerUri: 'http://localhost:18088',
         indexerWsUri: 'ws://localhost:18088',

@@ -6,6 +6,7 @@ import { fromHex, toHex } from './codec.js';
 import { p256, isSealedP256 } from './p256-device.js';
 import { readQualifiedHolding } from './holdings.js';
 import type { QualifiedHoldingSource } from './ports/index.js';
+import { requireValueSubmissionChain } from './value-submit.js';
 import {
   equalBytes,
   deviceBinding,
@@ -23,6 +24,7 @@ export class P256Withdrawals {
     options: P256MethodArgs<'withdrawUnshielded'>[1] = {},
   ) => {
     const { network, binding, authoriser, useCounter, chain, run } = this.host;
+    const beforeSubmit = options.beforeSubmit;
     const record = this.record;
     return run(options, async (flow) => {
       const transfer = prepareUnshieldedWithdrawal(request);
@@ -39,6 +41,7 @@ export class P256Withdrawals {
         );
       if (record.status !== 'active')
         throw new PassportConnectorError('AccountNotFound', 'The P-256 ACC is not active.');
+      const valueChain = await requireValueSubmissionChain(chain, beforeSubmit);
       return authoriser.withKeySession(
         async () => {
           const selected = await authoriser.devicePublicKey();
@@ -88,9 +91,7 @@ export class P256Withdrawals {
               'The signature names another device.',
             );
           flow.checkpoint();
-          const tx = await (
-            await chain()
-          ).call({
+          const tx = await valueChain.call({
             address: record.address,
             circuit,
             args: [
@@ -106,6 +107,7 @@ export class P256Withdrawals {
               },
             ],
             ...flow.ports,
+            ...(beforeSubmit && { beforeSubmit }),
           });
           return { ...tx, nextUseCounter: counter + 1n };
         },

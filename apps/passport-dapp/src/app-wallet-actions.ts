@@ -1,7 +1,6 @@
-import { PassportConnectorError } from '@input-output-hk/mn-passport-account';
-import { fetchServiceConfig } from '@input-output-hk/mn-passport-adapter-service';
+import { fetchCheckedV1Config } from '@input-output-hk/mn-passport-adapter-service';
 
-import { RP_ID, SERVICE_URL } from './connector.js';
+import { ARTEFACT_URL, BINDING_ID, MANIFEST_SHA256, RP_ID, SERVICE_URL } from './connector.js';
 
 import { tracedFetch, traceOperation } from './operation-trace.js';
 
@@ -27,13 +26,16 @@ export class WalletActions {
     checkRoutineReview();
     const lease = this.host.state.account && routineKeys.lease(this.host.state.account);
     this.host.status('Reading the service configuration…');
-    const config = await fetchServiceConfig(SERVICE_URL, tracedFetch, this.host.network);
-    if (config.networkId !== this.host.network) {
-      throw new PassportConnectorError(
-        'NetworkMismatch',
-        `service is on ${config.networkId}, the page is bound to ${this.host.network}`,
-      );
-    }
+    const config = await fetchCheckedV1Config(
+      SERVICE_URL,
+      {
+        networkId: this.host.network,
+        bindingId: BINDING_ID,
+        manifestSha256: MANIFEST_SHA256,
+        artefactUrl: ARTEFACT_URL,
+      },
+      { fetch: tracedFetch },
+    );
     this.host.stage('seed');
     checkRoutineReview();
     lease?.();

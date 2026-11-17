@@ -209,3 +209,62 @@ original-intent recovery and one deposit to 6/4 balances. Its manual browser
 mode is available for a human-run local exercise but has not been qualified
 here. This does not add a send page to the Passport demo or establish real
 passkey consent.
+
+At signed `a20a9b9`, the isolated automated browser decline retained 10/0
+source/target ACC balances and made no owner signature, withdrawal, deposit or
+payment journal entry. The helper now treats page close and timeout as errors;
+only a completed **Decline** click qualifies this negative result.
+
+At signed `e8fd610`, another isolated run approved the original named NIGHT
+route in the localhost browser, then changed `alice.night` on-chain to a third
+activated ACC before owner signing. Fresh resolution saw the new target, but
+the reviewed intent kept the original target. The fixture refused the send
+with no owner signature or payment dispatch and 10/0/0 ACC balances. This is
+a local change-after-review case, not a Passport demo send page or online
+provider qualification.
+
+The source-only browser journal for this route retains one active reviewed
+intent per source ACC on the demo origin, with durable per-leg identifiers and
+credential scope. It refuses another request while the original is active;
+both legs must pass a finality check before the host can archive it. The
+owner-send page and its passkey/bridge adapters remain to be connected and
+qualified, so this storage path is not a completed demo send journey.
+
+An opt-in source API now gives the host finalized unshielded-withdrawal IDs
+before submission and awaits its durable callback. Unsupported chain adapters
+refuse before owner signing. The opt-in local reference demo now wires the
+browser journal and second payment leg; no new native/provider run qualifies
+that path.
+
+The source-only NIGHT orchestrator now accepts an account-owner callback path:
+it rechecks the named route at the finalized pre-submit point and commits the
+original withdrawal IDs before dispatch. A name refusal before entering the
+owner API can retire the unsubmitted intent into audit history. A durable
+owner-start marker keeps later no-ID outcomes blocked; a lost reply retains
+the original for lookup. A source
+helper binds the selected JubJub ACC to the reviewed NIGHT amount and bridge.
+The opt-in local demo now wires that helper, the bridge/finality adapter and
+send control. Native browser qualification remains open.
+
+The source owner-consent model can stage the exact named NIGHT request in the
+actual passkey review: name, registry, recipient ACC, bridge address, amount and
+withdraw/deposit operations. An opt-in finalized callback checks that approved
+scope again before the journal fence. The ACC signs the bridge withdrawal;
+the name and recipient ACC remain host-checked rather than signed circuit
+fields. The opt-in local demo control now uses this seam, without a qualified
+native browser payment.
+
+The local NIGHT fixture now uses a reusable source guard for the exact bridge
+output and balanced deposit input. It refuses a different withdrawal identity,
+extra output or substituted deposit coin before the second dispatch. The
+browser deposit wallet and send control remain open work; source tests do not
+establish another native payment.
+
+An internal built-in wallet worker port observes the exact bridge output and
+can prepare one device-held recipient deposit for a future demo send control.
+It checks its own raw address, a strict NIGHT sync snapshot, one ACC deposit
+action and exact original coin input before exposing the finalized original.
+The host must durably fence that original; the worker independently reads the
+matching IndexedDB record before accepting one dispatch.
+The public connector stays read-only. The browser send control and native
+qualification remain open work.

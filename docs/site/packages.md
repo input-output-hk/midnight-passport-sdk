@@ -74,6 +74,11 @@ packages by the boundary your host owns; the demo apps/images are separate.
 | `adapter-midnight-js` | Chain port that isolates the heavy Midnight runtime from `account` and lets hosts load it when needed. | Active; ledger reads and call pipeline over injected prover, sponsor, and submitter ports, plus a grant source that checks the complete ACC roster, signing nonce, and read-key hashes. |
 | `adapter-browser` | Optional browser composition root that wires `account`, passkeys, keys, and the lazy chain adapter; it can install `window.midnight.passport`. | Active; `./prototype` also retains older demo helpers during migration. A host can compose the ports itself. |
 
+Later source adds an opt-in `adapter-midnight-js` unbound NIGHT deposit proof
+helper for the #318 named-send host. The browser wallet retains balance, signing
+and dispatch authority; this helper is not in the published RC9 package and has
+not passed connected native or real-provider qualification.
+
 ## What an integrator installs
 
 RC8 includes a read-only naming-service port in `account/ports`

@@ -521,6 +521,41 @@
             <p class="prompts" id="withdraw-prompts"></p>
             <p class="action-desc" id="withdraw-desc"></p>
           </li>
+          <li class="action" hidden>
+            <label for="named-night-recipient">Recipient Passport name</label>
+            <input
+              id="named-night-recipient"
+              class="action-input"
+              type="text"
+              autocomplete="off"
+              autocapitalize="off"
+              spellcheck="false"
+              placeholder="alice.night"
+              aria-describedby="sendNamedNight-desc"
+            />
+            <label for="named-night-amount">NIGHT in smallest units</label>
+            <input
+              id="named-night-amount"
+              class="action-input"
+              type="text"
+              inputmode="numeric"
+              autocomplete="off"
+              value="1"
+              aria-describedby="sendNamedNight-desc"
+            />
+            <button
+              id="sendNamedNight"
+              class="btn btn-secondary"
+              type="button"
+              aria-describedby="sendNamedNight-prompts sendNamedNight-desc named-night-status"
+              disabled
+            >
+              Review named NIGHT payment
+            </button>
+            <p class="prompts" id="sendNamedNight-prompts"></p>
+            <p class="action-desc" id="sendNamedNight-desc"></p>
+            <p class="action-desc" id="named-night-status" role="status"></p>
+          </li>
         </ul>
       </section>
       <section id="routine-controls" class="routine-controls" aria-labelledby="routine-title">

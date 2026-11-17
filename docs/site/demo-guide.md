@@ -5,7 +5,7 @@ permalink: /demo-guide/
 ---
 
 The reference app shows one way to compose Passport accounts, local services, passkeys
-and a separate read-only wallet. Its UI, local journals, routine memory leases and
+and a separate demo wallet with a read-only public connector. Its UI, local journals, routine memory leases and
 funding setup belong to the demo. To integrate the packages into your own product,
 start with the [Library integration guide]({{ '/library-guide/' | relative_url }}) and
 [public runtime/export index]({{ '/packages/#runtime-and-host-requirements' | relative_url }}).
@@ -53,6 +53,18 @@ must hold each asset on that chain. See the
 [funding operations guide](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/passport-funding-service/README.md).
 Do not run a second wallet on occupied ports or delete existing state to repair a
 restart. An existing configured demo may already be ready to use.
+
+### Source preview: named NIGHT payment
+
+The opt-in local Midnames profile adds a separate **Send NIGHT to a Passport
+name** form under **Passport account → Withdraw**. It requires a JubJub ACC,
+connected built-in wallet, `undeployed` chain, pinned standalone registry and
+loopback endpoints. The form reviews the resolved ACC and two operations before
+the actual owner credential call. A pending original remains visible for
+reconciliation, and an owner attempt without a transaction ID blocks automatic
+retry. See the [app configuration](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/README.md#source-preview-opt-in-local-named-night-send)
+and [naming limits]({{ '/names/' | relative_url }}). This page wiring has source
+checks only; a connected native payment and real-provider acceptance remain open.
 
 ## Enter and navigate
 
@@ -130,7 +142,8 @@ this demo's consent/custody policy or evidence of fresh ACC authentication.
 This demo explicitly creates a dedicated module Worker through
 `adapter-browser/background`; importing the account library does not start one.
 The page retains passkeys and blocking review. The worker hosts wallet/HD derivation,
-subscriptions and dust synchronization, with an allowlist of read methods. The page
+subscriptions and dust synchronization, with an allowlist of connector read methods and
+separate guarded internal NIGHT deposit methods. The page
 validates unknown replies before rendering and ignores completions after stop or
 scope replacement. NIGHT and DUST have separate progress/status; unavailable DUST
 does not turn NIGHT into zero.
