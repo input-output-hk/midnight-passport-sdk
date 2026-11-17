@@ -198,6 +198,8 @@ export MIDNIGHT_NETWORK=local
 compose=(docker compose -f "$root/infra/localnet/docker-compose.yml" -f "$root/infra/localnet/docker-compose.macos.yml")
 service=""
 shared_session=0
+# shellcheck source=midnight-service-drain.sh
+. "$root/scripts/midnight-service-drain.sh"
 
 # Kills a process and its descendants by PID (never by name pattern).
 kill_tree() {
@@ -207,40 +209,25 @@ kill_tree() {
   done
   kill "$pid" 2>/dev/null || true
 }
-# Snapshot every child before signalling, so a reparented process cannot be
-# mistaken for a stopped sponsor wallet after its pnpm parent exits.
-tree_pids() {
-  local pid=$1 child
-  for child in $(pgrep -P "$pid" 2>/dev/null || true); do
-    tree_pids "$child"
-  done
-  printf '%s\n' "$pid"
-}
 cleanup() {
-  local started_service=0 quiet=1 deadline pid observed
+  local drained=0
   trap - EXIT INT TERM
   if [ -n "$service" ]; then
-    if kill -0 "$service" 2>/dev/null; then started_service=1; fi
-    observed=$(tree_pids "$service")
-    kill_tree "$service"
-    wait "$service" 2>/dev/null || true
-    deadline=$((SECONDS + 15))
-    while [ "$SECONDS" -lt "$deadline" ]; do
-      quiet=1
-      for pid in $observed; do
-        if kill -0 "$pid" 2>/dev/null; then quiet=0; break; fi
-      done
-      [ "$quiet" -eq 1 ] && break
-      sleep 1
-    done
-    [ "$quiet" -eq 1 ] || echo "prototype-up: sponsor process still exists; shared session remains fenced." >&2
+    if [ "$stack" = shared-ledger9 ]; then
+      if drain_shared_service "$service"; then drained=1; fi
+    else
+      kill_tree "$service"
+      wait "$service" 2>/dev/null || true
+    fi
   fi
-  if [ "$shared_session" -eq 1 ] && [ "$started_service" -eq 1 ] && [ "$quiet" -eq 1 ]; then
+  if [ "$shared_session" -eq 1 ] && [ "$drained" -eq 1 ]; then
     # The service is quiescent before the last indexed block becomes the new
     # durable anchor. If attach/finalization fails, retain the active marker.
     profile=$(bash "$root/scripts/midnight-attach.sh") &&
       printf '%s' "$profile" | node "$root/scripts/midnight-shared-state.mjs" --finish "$PASSPORT_REGISTRY_FILE" ||
       echo "prototype-up: shared session remains fenced; reconcile before reuse." >&2
+  elif [ "$shared_session" -eq 1 ]; then
+    echo "prototype-up: sponsor drain did not succeed; shared session remains fenced." >&2
   fi
   # Only the containers this script started; the volumes stay, so a rerun resumes the same chain.
   if [ "$local_stack" -eq 1 ]; then "${compose[@]}" stop >/dev/null 2>&1 || true; fi
@@ -284,7 +271,13 @@ if [ "$stack" = shared-ledger9 ]; then
 fi
 
 echo "prototype-up: starting the service"
-(cd "$root" && exec pnpm prototype:service) &
+if [ "$stack" = shared-ledger9 ]; then
+  # Direct child preserves the service shutdown handler's exit status. pnpm's
+  # wrapper can exit after forwarding SIGTERM without proving wallet drain.
+  (cd "$root/apps/passport-service" && exec node --import tsx src/main.ts) &
+else
+  (cd "$root" && exec pnpm prototype:service) &
+fi
 service=$!
 for _ in $(seq 1 90); do
   curl -sf http://127.0.0.1:8787/config >/dev/null 2>&1 && break

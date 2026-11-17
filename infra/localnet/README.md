@@ -21,7 +21,7 @@ loopback endpoints and observed block hash. The demo launcher creates a private
 `.chain-active.json` run marker before opening the sponsor wallet or service.
 After its service process tree stops, it reattaches and advances the private
 `.chain-anchor.json` to the final indexed block, then removes the marker. A
-crash, lingering process, failed reattach, or failed finalization leaves the
+crash, failed sponsor drain, lingering process, failed reattach, or failed finalization leaves the
 marker in place and refuses future reuse until the original records and chain
 are reconciled. This catches a chain rollback after a recorded deployment or
 activation, even if the initial anchor block still exists. Existing registry,
