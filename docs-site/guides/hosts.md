@@ -20,9 +20,26 @@ For application-contract → ACC calls, use the [standards and implementation ma
 
 The reference demo can use Midnames 2.1.0 for read-only lookup. Configure the
 registry address, namespace, matching demo network, and public indexer URLs.
+Use paired Indexer API v4 HTTP and WebSocket endpoints. The demo refuses v3
+paths even though the upstream package still contains older defaults.
 The adapter reads the registry's contract target and checks the deployed ACC
 verifier roster before displaying the result. On the pinned standalone registry,
 the demo checks name availability and reconciles retained sponsor receipts.
+To create that registry on a healthy local stack after activating an ACC, use
+the [pinned local bootstrap recipe](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/README.md#bootstrap-the-registry-on-an-existing-local-stack).
+It records the deployment waves and keeps root naming authority private; the
+resulting `.night` root is separate from public `passport.night` issuance.
+
+The shared local Ledger 9 profile discovers its existing node, v4 indexer and
+prover without starting a second stack. Its public genesis sponsor is funded
+for local development; coordinate exclusive wallet use. For an online host,
+set `PASSPORT_SPONSOR_SEED` to a funded wallet's 64-character lowercase hex
+seed in the service environment and configure that network's verified Midnames
+registry address. The wallet needs NIGHT and usable DUST for fees. See the
+[Midnames SDK](https://github.com/midnames/ns-sdk),
+[Midnames Preprod guide](https://docs.midnight.domains/preprod/connect/), and
+[Midnight wallet funding guide](https://docs.midnight.network/guides/acquire-tokens).
+
 The opt-in standalone demo can prepare a reviewed claim with the open account's
 passkey. A definitive sponsor refusal before any balance intent permits a fresh
 quote review; an unknown outcome keeps the original. The browser shows the saved

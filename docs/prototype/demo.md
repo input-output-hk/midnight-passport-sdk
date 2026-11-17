@@ -26,6 +26,13 @@ localnet proof time varies by host.
 Set up the stack as [`apps/README.md`](../../apps/README.md) describes: Nix, Docker with at least
 24 GiB of memory, and the compiled ACC artefacts. Then:
 
+For a shared Ledger 9 stack, first run the [read-only attach check](../../infra/localnet/README.md#attach-to-the-designated-shared-ledger-9-stack),
+then select `MIDNIGHT_STACK=shared-ledger9` and a separately funded
+`PASSPORT_SPONSOR_SEED_FILE`. Only its designated owner controls the shared
+containers. Set a distinct `PASSPORT_REGISTRY_FILE` outside the repository and
+use a separate browser profile for this chain. Verify a representative proof, submission and indexed result with
+this repo before presenting the shared profile as compatible.
+
 1. Follow the pinned setup guide, then start with `PASSPORT_REPO=/path/to/passport nix develop -c pnpm demo up`.
    Reuse a healthy existing stack; Ctrl-C stops only launcher-owned processes.
 2. Check `/healthz` and `/v1/config` against the independently trusted network/binding/manifest pins.

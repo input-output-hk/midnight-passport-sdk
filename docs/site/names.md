@@ -146,6 +146,10 @@ Midnames 2.1.0 uses a Ledger 9 reader built with runtime 0.21.0 and Midnight JS
 so each decoder uses its own runtime. The exact dependency exceptions in
 `pnpm-workspace.yaml` apply to this demo qualification. Registry integrity,
 lifecycle-script blocking and the cooldown for other versions still apply.
+The upstream 2.1.0 provider still carries historical API v3 default URLs.
+This demo never selects those defaults: configuration and the Midnames reader
+require explicit, paired Indexer API v4 HTTP and WebSocket URLs, including
+for the separately configured verification reader.
 
 The generated registry and the Ledger 9 HTTP read format have a local test.
 A read-only check against the existing demo indexer also returned the expected
@@ -184,6 +188,19 @@ For a disposable `undeployed` network, set
 above. This selects the independently pinned standalone verifier roster.
 The default profile remains `midnames-2.1.0`. A registry with a different
 roster is refused. See the [standalone preparation recipe](../../examples/midnames-local/README.md).
+The same recipe now includes a dedicated bootstrap command for an already
+healthy, operator-controlled local stack: it deploys the pinned registry after
+an activated ACC exists, records its address and original transactions, and
+keeps the root naming secret in a private local receipt. This is a local
+deployment path, not a replacement for an independently known online mapping.
+For an online deployment, the host must configure its actual registry address
+and a funded sponsor wallet through `PASSPORT_SPONSOR_SEED` in the service
+environment; the local genesis seed does not fund Preview or Preprod. The wallet
+needs NIGHT and usable DUST to pay for transactions. See the
+[Midnames SDK source](https://github.com/midnames/ns-sdk),
+[Midnames guides](https://docs.midnight.domains/) (including its
+[Preprod connection guide](https://docs.midnight.domains/preprod/connect/)), and Midnight's
+[wallet funding guide](https://docs.midnight.network/guides/acquire-tokens).
 
 The standalone qualification activated the pinned ACC and deployed the registry
 in two verifier waves. In two isolated runs the node explicitly rejected the

@@ -60,8 +60,8 @@ async function reported<T>(
 
 export const fakeNetwork = (overrides: Partial<P.NetworkConfig> = {}): P.NetworkConfig => ({
   networkId: 'undeployed',
-  indexerUrl: 'http://indexer.invalid/api/v3/graphql',
-  indexerWsUrl: 'ws://indexer.invalid/api/v3/graphql/ws',
+  indexerUrl: 'http://indexer.invalid/api/v4/graphql',
+  indexerWsUrl: 'ws://indexer.invalid/api/v4/graphql/ws',
   nodeUrl: 'http://node.invalid',
   artefactUrl: 'http://artefacts.invalid',
   bindingId: 'acc-fake',

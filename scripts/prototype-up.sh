@@ -3,11 +3,12 @@
 # -> service -> dapp, inside the Nix shell.
 #
 #   PASSPORT_CONTRACT_DIR=<fetch-acc.sh output> PASSPORT_MANIFEST_SHA256=<hash> pnpm prototype:up
-#   bash scripts/prototype-up.sh --check      # only the port preflight; starts nothing
+#   bash scripts/prototype-up.sh --check      # read-only preflight; starts nothing
 #
 # The Midnight stack comes from infra/networks/$MIDNIGHT_STACK.env (default `undeployed`, the local
 # Docker localnet). The localnet is started only for `undeployed`; any other stack is used as the
-# file describes it, and needs PASSPORT_SPONSOR_SEED (see infra/networks/testnet.env.example).
+# file describes it, and needs a separately funded PASSPORT_SPONSOR_SEED_FILE
+# (or PASSPORT_SPONSOR_SEED; see infra/networks/testnet.env.example).
 #
 # The script never stops anything it did not start: a port that is taken is reported with its
 # occupant and the script exits, leaving you to stop it.
@@ -36,6 +37,33 @@ set -a
 # shellcheck source=/dev/null
 . "$stack_file"
 set +a
+if [ "${PASSPORT_COMPAT_PROVER:-0}" != 0 ]; then
+  [ "${PASSPORT_COMPAT_PROVER:-}" = 1 ] && [ "$stack" = shared-ledger9 ] || {
+    echo "prototype-up: PASSPORT_COMPAT_PROVER=1 applies only to shared-ledger9." >&2
+    exit 2
+  }
+  compat_port="${PASSPORT_COMPAT_PROVER_PORT:-16301}"
+  [[ "$compat_port" =~ ^[1-9][0-9]{3,4}$ ]] && [ "$compat_port" -le 65535 ] || {
+    echo "prototype-up: PASSPORT_COMPAT_PROVER_PORT must be a loopback port from 1000 to 65535." >&2
+    exit 2
+  }
+  compat_url="http://127.0.0.1:$compat_port"
+  compat_version=$(curl --noproxy '*' --fail --silent --show-error --max-time 4 "$compat_url/version") || {
+    echo "prototype-up: isolated Compact 0.35 proof server is unavailable." >&2
+    exit 1
+  }
+  [ "$compat_version" = 9.0.0-rc.8 ] || {
+    echo "prototype-up: isolated proof server must be pinned 9.0.0-rc.8; got $compat_version." >&2
+    exit 1
+  }
+  if [ -n "${PASSPORT_PUBLIC_PROOF_SERVER_URL:-}" ] && [ "$PASSPORT_PUBLIC_PROOF_SERVER_URL" != "$compat_url" ]; then
+    echo "prototype-up: PASSPORT_PUBLIC_PROOF_SERVER_URL must match the isolated prover in compat mode." >&2
+    exit 1
+  fi
+  export MN_PROOF_SERVER_URL="$compat_url"
+  export PASSPORT_PUBLIC_PROOF_SERVER_URL="$compat_url"
+  echo "prototype-up: using isolated Compact 0.35 prover at $compat_url; shared node and v4 indexer remain attached."
+fi
 for var in MN_NETWORK_ID MN_NODE_URL MN_INDEXER_URL MN_INDEXER_WS_URL MN_PROOF_SERVER_URL; do
   [ -n "${!var:-}" ] || {
     echo "prototype-up: $stack_file does not set $var." >&2
@@ -80,14 +108,67 @@ check_ports() {
   echo "prototype-up: ports ${ports[*]} are free"
 }
 
+check_shared_state() {
+  [ "$stack" = shared-ledger9 ] || return 0
+  if [ -n "${PASSPORT_SPONSOR_SEED:-}" ] && [ -n "${PASSPORT_SPONSOR_SEED_FILE:-}" ]; then
+    echo "prototype-up: set only one sponsor seed source for shared-ledger9." >&2
+    return 1
+  fi
+  if [ -n "${PASSPORT_SPONSOR_SEED_FILE:-}" ]; then
+    case "$PASSPORT_SPONSOR_SEED_FILE" in
+      /*) ;;
+      *) echo "prototype-up: PASSPORT_SPONSOR_SEED_FILE must be absolute for shared-ledger9." >&2; return 1 ;;
+    esac
+    [ -f "$PASSPORT_SPONSOR_SEED_FILE" ] || {
+      echo "prototype-up: PASSPORT_SPONSOR_SEED_FILE does not exist." >&2
+      return 1
+    }
+    seed=$(cat "$PASSPORT_SPONSOR_SEED_FILE")
+  else
+    seed="${PASSPORT_SPONSOR_SEED:-0000000000000000000000000000000000000000000000000000000000000001}"
+  fi
+  [[ "$seed" =~ ^[0-9a-f]{64}$ ]] || {
+    echo "prototype-up: shared-ledger9 needs an exact 32-byte lowercase-hex sponsor seed." >&2
+    return 1
+  }
+  shared_genesis=0
+  if [ "$seed" = 0000000000000000000000000000000000000000000000000000000000000001 ]; then
+    shared_genesis=1
+  fi
+  if [ -z "${PASSPORT_SPONSOR_SEED:-}" ] && [ -z "${PASSPORT_SPONSOR_SEED_FILE:-}" ]; then
+    export PASSPORT_SPONSOR_SEED="$seed"
+    echo "prototype-up: using the shared localnet's public genesis sponsor; use it exclusively."
+  fi
+}
+
 if [ "${1:-}" = "--check" ]; then
   check_ports
+  if [ "$stack" = shared-ledger9 ]; then
+    check_shared_state
+    if [ "$shared_genesis" -eq 1 ]; then
+      node "$root/scripts/midnight-shared-sponsor-lease.mjs" --check "${PASSPORT_REGISTRY_FILE:-}"
+    fi
+    profile=$(bash "$root/scripts/midnight-attach.sh")
+    printf '%s' "$profile" | node "$root/scripts/midnight-shared-state.mjs" --check "${PASSPORT_REGISTRY_FILE:-}"
+  fi
   exit $?
 fi
 [ "$#" -eq 0 ] || {
   echo "usage: [MIDNIGHT_STACK=<name>] $0 [--check]" >&2
   exit 2
 }
+
+if [ "$stack" = shared-ledger9 ]; then
+  # The service's registry writer inherits this mode for new state files.
+  umask 077
+  check_ports
+  check_shared_state
+  if [ "$shared_genesis" -eq 1 ]; then
+    node "$root/scripts/midnight-shared-sponsor-lease.mjs" --check "${PASSPORT_REGISTRY_FILE:-}"
+  fi
+  profile=$(bash "$root/scripts/midnight-attach.sh")
+  printf '%s' "$profile" | node "$root/scripts/midnight-shared-state.mjs" --check "${PASSPORT_REGISTRY_FILE:-}"
+fi
 
 "$root/experiments/acc-0.35/guard.sh"
 : "${PASSPORT_CONTRACT_DIR:?set PASSPORT_CONTRACT_DIR to the fetch-acc.sh output}"
@@ -132,8 +213,19 @@ if [ "$local_stack" -eq 1 ]; then
     exit 1
   fi
 else
-  # The sponsor seed default is the localnet's public genesis seed; the service refuses it elsewhere.
-  : "${PASSPORT_SPONSOR_SEED:?stack $stack is not the localnet: set PASSPORT_SPONSOR_SEED to a funded sponsor wallet seed}"
+  # Only the owned default stack may use the public genesis wallet automatically.
+  if [ -n "${PASSPORT_SPONSOR_SEED:-}" ] && [ -n "${PASSPORT_SPONSOR_SEED_FILE:-}" ]; then
+    echo "prototype-up: set only one of PASSPORT_SPONSOR_SEED_FILE and PASSPORT_SPONSOR_SEED." >&2
+    exit 1
+  fi
+  if [ -z "${PASSPORT_SPONSOR_SEED:-}" ] && [ -z "${PASSPORT_SPONSOR_SEED_FILE:-}" ]; then
+    echo "prototype-up: stack $stack needs a separately funded PASSPORT_SPONSOR_SEED_FILE or PASSPORT_SPONSOR_SEED." >&2
+    exit 1
+  fi
+  if [ -n "${PASSPORT_SPONSOR_SEED_FILE:-}" ] && [ ! -f "$PASSPORT_SPONSOR_SEED_FILE" ]; then
+    echo "prototype-up: PASSPORT_SPONSOR_SEED_FILE does not exist." >&2
+    exit 1
+  fi
 fi
 
 check_ports
@@ -142,6 +234,10 @@ check_ports
 export MIDNIGHT_NETWORK=local
 compose=(docker compose -f "$root/infra/localnet/docker-compose.yml" -f "$root/infra/localnet/docker-compose.macos.yml")
 service=""
+shared_session=0
+shared_genesis_lease=0
+# shellcheck source=midnight-service-drain.sh
+. "$root/scripts/midnight-service-drain.sh"
 
 # Kills a process and its descendants by PID (never by name pattern).
 kill_tree() {
@@ -152,10 +248,39 @@ kill_tree() {
   kill "$pid" 2>/dev/null || true
 }
 cleanup() {
+  local drained=0
   trap - EXIT INT TERM
+  if [ -z "$service" ] && [ "$shared_genesis_lease" -eq 1 ]; then
+    # Startup failed before the service could open the wallet. Release only
+    # this launcher's pinned sponsor lease; chain markers remain for audit.
+    if node "$root/scripts/midnight-shared-sponsor-lease.mjs" --finish "$PASSPORT_REGISTRY_FILE"; then
+      shared_genesis_lease=0
+    else
+      echo "prototype-up: pre-service sponsor lease remains retained; reconcile before reuse." >&2
+    fi
+  fi
   if [ -n "$service" ]; then
-    kill_tree "$service"
-    wait "$service" 2>/dev/null || true
+    if [ "$stack" = shared-ledger9 ]; then
+      if drain_shared_service "$service"; then drained=1; fi
+    else
+      kill_tree "$service"
+      wait "$service" 2>/dev/null || true
+    fi
+  fi
+  if [ "$shared_session" -eq 1 ] && [ "$drained" -eq 1 ]; then
+    # The service is quiescent before the last indexed block becomes the new
+    # durable anchor. If attach/finalization fails, retain the active marker.
+    if profile=$(bash "$root/scripts/midnight-attach.sh") &&
+      printf '%s' "$profile" | node "$root/scripts/midnight-shared-state.mjs" --finish "$PASSPORT_REGISTRY_FILE"; then
+      if [ "$shared_genesis_lease" -eq 1 ]; then
+        node "$root/scripts/midnight-shared-sponsor-lease.mjs" --finish "$PASSPORT_REGISTRY_FILE" ||
+          echo "prototype-up: native sponsor lease remains retained; reconcile before reuse." >&2
+      fi
+    else
+      echo "prototype-up: shared session and sponsor lease remain fenced; reconcile before reuse." >&2
+    fi
+  elif [ "$shared_session" -eq 1 ]; then
+    echo "prototype-up: shared session remains fenced without a successful service drain." >&2
   fi
   # Only the containers this script started; the volumes stay, so a rerun resumes the same chain.
   if [ "$local_stack" -eq 1 ]; then "${compose[@]}" stop >/dev/null 2>&1 || true; fi
@@ -190,8 +315,26 @@ else
   echo "prototype-up: stack $stack: using the endpoints in $stack_file; no localnet is started"
 fi
 
+if [ "$stack" = shared-ledger9 ]; then
+  # Recheck after the build/startup delay, then fence this session before
+  # opening the sponsor wallet or service port.
+  profile=$(bash "$root/scripts/midnight-attach.sh")
+  if [ "$shared_genesis" -eq 1 ]; then
+    node "$root/scripts/midnight-shared-sponsor-lease.mjs" --begin "$PASSPORT_REGISTRY_FILE"
+    shared_genesis_lease=1
+  fi
+  printf '%s' "$profile" | node "$root/scripts/midnight-shared-state.mjs" --begin "$PASSPORT_REGISTRY_FILE"
+  shared_session=1
+fi
+
 echo "prototype-up: starting the service"
-(cd "$root" && exec pnpm prototype:service) &
+if [ "$stack" = shared-ledger9 ]; then
+  # Direct child preserves the service shutdown handler's exit status. pnpm's
+  # wrapper can exit after forwarding SIGTERM without proving wallet drain.
+  (cd "$root/apps/passport-service" && exec node --import tsx src/main.ts) &
+else
+  (cd "$root" && exec pnpm prototype:service) &
+fi
 service=$!
 for _ in $(seq 1 90); do
   curl -sf http://127.0.0.1:8787/config >/dev/null 2>&1 && break

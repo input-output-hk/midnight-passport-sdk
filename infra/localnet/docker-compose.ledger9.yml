@@ -1,0 +1,58 @@
+# Current Ledger 9 profile. Only the designated stack owner starts the shared
+# midnight-network project. Isolated qualification uses a fresh project name
+# and Docker-assigned loopback ports (set MN_*_PORT to empty); see README.md.
+name: ${PASSPORT_LOCALNET_PROJECT:-midnight-network}
+
+services:
+  node:
+    image: ghcr.io/midnight-ntwrk/midnight-node@sha256:0c1ad548d523c1109aa1f16daab1bf72dcb78c7e17b8a8c6d97424ad0eba7b8a
+    platform: linux/arm64
+    ports:
+      - '127.0.0.1:${MN_NODE_PORT-9944}:9944'
+    volumes:
+      - node-data:/node/chain
+    environment:
+      CFG_PRESET: dev
+      SIDECHAIN_BLOCK_BENEFICIARY: 04bcf7ad3be7a5c790460be82a713af570f22e0f801f6659ab8e84a52be6969e
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          curl -sf -H 'Content-Type: application/json'
+          -d '{"jsonrpc":"2.0","id":1,"method":"chain_getBlockHash","params":[1]}'
+          http://localhost:9944 | grep -q '"result":"0x'
+      interval: 3s
+      timeout: 5s
+      retries: 25
+      start_period: 15s
+
+  indexer:
+    image: ghcr.io/midnight-ntwrk/indexer-standalone@sha256:119f35db548ba1c390845f215bb1e928e73038bef7c315825aee0461bd54499d
+    platform: linux/arm64
+    restart: on-failure
+    ports:
+      - '127.0.0.1:${MN_INDEXER_PORT-8088}:8088'
+    volumes:
+      - indexer-data:/data
+    env_file: ${PASSPORT_INDEXER_ENV_FILE:-.midnight-indexer.env}
+    environment:
+      APP__APPLICATION__NETWORK_ID: undeployed
+      APP__INFRA__NODE__URL: ws://node:9944
+      APP__INFRA__SPO_NODE__URL: ws://node:9944
+      APP__INFRA__SPO_NODE__BLOCKFROST_ID: dummy-not-using-spo
+    depends_on:
+      node:
+        condition: service_healthy
+
+  proof-server:
+    image: ghcr.io/midnight-ntwrk/proof-server@sha256:787ef99db4b4706eb14d94ad389ca45f1c09bcdf740afecb01899bfbda63dc64
+    platform: linux/arm64
+    command: ['midnight-proof-server', '-v']
+    ports:
+      - '127.0.0.1:${MN_PROOF_PORT-6300}:6300'
+    environment:
+      MIDNIGHT_PROOF_SERVER_NUM_WORKERS: '1'
+
+volumes:
+  node-data:
+  indexer-data:

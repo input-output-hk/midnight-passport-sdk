@@ -167,6 +167,8 @@ test('configured name lookup requires an explicit matching network, registry and
     { registryAddress: undefined },
     { namespace: undefined },
     { networkId: 'preview' },
+    { indexerUrl: 'http://127.0.0.1:18108/api/v3/graphql' },
+    { indexerWsUrl: 'ws://127.0.0.1:18108/api/v3/graphql/ws' },
     { indexerUrl: 'http://example.test/graphql' },
     { indexerUrl: 'https://user:password@example.test/graphql' },
     { indexerWsUrl: 'wss://example.test/graphql?token=secret' },
@@ -214,10 +216,10 @@ test('an online profile requires a complete known name-to-ACC pin before lookup'
 test('a remote indexer requires the known mapping even when labelled undeployed', () => {
   const remote = {
     ...profile,
-    indexerUrl: 'https://example.test/graphql',
-    indexerWsUrl: 'wss://example.test/graphql/ws',
-    verificationIndexerUrl: 'https://witness.example.test/graphql',
-    verificationIndexerWsUrl: 'wss://witness.example.test/graphql/ws',
+    indexerUrl: 'https://example.test/api/v4/graphql',
+    indexerWsUrl: 'wss://example.test/api/v4/graphql/ws',
+    verificationIndexerUrl: 'https://witness.example.test/api/v4/graphql',
+    verificationIndexerWsUrl: 'wss://witness.example.test/api/v4/graphql/ws',
   };
   assert.throws(
     () => configureMidnames(remote, 'undeployed', 'acc-s3r1.1'),

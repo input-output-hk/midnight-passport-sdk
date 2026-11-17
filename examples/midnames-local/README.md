@@ -2,8 +2,8 @@
 
 This fixture uses the Midnames 2.1.0 registry source on the Passport standalone
 Ledger 9 stack. Prepare artifacts with the Passport SDK's pinned Nix toolchain.
-Supply a local copy of `ns.compact` from the source revision recorded in
-[the manifest](registry-manifest.json). The command verifies those bytes,
+Supply a local copy of [`ns.compact` at the pinned upstream revision](https://github.com/midnames/ns-sdk/blob/f8f2edd425221b95c9158d74e7318d2fbb4f61b2/ns.compact)
+recorded in [the manifest](registry-manifest.json). The command verifies those bytes,
 updates the language pragma for Compact 0.35.0, and verifies each generated
 module, circuit, prover and verifier against the reviewed hashes.
 
@@ -18,6 +18,139 @@ profile only on `undeployed`. It requires the deployed registry to match all
 13 verifier hashes. The deployed Passport ACC must still match its own pinned
 binding and be activated. The registry build and key checks are prerequisites
 for live qualification.
+
+## Bootstrap the registry on an existing local stack
+
+The disposable qualification runner below deploys an ACC and registry together.
+For a local Passport demo that already has a healthy `undeployed` Ledger 9
+node, v4 indexer and proof server, `bootstrap-registry.mjs` deploys **only the
+registry**. Create and activate the intended ACC first, then supply its full
+64-hex contract address as the root target. The script checks the prepared registry hashes,
+node/indexer finality agreement, the standalone chain name and the prover before
+claiming the native lease or starting a wallet. It verifies signed source and physical
+artifacts after claiming the lease, then confirms the ACC's pinned binding before
+submitting a transaction. Run it only when you control the stack and no other process is using
+the same local genesis funding wallet. The default Passport service and funding
+service may use that seed: stop only your own instances of those services while
+keeping the node, indexer and prover running, or use a separately funded wallet
+in a different deployment flow. Do not stop another session's services to make
+room for this command. Set `ACC_CONTRACT_ADDRESS` to the full
+64-hex address of that activated ACC before running. The command also requires
+15 GiB free and a free native qualification lease; reconcile an interrupted
+run before starting a new bootstrap.
+
+On the designated shared Ledger 9 stack, create the ACC with the same pinned
+Passport binding before registry deployment. Reuse a verified 52-key ACC export
+or prepare one with `pnpm demo setup`; keep its manifest and keys unchanged
+during the run. The launcher attaches to the existing stack and creates a
+private chain anchor and sponsor lease in the selected state directory:
+
+```sh
+run_dir="$HOME/.local/share/midnight-passport/shared-ledger9-$(date +%Y%m%d%H%M%S)"
+install -d -m 700 "$run_dir"
+MIDNIGHT_STACK=shared-ledger9 PASSPORT_REGISTRY_FILE="$run_dir/registry.json" \
+  nix develop -c pnpm demo check --no-key-service
+MIDNIGHT_STACK=shared-ledger9 PASSPORT_REGISTRY_FILE="$run_dir/registry.json" \
+  nix develop -c pnpm demo up --contract-dir /absolute/path/to/pinned-acc/contract \
+    --no-key-service --mock-passkey
+```
+
+Open the printed `http://localhost:5173/?mockPasskey` URL in a **dedicated
+private browser profile**, create the account, and retain that profile and
+the full 64-hex ACC address outside Git. The mock passkey is for local
+development only; use a PRF-capable real authenticator for a real deployment.
+Wait for the browser's created status and check the live indexed activation, then
+stop only this demo and confirm its successful service drain and sponsor lease
+release. The registry bootstrap below checks the live account binding and
+activation again before it sends. An uncertain creation or shutdown must be
+reconciled from the original deployment records and transaction IDs; do not
+create another ACC merely because the browser response was lost.
+
+```sh
+PASSPORT_MIDNAMES_BOOTSTRAP=1 PASSPORT_RC_LOCALNET=1 \
+MIDNIGHT_NETWORK=local MN_NETWORK_ID=undeployed \
+MN_NODE_URL=http://127.0.0.1:19944 \
+MN_INDEXER_URL=http://127.0.0.1:18088/api/v4/graphql \
+MN_INDEXER_WS_URL=ws://127.0.0.1:18088/api/v4/graphql/ws \
+MN_PROOF_SERVER_URL=http://127.0.0.1:16300 \
+nix develop -c pnpm --filter passport-dapp exec node --import tsx \
+  --experimental-import-meta-resolve \
+  "$PWD/examples/midnames-local/bootstrap-registry.mjs" \
+  "$PWD/review/midnames-bootstrap-my-run" \
+  /absolute/path/to/prepared-registry \
+  /absolute/path/to/acc-reference/contract \
+  "$ACC_CONTRACT_ADDRESS"
+```
+
+Use the actual ports of the intended local stack; the four endpoints must be
+explicit loopback URLs, and the HTTP/WS indexer pair must share a host and port.
+For the designated shared Ledger 9 stack, run
+`nix develop -c bash scripts/midnight-attach.sh` first, then use the endpoints
+in `infra/networks/shared-ledger9.env` with this same bootstrap command. It
+attaches to the running stack and performs no Docker lifecycle action. The
+development genesis sponsor is public and pre-funded on this chain; coordinate
+exclusive wallet use with other sessions before a deployment. The shared Passport
+demo now holds the same stable native sponsor lease while its service uses this
+wallet. Stop only your own demo, confirm its service drain and lease release,
+then bootstrap the registry. If either run retains the lease, reconcile its
+original transactions and receipts before proceeding. Supply an
+activated ACC address from this exact chain, and keep a fresh private receipt
+directory. A responding endpoint or funded wallet alone does not establish
+that the ACC or registry is deployed.
+If the shared stack's newer prover rejects activation of the pinned Compact
+0.35 ACC, retain the deployed account and passkey; the
+[isolated compatibility prover](../../infra/localnet/README.md#isolated-prover-for-the-pinned-compact-035-acc)
+can test recovery of that same pending account against the shared node and v4
+indexer. Do not start another account or call the registry bootstrap until the
+live ACC is activated.
+An ACC can be deployed with all 52 pinned verifier operations and still have
+`booted=false`. On the current shared Ledger 9.1.0.1 node, an earlier Compact
+0.35 / Compact.js 3.0.0-rc.3 attempt generated proofs on the isolated prover,
+but the node rejected activation (`Custom error: 104`, `ran out of gas budget`).
+The current [Compact.js release](https://docs.midnight.network/relnotes/compact-js/compact-js-3-0-0)
+fixes overwrite-related gas checks but requires Compact 0.36 artifacts; the
+cause of this particular node rejection has not been established.
+With the released `@midnightntwrk/ledger-v9` 1.0.0 client pinned, a bounded
+retry activated that same ACC on the shared chain. This result applies to the
+observed local profile; confirm the live account and registry independently
+on every other chain.
+Keep the rejected submission as a failed attempt and retain its original
+address, passkey and diagnostics. Before any further activation attempt,
+reconcile the chain and investigate the rejection. Do not treat a deployed
+but unactivated ACC as the root target or create a replacement merely because
+the browser failed.
+The registry artifacts also use Compact 0.35. If the isolated prover is
+required for this chain, set the bootstrap command's explicit
+`MN_PROOF_SERVER_URL=http://127.0.0.1:16301` while retaining the shared
+node and v4 indexer URLs from `infra/networks/shared-ledger9.env`. Its version
+preflight and an actual indexed registry deployment must pass; the alternate
+endpoint alone does not establish compatibility.
+Choose a fresh direct child of the SDK's ignored `review/` directory for each
+receipt. The script uses the standalone genesis development seed, pays local DUST fees, and writes each
+original transaction's bytes and identifier to private files before continuing.
+Its receipt records the node, `midnight-ledger-v9` crate and indexer protocol
+versions and requires them to remain stable through the final read. A newer
+stack, including [node 2.1.101 with ledger 9.1.0.1](https://docs.midnight.network/relnotes/node/node-2-1-101)
+(crate version 1.0.1), needs a fresh completed deployment and final registry
+read before compatibility can be claimed; a responding endpoint alone does not
+qualify that version.
+It installs the 13 verifier keys in bounded waves, retires the deployment
+maintenance authority, and rereads the final registry and root owner commitment
+from the indexer. A failed or interrupted run retains its receipt, private root
+secret and original transactions. Inspect those originals on the same chain;
+never rerun the command as a blind repair or overwrite the receipt directory.
+The private `root-secret.private.hex` controls the local root name and must stay
+with the operator, outside Git and any browser/service request.
+
+On `PASS`, read `registryAddress` from `bootstrap.json` and configure the demo's
+`VITE_MIDNAMES_REGISTRY_ADDRESS` with it, together with
+`VITE_MIDNAMES_REGISTRY_PROFILE=standalone-0.35`,
+`VITE_MIDNAMES_NAMESPACE=night`, `VITE_MIDNAMES_NETWORK_ID=undeployed`, and
+`VITE_MIDNAMES_INDEXER_URL` / `VITE_MIDNAMES_INDEXER_WS_URL` matching the
+bootstrap pair. The deployed root is a transitional
+`.night` registry with a local one-unit NIGHT price policy. It does not issue
+public `passport.night` names or implement MIP-0007 delegated routing. A name
+still needs its separate owner-proved claim after the ACC exists.
 
 The standalone fixture has the upstream transitional registry administration
 semantics. A name claim needs an owner-controlled proof witness. Use synthetic

@@ -100,12 +100,16 @@ releases, fetched by hash ([`nix/packages/compact.nix`](./nix/packages/compact.n
 
 ### Localnet (Docker)
 
-[`infra/localnet/`](./infra/localnet) runs a ledger-9 node, indexer, and proof
-server (`midnight-node` 2.1.0-rc.4, `indexer-standalone` 4.4.0-rc.6-b5e6c809
-from GHCR, `proof-server` 9.0.0-rc.8, which reads ZKIR 3.1):
+[`infra/localnet/`](./infra/localnet) keeps the reference demo's pinned
+release-candidate Ledger 9 stack (`midnight-node` 2.1.0-rc.4,
+`indexer-standalone` 4.4.0-rc.6-b5e6c809 and `proof-server` 9.0.0-rc.8):
 
 ```sh
 cp infra/localnet/.env.example infra/localnet/.env   # set APP__INFRA__SECRET
 docker compose -f infra/localnet/docker-compose.yml up -d
 # macOS: add -f infra/localnet/docker-compose.macos.yml
 ```
+
+The [localnet guide](./infra/localnet/README.md) also covers read-only attach
+to the designated owner's current Ledger 9 stack, its digest-pinned Compose
+profile, and fresh isolated projects with Docker-assigned loopback ports.
