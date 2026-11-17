@@ -59,6 +59,10 @@ explicit loopback URLs, and the HTTP/WS indexer pair must share a host and port.
 Choose a fresh direct child of the SDK's ignored `review/` directory for each
 receipt. The script uses the standalone genesis development seed, pays local DUST fees, and writes each
 original transaction's bytes and identifier to private files before continuing.
+Its receipt records the observed node, ledger and indexer protocol versions. A
+newer stack, including node 2.1.101 with ledger 1.0.1, needs a fresh completed
+deployment and final registry read before compatibility can be claimed; a
+responding endpoint alone does not qualify that version.
 It installs the 13 verifier keys in bounded waves, retires the deployment
 maintenance authority, and rereads the final registry and root owner commitment
 from the indexer. A failed or interrupted run retains its receipt, private root

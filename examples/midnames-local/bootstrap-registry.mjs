@@ -125,6 +125,29 @@ const proofHealth = await fetch(new URL('/health', endpoints.proverUrl), {
   signal: AbortSignal.timeout(5_000),
 });
 assert.ok(proofHealth.ok, 'The local prover is unavailable.');
+const rpcVersion = async (method) =>
+  post(endpoints.nodeUrl, { jsonrpc: '2.0', id: 1, method, params: [] });
+const nodeVersion = await rpcVersion('system_version');
+const ledgerVersion = await rpcVersion('midnight_ledgerVersion');
+assert.ok(typeof nodeVersion === 'string' && nodeVersion.length <= 128);
+assert.ok(typeof ledgerVersion === 'string' && ledgerVersion.length <= 256);
+const protocolResponse = await fetch(endpoints.indexerUrl, {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({
+    query:
+      'query BootstrapProtocol($offset:BlockOffset!){block(offset:$offset){hash height protocolVersion}}',
+    variables: { offset: { hash: ready.finalizedHash } },
+  }),
+  signal: AbortSignal.timeout(5_000),
+});
+assert.ok(protocolResponse.ok, 'The indexer protocol read failed.');
+const protocol = await protocolResponse.json();
+assert.equal(protocol.errors, undefined);
+assert.equal(protocol.data?.block?.hash, ready.finalizedHash);
+assert.equal(protocol.data?.block?.height, ready.finalizedHeight);
+assert.ok(Number.isSafeInteger(protocol.data?.block?.protocolVersion));
+const protocolVersion = protocol.data.block.protocolVersion;
 
 mkdirSync(output, { mode: 0o700 });
 assert.equal(lstatSync(output).mode & 0o077, 0, 'Bootstrap receipt directory must be private.');
@@ -140,6 +163,9 @@ const receipt = {
   preparedManifestSha256: sha256(readFileSync(join(prepared, 'prepared.json'))),
   networkId: 'undeployed',
   registryProfile: 'standalone-0.35',
+  nodeVersion,
+  ledgerVersion,
+  protocolVersion,
   endpoints,
   finalizedBefore: ready.finalizedHash,
   rootTarget,
