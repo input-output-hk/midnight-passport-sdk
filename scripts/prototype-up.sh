@@ -3,11 +3,12 @@
 # -> service -> dapp, inside the Nix shell.
 #
 #   PASSPORT_CONTRACT_DIR=<fetch-acc.sh output> PASSPORT_MANIFEST_SHA256=<hash> pnpm prototype:up
-#   bash scripts/prototype-up.sh --check      # only the port preflight; starts nothing
+#   bash scripts/prototype-up.sh --check      # read-only preflight; starts nothing
 #
 # The Midnight stack comes from infra/networks/$MIDNIGHT_STACK.env (default `undeployed`, the local
 # Docker localnet). The localnet is started only for `undeployed`; any other stack is used as the
-# file describes it, and needs PASSPORT_SPONSOR_SEED (see infra/networks/testnet.env.example).
+# file describes it, and needs a separately funded PASSPORT_SPONSOR_SEED_FILE
+# (or PASSPORT_SPONSOR_SEED; see infra/networks/testnet.env.example).
 #
 # The script never stops anything it did not start: a port that is taken is reported with its
 # occupant and the script exits, leaving you to stop it.
@@ -80,14 +81,60 @@ check_ports() {
   echo "prototype-up: ports ${ports[*]} are free"
 }
 
+check_shared_state() {
+  [ "$stack" = shared-ledger9 ] || return 0
+  if [ -n "${PASSPORT_SPONSOR_SEED:-}" ] && [ -n "${PASSPORT_SPONSOR_SEED_FILE:-}" ]; then
+    echo "prototype-up: set only one sponsor seed source for shared-ledger9." >&2
+    return 1
+  fi
+  case "${PASSPORT_REGISTRY_FILE:-}" in
+    /*) ;;
+    *) echo "prototype-up: shared-ledger9 needs an absolute PASSPORT_REGISTRY_FILE for its own deployment records." >&2; return 1 ;;
+  esac
+  case "$PASSPORT_REGISTRY_FILE" in
+    "$root"/*) echo "prototype-up: keep shared deployment records outside the repository." >&2; return 1 ;;
+  esac
+  if [ -n "${PASSPORT_SPONSOR_SEED_FILE:-}" ]; then
+    case "$PASSPORT_SPONSOR_SEED_FILE" in
+      /*) ;;
+      *) echo "prototype-up: PASSPORT_SPONSOR_SEED_FILE must be absolute for shared-ledger9." >&2; return 1 ;;
+    esac
+    [ -f "$PASSPORT_SPONSOR_SEED_FILE" ] || {
+      echo "prototype-up: PASSPORT_SPONSOR_SEED_FILE does not exist." >&2
+      return 1
+    }
+    seed=$(tr -d '\r\n' <"$PASSPORT_SPONSOR_SEED_FILE")
+  else
+    seed="${PASSPORT_SPONSOR_SEED:-}"
+  fi
+  [ -n "$seed" ] || {
+    echo "prototype-up: shared-ledger9 needs a separately funded sponsor wallet." >&2
+    return 1
+  }
+  [ "$seed" != 0000000000000000000000000000000000000000000000000000000000000001 ] || {
+    echo "prototype-up: the public genesis sponsor seed is not allowed on the shared stack." >&2
+    return 1
+  }
+}
+
 if [ "${1:-}" = "--check" ]; then
   check_ports
+  if [ "$stack" = shared-ledger9 ]; then
+    check_shared_state
+    bash "$root/scripts/midnight-attach.sh" >/dev/null
+  fi
   exit $?
 fi
 [ "$#" -eq 0 ] || {
   echo "usage: [MIDNIGHT_STACK=<name>] $0 [--check]" >&2
   exit 2
 }
+
+if [ "$stack" = shared-ledger9 ]; then
+  check_ports
+  check_shared_state
+  bash "$root/scripts/midnight-attach.sh" >/dev/null
+fi
 
 "$root/experiments/acc-0.35/guard.sh"
 : "${PASSPORT_CONTRACT_DIR:?set PASSPORT_CONTRACT_DIR to the fetch-acc.sh output}"
@@ -132,8 +179,19 @@ if [ "$local_stack" -eq 1 ]; then
     exit 1
   fi
 else
-  # The sponsor seed default is the localnet's public genesis seed; the service refuses it elsewhere.
-  : "${PASSPORT_SPONSOR_SEED:?stack $stack is not the localnet: set PASSPORT_SPONSOR_SEED to a funded sponsor wallet seed}"
+  # Only the owned default stack may use the public genesis wallet automatically.
+  if [ -n "${PASSPORT_SPONSOR_SEED:-}" ] && [ -n "${PASSPORT_SPONSOR_SEED_FILE:-}" ]; then
+    echo "prototype-up: set only one of PASSPORT_SPONSOR_SEED_FILE and PASSPORT_SPONSOR_SEED." >&2
+    exit 1
+  fi
+  if [ -z "${PASSPORT_SPONSOR_SEED:-}" ] && [ -z "${PASSPORT_SPONSOR_SEED_FILE:-}" ]; then
+    echo "prototype-up: stack $stack needs a separately funded PASSPORT_SPONSOR_SEED_FILE or PASSPORT_SPONSOR_SEED." >&2
+    exit 1
+  fi
+  if [ -n "${PASSPORT_SPONSOR_SEED_FILE:-}" ] && [ ! -f "$PASSPORT_SPONSOR_SEED_FILE" ]; then
+    echo "prototype-up: PASSPORT_SPONSOR_SEED_FILE does not exist." >&2
+    exit 1
+  fi
 fi
 
 check_ports

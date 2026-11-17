@@ -74,7 +74,8 @@ const usage = `Usage: nix develop -c node scripts/demo.mjs [up|setup|check|fund]
   up                 Prepare the pinned ACC, then start the key service,
                      localnet, sponsor/prover backend and browser page.
   setup              Prepare and verify the ACC without starting services.
-  check              Check Nix, Docker memory and required local ports.
+  check              Check Nix and required app ports; check owned Docker memory
+                     or the selected shared stack's read-only endpoint profile.
   fund               Deposit an allowlisted asset into a deployed ACC through
                      the running funding service; requires the four flags below.
 
@@ -186,12 +187,14 @@ async function freePort(port) {
 /** @param {DemoOptions} options */
 async function check(options) {
   run(join(root, 'experiments/acc-0.35/guard.sh'), []);
-  const memory = Number(
-    run('docker', ['info', '--format', '{{.MemTotal}}'], { capture: true }).trim(),
-  );
-  const minimum = Number(process.env.ACC_MIN_DOCKER_GIB ?? '24');
-  if (!Number.isFinite(memory) || memory < minimum * 1024 ** 3)
-    throw new Error(`Docker needs at least ${minimum} GiB for P-256 proofs`);
+  if ((process.env.MIDNIGHT_STACK ?? 'undeployed') === 'undeployed') {
+    const memory = Number(
+      run('docker', ['info', '--format', '{{.MemTotal}}'], { capture: true }).trim(),
+    );
+    const minimum = Number(process.env.ACC_MIN_DOCKER_GIB ?? '24');
+    if (!Number.isFinite(memory) || memory < minimum * 1024 ** 3)
+      throw new Error(`Docker needs at least ${minimum} GiB for P-256 proofs`);
+  }
   run('bash', [join(root, 'scripts/prototype-up.sh'), '--check']);
   if (options.keyService) await freePort(keyPort);
   if (options.funding) {

@@ -29,6 +29,17 @@ See [apps configuration](../apps/README.md) and the
 | Chrome or Safari, with a passkey saved in **Google Password Manager or iCloud Keychain**                        | The account needs the WebAuthn PRF extension. Chrome's "Chrome profile" store has no PRF and is refused.    |
 | Free ports 19944, 18088, 16300, 8787, 8788 and 5173                                                                   | The Passport localnet uses its own host ports, so it runs beside another Midnight localnet on the defaults. |
 
+For an explicitly selected shared Ledger 9 profile, run the repo-owned
+`nix develop -c bash scripts/midnight-attach.sh` first and follow the
+[localnet guide](../infra/localnet/README.md). Only its designated owner starts
+or stops `midnight-network`. The attach check proves endpoint pairing and
+versions; the repo's own proof/submission/indexed-confirmation run is still
+needed before accepting this ACC and registry on that chain. Record the
+deployment's observed block height/hash and verify it on reuse. A shared demo
+also needs a separate funded sponsor seed, deployment registry file and browser
+profile; the default genesis wallet and deployment file are not shared-session
+state.
+
 
 ## Demo setup and launch
 
@@ -46,7 +57,9 @@ and tens of minutes; later runs reuse the compiled output and verify the key cac
 `http://localhost:5173/` (or pass `--open`). `--mock-passkey` prints the mock URL. Ctrl-C stops the
 services this command started while preserving the localnet volumes.
 
-`pnpm demo check` tests the toolchain, Docker memory, and required ports without changing state.
+`pnpm demo check` tests the toolchain and required ports without changing state.
+It checks Docker memory for the owned default stack or attaches read-only to
+the explicitly selected shared Ledger 9 profile.
 `pnpm demo setup` prepares the ACC without starting services. Pass `--contract-dir /path/to/contract`
 to reuse an existing compiled export, or `--no-key-service` to skip the separate key server. The
 browser still gets contract metadata and artefacts through the Passport service on port 8787; the

@@ -169,6 +169,16 @@ not ready to run: it needs hosted artefacts, a reachable proof server and a real
 The script sources the file, starts the Docker localnet only for `undeployed`, and exports
 `PASSPORT_NETWORK_ID` for the dapp. The sponsor seed default is localnet-only: any other stack
 needs `PASSPORT_SPONSOR_SEED_FILE` or `PASSPORT_SPONSOR_SEED`, or the service refuses to start.
+`shared-ledger9` is an explicit, read-only attachment to the designated owner's
+`midnight-network` project at `9944/8088/6300`. Before launching, the repo-owned
+[`midnight-attach.sh`](../scripts/midnight-attach.sh) checks its node, indexer
+and prover versions and indexed block agreement. The launcher neither starts
+nor stops shared containers. Supply a separately funded sponsor seed file even
+though this development chain also has network ID `undeployed`; the public
+genesis seed may already be in use. See the [localnet guide](../infra/localnet/README.md)
+for the required separate deployment registry, browser profile, pinned Compose
+profile and isolated test projects. A successful attach
+does not establish that this ACC/prover combination passes a native transaction.
 
 The reference client must read the same stack. `experiments/acc-0.35/patch-endpoints.sh <dir>`
 (run by `fetch-acc.sh`) rewrites `CONFIG.local` in its `wallet.ts` and the indexer fallback in

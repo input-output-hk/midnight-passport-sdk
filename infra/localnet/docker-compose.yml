@@ -14,9 +14,9 @@
 # - The indexer is a commit-pinned rc.6 candidate, published on GHCR only:
 #   the numbered rc.5 exits at genesis on node 2.1.0-rc.x.
 # - Its storage layout changed at rc.5, and ledger lines do not migrate:
-#   use fresh volumes (`docker compose … down -v`) when changing images.
+#   use a new project with fresh volumes when changing images. Preserve the old volumes.
 
-name: mn-passport-sdk-localnet
+name: ${PASSPORT_LOCALNET_PROJECT:-mn-passport-sdk-localnet}
 
 services:
   node:

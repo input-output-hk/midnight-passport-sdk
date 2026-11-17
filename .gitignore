@@ -18,6 +18,7 @@ coverage/
 .env
 .env.*
 !.env.example
+.midnight-indexer.env
 
 # mn-passport-skills working artefacts (gitignored per docs/development-workflow.md)
 # security residual-risk register + verify/provisional register
@@ -56,6 +57,7 @@ apps/passport-dapp/src/acc/generated/
 # Real network stack files stay local; only *.env.example and the localnet stack are tracked.
 infra/networks/*.env
 !infra/networks/undeployed.env
+!infra/networks/shared-ledger9.env
 
 # Python documentation tooling
 __pycache__/
