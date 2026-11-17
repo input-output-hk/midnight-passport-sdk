@@ -61,7 +61,11 @@ For the designated shared Ledger 9 stack, run
 in `infra/networks/shared-ledger9.env` with this same bootstrap command. It
 attaches to the running stack and performs no Docker lifecycle action. The
 development genesis sponsor is public and pre-funded on this chain; coordinate
-exclusive wallet use with other sessions before a deployment. Supply an
+exclusive wallet use with other sessions before a deployment. The shared Passport
+demo now holds the same stable native sponsor lease while its service uses this
+wallet. Stop only your own demo, confirm its service drain and lease release,
+then bootstrap the registry. If either run retains the lease, reconcile its
+original transactions and receipts before proceeding. Supply an
 activated ACC address from this exact chain, and keep a fresh private receipt
 directory. A responding endpoint or funded wallet alone does not establish
 that the ACC or registry is deployed.

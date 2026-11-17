@@ -34,7 +34,10 @@ For the reference demo, explicitly select `MIDNIGHT_STACK=shared-ledger9` and
 provide a distinct `PASSPORT_REGISTRY_FILE` for its deployment records. The
 shared local development stack uses the public, pre-funded genesis sponsor seed
 when no sponsor seed is configured. Coordinate exclusive use of that wallet
-across sessions before sending transactions. A separately funded wallet can be
+across sessions before sending transactions. The shared demo claims the same
+stable native sponsor lease as the Midnames bootstrap before opening its wallet;
+it releases the lease only after a successful service drain and final chain
+anchor. A failed or unknown drain retains the lease for reconciliation. A separately funded wallet can be
 selected with `PASSPORT_SPONSOR_SEED_FILE` or `PASSPORT_SPONSOR_SEED`.
 Keep private files at absolute paths outside the repository. Create a dedicated private directory
 for the registry; the launcher refuses the default registry directory, linked

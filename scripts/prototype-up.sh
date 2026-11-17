@@ -104,6 +104,10 @@ check_shared_state() {
     echo "prototype-up: shared-ledger9 needs an exact 32-byte lowercase-hex sponsor seed." >&2
     return 1
   }
+  shared_genesis=0
+  if [ "$seed" = 0000000000000000000000000000000000000000000000000000000000000001 ]; then
+    shared_genesis=1
+  fi
   if [ -z "${PASSPORT_SPONSOR_SEED:-}" ] && [ -z "${PASSPORT_SPONSOR_SEED_FILE:-}" ]; then
     export PASSPORT_SPONSOR_SEED="$seed"
     echo "prototype-up: using the shared localnet's public genesis sponsor; use it exclusively."
@@ -114,6 +118,9 @@ if [ "${1:-}" = "--check" ]; then
   check_ports
   if [ "$stack" = shared-ledger9 ]; then
     check_shared_state
+    if [ "$shared_genesis" -eq 1 ]; then
+      node "$root/scripts/midnight-shared-sponsor-lease.mjs" --check "${PASSPORT_REGISTRY_FILE:-}"
+    fi
     profile=$(bash "$root/scripts/midnight-attach.sh")
     printf '%s' "$profile" | node "$root/scripts/midnight-shared-state.mjs" --check "${PASSPORT_REGISTRY_FILE:-}"
   fi
@@ -129,6 +136,9 @@ if [ "$stack" = shared-ledger9 ]; then
   umask 077
   check_ports
   check_shared_state
+  if [ "$shared_genesis" -eq 1 ]; then
+    node "$root/scripts/midnight-shared-sponsor-lease.mjs" --check "${PASSPORT_REGISTRY_FILE:-}"
+  fi
   profile=$(bash "$root/scripts/midnight-attach.sh")
   printf '%s' "$profile" | node "$root/scripts/midnight-shared-state.mjs" --check "${PASSPORT_REGISTRY_FILE:-}"
 fi
@@ -198,6 +208,7 @@ export MIDNIGHT_NETWORK=local
 compose=(docker compose -f "$root/infra/localnet/docker-compose.yml" -f "$root/infra/localnet/docker-compose.macos.yml")
 service=""
 shared_session=0
+shared_genesis_lease=0
 # shellcheck source=midnight-service-drain.sh
 . "$root/scripts/midnight-service-drain.sh"
 
@@ -223,9 +234,15 @@ cleanup() {
   if [ "$shared_session" -eq 1 ] && [ "$drained" -eq 1 ]; then
     # The service is quiescent before the last indexed block becomes the new
     # durable anchor. If attach/finalization fails, retain the active marker.
-    profile=$(bash "$root/scripts/midnight-attach.sh") &&
-      printf '%s' "$profile" | node "$root/scripts/midnight-shared-state.mjs" --finish "$PASSPORT_REGISTRY_FILE" ||
-      echo "prototype-up: shared session remains fenced; reconcile before reuse." >&2
+    if profile=$(bash "$root/scripts/midnight-attach.sh") &&
+      printf '%s' "$profile" | node "$root/scripts/midnight-shared-state.mjs" --finish "$PASSPORT_REGISTRY_FILE"; then
+      if [ "$shared_genesis_lease" -eq 1 ]; then
+        node "$root/scripts/midnight-shared-sponsor-lease.mjs" --finish "$PASSPORT_REGISTRY_FILE" ||
+          echo "prototype-up: native sponsor lease remains retained; reconcile before reuse." >&2
+      fi
+    else
+      echo "prototype-up: shared session and sponsor lease remain fenced; reconcile before reuse." >&2
+    fi
   elif [ "$shared_session" -eq 1 ]; then
     echo "prototype-up: sponsor drain did not succeed; shared session remains fenced." >&2
   fi
@@ -266,6 +283,10 @@ if [ "$stack" = shared-ledger9 ]; then
   # Recheck after the build/startup delay, then fence this session before
   # opening the sponsor wallet or service port.
   profile=$(bash "$root/scripts/midnight-attach.sh")
+  if [ "$shared_genesis" -eq 1 ]; then
+    node "$root/scripts/midnight-shared-sponsor-lease.mjs" --begin "$PASSPORT_REGISTRY_FILE"
+    shared_genesis_lease=1
+  fi
   printf '%s' "$profile" | node "$root/scripts/midnight-shared-state.mjs" --begin "$PASSPORT_REGISTRY_FILE"
   shared_session=1
 fi
