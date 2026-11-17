@@ -104,16 +104,21 @@ can test recovery of that same pending account against the shared node and v4
 indexer. Do not start another account or call the registry bootstrap until the
 live ACC is activated.
 An ACC can be deployed with all 52 pinned verifier operations and still have
-`booted=false`. On the current shared Ledger 9.1.0.1 node, the pinned Compact
-0.35 / Compact.js 3.0.0-rc.3 activation has generated proofs on the
-isolated prover but a node rejection (`Custom error: 104`, `ran out of gas
-budget`). The current [Compact.js release](https://docs.midnight.network/relnotes/compact-js/compact-js-3-0-0)
+`booted=false`. On the current shared Ledger 9.1.0.1 node, an earlier Compact
+0.35 / Compact.js 3.0.0-rc.3 attempt generated proofs on the isolated prover,
+but the node rejected activation (`Custom error: 104`, `ran out of gas budget`).
+The current [Compact.js release](https://docs.midnight.network/relnotes/compact-js/compact-js-3-0-0)
 fixes overwrite-related gas checks but requires Compact 0.36 artifacts; the
 cause of this particular node rejection has not been established.
-Treat the rejected submission as a failed qualification, retain the original
-address and passkey, and resolve the artifact/runtime compatibility before
-another activation attempt. Do not treat the deployed but unactivated ACC as
-the root target or create a replacement merely because the browser failed.
+With the released `@midnightntwrk/ledger-v9` 1.0.0 client pinned, a bounded
+retry activated that same ACC on the shared chain. This result applies to the
+observed local profile; confirm the live account and registry independently
+on every other chain.
+Keep the rejected submission as a failed attempt and retain its original
+address, passkey and diagnostics. Before any further activation attempt,
+reconcile the chain and investigate the rejection. Do not treat a deployed
+but unactivated ACC as the root target or create a replacement merely because
+the browser failed.
 The registry artifacts also use Compact 0.35. If the isolated prover is
 required for this chain, set the bootstrap command's explicit
 `MN_PROOF_SERVER_URL=http://127.0.0.1:16301` while retaining the shared

@@ -220,16 +220,25 @@ try {
   assert.equal(sha256(readFileSync(modulePath)), pins.compiled['contract/index.js']);
   const get = async (name) =>
     import(import.meta.resolve(name, pathToFileURL(join(reference, 'package.json')).href));
-  const [walletModule, registry, { CompiledContract }, contracts, ledger, zk, proof] =
-    await Promise.all([
-      import(pathToFileURL(join(reference, 'src/node/wallet.ts')).href),
-      import(pathToFileURL(modulePath).href),
-      get('@midnight-ntwrk/compact-js'),
-      get('@midnight-ntwrk/midnight-js-contracts'),
-      get('@midnightntwrk/ledger-v9'),
-      get('@midnight-ntwrk/midnight-js-node-zk-config-provider'),
-      get('@midnight-ntwrk/midnight-js-http-client-proof-provider'),
-    ]);
+  const [
+    walletModule,
+    registry,
+    { CompiledContract },
+    contracts,
+    ledger,
+    zk,
+    proof,
+    compactRuntime,
+  ] = await Promise.all([
+    import(pathToFileURL(join(reference, 'src/node/wallet.ts')).href),
+    import(pathToFileURL(modulePath).href),
+    get('@midnight-ntwrk/compact-js'),
+    get('@midnight-ntwrk/midnight-js-contracts'),
+    get('@midnightntwrk/ledger-v9'),
+    get('@midnight-ntwrk/midnight-js-node-zk-config-provider'),
+    get('@midnight-ntwrk/midnight-js-http-client-proof-provider'),
+    get('@midnight-ntwrk/compact-runtime'),
+  ]);
   process.chdir(output);
   step('sync-bootstrap-wallet');
   walletCreationAttempted = true;
@@ -372,7 +381,11 @@ try {
     assert.equal(sha256(operation.verifierKey), pin.verifier);
   }
   assert.deepEqual(state.maintenanceAuthority.committee, []);
-  const root = registry.ledger(state.data);
+  // The generated registry's ledger reader uses Compact runtime's WASM
+  // classes. Deserializing with ledger-v9's separate classes can throw
+  // "expected instance of ChargedState" after every transaction has landed.
+  const runtimeState = compactRuntime.ContractState.deserialize(onChain.serialize());
+  const root = registry.ledger(runtimeState.data);
   assert.equal(root.TLD, 'night');
   const rootRecord = root.id_to_data.lookup(root.ROOT_ZONE_ID);
   assert.deepEqual(rootRecord.target, Uint8Array.from(Buffer.from(rootTarget, 'hex')));

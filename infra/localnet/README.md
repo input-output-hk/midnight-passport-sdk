@@ -114,6 +114,10 @@ The pinned ACC was compiled with Compact 0.35 and Compact.js 3.0.0-rc.3.
 On the current shared Ledger 9.1.0.1 node, a recovered activation proof can
 succeed on this compatibility prover but the node can still reject its
 transaction with `Custom error: 104` (`ran out of gas budget`).
+In a bounded retry, pinning the released `@midnightntwrk/ledger-v9` 1.0.0
+client and resuming the **same** pending ACC produced indexed activation on
+this chain. This observation does not isolate the cause of the earlier rejection
+or qualify other environments.
 [Compact.js 3.0.0](https://docs.midnight.network/relnotes/compact-js/compact-js-3-0-0)
 fixes gas-budget checks for calls that overwrite ledger state, but requires
 Compact 0.36 artifacts. This is a compatibility lead, not a diagnosis of
