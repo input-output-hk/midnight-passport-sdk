@@ -23,6 +23,10 @@ registry address, namespace, matching demo network, and public indexer URLs.
 The adapter reads the registry's contract target and checks the deployed ACC
 verifier roster before displaying the result. On the pinned standalone registry,
 the demo checks name availability and reconciles retained sponsor receipts.
+To create that registry on a healthy local stack after activating an ACC, use
+the [pinned local bootstrap recipe](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/README.md#bootstrap-the-registry-on-an-existing-local-stack).
+It records the deployment waves and keeps root naming authority private; the
+resulting `.night` root is separate from public `passport.night` issuance.
 The opt-in standalone demo can prepare a reviewed claim with the open account's
 passkey. A definitive sponsor refusal before any balance intent permits a fresh
 quote review; an unknown outcome keeps the original. The browser shows the saved

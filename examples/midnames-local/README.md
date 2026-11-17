@@ -19,6 +19,58 @@ profile only on `undeployed`. It requires the deployed registry to match all
 binding and be activated. The registry build and key checks are prerequisites
 for live qualification.
 
+## Bootstrap the registry on an existing local stack
+
+The disposable qualification runner below deploys an ACC and registry together.
+For a local Passport demo that already has a healthy `undeployed` Ledger 9
+node, v4 indexer and proof server, `bootstrap-registry.mjs` deploys **only the
+registry**. Create and activate the intended ACC first, then supply its full
+64-hex contract address as the root target. The script checks that ACC's pinned
+binding, the prepared registry hashes, node/indexer finality agreement, the
+standalone chain name and the prover before starting its wallet or writing a
+receipt. Run it only when you control the stack and no other process is using
+the same local genesis funding wallet. Set `ACC_CONTRACT_ADDRESS` to the full
+64-hex address of that activated ACC before running. The command also requires
+15 GiB free and a free native qualification lease; reconcile an interrupted
+run before starting a new bootstrap.
+
+```sh
+PASSPORT_MIDNAMES_BOOTSTRAP=1 PASSPORT_RC_LOCALNET=1 \
+MIDNIGHT_NETWORK=local MN_NETWORK_ID=undeployed \
+MN_NODE_URL=http://127.0.0.1:19944 \
+MN_INDEXER_URL=http://127.0.0.1:18088/api/v4/graphql \
+MN_INDEXER_WS_URL=ws://127.0.0.1:18088/api/v4/graphql/ws \
+MN_PROOF_SERVER_URL=http://127.0.0.1:16300 \
+nix develop -c node --experimental-import-meta-resolve \
+  examples/midnames-local/bootstrap-registry.mjs \
+  /absolute/path/to/new-private-receipt \
+  /absolute/path/to/prepared-registry \
+  /absolute/path/to/acc-reference/contract \
+  "$ACC_CONTRACT_ADDRESS"
+```
+
+Use the actual ports of the intended local stack; the four endpoints must be
+explicit loopback URLs. The receipt directory must be new. The script uses the
+standalone genesis development seed, pays local DUST fees, and writes each
+original transaction's bytes and identifier to private files before continuing.
+It installs the 13 verifier keys in bounded waves, retires the deployment
+maintenance authority, and rereads the final registry and root owner commitment
+from the indexer. A failed or interrupted run retains its receipt, private root
+secret and original transactions. Inspect those originals on the same chain;
+never rerun the command as a blind repair or overwrite the receipt directory.
+The private `root-secret.private.hex` controls the local root name and must stay
+with the operator, outside Git and any browser/service request.
+
+On `PASS`, read `registryAddress` from `bootstrap.json` and configure the demo's
+`VITE_MIDNAMES_REGISTRY_ADDRESS` with it, together with
+`VITE_MIDNAMES_REGISTRY_PROFILE=standalone-0.35`,
+`VITE_MIDNAMES_NAMESPACE=night`, `VITE_MIDNAMES_NETWORK_ID=undeployed`, and
+`VITE_MIDNAMES_INDEXER_URL` / `VITE_MIDNAMES_INDEXER_WS_URL` matching the
+bootstrap pair. The deployed root is a transitional
+`.night` registry with a local one-unit NIGHT price policy. It does not issue
+public `passport.night` names or implement MIP-0007 delegated routing. A name
+still needs its separate owner-proved claim after the ACC exists.
+
 The standalone fixture has the upstream transitional registry administration
 semantics. A name claim needs an owner-controlled proof witness. Use synthetic
 wallets for this qualification and preserve all original transaction references

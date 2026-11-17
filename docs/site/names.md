@@ -184,6 +184,11 @@ For a disposable `undeployed` network, set
 above. This selects the independently pinned standalone verifier roster.
 The default profile remains `midnames-2.1.0`. A registry with a different
 roster is refused. See the [standalone preparation recipe](../../examples/midnames-local/README.md).
+The same recipe now includes a dedicated bootstrap command for an already
+healthy, operator-controlled local stack: it deploys the pinned registry after
+an activated ACC exists, records its address and original transactions, and
+keeps the root naming secret in a private local receipt. This is a local
+deployment path, not a replacement for an independently known online mapping.
 
 The standalone qualification activated the pinned ACC and deployed the registry
 in two verifier waves. In two isolated runs the node explicitly rejected the
