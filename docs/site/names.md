@@ -193,6 +193,13 @@ healthy, operator-controlled local stack: it deploys the pinned registry after
 an activated ACC exists, records its address and original transactions, and
 keeps the root naming secret in a private local receipt. This is a local
 deployment path, not a replacement for an independently known online mapping.
+The shared-chain claim fixture keeps an owner-held secret separate from the
+sponsor and refuses to report a name until the exact original transaction has
+finalized with `SUCCESS`. Its first fresh-sponsor shared-stack qualification
+was rejected by the node with error 104 despite two DUST spends. The separate
+[reconciliation command](../../examples/midnames-local/README.md) checks the
+fenced original, finalized funding, expiry and absence before releasing the
+run's native lease. No shared-chain `alice.night` claim is qualified yet.
 For an online deployment, the host must configure its actual registry address
 and a funded sponsor wallet through `PASSPORT_SPONSOR_SEED` in the service
 environment; the local genesis seed does not fund Preview or Preprod. The wallet

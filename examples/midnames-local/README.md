@@ -204,6 +204,32 @@ If the run fails after any send, preserve its lease, original bytes, naming
 secret and all receipts. Reconcile that same chain and transaction before any
 fresh claim. Never rerun the command as a blind repair.
 
+For a failed run with a fenced original, use the read-only reconciliation first:
+
+```sh
+nix develop -c pnpm --filter passport-dapp exec node --import tsx \
+  --experimental-import-meta-resolve \
+  "$PWD/examples/midnames-local/reconcile-shared-claim.mjs" \
+  "$PWD/review/midnames-shared-claim-my-run"
+```
+
+It requires the two exact funding transactions to have canonical finalized
+`SUCCESS`, the claim's retained bytes and identifiers to match the journal,
+both claim identifiers to be absent, and a canonical finalized block after the
+claim intent expires. It never submits a transaction. After reviewing that
+result, append `--release` to write a separate reconciliation receipt and
+clear only the exact pinned native lease. The original failed receipt and
+dispatch fence remain intact. An accepted or ambiguous original must retain
+the lease for further investigation.
+
+On the shared Ledger 9 stack, the first fresh-sponsor attempt reached the
+node with exactly two DUST spends, then received `Custom error: 104`. Its
+two funding transactions finalized successfully, but the exact claim was not
+indexed after expiry. This is a rejected qualification, not evidence that
+`alice.night` was issued. The [Ledger 9 release notes](https://docs.midnight.network/relnotes/ledger-9)
+describe error 104 as a gas-budget rejection for one known contract pattern;
+the cause of this claim rejection has not been established.
+
 This fixture gives a real local `.night` name an operator-held naming authority
 and a current ACC contract target. It does not exercise the full browser
 onboarding ceremony, passkey-based naming recovery, public `passport.night`
