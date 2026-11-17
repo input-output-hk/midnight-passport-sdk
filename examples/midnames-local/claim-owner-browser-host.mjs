@@ -100,7 +100,11 @@ function stageOwnerSources(input, root) {
   );
   symlinkSync(join(input.ref, 'node_modules'), join(root, 'node_modules'));
   writeFileSync(join(root, 'registry.mjs'), registry);
-  for (const name of ['registry-manifest.json', 'claim-owner-browser-entry.mjs'])
+  for (const name of [
+    'registry-manifest.json',
+    'claim-owner-browser-entry.mjs',
+    'deletion-credit.mjs',
+  ])
     copyFileSync(new URL(name, import.meta.url), join(root, name));
 }
 

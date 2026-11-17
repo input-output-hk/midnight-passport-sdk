@@ -226,9 +226,14 @@ On the shared Ledger 9 stack, the first fresh-sponsor attempt reached the
 node with exactly two DUST spends, then received `Custom error: 104`. Its
 two funding transactions finalized successfully, but the exact claim was not
 indexed after expiry. This is a rejected qualification, not evidence that
-`alice.night` was issued. The [Ledger 9 release notes](https://docs.midnight.network/relnotes/ledger-9)
-describe error 104 as a gas-budget rejection for one known contract pattern;
-the cause of this claim rejection has not been established.
+`alice.night` was issued. A local Ledger 9 replay of that transaction and the
+root-assisted attempt isolated the cause: each `create_domain` transcript
+claimed 1,364 deleted bytes, but executing against the indexed registry state
+deleted 1,136. A declared credit of 1,137 bytes is rejected; 1,136 or less
+passes the same replay. The standalone owner fixtures now rebuild their one
+`create_domain` call before proving with zero deletion credit, retaining its
+program, effects and value transfers. This avoids claiming a storage refund;
+native issuance with the adjusted transaction still needs qualification.
 
 For an operator-controlled local registry, a separate root-assisted fixture
 can issue the name without a paid claim. It proves `create_domain` under the

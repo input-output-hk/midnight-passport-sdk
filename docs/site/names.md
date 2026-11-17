@@ -201,7 +201,11 @@ was rejected by the node with error 104 despite two DUST spends. The separate
 fenced original, finalized funding, expiry and absence before releasing the
 run's native lease. No shared-chain `alice.night` claim is qualified yet.
 A separate root-assisted fixture also reached the node but received the same
-error 104 before creating a name. Paid self-registration and administrator
+error 104 before creating a name. A read-only Ledger 9 replay identified an
+overclaimed storage-deletion credit in both `create_domain` transactions:
+1,364 bytes declared against 1,136 actually deleted. The local owner fixtures
+now construct calls without a deletion credit before proof; a fresh native
+submission is still required to qualify issuance. Paid self-registration and administrator
 issuance therefore remain unqualified on this shared chain; neither receipt
 establishes a live `alice.night` mapping.
 For an online deployment, the host must configure its actual registry address

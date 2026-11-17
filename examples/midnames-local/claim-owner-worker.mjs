@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash, randomBytes } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { loadOrCreateOwnerSecret } from './owner-secret.mjs';
+import { withoutDeletionCredit } from './deletion-credit.mjs';
 
 let phase = 'initialize';
 
@@ -37,6 +38,8 @@ async function proveClaim(input) {
     { httpClientProofProvider },
     { indexerPublicDataProvider },
     { setNetworkId },
+    ledger,
+    types,
   ] = await Promise.all([
     get('@midnight-ntwrk/compact-js'),
     get('@midnight-ntwrk/midnight-js-contracts'),
@@ -45,6 +48,8 @@ async function proveClaim(input) {
     get('@midnight-ntwrk/midnight-js-http-client-proof-provider'),
     get('@midnight-ntwrk/midnight-js-indexer-public-data-provider'),
     get('@midnight-ntwrk/midnight-js-network-id'),
+    get('@midnight-ntwrk/midnight-js-protocol/ledger'),
+    get('@midnight-ntwrk/midnight-js-types'),
   ]);
   setNetworkId('undeployed');
   const providers = {
@@ -93,14 +98,18 @@ async function proveClaim(input) {
             childPrice,
             Array.from({ length: 10 }, () => ({ is_some: false, value: ['', ''] })),
           ];
-    const {
-      private: { unprovenTx },
-    } = await createUnprovenCallTx(providers, {
+    const result = await createUnprovenCallTx(providers, {
       compiledContract,
       contractAddress: registryAddress,
       circuitId: operation,
       args,
     });
+    const state = await providers.publicDataProvider.queryContractState(registryAddress);
+    assert.ok(state, 'The pinned registry is absent.');
+    const unprovenTx =
+      operation === 'create_domain'
+        ? withoutDeletionCredit(result, state, 'undeployed', ledger, types, registryAddress)
+        : result.private.unprovenTx;
     phase = 'prove';
     const proven = await proofProvider.proveTx({ version: 'v9', tx: unprovenTx });
     assert.equal(proven.version, 'v9');
