@@ -20,6 +20,8 @@ For application-contract → ACC calls, use the [standards and implementation ma
 
 The reference demo can use Midnames 2.1.0 for read-only lookup. Configure the
 registry address, namespace, matching demo network, and public indexer URLs.
+Use paired Indexer API v4 HTTP and WebSocket endpoints. The demo refuses v3
+paths even though the upstream package still contains older defaults.
 The adapter reads the registry's contract target and checks the deployed ACC
 verifier roster before displaying the result. On the pinned standalone registry,
 the demo checks name availability and reconciles retained sponsor receipts.

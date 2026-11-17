@@ -6,6 +6,7 @@ import {
 } from './resolver.js';
 import { isClaimSponsorOrigin, requestClaimDispatch } from './claim-dispatch.js';
 import { registryProfile } from './registry-pins.js';
+import { requireMidnamesV4IndexerPair } from './indexer-endpoints.js';
 import { claimHex, claimName, type ClaimRecovery } from './claim-receipt.js';
 import type { ClaimPreparation } from './claim-quote.js';
 
@@ -62,6 +63,7 @@ function configuredIndexers(config: MidnamesConfig, networkId: string) {
     throw new Error('Configure the registry, namespace, matching network, and both indexer URLs.');
   const http = endpoint(indexerUrl, 'https:', 'http:');
   const ws = endpoint(indexerWsUrl, 'wss:', 'ws:');
+  requireMidnamesV4IndexerPair(http, ws);
   const hasVerification =
     verificationIndexerUrl !== undefined || verificationIndexerWsUrl !== undefined;
   if (hasVerification && (!verificationIndexerUrl || !verificationIndexerWsUrl))
@@ -73,6 +75,7 @@ function configuredIndexers(config: MidnamesConfig, networkId: string) {
           ws: endpoint(verificationIndexerWsUrl, 'wss:', 'ws:'),
         }
       : undefined;
+  if (verification) requireMidnamesV4IndexerPair(verification.http, verification.ws);
   const online =
     networkId !== 'undeployed' ||
     !loopback(http) ||

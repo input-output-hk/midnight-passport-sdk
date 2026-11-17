@@ -146,6 +146,10 @@ Midnames 2.1.0 uses a Ledger 9 reader built with runtime 0.21.0 and Midnight JS
 so each decoder uses its own runtime. The exact dependency exceptions in
 `pnpm-workspace.yaml` apply to this demo qualification. Registry integrity,
 lifecycle-script blocking and the cooldown for other versions still apply.
+The upstream 2.1.0 provider still carries historical API v3 default URLs.
+This demo never selects those defaults: configuration and the Midnames reader
+require explicit, paired Indexer API v4 HTTP and WebSocket URLs, including
+for the separately configured verification reader.
 
 The generated registry and the Ledger 9 HTTP read format have a local test.
 A read-only check against the existing demo indexer also returned the expected

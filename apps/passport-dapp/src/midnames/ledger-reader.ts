@@ -5,6 +5,7 @@ import {
   resolveDomainIdInLedger,
 } from '@midnames/sdk/core';
 import { createDefaultProvider } from '@midnames/sdk/provider';
+import { requireMidnamesV4IndexerPair } from './indexer-endpoints.js';
 import { ContractState } from '@midnight-ntwrk/compact-runtime';
 import { PassportNameError } from '@input-output-hk/mn-passport-account/names';
 import { resolveBinding } from '@input-output-hk/mn-passport-contract';
@@ -146,5 +147,6 @@ export function createMidnamesIndexer(
   indexerUrl: string,
   indexerWsUrl: string,
 ): RegistryProvider {
+  requireMidnamesV4IndexerPair(indexerUrl, indexerWsUrl);
   return createDefaultProvider({ networkId, indexerUrl, indexerWsUrl });
 }

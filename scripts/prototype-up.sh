@@ -87,13 +87,6 @@ check_shared_state() {
     echo "prototype-up: set only one sponsor seed source for shared-ledger9." >&2
     return 1
   fi
-  case "${PASSPORT_REGISTRY_FILE:-}" in
-    /*) ;;
-    *) echo "prototype-up: shared-ledger9 needs an absolute PASSPORT_REGISTRY_FILE for its own deployment records." >&2; return 1 ;;
-  esac
-  case "$PASSPORT_REGISTRY_FILE" in
-    "$root"/*) echo "prototype-up: keep shared deployment records outside the repository." >&2; return 1 ;;
-  esac
   if [ -n "${PASSPORT_SPONSOR_SEED_FILE:-}" ]; then
     case "$PASSPORT_SPONSOR_SEED_FILE" in
       /*) ;;
@@ -103,12 +96,12 @@ check_shared_state() {
       echo "prototype-up: PASSPORT_SPONSOR_SEED_FILE does not exist." >&2
       return 1
     }
-    seed=$(tr -d '\r\n' <"$PASSPORT_SPONSOR_SEED_FILE")
+    seed=$(cat "$PASSPORT_SPONSOR_SEED_FILE")
   else
     seed="${PASSPORT_SPONSOR_SEED:-}"
   fi
-  [ -n "$seed" ] || {
-    echo "prototype-up: shared-ledger9 needs a separately funded sponsor wallet." >&2
+  [[ "$seed" =~ ^[0-9a-f]{64}$ ]] || {
+    echo "prototype-up: shared-ledger9 needs an exact 32-byte lowercase-hex sponsor seed." >&2
     return 1
   }
   [ "$seed" != 0000000000000000000000000000000000000000000000000000000000000001 ] || {
@@ -121,7 +114,8 @@ if [ "${1:-}" = "--check" ]; then
   check_ports
   if [ "$stack" = shared-ledger9 ]; then
     check_shared_state
-    bash "$root/scripts/midnight-attach.sh" >/dev/null
+    profile=$(bash "$root/scripts/midnight-attach.sh")
+    printf '%s' "$profile" | node "$root/scripts/midnight-shared-state.mjs" --check "${PASSPORT_REGISTRY_FILE:-}"
   fi
   exit $?
 fi
@@ -131,9 +125,12 @@ fi
 }
 
 if [ "$stack" = shared-ledger9 ]; then
+  # The service's registry writer inherits this mode for new state files.
+  umask 077
   check_ports
   check_shared_state
-  bash "$root/scripts/midnight-attach.sh" >/dev/null
+  profile=$(bash "$root/scripts/midnight-attach.sh")
+  printf '%s' "$profile" | node "$root/scripts/midnight-shared-state.mjs" --check "${PASSPORT_REGISTRY_FILE:-}"
 fi
 
 "$root/experiments/acc-0.35/guard.sh"
@@ -246,6 +243,13 @@ if [ "$local_stack" -eq 1 ]; then
   "${compose[@]}" up -d --wait indexer
 else
   echo "prototype-up: stack $stack: using the endpoints in $stack_file; no localnet is started"
+fi
+
+if [ "$stack" = shared-ledger9 ]; then
+  # Recheck after the build/startup delay, and atomically bind fresh service
+  # records to this chain before opening the sponsor wallet or service port.
+  profile=$(bash "$root/scripts/midnight-attach.sh")
+  printf '%s' "$profile" | node "$root/scripts/midnight-shared-state.mjs" --bind "$PASSPORT_REGISTRY_FILE"
 fi
 
 echo "prototype-up: starting the service"

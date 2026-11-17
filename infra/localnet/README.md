@@ -17,28 +17,34 @@ nix develop -c bash scripts/midnight-attach.sh
 
 The command checks node `2.1.101`, indexer protocol `2001100`, proof server
 `9.0.2`, and the node/indexer block match at the observed height. It prints the
-loopback endpoints and observed block hash. Before reusing a deployment record,
-verify its **recorded height and block hash** against the live node; the genesis
-hash alone cannot distinguish independent development chains. The command is
-only a connectivity/version preflight. Use the repo's proof, submission and
+loopback endpoints and observed block hash. The demo launcher writes a private
+`.chain-anchor.json` beside its dedicated registry file on first use, then checks
+that anchor's recorded height and block hash against the live node before
+reusing any records. Existing registry, directory or deployment files without
+an anchor are refused; reconcile them manually rather than treating the same
+genesis hash as proof of the same development chain. The attach command itself
+is only a connectivity/version preflight. Use the repo's proof, submission and
 indexed-confirmation smoke before claiming a pinned ACC or Midnames build works
 on this stack.
 
 For the reference demo, explicitly select `MIDNIGHT_STACK=shared-ledger9` and
 provide a **separately funded** sponsor seed via `PASSPORT_SPONSOR_SEED_FILE`,
 plus a distinct `PASSPORT_REGISTRY_FILE` for its deployment records. Keep both
-absolute paths outside the repository. The public genesis funding wallet may
+absolute paths outside the repository. Create a dedicated private directory
+for the registry; the launcher refuses the default registry directory, linked
+files and preexisting unanchored records. The public genesis funding wallet may
 be in use by another session, and the launcher refuses it on this profile.
 Use a separate browser profile for this development chain's local account and
 intent storage; keep its original receipts when switching chains.
 `prototype-up.sh` attaches without starting or stopping shared containers:
 
 ```sh
+install -d -m 700 "$HOME/.midnight-passport/shared-ledger9"
 MIDNIGHT_STACK=shared-ledger9 PASSPORT_SPONSOR_SEED_FILE=/private/seed-file \
-  PASSPORT_REGISTRY_FILE=/private/shared-passport-registry.json \
+  PASSPORT_REGISTRY_FILE="$HOME/.midnight-passport/shared-ledger9/registry.json" \
   nix develop -c pnpm demo check
 MIDNIGHT_STACK=shared-ledger9 PASSPORT_SPONSOR_SEED_FILE=/private/seed-file \
-  PASSPORT_REGISTRY_FILE=/private/shared-passport-registry.json \
+  PASSPORT_REGISTRY_FILE="$HOME/.midnight-passport/shared-ledger9/registry.json" \
   PASSPORT_CONTRACT_DIR=/absolute/path/to/pinned-acc \
   nix develop -c pnpm demo up
 ```

@@ -153,8 +153,8 @@ test('installed Midnames v2.1 reads its generated registry over the Ledger 9 ind
   assert.ok(address && typeof address !== 'string');
   const indexer = createMidnamesIndexer(
     'undeployed',
-    `http://127.0.0.1:${address.port}`,
-    `ws://127.0.0.1:${address.port}`,
+    `http://127.0.0.1:${address.port}/api/v4/graphql`,
+    `ws://127.0.0.1:${address.port}/api/v4/graphql/ws`,
   );
   const reads = createMidnamesLedgerReads(indexer, 'undeployed', 'acc-s3r1.1');
   const standalone = createMidnamesLedgerReads(

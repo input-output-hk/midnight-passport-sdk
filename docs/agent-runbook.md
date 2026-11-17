@@ -35,7 +35,8 @@ For an explicitly selected shared Ledger 9 profile, run the repo-owned
 or stops `midnight-network`. The attach check proves endpoint pairing and
 versions; the repo's own proof/submission/indexed-confirmation run is still
 needed before accepting this ACC and registry on that chain. Record the
-deployment's observed block height/hash and verify it on reuse. A shared demo
+shared profile's observed block height/hash in the private chain anchor and
+verify it on reuse. A shared demo
 also needs a separate funded sponsor seed, deployment registry file and browser
 profile; the default genesis wallet and deployment file are not shared-session
 state.
