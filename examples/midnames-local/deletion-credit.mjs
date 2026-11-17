@@ -1,5 +1,5 @@
 /**
- * Rebuild the one-call standalone create_domain transaction before proving.
+ * Rebuild a one-call standalone naming transaction before proving.
  *
  * The retained Compact 0.35 composer pads all four gas dimensions. Ledger 9
  * treats bytesDeleted as a credit: claiming more deletions than execution
@@ -13,30 +13,31 @@ export function withoutDeletionCredit(result, state, networkId, ledger, types, r
   const original = result.private.unprovenTx;
   const intents = [...(original.intents?.values() ?? [])];
   const calls = result.calls;
+  const circuit = String(calls[0]?.circuitId);
   if (
     intents.length !== 1 ||
     intents[0].actions.length !== 1 ||
     calls.length !== 1 ||
-    calls[0].contractAddress !== registryAddress ||
-    calls[0].circuitId !== 'create_domain'
+    String(calls[0].contractAddress) !== registryAddress ||
+    !['create_domain', 'transfer_domain'].includes(circuit)
   )
-    throw new Error('Deletion-credit adjustment requires one create_domain call.');
+    throw new Error('Deletion-credit adjustment requires one naming call.');
   const call = calls[0];
   const [guaranteed, fallible] = call.public.partitionedTranscript;
   if (!guaranteed || fallible || guaranteed.gas.bytesDeleted <= 0n)
-    throw new Error('Unexpected create_domain transcript partition.');
+    throw new Error('Unexpected naming transcript partition.');
   const existing = intents[0].actions[0];
   const entry =
     typeof existing.entryPoint === 'string'
       ? existing.entryPoint
       : new TextDecoder().decode(existing.entryPoint);
-  if (existing.address !== registryAddress || entry !== 'create_domain')
+  if (existing.address !== registryAddress || entry !== circuit)
     throw new Error('The unproven transaction differs from the executed call.');
 
-  const operation = ledger.ContractState.deserialize(state.serialize()).operation('create_domain');
+  const operation = ledger.ContractState.deserialize(state.serialize()).operation(circuit);
   const keyLocation = types.encodeContractKeyLocation({
     contractAddress: registryAddress,
-    circuitId: 'create_domain',
+    circuitId: circuit,
     verifierKeyHash: types.hashVerifierKey(operation.verifierKey),
   });
   const safeTranscript = {
@@ -45,7 +46,7 @@ export function withoutDeletionCredit(result, state, networkId, ledger, types, r
   };
   const prototype = new ledger.ContractCallPrototype(
     registryAddress,
-    'create_domain',
+    circuit,
     operation,
     safeTranscript,
     undefined,

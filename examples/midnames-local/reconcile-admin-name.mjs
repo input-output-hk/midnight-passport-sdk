@@ -1,4 +1,4 @@
-// Reconcile one rejected root-assisted issuance without replaying its original transaction.
+// Reconcile a rejected root-assisted issuance or a finalized create with a rejected transfer.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
@@ -31,12 +31,22 @@ assert.equal(receipt.walletStopped, true);
 assert.equal(receipt.inputsUnchanged, true);
 assert.equal(receipt.leaseOwner.project, 'shared-ledger9-midnames-admin-name');
 assert.equal(receipt.leaseOwner.root, directory);
-assert.equal(receipt.transactions.length, 1);
-const original = receipt.transactions[0];
-assert.equal(original.operation, 'create_domain');
+assert.ok(receipt.transactions.length === 1 || receipt.transactions.length === 2);
+const partial = receipt.transactions.length === 2;
+const created = partial ? receipt.transactions[0] : undefined;
+const original = receipt.transactions.at(-1);
+assert.ok(original);
+assert.equal(original.ordinal, partial ? 2 : 1);
+assert.equal(original.operation, partial ? 'transfer_domain' : 'create_domain');
 assert.equal(original.status, 'submission-unknown');
+if (partial) {
+  assert.equal(created.ordinal, 1);
+  assert.equal(created.operation, 'create_domain');
+  assert.equal(created.status, 'finalized-success');
+  assert.ok(created.block && Number.isSafeInteger(created.block.height));
+}
 assert.ok(receipt.leasePin);
-const bytes = readFileSync(join(directory, 'admin-tx-1.private.bin'));
+const bytes = readFileSync(join(directory, `admin-tx-${original.ordinal}.private.bin`));
 const sha256 = (data) => createHash('sha256').update(data).digest('hex');
 assert.equal(sha256(bytes), original.sha256);
 const requireFromApp = createRequire(join(root, 'apps/passport-dapp/package.json'));
@@ -81,6 +91,30 @@ assert.equal(block.hash, before.finalizedHash.replace(/^0x/, ''));
 assert.ok(block.timestamp > expiresAt, 'Wait for finalized expiry.');
 const query =
   'query($offset:TransactionOffset!){transactions(offset:$offset){__typename hash protocolVersion raw ... on RegularTransaction {identifiers transactionResult{status} block{hash height}}}}';
+if (created) {
+  const createdBytes = readFileSync(join(directory, 'admin-tx-1.private.bin'));
+  assert.equal(sha256(createdBytes), created.sha256);
+  const createdTx = Transaction.deserialize('signature', 'proof', 'binding', createdBytes);
+  assert.equal(createdTx.transactionHash(), created.hash);
+  assert.deepEqual(createdTx.identifiers(), created.identifiers);
+  for (const identifier of created.identifiers) {
+    const { data } = await post(indexerUrl, {
+      query,
+      variables: { offset: { identifier } },
+    });
+    assert.equal(data.transactions.length, 1);
+    const [row] = data.transactions;
+    assert.equal(row.__typename, 'RegularTransaction');
+    assert.equal(row.protocolVersion, 2001100);
+    assert.equal(row.hash, created.hash);
+    assert.equal(sha256(Buffer.from(row.raw, 'hex')), created.sha256);
+    assert.deepEqual(row.identifiers, created.identifiers);
+    assert.equal(row.transactionResult.status, 'SUCCESS');
+    assert.deepEqual(row.block, created.block);
+    assert.ok(row.block.height <= before.finalizedHeight);
+    assert.equal(await rpc('chain_getBlockHash', [row.block.height]), '0x' + row.block.hash);
+  }
+}
 for (const identifier of original.identifiers) {
   const result = await post(indexerUrl, {
     query,
@@ -94,14 +128,17 @@ const reads = createMidnamesLedgerReads(
   'acc-s3r1.1',
   'standalone-0.35',
 );
-assert.equal(
-  await reads.readClaim(receipt.name, {
-    networkId: 'undeployed',
-    namespace: 'night',
-    registryAddress: receipt.registryAddress,
-  }),
-  undefined,
-);
+const indexedName = await reads.readClaim(receipt.name, {
+  networkId: 'undeployed',
+  namespace: 'night',
+  registryAddress: receipt.registryAddress,
+});
+if (partial)
+  assert.deepEqual(indexedName, {
+    ownerCommitment: receipt.rootCommitment,
+    target: { kind: 'contract', address: receipt.accountAddress },
+  });
+else assert.equal(indexedName, undefined);
 const after = await dedicatedIndexerReadiness({ nodeUrl, indexerUrl });
 assert.ok(after.ready && after.finalizedHeight >= before.finalizedHeight);
 for (const identifier of original.identifiers) {
@@ -112,13 +149,14 @@ for (const identifier of original.identifiers) {
   assert.deepEqual(result.data.transactions, []);
 }
 const result = {
-  status: 'RECONCILED_REJECTED',
+  status: partial ? 'RECONCILED_PARTIAL' : 'RECONCILED_REJECTED',
   sourceReceipt: join(directory, 'admin-name.json'),
   originalHash: original.hash,
   originalIdentifiers: original.identifiers,
   expiresAt: new Date(expiresAt).toISOString(),
   finalizedBlock: block,
-  nameIndexed: false,
+  nameIndexed: partial,
+  ...(partial && { createdHash: created.hash, createdBlock: created.block }),
   originalFailurePreserved: true,
   leaseReleased: false,
 };
@@ -126,7 +164,17 @@ const path = join(directory, 'reconciliation.json');
 const pending = { ...result, status: 'READY_TO_RELEASE' };
 const prior = existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : undefined;
 if (prior) {
-  assert.deepEqual({ ...prior, finalizedBlock: pending.finalizedBlock }, pending);
+  const released = prior.status === result.status && prior.leaseReleased === true;
+  assert.ok(released || (prior.status === 'READY_TO_RELEASE' && prior.leaseReleased === false));
+  assert.deepEqual(
+    {
+      ...prior,
+      status: 'READY_TO_RELEASE',
+      leaseReleased: false,
+      finalizedBlock: pending.finalizedBlock,
+    },
+    pending,
+  );
   assert.ok(prior.finalizedBlock.timestamp > expiresAt);
   assert.ok(prior.finalizedBlock.height <= after.finalizedHeight);
   assert.equal(
@@ -135,7 +183,7 @@ if (prior) {
   );
 }
 const lease = nativeLeasePath();
-assert.ok(existsSync(lease) || (mode === '--release' && prior));
+assert.ok(existsSync(lease) || (prior && prior.leaseReleased));
 if (mode === '--release') {
   if (!prior) saveIsolationReceipt(path, pending);
   if (existsSync(lease)) {

@@ -48,6 +48,7 @@ const [
   rootSecretFile,
   ownerSecretFile,
   sponsorSeedFile,
+  previousDir,
 ] = process.argv.slice(2);
 assert.ok(process.env.IN_NIX_SHELL && process.env.COMPACT_DIRECTORY);
 assert.equal(process.env.PASSPORT_MIDNAMES_ADMIN_ISSUE, '1');
@@ -61,6 +62,8 @@ assert.equal(process.env.MN_PROOF_SERVER_URL, 'http://127.0.0.1:16320');
 const root = fileURLToPath(new URL('../..', import.meta.url));
 const review = join(root, 'review');
 mkdirSync(review, { recursive: true, mode: 0o700 });
+const recovery = process.env.PASSPORT_MIDNAMES_RECOVER_TRANSFER === '1';
+assert.equal(!!previousDir, recovery);
 for (const path of [output, prepared, reference, rootSecretFile, ownerSecretFile, sponsorSeedFile])
   assert.ok(path && isAbsolute(path) && resolve(path) === path);
 assert.equal(dirname(output), review);
@@ -70,6 +73,12 @@ assert.match(registryAddress ?? '', /^[0-9a-f]{64}$/);
 assert.match(accountAddress ?? '', /^[0-9a-f]{64}$/);
 assert.match(label ?? '', /^[a-z0-9-]{3,32}$/);
 assert.equal(process.env.PASSPORT_MIDNAMES_APPROVED_NAME, label + '.night');
+if (recovery) {
+  assert.ok(isAbsolute(previousDir) && resolve(previousDir) === previousDir);
+  assert.equal(dirname(previousDir), review);
+  assert.match(basename(previousDir), /^midnames-admin-name-[a-z0-9-]{1,40}$/);
+  assert.equal(realpathSync(previousDir), previousDir);
+}
 assert.ok(!existsSync(nativeLeasePath()));
 const disk = statfsSync(root);
 assert.ok(BigInt(disk.bavail) * BigInt(disk.bsize) >= 15n * 1024n ** 3n);
@@ -102,6 +111,35 @@ const commitment = (path) =>
 const rootCommitment = commitment(rootSecretFile);
 const ownerCommitment = commitment(ownerSecretFile);
 assert.notEqual(rootCommitment, ownerCommitment);
+let prior;
+if (recovery) {
+  const failed = JSON.parse(readFileSync(join(previousDir, 'admin-name.json'), 'utf8'));
+  const reconciled = JSON.parse(readFileSync(join(previousDir, 'reconciliation.json'), 'utf8'));
+  assert.equal(failed.status, 'FAIL');
+  assert.equal(failed.name, label + '.night');
+  assert.equal(failed.registryAddress, registryAddress);
+  assert.equal(failed.accountAddress, accountAddress);
+  assert.equal(failed.rootCommitment, rootCommitment);
+  assert.equal(failed.ownerCommitment, ownerCommitment);
+  assert.equal(failed.sponsorSeedHash, sponsorSeedHash);
+  assert.deepEqual(
+    failed.transactions.map((row) => [row.operation, row.status]),
+    [
+      ['create_domain', 'finalized-success'],
+      ['transfer_domain', 'submission-unknown'],
+    ],
+  );
+  assert.equal(reconciled.status, 'RECONCILED_PARTIAL');
+  assert.equal(reconciled.leaseReleased, true);
+  assert.equal(reconciled.originalHash, failed.transactions[1].hash);
+  assert.equal(reconciled.createdHash, failed.transactions[0].hash);
+  assert.equal(reconciled.nameIndexed, true);
+  prior = {
+    receipt: join(previousDir, 'admin-name.json'),
+    createdHash: reconciled.createdHash,
+    rejectedTransferHash: reconciled.originalHash,
+  };
+}
 const nodeUrl = process.env.MN_NODE_URL;
 const indexerUrl = process.env.MN_INDEXER_URL;
 const post = async (url, body) => {
@@ -130,7 +168,13 @@ const indexer = createMidnamesIndexer('undeployed', indexerUrl, process.env.MN_I
 const reads = createMidnamesLedgerReads(indexer, 'undeployed', 'acc-s3r1.1', 'standalone-0.35');
 const profile = { networkId: 'undeployed', namespace: 'night', registryAddress };
 assert.ok(await reads.isSupportedAccount(accountAddress, 'undeployed'));
-assert.equal(await reads.readClaim(label + '.night', profile), undefined);
+const beforeName = await reads.readClaim(label + '.night', profile);
+if (recovery)
+  assert.deepEqual(beforeName, {
+    ownerCommitment: rootCommitment,
+    target: { kind: 'contract', address: accountAddress },
+  });
+else assert.equal(beforeName, undefined);
 mkdirSync(output, { mode: 0o700 });
 const leaseOwner = {
   runId: randomBytes(8).toString('hex'),
@@ -149,6 +193,7 @@ const receipt = {
   finalizedBefore: initial.finalizedHash,
   preparedManifestSha256: sha256(readFileSync(join(prepared, 'prepared.json'))),
   sponsorSeedHash,
+  ...(prior && { prior }),
   transactions: [],
   steps: [],
   leaseOwner,
@@ -419,7 +464,7 @@ try {
       target: { kind: 'contract', address: accountAddress },
     });
   };
-  await submit('create_domain', rootCommitment);
+  if (!recovery) await submit('create_domain', rootCommitment);
   await submit('transfer_domain', ownerCommitment);
   assert.ok(await reads.isSupportedAccount(accountAddress, 'undeployed'));
   const finality = await dedicatedIndexerReadiness({ nodeUrl, indexerUrl });

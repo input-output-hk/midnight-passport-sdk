@@ -106,10 +106,14 @@ async function proveClaim(input) {
     });
     const state = await providers.publicDataProvider.queryContractState(registryAddress);
     assert.ok(state, 'The pinned registry is absent.');
-    const unprovenTx =
-      operation === 'create_domain'
-        ? withoutDeletionCredit(result, state, 'undeployed', ledger, types, registryAddress)
-        : result.private.unprovenTx;
+    const unprovenTx = withoutDeletionCredit(
+      result,
+      state,
+      'undeployed',
+      ledger,
+      types,
+      registryAddress,
+    );
     phase = 'prove';
     const proven = await proofProvider.proveTx({ version: 'v9', tx: unprovenTx });
     assert.equal(proven.version, 'v9');

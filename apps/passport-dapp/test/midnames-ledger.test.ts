@@ -76,7 +76,7 @@ async function registryFixture() {
     createCircuitContext,
   }: {
     createCircuitContext(options: {
-      circuitId: 'create_domain';
+      circuitId: 'create_domain' | 'transfer_domain';
       contractAddress: string;
       coinPublicKeyOrZswapState: string;
       contractState: typeof start.currentContractState.data;
@@ -120,11 +120,31 @@ async function registryFixture() {
     operation.verifierKey = readFileSync(verifier);
     result.setOperation(name, operation);
   }
-  return { result, state, trace };
+  const transferState = ContractState.deserialize(result.serialize());
+  const transferContext = createCircuitContext({
+    circuitId: 'transfer_domain',
+    contractAddress: profile.registryAddress,
+    coinPublicKeyOrZswapState: coin,
+    contractState: transferState.data,
+    privateState: {},
+    time: 0,
+  });
+  const transferred = await claimant.circuits.transfer_domain(
+    transferContext,
+    key,
+    root,
+    new Uint8Array(32).fill(7),
+    owner,
+  );
+  const transferTrace = transferred.context.callProofDataTrace[0];
+  assert.ok(transferTrace);
+  return { result, state, trace, transferState, transferTrace };
 }
 
-test('create_domain replay refuses an overclaimed deletion credit', async () => {
-  const { state, trace } = await registryFixture();
+function assertGasBoundary(
+  state: ContractState,
+  trace: Awaited<ReturnType<typeof registryFixture>>['trace'],
+) {
   const initial = LedgerContractState.deserialize(state.serialize());
   const params = LedgerParameters.initialParameters();
   const model = params.transactionCostModel.runtimeCostModel;
@@ -153,42 +173,20 @@ test('create_domain replay refuses an overclaimed deletion credit', async () => 
   assert.doesNotThrow(() =>
     context().runTranscript({ ...transcript, gas: { ...transcript.gas, bytesDeleted: 0n } }, model),
   );
+}
+
+test('create_domain replay refuses an overclaimed deletion credit', async () => {
+  const { state, trace } = await registryFixture();
+  assertGasBoundary(state, trace);
 });
 
-test('standalone name call is rebuilt before proof without deletion credit', async () => {
-  const { state, trace } = await registryFixture();
-  const ledgerState = LedgerContractState.deserialize(state.serialize());
-  const operation = ledgerState.operation('create_domain');
-  assert.ok(operation);
-  const [partition] = partitionTranscripts(
-    [
-      new PreTranscript(
-        new QueryContext(ledgerState.data, profile.registryAddress),
-        trace.publicTranscript,
-      ),
-    ],
-    LedgerParameters.initialParameters(),
-  );
-  const transcript = partition?.[0];
-  assert.ok(transcript);
-  const originalCall = new ledgerV9.ContractCallPrototype(
-    profile.registryAddress,
-    'create_domain',
-    operation,
-    transcript,
-    undefined,
-    trace.privateTranscriptOutputs,
-    trace.input,
-    trace.output,
-    ledgerV9.communicationCommitmentRandomness(),
-    'fixture',
-  );
-  const original = ledgerV9.Transaction.fromPartsRandomized(
-    'undeployed',
-    undefined,
-    undefined,
-    ledgerV9.Intent.new(new Date(Date.now() + 3_600_000)).addCall(originalCall),
-  );
+test('transfer_domain replay refuses an overclaimed deletion credit', async () => {
+  const { transferState, transferTrace } = await registryFixture();
+  assertGasBoundary(transferState, transferTrace);
+});
+
+test('standalone naming calls are rebuilt before proof without deletion credit', async () => {
+  const { state, trace, transferState, transferTrace } = await registryFixture();
   const { withoutDeletionCredit } = (await import(
     new URL('../../../examples/midnames-local/deletion-credit.mjs', import.meta.url).href
   )) as {
@@ -201,40 +199,77 @@ test('standalone name call is rebuilt before proof without deletion credit', asy
       address: string,
     ) => ledgerV9.UnprovenTransaction;
   };
-  const adjusted = withoutDeletionCredit(
-    {
-      private: { unprovenTx: original },
-      calls: [
-        {
-          contractAddress: profile.registryAddress,
-          circuitId: 'create_domain',
-          public: { partitionedTranscript: [transcript, undefined] },
-          private: {
-            privateTranscriptOutputs: trace.privateTranscriptOutputs,
-            input: trace.input,
-            output: trace.output,
-          },
-        },
+  for (const [circuit, startingState, proof] of [
+    ['create_domain', state, trace],
+    ['transfer_domain', transferState, transferTrace],
+  ] as const) {
+    const ledgerState = LedgerContractState.deserialize(startingState.serialize());
+    const operation = ledgerState.operation(circuit);
+    assert.ok(operation);
+    const [partition] = partitionTranscripts(
+      [
+        new PreTranscript(
+          new QueryContext(ledgerState.data, profile.registryAddress),
+          proof.publicTranscript,
+        ),
       ],
-    },
-    state,
-    'undeployed',
-    ledgerV9,
-    { hashVerifierKey: () => 'fixture', encodeContractKeyLocation: () => 'fixture' },
-    profile.registryAddress,
-  );
-  const decoded = ledgerV9.Transaction.deserialize(
-    'signature',
-    'pre-proof',
-    'pre-binding',
-    adjusted.serialize(),
-  );
-  const [call] = [...(decoded.intents?.values() ?? [])].flatMap((intent) => intent.actions);
-  assert.ok(call instanceof ledgerV9.ContractCall);
-  assert.ok(call.guaranteedTranscript);
-  assert.equal(call.guaranteedTranscript.gas.bytesDeleted, 0n);
-  assert.deepEqual(call.guaranteedTranscript.program, transcript.program);
-  assert.deepEqual(call.guaranteedTranscript.effects, transcript.effects);
+      LedgerParameters.initialParameters(),
+    );
+    const transcript = partition?.[0];
+    assert.ok(transcript);
+    const originalCall = new ledgerV9.ContractCallPrototype(
+      profile.registryAddress,
+      circuit,
+      operation,
+      transcript,
+      undefined,
+      proof.privateTranscriptOutputs,
+      proof.input,
+      proof.output,
+      ledgerV9.communicationCommitmentRandomness(),
+      'fixture',
+    );
+    const original = ledgerV9.Transaction.fromPartsRandomized(
+      'undeployed',
+      undefined,
+      undefined,
+      ledgerV9.Intent.new(new Date(Date.now() + 3_600_000)).addCall(originalCall),
+    );
+    const adjusted = withoutDeletionCredit(
+      {
+        private: { unprovenTx: original },
+        calls: [
+          {
+            contractAddress: profile.registryAddress,
+            circuitId: circuit,
+            public: { partitionedTranscript: [transcript, undefined] },
+            private: {
+              privateTranscriptOutputs: proof.privateTranscriptOutputs,
+              input: proof.input,
+              output: proof.output,
+            },
+          },
+        ],
+      },
+      startingState,
+      'undeployed',
+      ledgerV9,
+      { hashVerifierKey: () => 'fixture', encodeContractKeyLocation: () => 'fixture' },
+      profile.registryAddress,
+    );
+    const decoded = ledgerV9.Transaction.deserialize(
+      'signature',
+      'pre-proof',
+      'pre-binding',
+      adjusted.serialize(),
+    );
+    const [call] = [...(decoded.intents?.values() ?? [])].flatMap((intent) => intent.actions);
+    assert.ok(call instanceof ledgerV9.ContractCall);
+    assert.ok(call.guaranteedTranscript);
+    assert.equal(call.guaranteedTranscript.gas.bytesDeleted, 0n);
+    assert.deepEqual(call.guaranteedTranscript.program, transcript.program);
+    assert.deepEqual(call.guaranteedTranscript.effects, transcript.effects);
+  }
 });
 
 test('installed Midnames v2.1 reads its generated registry over the Ledger 9 indexer wire format', async (t) => {
