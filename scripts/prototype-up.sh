@@ -223,6 +223,15 @@ kill_tree() {
 cleanup() {
   local drained=0
   trap - EXIT INT TERM
+  if [ -z "$service" ] && [ "$shared_genesis_lease" -eq 1 ]; then
+    # Startup failed before the service could open the wallet. Release only
+    # this launcher's pinned sponsor lease; chain markers remain for audit.
+    if node "$root/scripts/midnight-shared-sponsor-lease.mjs" --finish "$PASSPORT_REGISTRY_FILE"; then
+      shared_genesis_lease=0
+    else
+      echo "prototype-up: pre-service sponsor lease remains retained; reconcile before reuse." >&2
+    fi
+  fi
   if [ -n "$service" ]; then
     if [ "$stack" = shared-ledger9 ]; then
       if drain_shared_service "$service"; then drained=1; fi
@@ -244,7 +253,7 @@ cleanup() {
       echo "prototype-up: shared session and sponsor lease remain fenced; reconcile before reuse." >&2
     fi
   elif [ "$shared_session" -eq 1 ]; then
-    echo "prototype-up: sponsor drain did not succeed; shared session remains fenced." >&2
+    echo "prototype-up: shared session remains fenced without a successful service drain." >&2
   fi
   # Only the containers this script started; the volumes stay, so a rerun resumes the same chain.
   if [ "$local_stack" -eq 1 ]; then "${compose[@]}" stop >/dev/null 2>&1 || true; fi

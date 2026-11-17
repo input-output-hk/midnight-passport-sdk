@@ -74,7 +74,15 @@ export function sharedSponsorLease(mode, registry, home = homedir()) {
           },
         ]
       : [];
-    saveIsolationReceipt(receiptPath, { owner, pin, status: 'active', history });
+    try {
+      saveIsolationReceipt(receiptPath, { owner, pin, status: 'active', history });
+    } catch (error) {
+      // No caller can start the wallet until begin succeeds. If no active
+      // receipt was published, undo only this exact lease; keep an ambiguous
+      // published receipt and its lease for manual reconciliation.
+      if (!existsSync(receiptPath)) releaseIsolationLease(path, owner, true, pin);
+      throw error;
+    }
     return 'active';
   }
   assert.equal(mode, 'finish');

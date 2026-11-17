@@ -63,6 +63,19 @@ test('active or substituted native lease is never removed by a shared demo', () 
   }
 });
 
+test('receipt write failure rolls back the exact lease before wallet startup', () => {
+  const f = fixture();
+  try {
+    const receipt = `${f.registry}.sponsor-lease.json`;
+    writeFileSync(`${receipt}.pending-${process.pid}`, 'blocked', { mode: 0o600 });
+    assert.throws(() => sharedSponsorLease('begin', f.registry, f.home), /EEXIST/);
+    assert.equal(existsSync(nativeLeasePath(f.home)), false);
+    assert.equal(existsSync(receipt), false);
+  } finally {
+    f.cleanup();
+  }
+});
+
 test('private canonical registry path is required before claiming the wallet', () => {
   const f = fixture();
   try {

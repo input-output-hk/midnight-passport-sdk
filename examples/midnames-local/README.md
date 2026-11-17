@@ -39,6 +39,33 @@ room for this command. Set `ACC_CONTRACT_ADDRESS` to the full
 15 GiB free and a free native qualification lease; reconcile an interrupted
 run before starting a new bootstrap.
 
+On the designated shared Ledger 9 stack, create the ACC with the same pinned
+Passport binding before registry deployment. Reuse a verified 52-key ACC export
+or prepare one with `pnpm demo setup`; keep its manifest and keys unchanged
+during the run. The launcher attaches to the existing stack and creates a
+private chain anchor and sponsor lease in the selected state directory:
+
+```sh
+run_dir="$HOME/.local/share/midnight-passport/shared-ledger9-$(date +%Y%m%d%H%M%S)"
+install -d -m 700 "$run_dir"
+MIDNIGHT_STACK=shared-ledger9 PASSPORT_REGISTRY_FILE="$run_dir/registry.json" \
+  nix develop -c pnpm demo check --no-key-service
+MIDNIGHT_STACK=shared-ledger9 PASSPORT_REGISTRY_FILE="$run_dir/registry.json" \
+  nix develop -c pnpm demo up --contract-dir /absolute/path/to/pinned-acc/contract \
+    --no-key-service --mock-passkey
+```
+
+Open the printed `http://localhost:5173/?mockPasskey` URL in a **dedicated
+private browser profile**, create the account, and retain that profile and
+the full 64-hex ACC address outside Git. The mock passkey is for local
+development only; use a PRF-capable real authenticator for a real deployment.
+Wait for the browser's created status and check the live indexed activation, then
+stop only this demo and confirm its successful service drain and sponsor lease
+release. The registry bootstrap below checks the live account binding and
+activation again before it sends. An uncertain creation or shutdown must be
+reconciled from the original deployment records and transaction IDs; do not
+create another ACC merely because the browser response was lost.
+
 ```sh
 PASSPORT_MIDNAMES_BOOTSTRAP=1 PASSPORT_RC_LOCALNET=1 \
 MIDNIGHT_NETWORK=local MN_NETWORK_ID=undeployed \
