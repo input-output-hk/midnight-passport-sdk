@@ -15,14 +15,22 @@ import { saveIsolationReceipt } from '../../scripts/qualification/native-isolati
 import { interactiveReviewRequested, reviewInTerminal } from './terminal-review.mjs';
 
 const [output, ref, registryAddress, name] = process.argv.slice(2);
-assert.equal(process.env.PASSPORT_MIDNAMES_NATIVE, '1');
+const shared = process.env.PASSPORT_MIDNAMES_SHARED_DEPOSIT === '1';
+assert.equal(process.env.PASSPORT_MIDNAMES_NATIVE, shared ? undefined : '1');
 assert.equal(process.env.MN_NETWORK_ID, 'undeployed');
 assert.equal(process.env.PASSPORT_RC_LOCALNET, '1');
-const expectedEnvironment = isolationEnvironment(
-  isolationProfile(process.env.PASSPORT_NATIVE_ISOLATION_RUN_ID, output),
-);
-for (const [key, value] of Object.entries(expectedEnvironment))
-  assert.equal(process.env[key], value, `Unexpected fixture setting ${key}`);
+if (shared) {
+  assert.equal(process.env.MN_NODE_URL, 'http://127.0.0.1:9944');
+  assert.equal(process.env.MN_INDEXER_URL, 'http://127.0.0.1:8088/api/v4/graphql');
+  assert.equal(process.env.MN_INDEXER_WS_URL, 'ws://127.0.0.1:8088/api/v4/graphql/ws');
+  assert.equal(process.env.MN_PROOF_SERVER_URL, 'http://127.0.0.1:16320');
+} else {
+  const expectedEnvironment = isolationEnvironment(
+    isolationProfile(process.env.PASSPORT_NATIVE_ISOLATION_RUN_ID, output),
+  );
+  for (const [key, value] of Object.entries(expectedEnvironment))
+    assert.equal(process.env[key], value, `Unexpected fixture setting ${key}`);
+}
 const target = join(output, 'sender');
 mkdirSync(target, { mode: 0o700 });
 const browserReview = process.env.PASSPORT_MIDNAMES_BROWSER_REVIEW === '1';
@@ -80,7 +88,14 @@ const [
   ),
 ]);
 
-const receipt = { networkId, registryAddress, name, requestId: randomUUID(), dispatches: 0 };
+const receipt = {
+  networkId,
+  registryAddress,
+  name,
+  scope: shared ? 'shared-ledger9' : 'isolated-ledger9',
+  requestId: randomUUID(),
+  dispatches: 0,
+};
 const save = () => saveIsolationReceipt(join(target, 'sender.json'), receipt);
 process.chdir(target);
 let wallet;
@@ -250,5 +265,9 @@ try {
   }
   throw error;
 } finally {
-  if (wallet) await wallet.wallet.stop();
+  if (wallet) {
+    await wallet.wallet.stop();
+    receipt.walletStopped = true;
+    save();
+  }
 }
