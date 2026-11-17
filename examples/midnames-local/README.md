@@ -96,6 +96,12 @@ original transactions and receipts before proceeding. Supply an
 activated ACC address from this exact chain, and keep a fresh private receipt
 directory. A responding endpoint or funded wallet alone does not establish
 that the ACC or registry is deployed.
+If the shared stack's newer prover rejects activation of the pinned Compact
+0.35 ACC, retain the deployed account and passkey; the
+[isolated compatibility prover](../../infra/localnet/README.md#isolated-prover-for-the-pinned-compact-035-acc)
+can test recovery of that same pending account against the shared node and v4
+indexer. Do not start another account or call the registry bootstrap until the
+live ACC is activated.
 Choose a fresh direct child of the SDK's ignored `review/` directory for each
 receipt. The script uses the standalone genesis development seed, pays local DUST fees, and writes each
 original transaction's bytes and identifier to private files before continuing.

@@ -87,6 +87,31 @@ After startup, the owner runs a representative proof, submission and indexed
 confirmation before offering the stack to consumers. Do not remove its volumes
 for routine shutdown or version changes.
 
+## Isolated prover for the pinned Compact 0.35 ACC
+
+If the owner's current proof server rejects an ACC proof from the pinned
+Compact 0.35 artifact, preserve the failed account and transaction records.
+The optional [`docker-compose.compat-prover.yml`](docker-compose.compat-prover.yml)
+starts only a digest-pinned `9.0.0-rc.8` proof server on loopback port `16301`.
+It does not start or change the shared node, indexer, or prover. Use a unique
+project name and check the version before continuing the **same** pending ACC:
+
+```sh
+export PASSPORT_COMPAT_PROVER_PROJECT=midnight-passport-compat-prover-my-run
+docker compose -p "$PASSPORT_COMPAT_PROVER_PROJECT" \
+  -f infra/localnet/docker-compose.compat-prover.yml up -d proof-server
+PASSPORT_COMPAT_PROVER=1 MIDNIGHT_STACK=shared-ledger9 \
+  PASSPORT_REGISTRY_FILE=/absolute/private/registry.json \
+  nix develop -c pnpm demo check --no-key-service
+```
+
+Pass `PASSPORT_COMPAT_PROVER=1` to the matching demo run. The launcher requires
+the isolated server's exact version and still verifies the owner's stack at
+its original endpoints. A successful proof and indexed account activation are
+required before registry bootstrap; the version check alone proves neither.
+When the demo has drained and released its sponsor lease, stop only this
+isolated prover with the same Compose project and file. It has no volumes.
+
 ## Isolated current Ledger 9 qualification
 
 Tests that need a fresh chain use a new `midnight-passport-ledger9-<run-id>`

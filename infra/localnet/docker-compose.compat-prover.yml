@@ -1,0 +1,16 @@
+# Optional Compact 0.35 ACC prover beside the owner-managed Ledger 9 stack.
+# This project has no node, indexer, chain volume, or shared-project lifecycle.
+# Select a fresh PASSPORT_COMPAT_PROVER_PROJECT for each run.
+name: ${PASSPORT_COMPAT_PROVER_PROJECT:?set a unique isolated project name}
+
+services:
+  proof-server:
+    image: midnightntwrk/proof-server@sha256:2666c7bd7b4517f8ad135565387f98d14347a9ac715c6c466d4a8a852b545ecf
+    ports:
+      - '127.0.0.1:${PASSPORT_COMPAT_PROVER_PORT:-16301}:6300'
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      disable: true

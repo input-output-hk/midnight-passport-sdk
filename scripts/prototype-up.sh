@@ -37,6 +37,28 @@ set -a
 # shellcheck source=/dev/null
 . "$stack_file"
 set +a
+if [ "${PASSPORT_COMPAT_PROVER:-0}" != 0 ]; then
+  [ "${PASSPORT_COMPAT_PROVER:-}" = 1 ] && [ "$stack" = shared-ledger9 ] || {
+    echo "prototype-up: PASSPORT_COMPAT_PROVER=1 applies only to shared-ledger9." >&2
+    exit 2
+  }
+  compat_port="${PASSPORT_COMPAT_PROVER_PORT:-16301}"
+  [[ "$compat_port" =~ ^[1-9][0-9]{3,4}$ ]] && [ "$compat_port" -le 65535 ] || {
+    echo "prototype-up: PASSPORT_COMPAT_PROVER_PORT must be a loopback port from 1000 to 65535." >&2
+    exit 2
+  }
+  compat_url="http://127.0.0.1:$compat_port"
+  compat_version=$(curl --noproxy '*' --fail --silent --show-error --max-time 4 "$compat_url/version") || {
+    echo "prototype-up: isolated Compact 0.35 proof server is unavailable." >&2
+    exit 1
+  }
+  [ "$compat_version" = 9.0.0-rc.8 ] || {
+    echo "prototype-up: isolated proof server must be pinned 9.0.0-rc.8; got $compat_version." >&2
+    exit 1
+  }
+  export MN_PROOF_SERVER_URL="$compat_url"
+  echo "prototype-up: using isolated Compact 0.35 prover at $compat_url; shared node and v4 indexer remain attached."
+fi
 for var in MN_NETWORK_ID MN_NODE_URL MN_INDEXER_URL MN_INDEXER_WS_URL MN_PROOF_SERVER_URL; do
   [ -n "${!var:-}" ] || {
     echo "prototype-up: $stack_file does not set $var." >&2
