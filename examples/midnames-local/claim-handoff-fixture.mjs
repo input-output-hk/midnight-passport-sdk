@@ -26,8 +26,10 @@ export async function qualifyClaimHandoff({
   dispatch,
   browserOwner = false,
   preproofReview = false,
+  label = 'charlie',
+  ownerSecretFile,
+  childPrice,
 }) {
-  const label = 'charlie';
   const { owner_address: registryPayee, payment_config: price } = parentDomain;
   assert.ok(price.buy_enabled);
   assert.ok(price.coin_color.every((byte) => byte === 0));
@@ -75,6 +77,8 @@ export async function qualifyClaimHandoff({
       rootId,
       label,
       price,
+      ...(ownerSecretFile && { ownerSecretFile }),
+      ...(childPrice && { childPrice }),
       ...(reviewedQuote && { reviewedQuote }),
     },
     browserOwner,

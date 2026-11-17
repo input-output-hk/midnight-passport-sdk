@@ -152,6 +152,61 @@ bootstrap pair. The deployed root is a transitional
 public `passport.night` names or implement MIP-0007 delegated routing. A name
 still needs its separate owner-proved claim after the ACC exists.
 
+### Claim one name on the shared Ledger 9 registry
+
+`qualify-shared-claim.mjs` is a bounded operator fixture for an **existing**
+activated ACC and registry on the designated shared chain. It never deploys an
+ACC or registry. It requires the free stable native sponsor lease, a clean
+signed source, the pinned registry and reference artifacts, 15 GiB free,
+and a fresh private receipt directory. The owner process creates or reopens a
+32-byte naming secret in an operator-owned mode-0700 directory; only that
+process reads it. The sponsor receives the proved transaction and public
+commitment, not the secret. Preserve the same secret file with the name for
+future target updates and recovery; losing it can make this name unrecoverable.
+
+First attach with `nix develop -c bash scripts/midnight-attach.sh` and verify
+the intended ACC and registry addresses from their original receipts. The
+shared prover has not been qualified for the pinned Compact 0.35 registry
+claim proof. Start only the separate, no-volume compatibility prover on port
+16320 (`PASSPORT_COMPAT_PROVER_PORT=16320`) using
+the [localnet recipe](../../infra/localnet/README.md#isolated-prover-for-the-pinned-compact-035-acc).
+Use a new Compose project name and stop only that project afterward. Then run
+from the SDK root with a new output name and a private naming-secret path:
+
+```sh
+PASSPORT_MIDNAMES_SHARED_CLAIM=1 PASSPORT_MIDNAMES_APPROVED_NAME=alice.night \
+PASSPORT_RC_LOCALNET=1 MIDNIGHT_NETWORK=local MN_NETWORK_ID=undeployed \
+MN_NODE_URL=http://127.0.0.1:9944 \
+MN_INDEXER_URL=http://127.0.0.1:8088/api/v4/graphql \
+MN_INDEXER_WS_URL=ws://127.0.0.1:8088/api/v4/graphql/ws \
+MN_PROOF_SERVER_URL=http://127.0.0.1:16320 \
+nix develop -c pnpm --filter passport-dapp exec node --import tsx \
+  --experimental-import-meta-resolve \
+  "$PWD/examples/midnames-local/qualify-shared-claim.mjs" \
+  "$PWD/review/midnames-shared-claim-my-run" \
+  /absolute/path/to/prepared-registry \
+  /absolute/path/to/acc-reference/contract \
+  "$REGISTRY_CONTRACT_ADDRESS" "$ACC_CONTRACT_ADDRESS" alice \
+  /absolute/private/name-alice.private.bin
+```
+
+The fixture checks the exact deployed ACC and 13 registry verifier keys before
+using the shared genesis sponsor. It keeps the original submitted transaction
+bytes and IDs, verifies a distinct naming owner commitment and exact contract
+target through both the Midnames adapter and the generated registry reader,
+then releases the lease only after wallet shutdown, finality and unchanged
+inputs. It may create two additional local DUST funding transactions before the
+name claim; their private funding seed and receipts remain in the run directory.
+If the run fails after any send, preserve its lease, original bytes, naming
+secret and all receipts. Reconcile that same chain and transaction before any
+fresh claim. Never rerun the command as a blind repair.
+
+This fixture gives a real local `.night` name an operator-held naming authority
+and a current ACC contract target. It does not exercise the full browser
+onboarding ceremony, passkey-based naming recovery, public `passport.night`
+issuance, or online sponsor funding. Keep #316's P2/P5/P8 conformance gates open
+until those paths are qualified.
+
 The standalone fixture has the upstream transitional registry administration
 semantics. A name claim needs an owner-controlled proof witness. Use synthetic
 wallets for this qualification and preserve all original transaction references

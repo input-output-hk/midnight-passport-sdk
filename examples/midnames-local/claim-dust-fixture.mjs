@@ -25,8 +25,9 @@ export async function delegateClaimDust({
   get,
   step,
   recordSubmission,
+  fundingSeed,
 }) {
-  const funding = await walletModule.createWallet(randomBytes(32).toString('hex'));
+  const funding = await walletModule.createWallet(fundingSeed ?? randomBytes(32).toString('hex'));
   const sponsor = wallet.wallet;
   const source = funding.wallet;
   try {

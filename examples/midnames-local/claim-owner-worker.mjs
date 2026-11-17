@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash, randomBytes } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
+import { loadOrCreateOwnerSecret } from './owner-secret.mjs';
 
 let phase = 'initialize';
 
@@ -20,6 +21,8 @@ async function proveClaim(input) {
     rootId,
     label,
     price,
+    childPrice = price,
+    ownerSecretFile,
   } = input;
   const get = (name) =>
     import(import.meta.resolve(name, pathToFileURL(ref + '/package.json').href));
@@ -52,7 +55,9 @@ async function proveClaim(input) {
     }),
   };
   const proofProvider = httpClientProofProvider(proverUrl, await nodeZkConfigRegistry(assets));
-  const witness = new Uint8Array(randomBytes(32));
+  const witness = ownerSecretFile
+    ? loadOrCreateOwnerSecret(ownerSecretFile).secret
+    : new Uint8Array(randomBytes(32));
   try {
     const tag = Buffer.alloc(32);
     tag.write('midnight.domains');
@@ -78,7 +83,7 @@ async function proveClaim(input) {
         new Uint8Array(Buffer.from(accountAddress, 'hex')),
         AddressType.ContractAddr,
         { is_some: false, value: '' },
-        price,
+        childPrice,
         Array.from({ length: 10 }, () => ({ is_some: false, value: ['', ''] })),
       ],
     });
