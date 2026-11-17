@@ -56,7 +56,12 @@ if [ "${PASSPORT_COMPAT_PROVER:-0}" != 0 ]; then
     echo "prototype-up: isolated proof server must be pinned 9.0.0-rc.8; got $compat_version." >&2
     exit 1
   }
+  if [ -n "${PASSPORT_PUBLIC_PROOF_SERVER_URL:-}" ] && [ "$PASSPORT_PUBLIC_PROOF_SERVER_URL" != "$compat_url" ]; then
+    echo "prototype-up: PASSPORT_PUBLIC_PROOF_SERVER_URL must match the isolated prover in compat mode." >&2
+    exit 1
+  fi
   export MN_PROOF_SERVER_URL="$compat_url"
+  export PASSPORT_PUBLIC_PROOF_SERVER_URL="$compat_url"
   echo "prototype-up: using isolated Compact 0.35 prover at $compat_url; shared node and v4 indexer remain attached."
 fi
 for var in MN_NETWORK_ID MN_NODE_URL MN_INDEXER_URL MN_INDEXER_WS_URL MN_PROOF_SERVER_URL; do

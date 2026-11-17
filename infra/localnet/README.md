@@ -106,7 +106,8 @@ PASSPORT_COMPAT_PROVER=1 MIDNIGHT_STACK=shared-ledger9 \
 ```
 
 Pass `PASSPORT_COMPAT_PROVER=1` to the matching demo run. The launcher requires
-the isolated server's exact version and still verifies the owner's stack at
+the isolated server's exact version and pins both the service and browser
+public proving URLs to it; a conflicting public URL is refused. It still verifies the owner's stack at
 its original endpoints. A successful proof and indexed account activation are
 required before registry bootstrap; the version check alone proves neither.
 When the demo has drained and released its sponsor lease, stop only this

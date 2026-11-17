@@ -102,6 +102,12 @@ If the shared stack's newer prover rejects activation of the pinned Compact
 can test recovery of that same pending account against the shared node and v4
 indexer. Do not start another account or call the registry bootstrap until the
 live ACC is activated.
+The registry artifacts also use Compact 0.35. If the isolated prover is
+required for this chain, set the bootstrap command's explicit
+`MN_PROOF_SERVER_URL=http://127.0.0.1:16301` while retaining the shared
+node and v4 indexer URLs from `infra/networks/shared-ledger9.env`. Its version
+preflight and an actual indexed registry deployment must pass; the alternate
+endpoint alone does not establish compatibility.
 Choose a fresh direct child of the SDK's ignored `review/` directory for each
 receipt. The script uses the standalone genesis development seed, pays local DUST fees, and writes each
 original transaction's bytes and identifier to private files before continuing.
