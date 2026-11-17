@@ -237,6 +237,35 @@ naming witness. The sponsor pays DUST, but the registry receives no name
 purchase payment. Keep the root and name witnesses as separate private
 32-byte files and use a previously funded sponsor seed. This is an explicit
 administrator issuance path, not proof that paid self-registration works.
+Bootstrap stores the root witness as a private 64-character hex file. Convert
+it once to the raw format expected by the owner child, in a private directory:
+
+```sh
+umask 077
+ROOT_HEX=/absolute/path/to/bootstrap/root-secret.private.hex \
+ROOT_BIN=/absolute/private/root-secret.private.bin \
+nix develop -c python3 - <<'PY'
+import os
+import pathlib
+import stat
+
+source = pathlib.Path(os.environ['ROOT_HEX'])
+target = pathlib.Path(os.environ['ROOT_BIN'])
+parent = target.parent.stat()
+existing = source.lstat()
+assert stat.S_ISDIR(parent.st_mode) and parent.st_mode & 0o077 == 0
+assert stat.S_ISREG(existing.st_mode) and existing.st_mode & 0o077 == 0
+assert existing.st_uid == os.getuid() and parent.st_uid == os.getuid()
+raw = bytes.fromhex(source.read_text().strip())
+assert len(raw) == 32
+fd = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+try:
+    assert os.write(fd, raw) == 32
+    os.fsync(fd)
+finally:
+    os.close(fd)
+PY
+```
 
 ```sh
 PASSPORT_MIDNAMES_ADMIN_ISSUE=1 \
@@ -274,8 +303,8 @@ records, a canonical finalized block after expiry, and the still-absent name.
 Only after reviewing those checks may the operator append `--release` to
 clear that run's exact pinned lease. The command never submits a transaction.
 
-This fixture gives a real local `.night` name an operator-held naming authority
-and a current ACC contract target. It does not exercise the full browser
+Only a fixture with a final **PASS** establishes its scoped local name and ACC
+binding. Neither shared-chain attempt above did. These fixtures do not exercise the full browser
 onboarding ceremony, passkey-based naming recovery, public `passport.night`
 issuance, or online sponsor funding. Keep #316's P2/P5/P8 conformance gates open
 until those paths are qualified.

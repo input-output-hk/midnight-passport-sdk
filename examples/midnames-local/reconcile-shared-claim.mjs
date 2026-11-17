@@ -137,12 +137,29 @@ const result = {
 const path = join(directory, 'reconciliation.json');
 const pending = { ...result, status: 'READY_TO_RELEASE' };
 const prior = existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : undefined;
-if (prior) assert.deepEqual(prior, pending, 'Prior reconciliation differs.');
+if (prior) {
+  assert.deepEqual(
+    { ...prior, finalizedBlock: pending.finalizedBlock },
+    pending,
+    'Prior reconciliation differs.',
+  );
+  assert.ok(prior.finalizedBlock.timestamp > expiresAt);
+  assert.ok(prior.finalizedBlock.height <= after.finalizedHeight);
+  assert.equal(
+    await rpc('chain_getBlockHash', [prior.finalizedBlock.height]),
+    '0x' + prior.finalizedBlock.hash,
+  );
+}
 assert.ok(existsSync(lease) || (mode === '--release' && prior));
 if (mode === '--release') {
   if (!prior) saveIsolationReceipt(path, pending);
-  if (existsSync(lease)) releaseIsolationLease(lease, receipt.leaseOwner, true, receipt.leasePin);
-  result.leaseReleased = true;
+  if (existsSync(lease)) {
+    releaseIsolationLease(lease, receipt.leaseOwner, true, receipt.leasePin);
+    result.leaseReleased = true;
+  } else {
+    result.status = 'RECONCILED_LEASE_ALREADY_ABSENT';
+    result.leaseAlreadyAbsent = true;
+  }
   saveIsolationReceipt(path, result);
 }
 console.log(JSON.stringify(result));

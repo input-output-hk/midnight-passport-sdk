@@ -23,6 +23,7 @@ import {
   createMidnamesIndexer,
   createMidnamesLedgerReads,
 } from '../../apps/passport-dapp/src/midnames/ledger-reader.ts';
+import { matchesClaimWrites } from '../../apps/passport-dapp/src/midnames/claim-transcript.ts';
 import { dedicatedIndexerReadiness } from '../../scripts/qualification/indexer-readiness.mjs';
 import {
   claimIsolationLease,
@@ -86,8 +87,6 @@ const readPrivate = (path, length) => {
   assert.equal(bytes.length, length);
   return bytes;
 };
-const rootSecretHash = sha256(readPrivate(rootSecretFile, 32));
-const ownerSecretHash = sha256(readPrivate(ownerSecretFile, 32));
 const sponsorSeed = readPrivate(sponsorSeedFile, 64).toString('utf8');
 assert.match(sponsorSeed, /^[0-9a-f]{64}$/);
 const sponsorSeedHash = sha256(Buffer.from(sponsorSeed));
@@ -146,7 +145,7 @@ const receipt = {
   ownerCommitment,
   finalizedBefore: initial.finalizedHash,
   preparedManifestSha256: sha256(readFileSync(join(prepared, 'prepared.json'))),
-  secretHashes: { root: rootSecretHash, owner: ownerSecretHash, sponsorSeed: sponsorSeedHash },
+  sponsorSeedHash,
   transactions: [],
   steps: [],
   leaseOwner,
@@ -258,10 +257,68 @@ try {
       'pre-binding',
       proved.bytes,
     );
+    assert.equal(prebound.intents?.size, 1);
+    for (const intent of prebound.intents.values()) {
+      assert.equal(intent.guaranteedUnshieldedOffer, undefined);
+      assert.equal(intent.fallibleUnshieldedOffer, undefined);
+      assert.equal(intent.dustActions, undefined);
+    }
     const balanced = await providers.walletProvider.balanceTx({ version: 'v9', tx: prebound });
     assert.equal(balanced.version, 'v9');
     const bytes = balanced.tx.serialize();
     const tx = ledger.Transaction.deserialize('signature', 'proof', 'binding', bytes);
+    const onlyCall = (value) => {
+      assert.ok(!value.rewards && !value.guaranteedOffer && !value.fallibleOffer?.size);
+      const actions = [...(value.intents?.values() ?? [])].flatMap((intent) => intent.actions);
+      assert.equal(actions.length, 1);
+      const [call] = actions;
+      assert.ok(call instanceof ledger.ContractCall);
+      assert.equal(call.address, registryAddress);
+      assert.equal(
+        typeof call.entryPoint === 'string'
+          ? call.entryPoint
+          : new TextDecoder().decode(call.entryPoint),
+        operation,
+      );
+      assert.ok(call.proof instanceof ledger.Proof);
+      assert.ok(!!call.guaranteedTranscript !== !!call.fallibleTranscript);
+      return call;
+    };
+    const ownerCall = onlyCall(prebound);
+    const finalCall = onlyCall(tx);
+    assert.equal(finalCall.communicationCommitment, ownerCall.communicationCommitment);
+    assert.equal(sha256(finalCall.proof.serialize()), sha256(ownerCall.proof.serialize()));
+    assert.equal(finalCall.toString(), ownerCall.toString());
+    if (operation === 'create_domain')
+      assert.ok(
+        matchesClaimWrites(
+          [
+            finalCall.guaranteedTranscript?.program ?? [],
+            finalCall.fallibleTranscript?.program ?? [],
+          ],
+          {
+            name: label + '.night',
+            registryAddress,
+            accountAddress,
+            ownerCommitment: rootCommitment,
+            sponsorAddress: Buffer.from(sponsorAddress).toString('hex'),
+          },
+        ),
+      );
+    for (const intent of tx.intents?.values() ?? []) {
+      assert.equal(intent.guaranteedUnshieldedOffer, undefined);
+      assert.equal(intent.fallibleUnshieldedOffer, undefined);
+      assert.equal(intent.dustActions?.registrations.length ?? 0, 0);
+    }
+    const fees = tx.fees(ledger.LedgerParameters.initialParameters(), true);
+    const paid = [...tx.intents.values()].reduce(
+      (sum, intent) =>
+        sum + (intent.dustActions?.spends.reduce((total, spend) => total + spend.vFee, 0n) ?? 0n),
+      0n,
+    );
+    assert.ok(fees > 0n && paid >= fees && paid <= 100_000_000_000_000_000n);
+    const minTtl = Math.min(...[...tx.intents.values()].map((intent) => intent.ttl.getTime()));
+    assert.ok(Number.isFinite(minTtl) && minTtl >= Date.now() + 10_000);
     const ordinal = receipt.transactions.length + 1;
     const row = {
       ordinal,
@@ -353,8 +410,8 @@ try {
       await inputs.verify(() => {});
       await inputs.verify(() => {});
       await verifyPreparedRegistry(prepared);
-      assert.equal(sha256(readPrivate(rootSecretFile, 32)), rootSecretHash);
-      assert.equal(sha256(readPrivate(ownerSecretFile, 32)), ownerSecretHash);
+      assert.equal(commitment(rootSecretFile), rootCommitment);
+      assert.equal(commitment(ownerSecretFile), ownerCommitment);
       assert.equal(sha256(readPrivate(sponsorSeedFile, 64)), sponsorSeedHash);
       receipt.inputsUnchanged = true;
     }
