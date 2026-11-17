@@ -24,6 +24,7 @@ import {
   createMidnamesLedgerReads,
 } from '../../apps/passport-dapp/src/midnames/ledger-reader.ts';
 import { claimName } from '../../apps/passport-dapp/src/midnames/claim-receipt.ts';
+import { readClaimFinality } from '../../apps/passport-dapp/src/midnames/claim-finality.ts';
 import { admitNativeClaim } from '../../apps/passport-dapp/src/midnames/claim-native-admission.ts';
 import { dedicatedIndexerReadiness } from '../../scripts/qualification/indexer-readiness.mjs';
 import {
@@ -168,6 +169,12 @@ let inputs;
 let passed = false;
 let failure;
 try {
+  execFileSync(
+    process.execPath,
+    [fileURLToPath(new URL('./preflight-owner-secret.mjs', import.meta.url)), ownerSecretFile],
+    { stdio: 'ignore', timeout: 10_000 },
+  );
+  step('verified-private-owner-secret');
   claimIsolationLease(leasePath, leaseOwner);
   claimed = true;
   const stat = lstatSync(leasePath);
@@ -316,11 +323,20 @@ try {
   });
   const deadline = Date.now() + 120_000;
   let indexed;
+  let originalStatus;
   while (Date.now() < deadline) {
+    originalStatus = await readClaimFinality(indexerUrl, original, fetch, 2001100);
+    if (
+      originalStatus === 'conflict' ||
+      originalStatus === 'failed' ||
+      originalStatus === 'claim-failed'
+    )
+      throw new Error(`Original claim transaction is ${originalStatus}.`);
     indexed = await reads.readClaim(label + '.night', profile);
-    if (indexed) break;
+    if (originalStatus === true && indexed) break;
     await delay(1_000);
   }
+  assert.equal(originalStatus, true, 'The exact original claim has no indexed SUCCESS.');
   assert.deepEqual(indexed, {
     ownerCommitment: original.ownerCommitment,
     target: { kind: 'contract', address: accountAddress },
@@ -338,9 +354,38 @@ try {
   assert.equal(record.payment_config.buy_enabled, false);
   const finality = await dedicatedIndexerReadiness({ nodeUrl, indexerUrl });
   assert.ok(finality.ready);
+  const transactionResponse = await fetch(indexerUrl, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      query:
+        'query ClaimBlock($offset:TransactionOffset!){transactions(offset:$offset){__typename ... on RegularTransaction {identifiers block{hash height}}}}',
+      variables: { offset: { identifier: original.transaction.identifiers[0] } },
+    }),
+    signal: AbortSignal.timeout(5_000),
+  });
+  assert.ok(transactionResponse.ok);
+  const transactionRows = await transactionResponse.json();
+  assert.equal(transactionRows.errors, undefined);
+  assert.equal(transactionRows.data?.transactions?.length, 1);
+  const originalBlock = transactionRows.data.transactions[0];
+  assert.equal(originalBlock.__typename, 'RegularTransaction');
+  assert.deepEqual(originalBlock.identifiers, original.transaction.identifiers);
+  assert.match(originalBlock.block?.hash ?? '', /^[0-9a-f]{64}$/);
+  assert.ok(
+    Number.isSafeInteger(originalBlock.block?.height) &&
+      originalBlock.block.height <= finality.finalizedHeight,
+  );
+  assert.equal(
+    await rpc('chain_getBlockHash', [originalBlock.block.height]),
+    '0x' + originalBlock.block.hash,
+    'The original claim is not in the finalized canonical chain.',
+  );
+  assert.equal(await readClaimFinality(indexerUrl, original, fetch, 2001100), true);
   assert.equal(await rpc('system_version'), nodeVersion);
   assert.equal(await rpc('midnight_ledgerVersion'), ledgerVersion);
   receipt.finalizedAfter = finality.finalizedHash;
+  receipt.claimBlock = originalBlock.block;
   receipt.ownerCommitment = original.ownerCommitment;
   receipt.claimIdentifiers = original.transaction.identifiers;
   passed = true;

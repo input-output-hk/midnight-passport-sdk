@@ -194,7 +194,8 @@ The fixture checks the exact deployed ACC and 13 registry verifier keys before
 using the shared genesis sponsor. It keeps the original submitted transaction
 bytes and IDs, verifies a distinct naming owner commitment and exact contract
 target through both the Midnames adapter and the generated registry reader,
-then releases the lease only after wallet shutdown, finality and unchanged
+requires the original transaction's indexed `SUCCESS`, then releases the lease
+only after wallet shutdown, finality and unchanged
 inputs. It may create two additional local DUST funding transactions before the
 name claim; their private funding seed and receipts remain in the run directory.
 If the run fails after any send, preserve its lease, original bytes, naming

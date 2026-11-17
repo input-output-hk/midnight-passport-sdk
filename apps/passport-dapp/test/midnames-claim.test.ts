@@ -126,6 +126,33 @@ test('requires an exact successful indexed claim, and looks up the original iden
   );
 });
 
+test('a shared-chain claim must explicitly select its observed v4 protocol', async () => {
+  const response = async () =>
+    Response.json({
+      data: {
+        transactions: [
+          {
+            __typename: 'RegularTransaction',
+            protocolVersion: 2001100,
+            raw: '0001',
+            hash: 'aa'.repeat(32),
+            transactionResult: { status: 'SUCCESS' },
+          },
+        ],
+      },
+    });
+  assert.equal(
+    await readClaimFinality('http://127.0.0.1:1/graphql', original, response),
+    undefined,
+  );
+  // The matching protocol reaches the original-byte check and rejects this
+  // deliberately different transaction rather than accepting a lookalike.
+  assert.equal(
+    await readClaimFinality('http://127.0.0.1:1/graphql', original, response, 2001100),
+    'conflict',
+  );
+});
+
 test('only an isolated failed claim with a successful fee-only intent can unlock recovery', () => {
   const claim = {
     actions: [{}],
