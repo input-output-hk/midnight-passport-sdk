@@ -200,6 +200,10 @@ was rejected by the node with error 104 despite two DUST spends. The separate
 [reconciliation command](../../examples/midnames-local/README.md) checks the
 fenced original, finalized funding, expiry and absence before releasing the
 run's native lease. No shared-chain `alice.night` claim is qualified yet.
+A separate root-assisted fixture also reached the node but received the same
+error 104 before creating a name. Paid self-registration and administrator
+issuance therefore remain unqualified on this shared chain; neither receipt
+establishes a live `alice.night` mapping.
 For an online deployment, the host must configure its actual registry address
 and a funded sponsor wallet through `PASSPORT_SPONSOR_SEED` in the service
 environment; the local genesis seed does not fund Preview or Preprod. The wallet

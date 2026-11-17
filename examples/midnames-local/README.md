@@ -265,6 +265,15 @@ If a submission is uncertain, it retains the native lease and original
 transaction bytes. Do not rerun blindly or describe a partially issued name
 as owner-held.
 
+The first shared-chain root-assisted attempt was also rejected with error 104
+at `create_domain`, before any transfer. Its source receipt is **FAIL** and
+must not be counted as issuance. For this exact failure, run
+`reconcile-admin-name.mjs /absolute/path/to/failed-run` in the pinned Nix
+shell. It checks the original bytes and identifiers, both absent indexer
+records, a canonical finalized block after expiry, and the still-absent name.
+Only after reviewing those checks may the operator append `--release` to
+clear that run's exact pinned lease. The command never submits a transaction.
+
 This fixture gives a real local `.night` name an operator-held naming authority
 and a current ACC contract target. It does not exercise the full browser
 onboarding ceremony, passkey-based naming recovery, public `passport.night`
