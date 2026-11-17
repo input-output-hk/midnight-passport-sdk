@@ -185,14 +185,13 @@ if (prior) {
 const lease = nativeLeasePath();
 assert.ok(existsSync(lease) || (prior && prior.leaseReleased));
 if (mode === '--release') {
-  if (!prior) saveIsolationReceipt(path, pending);
-  if (existsSync(lease)) {
+  if (prior?.leaseReleased) {
+    assert.ok(!existsSync(lease), 'A new native lease appeared after reconciliation.');
+  } else {
+    if (!prior) saveIsolationReceipt(path, pending);
     releaseIsolationLease(lease, receipt.leaseOwner, true, receipt.leasePin);
     result.leaseReleased = true;
-  } else {
-    result.status = 'RECONCILED_LEASE_ALREADY_ABSENT';
-    result.leaseAlreadyAbsent = true;
+    saveIsolationReceipt(path, result);
   }
-  saveIsolationReceipt(path, result);
 }
-console.log(JSON.stringify(result));
+console.log(JSON.stringify(prior?.leaseReleased ? prior : result));
