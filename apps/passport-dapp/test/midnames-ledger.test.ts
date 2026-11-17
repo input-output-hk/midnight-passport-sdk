@@ -217,58 +217,66 @@ test('standalone naming calls are rebuilt before proof without deletion credit',
     );
     const transcript = partition?.[0];
     assert.ok(transcript);
-    const originalCall = new ledgerV9.ContractCallPrototype(
-      profile.registryAddress,
-      circuit,
-      operation,
-      transcript,
-      undefined,
-      proof.privateTranscriptOutputs,
-      proof.input,
-      proof.output,
-      ledgerV9.communicationCommitmentRandomness(),
-      'fixture',
-    );
-    const original = ledgerV9.Transaction.fromPartsRandomized(
-      'undeployed',
-      undefined,
-      undefined,
-      ledgerV9.Intent.new(new Date(Date.now() + 3_600_000)).addCall(originalCall),
-    );
-    const adjusted = withoutDeletionCredit(
-      {
-        private: { unprovenTx: original },
-        calls: [
-          {
-            contractAddress: profile.registryAddress,
-            circuitId: circuit,
-            public: { partitionedTranscript: [transcript, undefined] },
-            private: {
-              privateTranscriptOutputs: proof.privateTranscriptOutputs,
-              input: proof.input,
-              output: proof.output,
+    for (const segment of ['guaranteed', 'fallible'] as const) {
+      const pair =
+        segment === 'guaranteed'
+          ? ([transcript, undefined] as const)
+          : ([undefined, transcript] as const);
+      const originalCall = new ledgerV9.ContractCallPrototype(
+        profile.registryAddress,
+        circuit,
+        operation,
+        pair[0],
+        pair[1],
+        proof.privateTranscriptOutputs,
+        proof.input,
+        proof.output,
+        ledgerV9.communicationCommitmentRandomness(),
+        'fixture',
+      );
+      const original = ledgerV9.Transaction.fromPartsRandomized(
+        'undeployed',
+        undefined,
+        undefined,
+        ledgerV9.Intent.new(new Date(Date.now() + 3_600_000)).addCall(originalCall),
+      );
+      const adjusted = withoutDeletionCredit(
+        {
+          private: { unprovenTx: original },
+          calls: [
+            {
+              contractAddress: profile.registryAddress,
+              circuitId: circuit,
+              public: { partitionedTranscript: pair },
+              private: {
+                privateTranscriptOutputs: proof.privateTranscriptOutputs,
+                input: proof.input,
+                output: proof.output,
+              },
             },
-          },
-        ],
-      },
-      startingState,
-      'undeployed',
-      ledgerV9,
-      { hashVerifierKey: () => 'fixture', encodeContractKeyLocation: () => 'fixture' },
-      profile.registryAddress,
-    );
-    const decoded = ledgerV9.Transaction.deserialize(
-      'signature',
-      'pre-proof',
-      'pre-binding',
-      adjusted.serialize(),
-    );
-    const [call] = [...(decoded.intents?.values() ?? [])].flatMap((intent) => intent.actions);
-    assert.ok(call instanceof ledgerV9.ContractCall);
-    assert.ok(call.guaranteedTranscript);
-    assert.equal(call.guaranteedTranscript.gas.bytesDeleted, 0n);
-    assert.deepEqual(call.guaranteedTranscript.program, transcript.program);
-    assert.deepEqual(call.guaranteedTranscript.effects, transcript.effects);
+          ],
+        },
+        startingState,
+        'undeployed',
+        ledgerV9,
+        { hashVerifierKey: () => 'fixture', encodeContractKeyLocation: () => 'fixture' },
+        profile.registryAddress,
+      );
+      const decoded = ledgerV9.Transaction.deserialize(
+        'signature',
+        'pre-proof',
+        'pre-binding',
+        adjusted.serialize(),
+      );
+      const [call] = [...(decoded.intents?.values() ?? [])].flatMap((intent) => intent.actions);
+      assert.ok(call instanceof ledgerV9.ContractCall);
+      const adjustedTranscript =
+        segment === 'guaranteed' ? call.guaranteedTranscript : call.fallibleTranscript;
+      assert.ok(adjustedTranscript);
+      assert.equal(adjustedTranscript.gas.bytesDeleted, 0n);
+      assert.deepEqual(adjustedTranscript.program, transcript.program);
+      assert.deepEqual(adjustedTranscript.effects, transcript.effects);
+    }
   }
 });
 

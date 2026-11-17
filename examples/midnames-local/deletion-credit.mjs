@@ -24,8 +24,10 @@ export function withoutDeletionCredit(result, state, networkId, ledger, types, r
     throw new Error('Deletion-credit adjustment requires one naming call.');
   const call = calls[0];
   const [guaranteed, fallible] = call.public.partitionedTranscript;
-  if (!guaranteed || fallible || guaranteed.gas.bytesDeleted <= 0n)
-    throw new Error('Unexpected naming transcript partition.');
+  if (!!guaranteed === !!fallible) throw new Error('Unexpected naming transcript partition.');
+  const transcript = guaranteed ?? fallible;
+  if (transcript.gas.bytesDeleted <= 0n)
+    throw new Error('The naming transcript has no deletion credit to remove.');
   const existing = intents[0].actions[0];
   const entry =
     typeof existing.entryPoint === 'string'
@@ -41,15 +43,15 @@ export function withoutDeletionCredit(result, state, networkId, ledger, types, r
     verifierKeyHash: types.hashVerifierKey(operation.verifierKey),
   });
   const safeTranscript = {
-    ...guaranteed,
-    gas: { ...guaranteed.gas, bytesDeleted: 0n },
+    ...transcript,
+    gas: { ...transcript.gas, bytesDeleted: 0n },
   };
   const prototype = new ledger.ContractCallPrototype(
     registryAddress,
     circuit,
     operation,
-    safeTranscript,
-    undefined,
+    guaranteed && safeTranscript,
+    fallible && safeTranscript,
     call.private.privateTranscriptOutputs,
     call.private.input,
     call.private.output,
@@ -68,9 +70,12 @@ export function withoutDeletionCredit(result, state, networkId, ledger, types, r
     intent,
   );
   const [adjustedCall] = [...adjusted.intents.values()].flatMap((part) => part.actions);
+  const adjustedTranscript = guaranteed
+    ? adjustedCall?.guaranteedTranscript
+    : adjustedCall?.fallibleTranscript;
   if (
-    adjustedCall?.guaranteedTranscript?.gas.bytesDeleted !== 0n ||
-    adjustedCall.guaranteedTranscript.program.length !== guaranteed.program.length
+    adjustedTranscript?.gas.bytesDeleted !== 0n ||
+    adjustedTranscript.program.length !== transcript.program.length
   )
     throw new Error('Deletion-credit adjustment did not preserve the call.');
   return adjusted;
