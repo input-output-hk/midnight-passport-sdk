@@ -191,13 +191,15 @@ nix develop -c pnpm --filter passport-dapp exec node --import tsx \
 ```
 
 The fixture checks the exact deployed ACC and 13 registry verifier keys before
-using the shared genesis sponsor. It keeps the original submitted transaction
+using the shared genesis wallet to fund a fresh, separately seeded sponsor.
+The sponsor seed is saved privately with the run and must be preserved for
+reconciliation. It keeps the original submitted transaction
 bytes and IDs, verifies a distinct naming owner commitment and exact contract
 target through both the Midnames adapter and the generated registry reader,
 requires the original transaction's indexed `SUCCESS`, then releases the lease
 only after wallet shutdown, finality and unchanged
-inputs. It may create two additional local DUST funding transactions before the
-name claim; their private funding seed and receipts remain in the run directory.
+inputs. It creates two local funding transactions to give that sponsor NIGHT
+and DUST before the name claim; their exact receipts remain in the run directory.
 If the run fails after any send, preserve its lease, original bytes, naming
 secret and all receipts. Reconcile that same chain and transaction before any
 fresh claim. Never rerun the command as a blind repair.

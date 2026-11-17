@@ -34,7 +34,7 @@ import {
 } from '../../scripts/qualification/native-isolation-files.mjs';
 import { isolatedInputs } from '../../scripts/qualification/native-isolation-inputs.mjs';
 import { nativeLeasePath } from '../../scripts/qualification/native-lease.mjs';
-import { delegateClaimDust } from './claim-dust-fixture.mjs';
+import { fundFreshClaimSponsor } from './claim-dust-fixture.mjs';
 import { openClaimDispatch } from './claim-dispatch.mts';
 import { qualifyClaimHandoff } from './claim-handoff-fixture.mjs';
 import { verifyPreparedRegistry } from './verify-prepared.mjs';
@@ -162,7 +162,9 @@ const step = (name, details = {}) => {
 save();
 
 let wallet;
+let genesis;
 let walletCreationAttempted = false;
+let genesisCreationAttempted = false;
 let claimed = false;
 let pin;
 let inputs;
@@ -192,19 +194,24 @@ try {
   assert.equal(sha256(readFileSync(modulePath)), pins.compiled['contract/index.js']);
   const get = (name) =>
     import(import.meta.resolve(name, pathToFileURL(join(reference, 'package.json')).href));
-  const [walletModule, registry, contracts, ledger, runtime, rxjs] = await Promise.all([
+  const [walletModule, registry, contracts, ledger, runtime] = await Promise.all([
     import(pathToFileURL(join(reference, 'src/node/wallet.ts')).href),
     import(pathToFileURL(modulePath).href),
     get('@midnight-ntwrk/midnight-js-contracts'),
     get('@midnightntwrk/ledger-v9'),
     get('@midnight-ntwrk/compact-runtime'),
-    get('rxjs'),
   ]);
   process.chdir(output);
-  step('sync-sponsor-wallet');
+  const sponsorSeed = randomBytes(32).toString('hex');
+  writePrivateFile(join(output, 'sponsor-seed.private.hex'), sponsorSeed);
+  step('sync-fresh-sponsor-wallet');
   walletCreationAttempted = true;
-  wallet = await walletModule.createWallet('0'.repeat(63) + '1');
+  wallet = await walletModule.createWallet(sponsorSeed);
   await walletModule.syncWallet(wallet, 'shared Midnames claim sponsor');
+  step('sync-genesis-funder-wallet');
+  genesisCreationAttempted = true;
+  genesis = await walletModule.createWallet('0'.repeat(63) + '1');
+  await walletModule.syncWallet(genesis, 'local genesis claim funder');
   const providers = await walletModule.createProviders(wallet);
   const submit = providers.midnightProvider.submitTx.bind(providers.midnightProvider);
   providers.midnightProvider.submitTx = async (tx) => {
@@ -239,26 +246,19 @@ try {
   assert.equal(await reads.readClaim(label + '.night', profile), undefined);
   step('verified-shared-registry');
 
-  const currentDust = await rxjs.firstValueFrom(wallet.wallet.state());
-  if (currentDust.dust.availableCoins.length < 2) {
-    const fundingSeed = randomBytes(32).toString('hex');
-    writePrivateFile(join(output, 'funding-seed.private.hex'), fundingSeed);
-    step('prepare-two-dust-inputs');
-    receipt.availableDust = await delegateClaimDust({
-      wallet,
-      walletModule,
-      providers,
-      ledger,
-      get,
-      step,
-      fundingSeed,
-      recordSubmission: (kind, id) => {
-        receipt.dustSetup ??= {};
-        receipt.dustSetup[kind] = id;
-        save();
-      },
-    });
-  } else receipt.availableDust = currentDust.dust.availableCoins.length;
+  receipt.availableDust = await fundFreshClaimSponsor({
+    sponsor: wallet,
+    genesis,
+    providers,
+    ledger,
+    get,
+    step,
+    recordSubmission: (kind, id) => {
+      receipt.dustSetup ??= {};
+      receipt.dustSetup[kind] = id;
+      save();
+    },
+  });
   save();
 
   // The owner process alone reads or creates the persistent naming secret.
@@ -403,6 +403,15 @@ try {
     }
   } catch (error) {
     receipt.walletStopError = String(error);
+    walletStopped = false;
+    failure ??= error;
+  }
+  try {
+    if (genesis) await genesis.wallet.stop();
+    else if (genesisCreationAttempted) walletStopped = false;
+  } catch (error) {
+    receipt.genesisWalletStopError = String(error);
+    walletStopped = false;
     failure ??= error;
   }
   receipt.walletStopped = walletStopped;
