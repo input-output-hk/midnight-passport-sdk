@@ -85,3 +85,39 @@ export function matchesClaimWrites(
     domain.value[3]?.length === 0 // ContractAddr enum arm.
   );
 }
+
+/** Bind a root-assisted transfer to the already resolved name ID and intended owner. */
+export function matchesTransferWrites(
+  programs: readonly (readonly Op<AlignedValue>[])[],
+  expected: {
+    readonly nameId: bigint;
+    readonly ownerCommitment: string;
+    readonly ownerAddress: string;
+    readonly accountAddress: string;
+  },
+): boolean {
+  const records = programs.flatMap((program) => inserts(program, idToData));
+  const [record] = records;
+  const id = record?.key[0];
+  if (
+    records.length !== 1 ||
+    !record ||
+    !id ||
+    id.length > 8 ||
+    expected.nameId < 0n ||
+    expected.nameId >= 1n << 64n ||
+    record.value.length !== 13
+  )
+    return false;
+  const decoded = id.reduce(
+    (value, byte, index) => value + (BigInt(byte) << BigInt(index * 8)),
+    0n,
+  );
+  return (
+    decoded === expected.nameId &&
+    matchesBytes32(record.value[0], expected.ownerCommitment) &&
+    matchesBytes32(record.value[1], expected.ownerAddress) &&
+    matchesBytes32(record.value[2], expected.accountAddress) &&
+    record.value[3]?.length === 0
+  );
+}

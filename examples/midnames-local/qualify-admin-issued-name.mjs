@@ -23,7 +23,10 @@ import {
   createMidnamesIndexer,
   createMidnamesLedgerReads,
 } from '../../apps/passport-dapp/src/midnames/ledger-reader.ts';
-import { matchesClaimWrites } from '../../apps/passport-dapp/src/midnames/claim-transcript.ts';
+import {
+  matchesClaimWrites,
+  matchesTransferWrites,
+} from '../../apps/passport-dapp/src/midnames/claim-transcript.ts';
 import { dedicatedIndexerReadiness } from '../../scripts/qualification/indexer-readiness.mjs';
 import {
   claimIsolationLease,
@@ -244,6 +247,22 @@ try {
     ownerSecretMustExist: true,
   };
   const submit = async (operation, expectedOwner) => {
+    let transferNameId;
+    if (operation === 'transfer_domain') {
+      const live = await providers.publicDataProvider.queryContractState(registryAddress);
+      assert.ok(live);
+      const state = registry.ledger(runtime.ContractState.deserialize(live.serialize()).data);
+      const nameKey = new Uint8Array(32).fill(255);
+      nameKey.set(new TextEncoder().encode(label));
+      transferNameId = state.name_to_id.lookup({
+        domain: nameKey,
+        parent_id: state.ROOT_ZONE_ID,
+      });
+      const current = state.id_to_data.lookup(transferNameId);
+      assert.equal(Buffer.from(current.owner_public_key).toString('hex'), rootCommitment);
+      assert.equal(Buffer.from(current.target).toString('hex'), accountAddress);
+      assert.equal(current.target_type, registry.AddressType.ContractAddr);
+    }
     step('prove-' + operation);
     const proved = await proveInOwnerProcess({
       ...workerInput,
@@ -302,6 +321,21 @@ try {
             accountAddress,
             ownerCommitment: rootCommitment,
             sponsorAddress: Buffer.from(sponsorAddress).toString('hex'),
+          },
+        ),
+      );
+    else
+      assert.ok(
+        matchesTransferWrites(
+          [
+            finalCall.guaranteedTranscript?.program ?? [],
+            finalCall.fallibleTranscript?.program ?? [],
+          ],
+          {
+            nameId: transferNameId,
+            ownerCommitment,
+            ownerAddress: Buffer.from(sponsorAddress).toString('hex'),
+            accountAddress,
           },
         ),
       );

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { claimReceipt, claimDigest, normalizeClaimName } from '../src/midnames/claim-receipt.js';
 import type { AlignedValue, Op } from '@midnightntwrk/ledger-v9';
-import { matchesClaimWrites } from '../src/midnames/claim-transcript.js';
+import { matchesClaimWrites, matchesTransferWrites } from '../src/midnames/claim-transcript.js';
 import {
   confirmedClaim,
   failedSponsoredClaimSegment,
@@ -322,4 +322,44 @@ test('the two registry inserts bind the root name, owner, child payee and ACC', 
     ),
     false,
   );
+});
+
+test('root-assisted transfer binds the existing name ID and new owner before dispatch', () => {
+  const bytes = (hex: string) => Uint8Array.from(Buffer.from(hex, 'hex'));
+  const cell = (...parts: Uint8Array[]) => ({ value: parts, alignment: [] });
+  const parts = [
+    bytes('ab'.repeat(32)),
+    bytes('92'.repeat(32)),
+    bytes(original.accountAddress),
+    ...Array.from({ length: 10 }, () => new Uint8Array()),
+  ];
+  const program = (id: number, fields: Uint8Array[]): Op<AlignedValue>[] => [
+    {
+      idx: {
+        cached: false,
+        pushPath: false,
+        path: [{ tag: 'value', value: cell(Uint8Array.of(4)) }],
+      },
+    },
+    { push: { storage: false, value: { tag: 'cell', content: cell(Uint8Array.of(id)) } } },
+    { push: { storage: true, value: { tag: 'cell', content: cell(...fields) } } },
+    { ins: { cached: false, n: 1 } },
+  ];
+  const expected = {
+    nameId: 7n,
+    ownerCommitment: 'ab'.repeat(32),
+    ownerAddress: '92'.repeat(32),
+    accountAddress: original.accountAddress,
+  };
+  assert.equal(matchesTransferWrites([program(7, parts)], expected), true);
+  assert.equal(matchesTransferWrites([program(8, parts)], expected), false);
+  assert.equal(
+    matchesTransferWrites([program(7, parts)], { ...expected, ownerCommitment: 'cd'.repeat(32) }),
+    false,
+  );
+  assert.equal(
+    matchesTransferWrites([program(7, parts)], { ...expected, accountAddress: 'cd'.repeat(32) }),
+    false,
+  );
+  assert.equal(matchesTransferWrites([program(7, parts), program(7, parts)], expected), false);
 });
