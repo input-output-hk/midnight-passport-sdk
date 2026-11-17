@@ -217,10 +217,10 @@ function spawnOwned(command, args, env) {
 }
 
 /** @param {import('node:child_process').ChildProcess | undefined} child */
-function stopOwned(child) {
+function stopOwned(child, group = true) {
   if (child?.pid && child.exitCode === null && child.signalCode === null) {
     try {
-      process.kill(-child.pid, 'SIGTERM');
+      process.kill(group ? -child.pid : child.pid, 'SIGTERM');
     } catch {
       /* already exited */
     }
@@ -365,7 +365,9 @@ async function up(options) {
   let funding;
   const cleanup = () => {
     stopOwned(funding);
-    stopOwned(prototype);
+    // The shared launcher must drain its service before releasing the sponsor lease.
+    // Signalling its whole process group would kill that service first.
+    stopOwned(prototype, process.env.MIDNIGHT_STACK !== 'shared-ledger9');
     stopOwned(keys);
   };
   process.on('SIGINT', cleanup);

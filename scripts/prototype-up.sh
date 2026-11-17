@@ -234,6 +234,7 @@ check_ports
 export MIDNIGHT_NETWORK=local
 compose=(docker compose -f "$root/infra/localnet/docker-compose.yml" -f "$root/infra/localnet/docker-compose.macos.yml")
 service=""
+dapp=""
 shared_session=0
 shared_genesis_lease=0
 # shellcheck source=midnight-service-drain.sh
@@ -250,6 +251,10 @@ kill_tree() {
 cleanup() {
   local drained=0
   trap - EXIT INT TERM
+  if [ -n "$dapp" ]; then
+    kill_tree "$dapp"
+    wait "$dapp" 2>/dev/null || true
+  fi
   if [ -z "$service" ] && [ "$shared_genesis_lease" -eq 1 ]; then
     # Startup failed before the service could open the wallet. Release only
     # this launcher's pinned sponsor lease; chain markers remain for audit.
@@ -351,4 +356,12 @@ curl -sf http://127.0.0.1:8787/config >/dev/null 2>&1 || {
 
 echo "prototype-up: starting the dapp at http://localhost:5173 (Ctrl-C stops the dapp, the service and the localnet)"
 cd "$root"
-pnpm prototype:dapp
+if [ "$stack" = shared-ledger9 ]; then
+  # A signal to this launcher interrupts wait, so cleanup can stop the page
+  # before asking the direct service child to drain and exit successfully.
+  pnpm prototype:dapp &
+  dapp=$!
+  wait "$dapp"
+else
+  pnpm prototype:dapp
+fi
