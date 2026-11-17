@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Bind the shared-profile service records to a canonical chain observation.
-// --check is read-only; --bind writes a private anchor only for fresh state.
+// Bind shared-profile records to a chain observation after each quiescent run.
+// --check is read-only; an unfinished run always refuses record reuse.
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import {
@@ -12,6 +12,7 @@ import {
   openSync,
   readFileSync,
   realpathSync,
+  renameSync,
   statSync,
   unlinkSync,
   writeFileSync,
@@ -37,7 +38,10 @@ const canonicalParent = (path) => realpathSync(dirname(path));
 function assertPrivateRegular(path) {
   const row = existing(path);
   if (!row) return false;
-  assert.ok(row.isFile() && !row.isSymbolicLink(), `Refuse non-regular or linked state: ${path}`);
+  assert.ok(
+    row.isFile() && !row.isSymbolicLink() && row.nlink === 1,
+    `Refuse non-regular or linked state: ${path}`,
+  );
   assert.equal(row.mode & 0o077, 0, `Shared state must be private: ${path}`);
   return true;
 }
@@ -96,18 +100,19 @@ async function nodeBlockHash(nodeUrl, height) {
   return row.result;
 }
 
-/** @param {string} path @param {ChainAnchor} anchor */
-function writeAnchor(path, anchor) {
+/** @param {string} path @param {unknown} value @param {'create' | 'replace'} mode */
+function writeDurableJson(path, value, mode) {
   const temporary = `${path}.pending-${randomBytes(8).toString('hex')}`;
   try {
     const file = openSync(temporary, 'wx', 0o600);
     try {
-      writeFileSync(file, JSON.stringify(anchor, null, 2));
+      writeFileSync(file, JSON.stringify(value, null, 2));
       fsyncSync(file);
     } finally {
       closeSync(file);
     }
-    linkSync(temporary, path); // exclusive: never replace another session's anchor
+    if (mode === 'create') linkSync(temporary, path);
+    else renameSync(temporary, path);
     const parent = openSync(dirname(path), 'r');
     try {
       fsyncSync(parent);
@@ -119,7 +124,17 @@ function writeAnchor(path, anchor) {
   }
 }
 
-/** @param {{ mode: 'check' | 'bind', registryPath: string, profile: SharedProfile,
+/** @param {string} path */
+function syncParent(path) {
+  const parent = openSync(dirname(path), 'r');
+  try {
+    fsyncSync(parent);
+  } finally {
+    closeSync(parent);
+  }
+}
+
+/** @param {{ mode: 'check' | 'begin' | 'finish', registryPath: string, profile: SharedProfile,
  * readBlockHash?: (nodeUrl: string, height: number) => Promise<string>,
  * defaultRegistryPath?: string, repositoryRoot?: string }} options */
 export async function checkSharedState({
@@ -130,11 +145,12 @@ export async function checkSharedState({
   defaultRegistryPath = join(homedir(), '.midnight-passport', 'registry.json'),
   repositoryRoot = ROOT,
 }) {
-  assert.ok(mode === 'check' || mode === 'bind', 'Expected --check or --bind.');
+  assert.ok(['check', 'begin', 'finish'].includes(mode), 'Expected --check, --begin or --finish.');
   checkedProfile(profile);
   const registry = canonicalRegistry(registryPath, defaultRegistryPath, repositoryRoot);
   const files = [registry, `${registry.slice(0, -5)}.deployments.json`, `${registry}.v1`];
   const anchorPath = `${registry}.chain-anchor.json`;
+  const activePath = `${registry}.chain-active.json`;
   const defaults = [
     defaultRegistryPath,
     `${defaultRegistryPath.replace(/\.json$/, '')}.deployments.json`,
@@ -152,6 +168,20 @@ export async function checkSharedState({
       );
     }
   }
+  const active = assertPrivateRegular(activePath);
+  if (mode === 'finish') {
+    assert.ok(active, 'No shared session marker exists; refuse to advance the chain anchor.');
+    const marker = JSON.parse(readFileSync(activePath, 'utf8'));
+    assert.equal(marker.schemaVersion, 1, 'Unsupported shared session marker.');
+    assert.equal(
+      marker.pid,
+      process.ppid,
+      'Only the launcher that began this session may finish it.',
+    );
+  } else {
+    assert.ok(!active, 'Shared session is unfinished; reconcile it before reusing records.');
+  }
+  let status = 'fresh';
   if (assertPrivateRegular(anchorPath)) {
     const anchor = JSON.parse(readFileSync(anchorPath, 'utf8'));
     assert.equal(anchor.schemaVersion, 1, 'Unsupported shared chain anchor.');
@@ -171,30 +201,60 @@ export async function checkSharedState({
       anchor.observedBlock.hash,
       'Shared chain differs at the recorded block.',
     );
-    return { status: 'verified', anchorPath };
+    status = 'verified';
+  } else {
+    assert.ok(
+      files.every((file) => !existing(file)),
+      'Shared registry/deployment records exist without a chain anchor; reconcile them before reuse.',
+    );
   }
-  assert.ok(
-    files.every((file) => !existing(file)),
-    'Shared registry/deployment records exist without a chain anchor; reconcile them before reuse.',
-  );
-  if (mode === 'bind') {
-    writeAnchor(anchorPath, {
-      schemaVersion: 1,
-      networkId: 'undeployed',
-      genesisHash: profile.genesisHash,
-      observedBlock: profile.indexedBlock,
-    });
-    return { status: 'bound', anchorPath };
+  if (mode === 'begin') {
+    writeDurableJson(activePath, { schemaVersion: 1, pid: process.ppid }, 'create');
+    if (status === 'fresh')
+      writeDurableJson(
+        anchorPath,
+        {
+          schemaVersion: 1,
+          networkId: 'undeployed',
+          genesisHash: profile.genesisHash,
+          observedBlock: profile.indexedBlock,
+        },
+        'create',
+      );
+    return { status: 'active', anchorPath };
   }
-  return { status: 'fresh', anchorPath };
+  if (mode === 'finish') {
+    assert.equal(status, 'verified', 'Shared session has no initial chain anchor.');
+    writeDurableJson(
+      anchorPath,
+      {
+        schemaVersion: 1,
+        networkId: 'undeployed',
+        genesisHash: profile.genesisHash,
+        observedBlock: profile.indexedBlock,
+      },
+      'replace',
+    );
+    unlinkSync(activePath);
+    syncParent(activePath);
+    return { status: 'finished', anchorPath };
+  }
+  return { status, anchorPath };
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
   try {
     const [flag, registryPath] = process.argv.slice(2);
-    assert.ok(flag === '--check' || flag === '--bind', 'Expected --check or --bind.');
+    const mode =
+      flag === '--check'
+        ? 'check'
+        : flag === '--begin'
+          ? 'begin'
+          : flag === '--finish'
+            ? 'finish'
+            : undefined;
+    assert.ok(mode, 'Expected --check, --begin or --finish.');
     assert.ok(registryPath, 'Shared registry path is required.');
-    const mode = flag === '--check' ? 'check' : 'bind';
     let input = '';
     for await (const chunk of process.stdin) {
       input += chunk;

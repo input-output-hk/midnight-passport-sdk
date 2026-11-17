@@ -17,12 +17,15 @@ nix develop -c bash scripts/midnight-attach.sh
 
 The command checks node `2.1.101`, indexer protocol `2001100`, proof server
 `9.0.2`, and the node/indexer block match at the observed height. It prints the
-loopback endpoints and observed block hash. The demo launcher writes a private
-`.chain-anchor.json` beside its dedicated registry file on first use, then checks
-that anchor's recorded height and block hash against the live node before
-reusing any records. Existing registry, directory or deployment files without
-an anchor are refused; reconcile them manually rather than treating the same
-genesis hash as proof of the same development chain. The attach command itself
+loopback endpoints and observed block hash. The demo launcher creates a private
+`.chain-active.json` run marker before opening the sponsor wallet or service.
+After its service process tree stops, it reattaches and advances the private
+`.chain-anchor.json` to the final indexed block, then removes the marker. A
+crash, lingering process, failed reattach, or failed finalization leaves the
+marker in place and refuses future reuse until the original records and chain
+are reconciled. This catches a chain rollback after a recorded deployment or
+activation, even if the initial anchor block still exists. Existing registry,
+directory or deployment files without an anchor are also refused. The attach command itself
 is only a connectivity/version preflight. Use the repo's proof, submission and
 indexed-confirmation smoke before claiming a pinned ACC or Midnames build works
 on this stack.
@@ -56,12 +59,17 @@ template for an operator **designated to own** the shared project. It pins
 Apple Silicon images by digest and preserves chain/indexer data in named
 volumes. Create `infra/localnet/.midnight-indexer.env` from the adjacent
 [example](.midnight-indexer.env.example), with fresh independent random
-passwords and a hex secret for a new project. Keep the file private and ignored.
+passwords and a hex secret for a new project. Copy with a restrictive mode;
+ordinary `cp` can leave credentials readable by other local users. Keep the
+file private and ignored.
 Reuse existing credentials when reopening retained volumes. Before starting,
 check for an existing project or port owner and coordinate the handoff. The
 owner uses the same Compose file and project for lifecycle operations:
 
 ```sh
+install -m 600 infra/localnet/.midnight-indexer.env.example infra/localnet/.midnight-indexer.env
+# Fill all four values privately, then verify the file mode before Compose reads it.
+test "$(stat -f %Lp infra/localnet/.midnight-indexer.env)" = 600
 docker compose -p midnight-network -f infra/localnet/docker-compose.ledger9.yml config --quiet
 docker compose -p midnight-network -f infra/localnet/docker-compose.ledger9.yml up -d
 # Owner shutdown, preserving volumes:

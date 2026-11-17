@@ -46,9 +46,11 @@ test('a fresh shared registry gets one private chain anchor and refuses a change
     const anchor = `${f.registryPath}.chain-anchor.json`;
     assert.equal((await checkSharedState({ ...options, mode: 'check' })).status, 'fresh');
     assert.equal(existsSync(anchor), false);
-    assert.equal((await checkSharedState({ ...options, mode: 'bind' })).status, 'bound');
+    assert.equal((await checkSharedState({ ...options, mode: 'begin' })).status, 'active');
     assert.equal(JSON.parse(readFileSync(anchor, 'utf8')).observedBlock.hash, blockHash);
     writeFileSync(f.registryPath, '{}', { mode: 0o600 });
+    await assert.rejects(checkSharedState({ ...options, mode: 'check' }), /unfinished/);
+    assert.equal((await checkSharedState({ ...options, mode: 'finish' })).status, 'finished');
     assert.equal((await checkSharedState({ ...options, mode: 'check' })).status, 'verified');
     await assert.rejects(
       checkSharedState({
@@ -68,9 +70,64 @@ test('unanchored records cannot be adopted from a reset chain', async () => {
   try {
     writeFileSync(`${f.registryPath.slice(0, -5)}.deployments.json`, '{}', { mode: 0o600 });
     await assert.rejects(
-      checkSharedState({ ...f, profile, mode: 'bind' }),
+      checkSharedState({ ...f, profile, mode: 'begin' }),
       /exist without a chain anchor/,
     );
+  } finally {
+    f.cleanup();
+  }
+});
+
+test('final indexed block detects rollback after the initial anchor', async () => {
+  const f = fixture();
+  try {
+    const laterHash = `0x${'ef'.repeat(32)}`;
+    const options = { ...f, profile, readBlockHash: async () => blockHash };
+    await checkSharedState({ ...options, mode: 'begin' });
+    writeFileSync(f.registryPath, '{"undeployed/ab":{"status":"active"}}', { mode: 0o600 });
+    assert.equal(
+      (
+        await checkSharedState({
+          ...options,
+          mode: 'finish',
+          profile: { ...profile, indexedBlock: { height: 50, hash: laterHash } },
+        })
+      ).status,
+      'finished',
+    );
+    assert.equal(
+      JSON.parse(readFileSync(`${f.registryPath}.chain-anchor.json`, 'utf8')).observedBlock.height,
+      50,
+    );
+    await assert.rejects(
+      checkSharedState({
+        ...options,
+        mode: 'check',
+        profile: { ...profile, indexedBlock: { height: 55, hash: laterHash } },
+        readBlockHash: async (_url, height) => (height === 50 ? blockHash : laterHash),
+      }),
+      /Shared chain differs/,
+    );
+  } finally {
+    f.cleanup();
+  }
+});
+
+test('failed finalization retains the active marker and refuses another begin', async () => {
+  const f = fixture();
+  try {
+    const options = { ...f, profile, readBlockHash: async () => blockHash };
+    await checkSharedState({ ...options, mode: 'begin' });
+    await assert.rejects(
+      checkSharedState({
+        ...options,
+        mode: 'finish',
+        readBlockHash: async () => `0x${'ee'.repeat(32)}`,
+      }),
+      /Shared chain differs/,
+    );
+    assert.equal(existsSync(`${f.registryPath}.chain-active.json`), true);
+    await assert.rejects(checkSharedState({ ...options, mode: 'begin' }), /unfinished/);
   } finally {
     f.cleanup();
   }
@@ -92,7 +149,7 @@ test('default-directory aliases and hardlinked records cannot become shared stat
     );
     writeFileSync(f.defaultRegistryPath, '{}', { mode: 0o600 });
     linkSync(f.defaultRegistryPath, f.registryPath);
-    await assert.rejects(checkSharedState({ ...f, profile, mode: 'check' }), /hard-link/);
+    await assert.rejects(checkSharedState({ ...f, profile, mode: 'check' }), /linked state/);
   } finally {
     f.cleanup();
   }
