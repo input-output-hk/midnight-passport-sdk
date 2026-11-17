@@ -3,16 +3,27 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
 import {
+  closeSync,
   existsSync,
+  fsyncSync,
+  lstatSync,
   mkdirSync,
+  openSync,
   readFileSync,
+  realpathSync,
   statfsSync,
   symlinkSync,
   writeFileSync,
 } from 'node:fs';
-import { isAbsolute, join, resolve } from 'node:path';
+import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dedicatedIndexerReadiness } from '../../scripts/qualification/indexer-readiness.mjs';
+import {
+  claimIsolationLease,
+  releaseIsolationLease,
+  saveIsolationReceipt,
+} from '../../scripts/qualification/native-isolation-files.mjs';
+import { isolatedInputs } from '../../scripts/qualification/native-isolation-inputs.mjs';
 import { nativeLeasePath } from '../../scripts/qualification/native-lease.mjs';
 import { verifyPreparedRegistry } from './verify-prepared.mjs';
 
@@ -22,16 +33,21 @@ assert.equal(process.env.PASSPORT_MIDNAMES_BOOTSTRAP, '1');
 assert.equal(process.env.PASSPORT_RC_LOCALNET, '1');
 assert.equal(process.env.MIDNIGHT_NETWORK, 'local');
 assert.equal(process.env.MN_NETWORK_ID, 'undeployed');
+const sourceRoot = fileURLToPath(new URL('../..', import.meta.url));
+const reviewRoot = join(sourceRoot, 'review');
+mkdirSync(reviewRoot, { recursive: true, mode: 0o700 });
+assert.equal(realpathSync(reviewRoot), reviewRoot);
 assert.ok(output && prepared && reference);
 for (const path of [output, prepared, reference])
   assert.ok(isAbsolute(path) && resolve(path) === path, 'Use absolute input paths.');
+assert.equal(dirname(output), reviewRoot, 'Keep private bootstrap receipts under SDK review/.');
+assert.match(basename(output), /^midnames-bootstrap-[a-z0-9-]{1,48}$/);
 assert.match(rootTarget ?? '', /^[a-f0-9]{64}$/, 'Supply an activated ACC contract address.');
 assert.ok(!existsSync(output), 'Choose a new receipt directory; never overwrite a deployment.');
 assert.ok(
   !existsSync(nativeLeasePath()),
   'Reconcile the retained native run before bootstrapping.',
 );
-const sourceRoot = fileURLToPath(new URL('../..', import.meta.url));
 const disk = statfsSync(sourceRoot);
 assert.ok(BigInt(disk.bavail) * BigInt(disk.bsize) >= 15n * 1024n ** 3n);
 const sourceCommit = execFileSync('git', ['rev-parse', 'HEAD'], {
@@ -60,9 +76,25 @@ const endpoints = {
 };
 assert.equal(new URL(endpoints.indexerUrl).pathname, '/api/v4/graphql');
 assert.equal(new URL(endpoints.indexerWsUrl).pathname, '/api/v4/graphql/ws');
+assert.equal(new URL(endpoints.indexerUrl).host, new URL(endpoints.indexerWsUrl).host);
 assert.equal(new URL(endpoints.nodeUrl).pathname, '/');
 assert.equal(new URL(endpoints.proverUrl).pathname, '/');
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
+const writePrivateFile = (path, bytes) => {
+  const fd = openSync(path, 'wx', 0o600);
+  try {
+    writeFileSync(fd, bytes);
+    fsyncSync(fd);
+  } finally {
+    closeSync(fd);
+  }
+  const directory = openSync(dirname(path), 'r');
+  try {
+    fsyncSync(directory);
+  } finally {
+    closeSync(directory);
+  }
+};
 const post = async (url, body) => {
   const response = await fetch(url, {
     method: 'POST',
@@ -95,6 +127,10 @@ const proofHealth = await fetch(new URL('/health', endpoints.proverUrl), {
 assert.ok(proofHealth.ok, 'The local prover is unavailable.');
 
 mkdirSync(output, { mode: 0o700 });
+assert.equal(lstatSync(output).mode & 0o077, 0, 'Bootstrap receipt directory must be private.');
+const lease = nativeLeasePath();
+const runId = randomBytes(8).toString('hex');
+const leaseOwner = { runId, pid: process.pid, project: `midnames-registry-${runId}`, root: output };
 const receipt = {
   status: 'RUNNING',
   sourceCommit,
@@ -107,13 +143,11 @@ const receipt = {
   endpoints,
   finalizedBefore: ready.finalizedHash,
   rootTarget,
+  leaseOwner,
   transactions: [],
   steps: [],
 };
-const save = () =>
-  writeFileSync(join(output, 'bootstrap.json'), JSON.stringify(receipt, null, 2) + '\n', {
-    mode: 0o600,
-  });
+const save = () => saveIsolationReceipt(join(output, 'bootstrap.json'), receipt);
 const step = (name, fields = {}) => {
   receipt.steps.push({ name, ...fields });
   save();
@@ -123,7 +157,26 @@ save();
 
 let wallet;
 let rootSecret;
+let claimed = false;
+let pin;
+let inputs;
+let walletCreationAttempted = false;
+let result;
+let failure;
 try {
+  claimIsolationLease(lease, leaseOwner);
+  claimed = true;
+  const leaseStat = lstatSync(lease);
+  pin = {
+    dev: leaseStat.dev,
+    ino: leaseStat.ino,
+    sha256: sha256(readFileSync(lease)),
+  };
+  receipt.leasePin = pin;
+  save();
+  inputs = await isolatedInputs(sourceRoot, reference, () => {});
+  receipt.frozenSource = inputs.frozen.source;
+  save();
   const runtimeRoot = join(output, 'registry-runtime');
   mkdirSync(runtimeRoot, { mode: 0o700 });
   symlinkSync(join(reference, 'node_modules'), join(runtimeRoot, 'node_modules'));
@@ -148,6 +201,7 @@ try {
     ]);
   process.chdir(output);
   step('sync-bootstrap-wallet');
+  walletCreationAttempted = true;
   wallet = await walletModule.createWallet('0'.repeat(63) + '1');
   await walletModule.syncWallet(wallet, 'local registry bootstrap');
   const providers = await walletModule.createProviders(wallet);
@@ -167,10 +221,7 @@ try {
     assert.equal(tx.version, 'v9');
     const raw = tx.tx.serialize();
     const ordinal = receipt.transactions.length + 1;
-    writeFileSync(join(output, `tx-${ordinal}.private.bin`), raw, {
-      flag: 'wx',
-      mode: 0o600,
-    });
+    writePrivateFile(join(output, `tx-${ordinal}.private.bin`), raw);
     // Once the original bytes exist, a thrown submit may still mean the node
     // accepted them. Keep the outcome unknown until an identifier is returned.
     const row = { ordinal, hash: sha256(raw), status: 'submission-unknown' };
@@ -194,10 +245,10 @@ try {
     ),
   };
   rootSecret = new Uint8Array(randomBytes(32));
-  writeFileSync(join(output, 'root-secret.private.hex'), Buffer.from(rootSecret).toString('hex'), {
-    flag: 'wx',
-    mode: 0o600,
-  });
+  writePrivateFile(
+    join(output, 'root-secret.private.hex'),
+    Buffer.from(rootSecret).toString('hex'),
+  );
   const compiled = CompiledContract.make('registry', registry.Contract).pipe(
     CompiledContract.withWitnesses({ domainSecretKey: () => [{}, rootSecret] }),
     CompiledContract.withCompiledFileAssets(assets),
@@ -300,15 +351,60 @@ try {
   tag.write('midnight.domains');
   assert.equal(rootOwnerCommitment, sha256(Buffer.concat([tag, rootSecret])));
   const waveCount = waves.length;
-  Object.assign(receipt, { status: 'PASS', registryAddress, waveCount, rootOwnerCommitment });
+  result = { registryAddress, networkId: 'undeployed', waveCount };
+  Object.assign(receipt, { registryAddress, waveCount, rootOwnerCommitment });
   save();
-  console.log(JSON.stringify({ registryAddress, networkId: 'undeployed', waveCount }));
 } catch (error) {
-  receipt.status = 'FAIL';
+  failure = error;
   receipt.error = String(error);
   save();
-  throw error;
 } finally {
   rootSecret?.fill(0);
-  if (wallet) await wallet.wallet.stop();
+  let walletStopped = !walletCreationAttempted;
+  try {
+    if (wallet) {
+      await wallet.wallet.stop();
+      walletStopped = true;
+    }
+  } catch (error) {
+    receipt.walletStopError = String(error);
+    failure ??= error;
+  }
+  receipt.walletStopped = walletStopped;
+  try {
+    if (inputs) {
+      await inputs.verify(() => {});
+      await verifyPreparedRegistry(prepared);
+      receipt.inputsUnchanged = true;
+    }
+  } catch (error) {
+    receipt.verificationError = String(error);
+    failure ??= error;
+  }
+  if (claimed) {
+    const quiescent =
+      !!pin &&
+      walletStopped &&
+      (receipt.transactions.length === 0 || (!!result && receipt.inputsUnchanged === true));
+    try {
+      if (quiescent) {
+        releaseIsolationLease(lease, leaseOwner, true, pin);
+        receipt.leaseReleased = true;
+      } else {
+        receipt.leaseRetained = true;
+      }
+    } catch (error) {
+      receipt.leaseRetained = true;
+      receipt.leaseError = String(error);
+      failure ??= error;
+    }
+  }
+  receipt.status =
+    !failure && result && receipt.leaseReleased === true && receipt.inputsUnchanged === true
+      ? 'PASS'
+      : 'FAIL';
+  save();
 }
+if (failure) throw failure;
+assert.equal(receipt.status, 'PASS');
+console.log(JSON.stringify(result));

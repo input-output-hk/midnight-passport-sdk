@@ -2,8 +2,8 @@
 
 This fixture uses the Midnames 2.1.0 registry source on the Passport standalone
 Ledger 9 stack. Prepare artifacts with the Passport SDK's pinned Nix toolchain.
-Supply a local copy of `ns.compact` from the source revision recorded in
-[the manifest](registry-manifest.json). The command verifies those bytes,
+Supply a local copy of [`ns.compact` at the pinned upstream revision](https://github.com/midnames/ns-sdk/blob/f8f2edd425221b95c9158d74e7318d2fbb4f61b2/ns.compact)
+recorded in [the manifest](registry-manifest.json). The command verifies those bytes,
 updates the language pragma for Compact 0.35.0, and verifies each generated
 module, circuit, prover and verifier against the reviewed hashes.
 
@@ -25,11 +25,16 @@ The disposable qualification runner below deploys an ACC and registry together.
 For a local Passport demo that already has a healthy `undeployed` Ledger 9
 node, v4 indexer and proof server, `bootstrap-registry.mjs` deploys **only the
 registry**. Create and activate the intended ACC first, then supply its full
-64-hex contract address as the root target. The script checks that ACC's pinned
-binding, the prepared registry hashes, node/indexer finality agreement, the
-standalone chain name and the prover before starting its wallet or writing a
-receipt. Run it only when you control the stack and no other process is using
-the same local genesis funding wallet. Set `ACC_CONTRACT_ADDRESS` to the full
+64-hex contract address as the root target. The script checks the prepared registry hashes,
+node/indexer finality agreement, the standalone chain name and the prover before
+claiming the native lease or starting a wallet. It verifies signed source and physical
+artifacts after claiming the lease, then confirms the ACC's pinned binding before
+submitting a transaction. Run it only when you control the stack and no other process is using
+the same local genesis funding wallet. The default Passport service and funding
+service may use that seed: stop only your own instances of those services while
+keeping the node, indexer and prover running, or use a separately funded wallet
+in a different deployment flow. Do not stop another session's services to make
+room for this command. Set `ACC_CONTRACT_ADDRESS` to the full
 64-hex address of that activated ACC before running. The command also requires
 15 GiB free and a free native qualification lease; reconcile an interrupted
 run before starting a new bootstrap.
@@ -43,15 +48,16 @@ MN_INDEXER_WS_URL=ws://127.0.0.1:18088/api/v4/graphql/ws \
 MN_PROOF_SERVER_URL=http://127.0.0.1:16300 \
 nix develop -c node --experimental-import-meta-resolve \
   examples/midnames-local/bootstrap-registry.mjs \
-  /absolute/path/to/new-private-receipt \
+  "$PWD/review/midnames-bootstrap-my-run" \
   /absolute/path/to/prepared-registry \
   /absolute/path/to/acc-reference/contract \
   "$ACC_CONTRACT_ADDRESS"
 ```
 
 Use the actual ports of the intended local stack; the four endpoints must be
-explicit loopback URLs. The receipt directory must be new. The script uses the
-standalone genesis development seed, pays local DUST fees, and writes each
+explicit loopback URLs, and the HTTP/WS indexer pair must share a host and port.
+Choose a fresh direct child of the SDK's ignored `review/` directory for each
+receipt. The script uses the standalone genesis development seed, pays local DUST fees, and writes each
 original transaction's bytes and identifier to private files before continuing.
 It installs the 13 verifier keys in bounded waves, retires the deployment
 maintenance authority, and rereads the final registry and root owner commitment
