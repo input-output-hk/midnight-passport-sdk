@@ -131,23 +131,26 @@ const nodeVersion = await rpcVersion('system_version');
 const ledgerVersion = await rpcVersion('midnight_ledgerVersion');
 assert.ok(typeof nodeVersion === 'string' && nodeVersion.length <= 128);
 assert.ok(typeof ledgerVersion === 'string' && ledgerVersion.length <= 256);
-const protocolResponse = await fetch(endpoints.indexerUrl, {
-  method: 'POST',
-  headers: { 'content-type': 'application/json' },
-  body: JSON.stringify({
-    query:
-      'query BootstrapProtocol($offset:BlockOffset!){block(offset:$offset){hash height protocolVersion}}',
-    variables: { offset: { hash: ready.finalizedHash } },
-  }),
-  signal: AbortSignal.timeout(5_000),
-});
-assert.ok(protocolResponse.ok, 'The indexer protocol read failed.');
-const protocol = await protocolResponse.json();
-assert.equal(protocol.errors, undefined);
-assert.equal(protocol.data?.block?.hash, ready.finalizedHash);
-assert.equal(protocol.data?.block?.height, ready.finalizedHeight);
-assert.ok(Number.isSafeInteger(protocol.data?.block?.protocolVersion));
-const protocolVersion = protocol.data.block.protocolVersion;
+const indexerProtocolAt = async (finality) => {
+  const response = await fetch(endpoints.indexerUrl, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      query:
+        'query BootstrapProtocol($offset:BlockOffset!){block(offset:$offset){hash height protocolVersion}}',
+      variables: { offset: { hash: finality.finalizedHash } },
+    }),
+    signal: AbortSignal.timeout(5_000),
+  });
+  assert.ok(response.ok, 'The indexer protocol read failed.');
+  const protocol = await response.json();
+  assert.equal(protocol.errors, undefined);
+  assert.equal(protocol.data?.block?.hash, finality.finalizedHash);
+  assert.equal(protocol.data?.block?.height, finality.finalizedHeight);
+  assert.ok(Number.isSafeInteger(protocol.data?.block?.protocolVersion));
+  return protocol.data.block.protocolVersion;
+};
+const protocolVersion = await indexerProtocolAt(ready);
 
 mkdirSync(output, { mode: 0o700 });
 assert.equal(lstatSync(output).mode & 0o077, 0, 'Bootstrap receipt directory must be private.');
@@ -376,9 +379,19 @@ try {
   const tag = Buffer.alloc(32);
   tag.write('midnight.domains');
   assert.equal(rootOwnerCommitment, sha256(Buffer.concat([tag, rootSecret])));
+  const finalReady = await dedicatedIndexerReadiness(endpoints);
+  assert.ok(finalReady.ready, 'The local indexer no longer matches node finality.');
+  assert.equal(await rpcVersion('system_version'), nodeVersion);
+  assert.equal(await rpcVersion('midnight_ledgerVersion'), ledgerVersion);
+  assert.equal(await indexerProtocolAt(finalReady), protocolVersion);
   const waveCount = waves.length;
   result = { registryAddress, networkId: 'undeployed', waveCount };
-  Object.assign(receipt, { registryAddress, waveCount, rootOwnerCommitment });
+  Object.assign(receipt, {
+    registryAddress,
+    waveCount,
+    rootOwnerCommitment,
+    finalizedAfter: finalReady.finalizedHash,
+  });
   save();
 } catch (error) {
   failure = error;
