@@ -2,8 +2,9 @@ import { Transaction } from '@midnightntwrk/ledger-v9';
 import { claimDigest, claimHex, type ClaimReceipt } from './claim-receipt.js';
 import { findStandaloneClaimCall } from './claim-call.js';
 
-// This recovery profile is pinned to the isolated Ledger 9 standalone indexer.
-const protocolVersion = 2001000;
+// Existing isolated receipts use 2001000. Shared Ledger 9 receipts explicitly
+// select their observed v4 protocol instead of accepting an indexer default.
+const isolatedProtocolVersion = 2001000;
 const rawLimit = 2 * 1024 * 1024;
 const query =
   'query MidnamesClaim($offset: TransactionOffset!) { transactions(offset:$offset) { __typename protocolVersion hash raw ... on RegularTransaction { identifiers transactionResult { status segments { id success } } } } }';
@@ -117,6 +118,7 @@ export async function readClaimFinality(
   indexer: string,
   original: ClaimReceipt,
   request: typeof fetch = fetch,
+  expectedProtocolVersion = isolatedProtocolVersion,
 ): Promise<boolean | 'conflict' | 'failed' | 'claim-failed' | undefined> {
   try {
     const response = await request(indexer, {
@@ -141,7 +143,7 @@ export async function readClaimFinality(
     if (rows.length === 0) return false;
     if (rows.length !== 1) return undefined;
     const row = rows[0] as Record<string, unknown>;
-    if (row?.__typename !== 'RegularTransaction' || row.protocolVersion !== protocolVersion)
+    if (row?.__typename !== 'RegularTransaction' || row.protocolVersion !== expectedProtocolVersion)
       return undefined;
     if (
       !claimHex(row.hash) ||

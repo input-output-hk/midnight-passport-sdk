@@ -152,6 +152,163 @@ bootstrap pair. The deployed root is a transitional
 public `passport.night` names or implement MIP-0007 delegated routing. A name
 still needs its separate owner-proved claim after the ACC exists.
 
+### Claim one name on the shared Ledger 9 registry
+
+`qualify-shared-claim.mjs` is a bounded operator fixture for an **existing**
+activated ACC and registry on the designated shared chain. It never deploys an
+ACC or registry. It requires the free stable native sponsor lease, a clean
+signed source, the pinned registry and reference artifacts, 15 GiB free,
+and a fresh private receipt directory. The owner process creates or reopens a
+32-byte naming secret in an operator-owned mode-0700 directory; only that
+process reads it. The sponsor receives the proved transaction and public
+commitment, not the secret. Preserve the same secret file with the name for
+future target updates and recovery; losing it can make this name unrecoverable.
+
+First attach with `nix develop -c bash scripts/midnight-attach.sh` and verify
+the intended ACC and registry addresses from their original receipts. The
+shared prover has not been qualified for the pinned Compact 0.35 registry
+claim proof. Start only the separate, no-volume compatibility prover on port
+16320 (`PASSPORT_COMPAT_PROVER_PORT=16320`) using
+the [localnet recipe](../../infra/localnet/README.md#isolated-prover-for-the-pinned-compact-035-acc).
+Use a new Compose project name and stop only that project afterward. Then run
+from the SDK root with a new output name and a private naming-secret path:
+
+```sh
+PASSPORT_MIDNAMES_SHARED_CLAIM=1 PASSPORT_MIDNAMES_APPROVED_NAME=alice.night \
+PASSPORT_RC_LOCALNET=1 MIDNIGHT_NETWORK=local MN_NETWORK_ID=undeployed \
+MN_NODE_URL=http://127.0.0.1:9944 \
+MN_INDEXER_URL=http://127.0.0.1:8088/api/v4/graphql \
+MN_INDEXER_WS_URL=ws://127.0.0.1:8088/api/v4/graphql/ws \
+MN_PROOF_SERVER_URL=http://127.0.0.1:16320 \
+nix develop -c pnpm --filter passport-dapp exec node --import tsx \
+  --experimental-import-meta-resolve \
+  "$PWD/examples/midnames-local/qualify-shared-claim.mjs" \
+  "$PWD/review/midnames-shared-claim-my-run" \
+  /absolute/path/to/prepared-registry \
+  /absolute/path/to/acc-reference/contract \
+  "$REGISTRY_CONTRACT_ADDRESS" "$ACC_CONTRACT_ADDRESS" alice \
+  /absolute/private/name-alice.private.bin
+```
+
+The fixture checks the exact deployed ACC and 13 registry verifier keys before
+using the shared genesis wallet to fund a fresh, separately seeded sponsor.
+The sponsor seed is saved privately with the run and must be preserved for
+reconciliation. It keeps the original submitted transaction
+bytes and IDs, verifies a distinct naming owner commitment and exact contract
+target through both the Midnames adapter and the generated registry reader,
+requires the original transaction's indexed `SUCCESS`, then releases the lease
+only after wallet shutdown, finality and unchanged
+inputs. It creates two local funding transactions to give that sponsor NIGHT
+and DUST before the name claim; their exact receipts remain in the run directory.
+If the run fails after any send, preserve its lease, original bytes, naming
+secret and all receipts. Reconcile that same chain and transaction before any
+fresh claim. Never rerun the command as a blind repair.
+
+For a failed run with a fenced original, use the read-only reconciliation first:
+
+```sh
+nix develop -c pnpm --filter passport-dapp exec node --import tsx \
+  --experimental-import-meta-resolve \
+  "$PWD/examples/midnames-local/reconcile-shared-claim.mjs" \
+  "$PWD/review/midnames-shared-claim-my-run"
+```
+
+It requires the two exact funding transactions to have canonical finalized
+`SUCCESS`, the claim's retained bytes and identifiers to match the journal,
+both claim identifiers to be absent, and a canonical finalized block after the
+claim intent expires. It never submits a transaction. After reviewing that
+result, append `--release` to write a separate reconciliation receipt and
+clear only the exact pinned native lease. The original failed receipt and
+dispatch fence remain intact. An accepted or ambiguous original must retain
+the lease for further investigation.
+
+On the shared Ledger 9 stack, the first fresh-sponsor attempt reached the
+node with exactly two DUST spends, then received `Custom error: 104`. Its
+two funding transactions finalized successfully, but the exact claim was not
+indexed after expiry. This is a rejected qualification, not evidence that
+`alice.night` was issued. The [Ledger 9 release notes](https://docs.midnight.network/relnotes/ledger-9)
+describe error 104 as a gas-budget rejection for one known contract pattern;
+the cause of this claim rejection has not been established.
+
+For an operator-controlled local registry, a separate root-assisted fixture
+can issue the name without a paid claim. It proves `create_domain` under the
+root owner's existing witness, then proves `transfer_domain` to a distinct
+naming witness. The sponsor pays DUST, but the registry receives no name
+purchase payment. Keep the root and name witnesses as separate private
+32-byte files and use a previously funded sponsor seed. This is an explicit
+administrator issuance path, not proof that paid self-registration works.
+Bootstrap stores the root witness as a private 64-character hex file. Convert
+it once to the raw format expected by the owner child, in a private directory:
+
+```sh
+umask 077
+ROOT_HEX=/absolute/path/to/bootstrap/root-secret.private.hex \
+ROOT_BIN=/absolute/private/root-secret.private.bin \
+nix develop -c python3 - <<'PY'
+import os
+import pathlib
+import stat
+
+source = pathlib.Path(os.environ['ROOT_HEX'])
+target = pathlib.Path(os.environ['ROOT_BIN'])
+parent = target.parent.stat()
+existing = source.lstat()
+assert stat.S_ISDIR(parent.st_mode) and parent.st_mode & 0o077 == 0
+assert stat.S_ISREG(existing.st_mode) and existing.st_mode & 0o077 == 0
+assert existing.st_uid == os.getuid() and parent.st_uid == os.getuid()
+raw = bytes.fromhex(source.read_text().strip())
+assert len(raw) == 32
+fd = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+try:
+    assert os.write(fd, raw) == 32
+    os.fsync(fd)
+finally:
+    os.close(fd)
+PY
+```
+
+```sh
+PASSPORT_MIDNAMES_ADMIN_ISSUE=1 \
+PASSPORT_MIDNAMES_APPROVED_NAME=alice.night \
+PASSPORT_RC_LOCALNET=1 MIDNIGHT_NETWORK=local MN_NETWORK_ID=undeployed \
+MN_NODE_URL=http://127.0.0.1:9944 \
+MN_INDEXER_URL=http://127.0.0.1:8088/api/v4/graphql \
+MN_INDEXER_WS_URL=ws://127.0.0.1:8088/api/v4/graphql/ws \
+MN_PROOF_SERVER_URL=http://127.0.0.1:16320 \
+nix develop -c pnpm --filter passport-dapp exec node --import tsx \
+  --experimental-import-meta-resolve \
+  "$PWD/examples/midnames-local/qualify-admin-issued-name.mjs" \
+  "$PWD/review/midnames-admin-name-my-run" \
+  /absolute/path/to/prepared-registry \
+  /absolute/path/to/acc-reference/contract \
+  "$REGISTRY_CONTRACT_ADDRESS" "$ACC_CONTRACT_ADDRESS" alice \
+  /absolute/private/root-secret.private.bin \
+  /absolute/private/name-alice.private.bin \
+  /absolute/private/sponsor-seed.private.hex
+```
+
+The fixture refuses a name already present, checks the deployed registry and
+ACC, requires two DUST spends in each original transaction, and waits for
+indexed `SUCCESS` in a canonical finalized block before the next operation.
+If a submission is uncertain, it retains the native lease and original
+transaction bytes. Do not rerun blindly or describe a partially issued name
+as owner-held.
+
+The first shared-chain root-assisted attempt was also rejected with error 104
+at `create_domain`, before any transfer. Its source receipt is **FAIL** and
+must not be counted as issuance. For this exact failure, run
+`reconcile-admin-name.mjs /absolute/path/to/failed-run` in the pinned Nix
+shell. It checks the original bytes and identifiers, both absent indexer
+records, a canonical finalized block after expiry, and the still-absent name.
+Only after reviewing those checks may the operator append `--release` to
+clear that run's exact pinned lease. The command never submits a transaction.
+
+Only a fixture with a final **PASS** establishes its scoped local name and ACC
+binding. Neither shared-chain attempt above did. These fixtures do not exercise the full browser
+onboarding ceremony, passkey-based naming recovery, public `passport.night`
+issuance, or online sponsor funding. Keep #316's P2/P5/P8 conformance gates open
+until those paths are qualified.
+
 The standalone fixture has the upstream transitional registry administration
 semantics. A name claim needs an owner-controlled proof witness. Use synthetic
 wallets for this qualification and preserve all original transaction references
