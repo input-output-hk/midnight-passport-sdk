@@ -12,6 +12,10 @@ import {
   saveIsolationReceipt,
 } from '../../scripts/qualification/native-isolation-files.mjs';
 import { readClaimFinality } from '../../apps/passport-dapp/src/midnames/claim-finality.ts';
+import {
+  createMidnamesIndexer,
+  createMidnamesLedgerReads,
+} from '../../apps/passport-dapp/src/midnames/ledger-reader.ts';
 import { openClaimDispatch } from './claim-dispatch.mts';
 
 const [directory, mode] = process.argv.slice(2);
@@ -30,26 +34,42 @@ assert.equal(receipt.inputsUnchanged, true);
 assert.equal(receipt.networkId, 'undeployed');
 assert.equal(receipt.leaseOwner.root, directory);
 assert.equal(receipt.leaseOwner.project, 'shared-ledger9-midnames-claim');
-assert.equal(receipt.transactions.length, 3);
-assert.equal(receipt.transactions[2].status, 'submission-unknown');
+assert.ok(receipt.transactions.length === 2 || receipt.transactions.length === 3);
+const preproof = receipt.transactions.length === 2;
+if (preproof) {
+  assert.ok(receipt.steps.some((step) => step.name === 'prove-claim-in-owner-process'));
+  assert.ok(!receipt.steps.some((step) => step.name === 'dispatch-exact-original'));
+  assert.ok(!existsSync(join(directory, 'tx-3.private.bin')));
+  assert.ok(!existsSync(join(directory, 'claim-prepared.private.json')));
+  assert.ok(!existsSync(join(directory, 'claim-dispatch-fence.json')));
+} else assert.equal(receipt.transactions[2].status, 'submission-unknown');
 assert.ok(receipt.leasePin);
-const prepared = openClaimDispatch(directory).preparedReceipt();
-assert.ok(prepared);
-assert.deepEqual(JSON.parse(readFileSync(join(directory, 'claim-dispatch-fence.json'))), prepared);
-assert.equal(prepared.name, receipt.name);
-assert.equal(prepared.registryAddress, receipt.registryAddress);
-assert.equal(prepared.accountAddress, receipt.accountAddress);
+const prepared = preproof ? undefined : openClaimDispatch(directory).preparedReceipt();
+if (!preproof) {
+  assert.ok(prepared);
+  assert.deepEqual(
+    JSON.parse(readFileSync(join(directory, 'claim-dispatch-fence.json'))),
+    prepared,
+  );
+  assert.equal(prepared.name, receipt.name);
+  assert.equal(prepared.registryAddress, receipt.registryAddress);
+  assert.equal(prepared.accountAddress, receipt.accountAddress);
+}
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const requireFromApp = createRequire(join(root, 'apps/passport-dapp/package.json'));
 const { Transaction } = requireFromApp('@midnightntwrk/ledger-v9');
-const bytes = readFileSync(join(directory, 'tx-3.private.bin'));
-assert.equal(sha256(bytes), receipt.transactions[2].sha256);
-assert.equal(sha256(bytes), prepared.transaction.sha256);
-const tx = Transaction.deserialize('signature', 'proof', 'binding', bytes);
-assert.deepEqual(tx.identifiers(), prepared.transaction.identifiers);
-const ttls = [...tx.intents.values()].map(({ ttl }) => ttl.getTime());
-assert.ok(ttls.length > 0 && ttls.every(Number.isSafeInteger));
-const expiresAt = Math.min(...ttls);
+let tx;
+let expiresAt;
+if (!preproof) {
+  const bytes = readFileSync(join(directory, 'tx-3.private.bin'));
+  assert.equal(sha256(bytes), receipt.transactions[2].sha256);
+  assert.equal(sha256(bytes), prepared.transaction.sha256);
+  tx = Transaction.deserialize('signature', 'proof', 'binding', bytes);
+  assert.deepEqual(tx.identifiers(), prepared.transaction.identifiers);
+  const ttls = [...tx.intents.values()].map(({ ttl }) => ttl.getTime());
+  assert.ok(ttls.length > 0 && ttls.every(Number.isSafeInteger));
+  expiresAt = Math.min(...ttls);
+}
 const nodeUrl = 'http://127.0.0.1:9944';
 const indexerUrl = 'http://127.0.0.1:8088/api/v4/graphql';
 const post = async (url, body) => {
@@ -81,7 +101,11 @@ const block = (
 ).data.block;
 assert.equal(block.hash, finality.finalizedHash.replace(/^0x/, ''));
 assert.equal(block.height, finality.finalizedHeight);
-assert.ok(block.timestamp > expiresAt, 'Wait for a canonical finalized block after claim expiry.');
+if (!preproof)
+  assert.ok(
+    block.timestamp > expiresAt,
+    'Wait for a canonical finalized block after claim expiry.',
+  );
 const query =
   'query($offset:TransactionOffset!){transactions(offset:$offset){__typename hash protocolVersion raw ... on RegularTransaction {identifiers transactionResult{status} block{hash height}}}}';
 const transactionRows = async (identifier) =>
@@ -115,19 +139,40 @@ for (const row of receipt.transactions.slice(0, 2)) {
   assert.equal(await rpc('chain_getBlockHash', [indexed.block.height]), '0x' + indexed.block.hash);
   funding.push({ id: row.id, block: indexed.block });
 }
-assert.equal(await readClaimFinality(indexerUrl, prepared, fetch, 2001100), false);
-for (const identifier of prepared.transaction.identifiers)
-  assert.deepEqual(await transactionRows(identifier), []);
+if (preproof) {
+  const reads = createMidnamesLedgerReads(
+    createMidnamesIndexer('undeployed', indexerUrl, 'ws://127.0.0.1:8088/api/v4/graphql/ws'),
+    'undeployed',
+    'acc-s3r1.1',
+    'standalone-0.35',
+  );
+  assert.equal(
+    await reads.readClaim(receipt.name, {
+      networkId: 'undeployed',
+      namespace: 'night',
+      registryAddress: receipt.registryAddress,
+    }),
+    undefined,
+  );
+} else {
+  assert.equal(await readClaimFinality(indexerUrl, prepared, fetch, 2001100), false);
+  for (const identifier of prepared.transaction.identifiers)
+    assert.deepEqual(await transactionRows(identifier), []);
+}
 const after = await dedicatedIndexerReadiness({ nodeUrl, indexerUrl });
 assert.ok(after.ready && after.finalizedHeight >= finality.finalizedHeight);
-assert.equal(await readClaimFinality(indexerUrl, prepared, fetch, 2001100), false);
+if (!preproof) assert.equal(await readClaimFinality(indexerUrl, prepared, fetch, 2001100), false);
 const lease = nativeLeasePath();
 const result = {
-  status: 'RECONCILED_REJECTED',
+  status: preproof ? 'RECONCILED_PREPROOF' : 'RECONCILED_REJECTED',
   sourceReceipt: join(directory, 'shared-claim.json'),
-  claimHash: tx.transactionHash(),
-  claimIdentifiers: prepared.transaction.identifiers,
-  expiresAt: new Date(expiresAt).toISOString(),
+  ...(preproof
+    ? { claimPrepared: false }
+    : {
+        claimHash: tx.transactionHash(),
+        claimIdentifiers: prepared.transaction.identifiers,
+        expiresAt: new Date(expiresAt).toISOString(),
+      }),
   finalizedBlock: block,
   funding,
   claimIndexed: false,
@@ -138,19 +183,26 @@ const path = join(directory, 'reconciliation.json');
 const pending = { ...result, status: 'READY_TO_RELEASE' };
 const prior = existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : undefined;
 if (prior) {
+  const released = prior.status === result.status && prior.leaseReleased === true;
+  assert.ok(released || (prior.status === 'READY_TO_RELEASE' && prior.leaseReleased === false));
   assert.deepEqual(
-    { ...prior, finalizedBlock: pending.finalizedBlock },
+    {
+      ...prior,
+      status: 'READY_TO_RELEASE',
+      leaseReleased: false,
+      finalizedBlock: pending.finalizedBlock,
+    },
     pending,
     'Prior reconciliation differs.',
   );
-  assert.ok(prior.finalizedBlock.timestamp > expiresAt);
+  if (!preproof) assert.ok(prior.finalizedBlock.timestamp > expiresAt);
   assert.ok(prior.finalizedBlock.height <= after.finalizedHeight);
   assert.equal(
     await rpc('chain_getBlockHash', [prior.finalizedBlock.height]),
     '0x' + prior.finalizedBlock.hash,
   );
 }
-assert.ok(existsSync(lease) || (mode === '--release' && prior));
+assert.ok(existsSync(lease) || (prior && prior.leaseReleased));
 if (mode === '--release') {
   if (!prior) saveIsolationReceipt(path, pending);
   if (existsSync(lease)) {
