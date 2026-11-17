@@ -173,9 +173,10 @@ needs `PASSPORT_SPONSOR_SEED_FILE` or `PASSPORT_SPONSOR_SEED`, or the service re
 `midnight-network` project at `9944/8088/6300`. Before launching, the repo-owned
 [`midnight-attach.sh`](../scripts/midnight-attach.sh) checks its node, indexer
 and prover versions and indexed block agreement. The launcher neither starts
-nor stops shared containers. Supply a separately funded sponsor seed file even
-though this development chain also has network ID `undeployed`; the public
-genesis seed may already be in use. See the [localnet guide](../infra/localnet/README.md)
+nor stops shared containers. With no explicit sponsor seed, it uses the local
+development chain's public genesis wallet; coordinate exclusive use before
+transactions. For other networks, supply a funded wallet through
+`PASSPORT_SPONSOR_SEED` or `PASSPORT_SPONSOR_SEED_FILE`. See the [localnet guide](../infra/localnet/README.md)
 for the required separate deployment registry, browser profile, pinned Compose
 profile and isolated test projects. A successful attach
 does not establish that this ACC/prover combination passes a native transaction.

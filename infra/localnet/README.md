@@ -31,22 +31,26 @@ indexed-confirmation smoke before claiming a pinned ACC or Midnames build works
 on this stack.
 
 For the reference demo, explicitly select `MIDNIGHT_STACK=shared-ledger9` and
-provide a **separately funded** sponsor seed via `PASSPORT_SPONSOR_SEED_FILE`,
-plus a distinct `PASSPORT_REGISTRY_FILE` for its deployment records. Keep both
-absolute paths outside the repository. Create a dedicated private directory
+provide a distinct `PASSPORT_REGISTRY_FILE` for its deployment records. The
+shared local development stack uses the public, pre-funded genesis sponsor seed
+when no sponsor seed is configured. Coordinate exclusive use of that wallet
+across sessions before sending transactions. A separately funded wallet can be
+selected with `PASSPORT_SPONSOR_SEED_FILE` or `PASSPORT_SPONSOR_SEED`.
+Keep private files at absolute paths outside the repository. Create a dedicated private directory
 for the registry; the launcher refuses the default registry directory, linked
 files and preexisting unanchored records. The public genesis funding wallet may
-be in use by another session, and the launcher refuses it on this profile.
+be in use by another session; the attach preflight does not establish wallet
+exclusivity.
 Use a separate browser profile for this development chain's local account and
 intent storage; keep its original receipts when switching chains.
 `prototype-up.sh` attaches without starting or stopping shared containers:
 
 ```sh
 install -d -m 700 "$HOME/.midnight-passport/shared-ledger9"
-MIDNIGHT_STACK=shared-ledger9 PASSPORT_SPONSOR_SEED_FILE=/private/seed-file \
+MIDNIGHT_STACK=shared-ledger9 \
   PASSPORT_REGISTRY_FILE="$HOME/.midnight-passport/shared-ledger9/registry.json" \
   nix develop -c pnpm demo check
-MIDNIGHT_STACK=shared-ledger9 PASSPORT_SPONSOR_SEED_FILE=/private/seed-file \
+MIDNIGHT_STACK=shared-ledger9 \
   PASSPORT_REGISTRY_FILE="$HOME/.midnight-passport/shared-ledger9/registry.json" \
   PASSPORT_CONTRACT_DIR=/absolute/path/to/pinned-acc \
   nix develop -c pnpm demo up

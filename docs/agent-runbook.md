@@ -36,10 +36,10 @@ or stops `midnight-network`. The attach check proves endpoint pairing and
 versions; the repo's own proof/submission/indexed-confirmation run is still
 needed before accepting this ACC and registry on that chain. Record the
 shared profile's observed block height/hash in the private chain anchor and
-verify it on reuse. A shared demo
-also needs a separate funded sponsor seed, deployment registry file and browser
-profile; the default genesis wallet and deployment file are not shared-session
-state.
+verify it on reuse. A shared demo needs a dedicated deployment registry file
+and browser profile. It uses the local development chain's public genesis
+sponsor by default; coordinate exclusive use across sessions. Online profiles
+require an explicitly configured funded sponsor seed.
 
 
 ## Demo setup and launch

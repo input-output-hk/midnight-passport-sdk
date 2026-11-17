@@ -98,16 +98,16 @@ check_shared_state() {
     }
     seed=$(cat "$PASSPORT_SPONSOR_SEED_FILE")
   else
-    seed="${PASSPORT_SPONSOR_SEED:-}"
+    seed="${PASSPORT_SPONSOR_SEED:-0000000000000000000000000000000000000000000000000000000000000001}"
   fi
   [[ "$seed" =~ ^[0-9a-f]{64}$ ]] || {
     echo "prototype-up: shared-ledger9 needs an exact 32-byte lowercase-hex sponsor seed." >&2
     return 1
   }
-  [ "$seed" != 0000000000000000000000000000000000000000000000000000000000000001 ] || {
-    echo "prototype-up: the public genesis sponsor seed is not allowed on the shared stack." >&2
-    return 1
-  }
+  if [ -z "${PASSPORT_SPONSOR_SEED:-}" ] && [ -z "${PASSPORT_SPONSOR_SEED_FILE:-}" ]; then
+    export PASSPORT_SPONSOR_SEED="$seed"
+    echo "prototype-up: using the shared localnet's public genesis sponsor; use it exclusively."
+  fi
 }
 
 if [ "${1:-}" = "--check" ]; then

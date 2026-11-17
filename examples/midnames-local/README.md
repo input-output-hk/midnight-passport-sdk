@@ -56,6 +56,15 @@ nix develop -c node --experimental-import-meta-resolve \
 
 Use the actual ports of the intended local stack; the four endpoints must be
 explicit loopback URLs, and the HTTP/WS indexer pair must share a host and port.
+For the designated shared Ledger 9 stack, run
+`nix develop -c bash scripts/midnight-attach.sh` first, then use the endpoints
+in `infra/networks/shared-ledger9.env` with this same bootstrap command. It
+attaches to the running stack and performs no Docker lifecycle action. The
+development genesis sponsor is public and pre-funded on this chain; coordinate
+exclusive wallet use with other sessions before a deployment. Supply an
+activated ACC address from this exact chain, and keep a fresh private receipt
+directory. A responding endpoint or funded wallet alone does not establish
+that the ACC or registry is deployed.
 Choose a fresh direct child of the SDK's ignored `review/` directory for each
 receipt. The script uses the standalone genesis development seed, pays local DUST fees, and writes each
 original transaction's bytes and identifier to private files before continuing.
