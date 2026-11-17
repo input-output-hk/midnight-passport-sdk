@@ -201,9 +201,23 @@ was rejected by the node with error 104 despite two DUST spends. The separate
 fenced original, finalized funding, expiry and absence before releasing the
 run's native lease. No shared-chain `alice.night` claim is qualified yet.
 A separate root-assisted fixture also reached the node but received the same
-error 104 before creating a name. Paid self-registration and administrator
-issuance therefore remain unqualified on this shared chain; neither receipt
-establishes a live `alice.night` mapping.
+error 104 before creating a name. A read-only Ledger 9 replay identified an
+overclaimed storage-deletion credit in both `create_domain` transactions:
+1,364 bytes declared against 1,136 actually deleted. A corrected local
+`create_domain` finalized for `gasfix.night`; its subsequent uncorrected
+`transfer_domain` was rejected with the same error (788 bytes claimed against
+656 measured). The local owner fixtures now construct both calls without a
+deletion credit before proof, in either the guaranteed or fallible transcript
+partition. After exact reconciliation of the partial issuance, a transfer-only
+recovery finalized `gasfix.night` under its distinct owner. A fresh paid claim
+at signed `3c9f998` then finalized `paidfix.night` through a separately seeded
+sponsor funded by local genesis. Both names resolve to the activated ACC on the
+shared Ledger 9 chain, and both final receipts are **PASS**. The paid fixture's
+first funded attempt stopped before proving; its two funding transactions and
+absent claim were reconciled before the fresh run. These scoped fixtures do not
+qualify browser onboarding, passkey recovery, public `passport.night` issuance
+or online sponsor funding. No live `alice.night` mapping was established by
+the earlier failed receipts.
 For an online deployment, the host must configure its actual registry address
 and a funded sponsor wallet through `PASSPORT_SPONSOR_SEED` in the service
 environment; the local genesis seed does not fund Preview or Preprod. The wallet

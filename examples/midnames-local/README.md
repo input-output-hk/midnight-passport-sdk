@@ -226,9 +226,30 @@ On the shared Ledger 9 stack, the first fresh-sponsor attempt reached the
 node with exactly two DUST spends, then received `Custom error: 104`. Its
 two funding transactions finalized successfully, but the exact claim was not
 indexed after expiry. This is a rejected qualification, not evidence that
-`alice.night` was issued. The [Ledger 9 release notes](https://docs.midnight.network/relnotes/ledger-9)
-describe error 104 as a gas-budget rejection for one known contract pattern;
-the cause of this claim rejection has not been established.
+`alice.night` was issued. A local Ledger 9 replay of that transaction and the
+root-assisted attempt isolated the cause: each `create_domain` transcript
+claimed 1,364 deleted bytes, but executing against the indexed registry state
+deleted 1,136. A declared credit of 1,137 bytes is rejected; 1,136 or less
+passes the same replay. A fresh adjusted `create_domain` finalized successfully
+for `gasfix.night`, but its following unadjusted `transfer_domain` was rejected
+with error 104. That transfer declared 788 deleted bytes against 656 measured;
+657 or more fails the same replay. The standalone owner fixtures rebuild both
+one-call operations before proving with zero deletion credit, retaining their
+programs, effects and value transfers. This supports the guaranteed transcript
+used by root-assisted issuance and the fallible transcript used by a paid claim.
+The partial issuance and exact rejected transfer remain preserved.
+
+After exact partial reconciliation, a transfer-only recovery finalized
+`gasfix.night` under its distinct owner and verified its ACC target. A fresh
+paid claim at signed `3c9f998` finalized `paidfix.night` with a separately
+seeded sponsor funded from the shared local genesis wallet. Its indexed claim
+and generated registry reader agreed on the owner commitment and activated ACC
+target; its receipt is **PASS**, with the wallet stopped, inputs unchanged and
+native lease released. The first funded `paidfix.night` attempt had stopped
+before proof because the adjustment initially assumed a guaranteed transcript;
+read-only reconciliation verified both funding transactions and no submitted
+claim before releasing that attempt's lease. The successful run is a new,
+independently funded claim, not a replay of the earlier attempt.
 
 For an operator-controlled local registry, a separate root-assisted fixture
 can issue the name without a paid claim. It proves `create_domain` under the
@@ -303,11 +324,25 @@ records, a canonical finalized block after expiry, and the still-absent name.
 Only after reviewing those checks may the operator append `--release` to
 clear that run's exact pinned lease. The command never submits a transaction.
 
+The later `gasfix.night` run finalized `create_domain` but its original
+`transfer_domain` was rejected. The same reconciliation command recognizes a
+two-transaction partial receipt: it verifies the first transaction's canonical
+`SUCCESS`, the second transaction's original bytes and absence after finalized
+expiry, and the name still held by the registry root. Only then may `--release`
+free that exact lease. Preserve both transaction files and the original root,
+name and sponsor secrets. To finish this **same name** after reconciliation,
+rerun the command above with a fresh output directory, the same label and
+secret paths, `PASSPORT_MIDNAMES_RECOVER_TRANSFER=1`, and the original run
+directory as the last argument. The recovery preflight requires the released
+partial reconciliation and the exact root-held name; it submits only a new
+`transfer_domain`, never another `create_domain` or the rejected transfer.
+
 Only a fixture with a final **PASS** establishes its scoped local name and ACC
-binding. Neither shared-chain attempt above did. These fixtures do not exercise the full browser
-onboarding ceremony, passkey-based naming recovery, public `passport.night`
-issuance, or online sponsor funding. Keep #316's P2/P5/P8 conformance gates open
-until those paths are qualified.
+binding. The completed admin recovery and fresh paid claim qualify those two
+local fixture paths. They do not exercise the full browser onboarding ceremony,
+passkey-based naming recovery, public `passport.night` issuance or online
+sponsor funding. Keep #316's remaining P2/P5/P8 conformance gates open until
+those paths are qualified.
 
 The standalone fixture has the upstream transitional registry administration
 semantics. A name claim needs an owner-controlled proof witness. Use synthetic

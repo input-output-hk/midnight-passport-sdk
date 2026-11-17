@@ -2,6 +2,8 @@ import { CompiledContract } from '@midnight-ntwrk/compact-js';
 import { createUnprovenCallTx } from '@midnight-ntwrk/midnight-js-contracts';
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import * as ledgerV9 from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import * as midnightTypes from '@midnight-ntwrk/midnight-js-types';
 import {
   CostModel,
   createCheckPayload,
@@ -18,6 +20,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-types';
 import { AddressType, Contract, ledger } from './registry.mjs';
 import manifest from './registry-manifest.json';
+import { withoutDeletionCredit } from './deletion-credit.mjs';
 
 const utf8 = (value) => new TextEncoder().encode(value);
 const random = () => crypto.getRandomValues(new Uint8Array(32));
@@ -150,11 +153,10 @@ export async function prove(input, id, check = () => {}) {
       );
       const nameKey = new Uint8Array(32).fill(255);
       nameKey.set(utf8(input.label));
-      const {
-        private: { unprovenTx },
-      } = await createUnprovenCallTx(
+      const source = indexerPublicDataProvider(input.indexerUrl, input.indexerWsUrl);
+      const result = await createUnprovenCallTx(
         {
-          publicDataProvider: indexerPublicDataProvider(input.indexerUrl, input.indexerWsUrl),
+          publicDataProvider: source,
           walletProvider: {
             getCoinPublicKey: () => input.walletKeys.coin,
             getEncryptionPublicKey: () => input.walletKeys.encryption,
@@ -177,6 +179,16 @@ export async function prove(input, id, check = () => {}) {
             Array.from({ length: 10 }, () => ({ is_some: false, value: ['', ''] })),
           ],
         },
+      );
+      const state = await source.queryContractState(input.registryAddress);
+      if (!state) throw new Error('The pinned registry is absent.');
+      const unprovenTx = withoutDeletionCredit(
+        result,
+        state,
+        'undeployed',
+        ledgerV9,
+        midnightTypes,
+        input.registryAddress,
       );
       check();
       const tx = await unprovenTx.prove(
