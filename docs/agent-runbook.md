@@ -32,9 +32,11 @@ See [apps configuration](../apps/README.md) and the
 For an explicitly selected shared Ledger 9 profile, run the repo-owned
 `nix develop -c bash scripts/midnight-attach.sh` first and follow the
 [localnet guide](../infra/localnet/README.md). Only its designated owner starts
-or stops `midnight-network`. The attach check proves endpoint pairing and
-versions; the repo's own proof/submission/indexed-confirmation run is still
-needed before accepting this ACC and registry on that chain. Record the
+or stops `midnight-network`. The attach check verifies node/indexer HTTP block
+agreement and the proof server's HTTP version; it does not connect to the
+indexer WebSocket. A client WebSocket smoke and the repo's own
+proof/submission/indexed-confirmation run are still needed before accepting
+this ACC and registry on that chain. Record the
 shared profile's observed block height/hash in the private chain anchor and
 verify it on reuse. A shared demo needs a dedicated deployment registry file
 and browser profile. It uses the local development chain's public genesis
