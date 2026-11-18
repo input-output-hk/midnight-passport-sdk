@@ -379,7 +379,7 @@ async function runClaimAction(context: ClaimActionContext): Promise<void> {
       sendReview.clear();
       release.hidden = true;
       receipt.value = JSON.stringify(original);
-      report('Prior original retained in local history. Review a fresh claim quote to retry.');
+      report('Failed original retained in local history. Review a fresh claim quote to retry.');
       return;
     }
     if (sending && recovery.dispatch) {
