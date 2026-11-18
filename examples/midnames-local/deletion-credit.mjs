@@ -7,10 +7,21 @@
  * fees and leaves the program, effects, inputs and outputs unchanged.
  *
  * This is deliberately limited to single-call local naming and named-ACC
- * deposit fixtures. A rebuilt call must be proved and balanced again.
+ * shielded deposit fixtures. ACC NIGHT funding needs its measured credit;
+ * removing all of it exhausts that call's budget. A rebuilt call must be
+ * proved and balanced again.
  * Recompiled Compact 0.36 artifacts need their own deployed verifier keys.
  */
-export function withoutDeletionCredit(result, state, networkId, ledger, types, contractAddress) {
+function rebuildWithCredit(
+  result,
+  state,
+  networkId,
+  ledger,
+  types,
+  contractAddress,
+  credit,
+  allowed,
+) {
   const original = result.private.unprovenTx;
   const intents = [...(original.intents?.values() ?? [])];
   const calls = result.calls;
@@ -20,7 +31,7 @@ export function withoutDeletionCredit(result, state, networkId, ledger, types, c
     intents[0].actions.length !== 1 ||
     calls.length !== 1 ||
     String(calls[0].contractAddress) !== contractAddress ||
-    !['create_domain', 'transfer_domain', 'deposit_shielded'].includes(circuit)
+    !allowed.includes(circuit)
   )
     throw new Error('Deletion-credit adjustment requires one supported call.');
   const call = calls[0];
@@ -45,7 +56,7 @@ export function withoutDeletionCredit(result, state, networkId, ledger, types, c
   });
   const safeTranscript = {
     ...transcript,
-    gas: { ...transcript.gas, bytesDeleted: 0n },
+    gas: { ...transcript.gas, bytesDeleted: credit },
   };
   const prototype = new ledger.ContractCallPrototype(
     contractAddress,
@@ -75,9 +86,54 @@ export function withoutDeletionCredit(result, state, networkId, ledger, types, c
     ? adjustedCall?.guaranteedTranscript
     : adjustedCall?.fallibleTranscript;
   if (
-    adjustedTranscript?.gas.bytesDeleted !== 0n ||
+    adjustedTranscript?.gas.bytesDeleted !== credit ||
     adjustedTranscript.program.length !== transcript.program.length
   )
     throw new Error('Deletion-credit adjustment did not preserve the call.');
   return adjusted;
+}
+
+export function withoutDeletionCredit(result, state, networkId, ledger, types, contractAddress) {
+  return rebuildWithCredit(result, state, networkId, ledger, types, contractAddress, 0n, [
+    'create_domain',
+    'transfer_domain',
+    'deposit_shielded',
+  ]);
+}
+
+/** Keep exactly the deleted-byte credit this pinned ACC call earns on the observed state. */
+export function withMeasuredDeletionCredit(
+  result,
+  state,
+  parameters,
+  networkId,
+  ledger,
+  types,
+  contractAddress,
+) {
+  const [call] = result.calls;
+  const [guaranteed, fallible] = call?.public.partitionedTranscript ?? [];
+  if (
+    result.calls.length !== 1 ||
+    String(call?.circuitId) !== 'deposit_unshielded' ||
+    !guaranteed ||
+    fallible
+  )
+    throw new Error('Measured deletion credit requires one guaranteed ACC NIGHT deposit.');
+  const data = ledger.ContractState.deserialize(state.serialize()).data;
+  const model = parameters.transactionCostModel.runtimeCostModel;
+  const context = () => new ledger.QueryContext(data, contractAddress);
+  const gather = guaranteed.program.map((part) =>
+    typeof part === 'object' && 'popeq' in part ? { popeq: { ...part.popeq, result: null } } : part,
+  );
+  const credit = context().query(gather, model).gasCost.bytesDeleted;
+  if (credit <= 0n || credit > guaranteed.gas.bytesDeleted)
+    throw new Error('The measured ACC deletion credit is outside the declared budget.');
+  context().runTranscript(
+    { ...guaranteed, gas: { ...guaranteed.gas, bytesDeleted: credit } },
+    model,
+  );
+  return rebuildWithCredit(result, state, networkId, ledger, types, contractAddress, credit, [
+    'deposit_unshielded',
+  ]);
 }
