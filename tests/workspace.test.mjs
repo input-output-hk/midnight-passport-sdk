@@ -20,7 +20,8 @@ test('the repo is a private pnpm workspace over packages/*', async () => {
 test('the Node baseline agrees across manifest, .nvmrc, and the CI gate', async () => {
   assert.ok(root.engines, 'root manifest must declare engines');
   assert.equal(root.engines.node, '>=22');
-  assert.equal((await read('../.nvmrc')).trim(), '22');
+  const nodePin = (await read('../.nvmrc')).trim();
+  assert.match(nodePin, /^22\.\d+\.\d+$/, 'parallel CI jobs require one exact Node patch');
   const workflow = await read('../.github/workflows/pr-checks.yml');
   const pins = [...workflow.matchAll(/node-version(?:-file)?:\s*(.+)/g)].map((m) =>
     String(m[1]).trim(),
@@ -28,8 +29,8 @@ test('the Node baseline agrees across manifest, .nvmrc, and the CI gate', async 
   assert.ok(pins.length > 0, 'the CI gate must pin its Node version');
   for (const pin of pins) {
     assert.ok(
-      pin === '22' || pin.includes('.nvmrc'),
-      `CI node-version must be 22 or driven by .nvmrc, got "${pin}"`,
+      pin === nodePin || pin.includes('.nvmrc'),
+      `CI node-version must be the exact .nvmrc pin or driven by it, got "${pin}"`,
     );
   }
 });
