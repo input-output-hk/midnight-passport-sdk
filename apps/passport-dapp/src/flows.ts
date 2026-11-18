@@ -27,6 +27,7 @@ export type ActionId =
   | 'rotate'
   | 'wallet'
   | 'walletRefresh'
+  | 'walletDust'
   | 'fund'
   | 'withdraw'
   | 'sendNamedNight';
@@ -71,6 +72,7 @@ export const PASSKEY_PROMPTS = {
   withdraw: 1,
   sendNamedNight: [0, 1],
   walletRefresh: 0,
+  walletDust: 0,
   walletWithAccount: 1,
   walletWithoutAccount: 1,
 } as const satisfies Record<string, PromptCount>;
@@ -295,6 +297,16 @@ export const FLOWS: Record<ActionId, FlowDef> = {
       'Read current NIGHT, token and DUST balances from the connected wallet after indexer sync, without another passkey prompt.',
     stages: [{ id: 'balances', label: 'Wait for wallet sync and refresh balances' }],
   },
+  walletDust: {
+    title: 'Enable wallet DUST generation',
+    summary:
+      'Register this wallet’s NIGHT output to produce DUST for transaction fees. Review and submit one separate Ledger 9 transaction.',
+    stages: [
+      { id: 'review', label: 'Review wallet NIGHT and DUST registration' },
+      { id: 'registration', label: 'Prepare and submit one DUST registration' },
+      { id: 'finality', label: 'Verify the original transaction on the finalized chain' },
+    ],
+  },
   fund: {
     title: 'Fund Passport account',
     summary:
@@ -359,6 +371,7 @@ export const EVENT_STAGES: Readonly<Record<ActionId, Partial<Record<PassportStep
   removeDevice: {},
   rotate: {},
   wallet: {},
+  walletDust: {},
   walletRefresh: {},
   fund: {},
   withdraw: {},

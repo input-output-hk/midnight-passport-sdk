@@ -306,13 +306,32 @@ NIGHT and DUST now have independent readiness and presentation. DUST runs as an
 observed background read; a pending/failing DUST sync does not hold a ready NIGHT
 balance or wallet action open. Refresh/reconnect revisions discard late results.
 
+For a connected named NIGHT send, the selected device wallet pays Dust on the
+ACC withdrawal. Fund its unshielded address, use **Enable DUST generation** to
+register wallet-held NIGHT, and wait for a positive DUST balance. Registration
+is a separate on-chain transaction with a saved original ID and finalized-chain
+check; an uncertain original is retained for reconciliation. The fee-only
+service sponsor never signs an unshielded value offer.
+
 The #318 named NIGHT host remains a source composition. It joins the selected
 JubJub owner, scope-bound journal, finality reader, unbound recipient deposit
 proof and device-held wallet. Its synthetic test resumes a failed deposit proof
 from the original withdrawal. An opt-in local page control now uses this host,
 shows the full route before credential review, and displays retained original
-IDs for recovery. Native proof or connected browser payment acceptance has not
-been recorded.
+IDs for recovery. A connected local Ledger 9 browser run finalized both original
+legs of one named payment and recovered the same IDs after reload. It used a
+local mock JubJub credential; real-provider qualification remains open.
+
+On the current shared Ledger 9 profile, the retained Compact 0.35 NIGHT
+deposit transcript overclaimed deleted-byte gas credit. The node rejected the
+prepared source-funding deposit before inclusion with error 104; its log named
+the gas budget. A read-only replay against the live ACC state and indexer cost
+model measured 180 bytes where the transcript claimed 216. The recipient
+deposit then declared 171 bytes against 180 measured. The source adapter
+and standalone fixture now rebuild only a single guaranteed
+`deposit_unshielded` call with the earned credit before proof. The rejected
+original remains fenced until its original TTL and canonical absence are
+checked. The later connected payment has its own finalized native receipt.
 
 ## Exact review and P-256 withdrawal follow-up (source preview)
 

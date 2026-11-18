@@ -89,6 +89,39 @@ export async function createDevWallet(
         throw walletBackgroundError(error, 'deposit');
       }
     },
+    async balanceWithdrawalFee(request) {
+      try {
+        const result = await client.request('balanceNightWithdrawalFee', request);
+        if (
+          !(result instanceof Uint8Array) ||
+          result.length === 0 ||
+          result.length > 4 * 1024 * 1024
+        )
+          throw new Error('Invalid balanced NIGHT withdrawal reply.');
+        return Uint8Array.from(result);
+      } catch (error) {
+        throw walletBackgroundError(error);
+      }
+    },
+    async prepareDustRegistration() {
+      try {
+        const result = await client.request('prepareDustRegistration', undefined);
+        const { checkedDeviceNightLeg } = await import('./night-deposit.js');
+        return checkedDeviceNightLeg(result);
+      } catch (error) {
+        throw walletBackgroundError(error, 'registration-prepare');
+      }
+    },
+    async submitDustRegistration(original) {
+      try {
+        const result = await client.request('submitDustRegistration', original);
+        if (typeof result !== 'string' || !/^[a-f0-9]{64}(?:[a-f0-9]{2})?$/.test(result))
+          throw new Error('Invalid DUST registration submission reply.');
+        return result;
+      } catch (error) {
+        throw walletBackgroundError(error, 'registration-submit');
+      }
+    },
   };
   return devWalletSession(
     config.networkId,
@@ -127,16 +160,23 @@ function checkedNightLegReply(value: unknown) {
 }
 
 /** Preserve the connector error contract without exposing worker/provider exception text. */
-export function walletBackgroundError(error: unknown, operation: 'read' | 'deposit' = 'read') {
+export function walletBackgroundError(
+  error: unknown,
+  operation: 'read' | 'deposit' | 'registration-prepare' | 'registration-submit' = 'read',
+) {
   const disconnected =
     error instanceof BackgroundError && ['Closed', 'Unavailable'].includes(error.code);
   return walletApiError(
     disconnected ? 'Disconnected' : 'InternalError',
     operation === 'deposit'
       ? 'The NIGHT deposit outcome is unknown. Reconcile the fenced original before another payment.'
-      : disconnected
-        ? 'The wallet worker disconnected. Reconnect the built-in wallet.'
-        : 'The wallet background read failed. Refresh to retry.',
+      : operation === 'registration-prepare'
+        ? 'DUST registration was not submitted. The wallet may need more NIGHT to generate its registration fee, or more time to sync.'
+        : operation === 'registration-submit'
+          ? 'The DUST registration outcome is unknown. Reconcile its saved original ID before another attempt.'
+          : disconnected
+            ? 'The wallet worker disconnected. Reconnect the built-in wallet.'
+            : 'The wallet background read failed. Refresh to retry.',
   );
 }
 

@@ -72,6 +72,7 @@ export function createMidnamesLedgerReads(
   profileId: MidnamesRegistryProfile = 'midnames-2.1.0',
 ): MidnamesReads & {
   hasDomain(name: string, profile: Readonly<MidnamesProfile>): Promise<boolean>;
+  readSupportedNightBalance(address: string, requestedNetwork: string): Promise<bigint | undefined>;
   readClaim(
     name: string,
     profile: Readonly<MidnamesProfile>,
@@ -117,6 +118,19 @@ export function createMidnamesLedgerReads(
     if (domain.owner_public_key.length !== 32) throw new PassportNameError('InvalidRecord');
     return { ownerCommitment: hex(domain.owner_public_key), target: readDomainTarget(domain) };
   };
+  const supportedAccount = async (address: string, requestedNetwork: string) => {
+    if (requestedNetwork !== networkId) return undefined;
+    const observed = await provider.queryContractState(address);
+    if (!observed) return undefined;
+    try {
+      const account = observed.contractState.deserialize({ v9: ContractState });
+      if (!(await matchesVerifiers(account, accVerifiers))) return undefined;
+      const decoded = ledger(account.data);
+      return decoded.booted && decoded.spec_version === 3n ? decoded : undefined;
+    } catch {
+      return undefined;
+    }
+  };
   return {
     async readTarget(name, profile) {
       return (await readClaim(name, profile))?.target;
@@ -126,18 +140,15 @@ export function createMidnamesLedgerReads(
       return (await readDomain(name, profile)) !== undefined;
     },
     async isSupportedAccount(address, requestedNetwork) {
-      if (requestedNetwork !== networkId) return false;
-      const observed = await provider.queryContractState(address);
-      if (!observed) return false;
-      // Midnight JS 5 carries tagged bytes. Decode with the ACC's own runtime.
-      try {
-        const account = observed.contractState.deserialize({ v9: ContractState });
-        if (!(await matchesVerifiers(account, accVerifiers))) return false;
-        const decoded = ledger(account.data);
-        return decoded.booted && decoded.spec_version === 3n;
-      } catch {
-        return false;
-      }
+      return (await supportedAccount(address, requestedNetwork)) !== undefined;
+    },
+    async readSupportedNightBalance(address, requestedNetwork) {
+      const account = await supportedAccount(address, requestedNetwork);
+      if (!account) return undefined;
+      const night = new Uint8Array(32);
+      return account.unshielded_balances.member(night)
+        ? account.unshielded_balances.lookup(night)
+        : 0n;
     },
   };
 }

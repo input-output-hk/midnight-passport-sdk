@@ -484,6 +484,14 @@ qualification.
 
 ### Send NIGHT from one ACC to another by name
 
+For the connected browser preview, the built-in wallet must have usable DUST to
+pay the withdrawal fee. Holding NIGHT alone does not produce DUST: the wallet's
+**Enable DUST generation** action registers its own NIGHT output in a separate
+transaction. Fund the displayed wallet address, register, verify finality, then
+wait for the DUST balance to become positive. The browser saves the registration
+transaction identity before dispatch and retains an uncertain original for
+reconciliation. The fee-only service sponsor refuses value-bearing offers.
+
 The standalone Node fixture implements the named **NIGHT** route for
 `acc-s3r1.1` on `undeployed`. It requires an activated contract target and
 shows the source, network, recipient, bridge wallet, amount and both
@@ -642,8 +650,9 @@ a separate verification reader may remain distinct. It checks the recipient ACC
 and source balance, shows the full named route and both ACC operations, then
 stages that exact route for the actual owner credential review. It retains
 original transaction IDs across reloads and refuses an automatic second owner
-attempt when an existing journal has no withdrawal ID. This page wiring has
-source checks only; native connected payment and real-provider acceptance
+attempt when an existing journal has no withdrawal ID. A connected local Ledger 9
+browser run finalized both original legs of one named payment and recovered
+those exact IDs after reload. Real-provider acceptance and online deployment
 remain open.
 
 See the [standalone recipe](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local).

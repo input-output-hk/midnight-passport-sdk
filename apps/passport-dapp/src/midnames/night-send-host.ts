@@ -6,6 +6,7 @@ import {
   type MidnightBinding,
 } from '@input-output-hk/mn-passport-adapter-midnight-js';
 import { exactNightBridgeOutput } from './night-bridge-output.js';
+import { validNightCredentialBytes } from './night-send-credential.js';
 import { readFinalizedNightLeg } from './night-finality.js';
 import {
   sendNightByName,
@@ -52,6 +53,8 @@ const live: ConnectedNightSendDeps = {
   prove: proveUnboundNightDeposit,
 };
 const ADDRESS = /^[a-f0-9]{64}$/;
+const FENCE_PREFLIGHT_ERROR =
+  'The selected chain cannot fence a finalized withdrawal before submission.';
 const hex = (bytes: Uint8Array) =>
   Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
 
@@ -64,8 +67,7 @@ function checkedSelection(options: ConnectedNightSendOptions) {
     network.bindingId !== 'acc-s3r1.1' ||
     scope.networkId !== network.networkId ||
     scope.source !== account.address ||
-    !(account.credentialId instanceof Uint8Array) ||
-    account.credentialId.length !== 32 ||
+    !validNightCredentialBytes(account.credentialId) ||
     hex(account.credentialId) !== scope.credentialId ||
     account.networkId !== network.networkId ||
     account.bindingId !== network.bindingId ||
@@ -104,7 +106,7 @@ export async function createConnectedNightSend(
       account.networkId !== network.networkId ||
       account.bindingId !== network.bindingId ||
       account.scheme !== 'jubjub-schnorr' ||
-      !(account.credentialId instanceof Uint8Array) ||
+      !validNightCredentialBytes(account.credentialId) ||
       hex(account.credentialId) !== scope.credentialId
     )
       throw new Error('The selected NIGHT owner changed. Reopen the original payment.');
@@ -204,6 +206,19 @@ export async function createConnectedNightSend(
           );
         }
         return result;
+      } catch (error) {
+        // The account core rejects this specific unsupported chain before credential use.
+        // Keep its exact request in history; all later failures retain the active fence.
+        if (
+          error instanceof Error &&
+          'code' in error &&
+          error.code === 'BindingUnsupported' &&
+          error.message === FENCE_PREFLIGHT_ERROR
+        ) {
+          const intent = await journal.readIntent();
+          if (intent?.requestId === request.requestId) await journal.retireUnsupportedFence(intent);
+        }
+        throw error;
       } finally {
         journal.close();
       }

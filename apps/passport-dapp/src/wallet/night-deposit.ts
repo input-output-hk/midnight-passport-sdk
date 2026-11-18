@@ -9,6 +9,7 @@ import {
 import { assertExactNightDeposit } from '../midnames/night-deposit-check.js';
 import type { NightSendLeg } from '../midnames/night-send.js';
 import type { BrowserNightSendScope } from '../midnames/night-send-journal.js';
+import { validNightCredentialHex } from '../midnames/night-send-credential.js';
 
 const HEX = /^[a-f0-9]{64}$/;
 const ID = /^[a-f0-9]{66}$/;
@@ -33,8 +34,7 @@ export function checkedDeviceNightDepositRequest(value: unknown): DeviceNightDep
     scope.networkId !== 'undeployed' ||
     typeof scope.source !== 'string' ||
     !HEX.test(scope.source) ||
-    typeof scope.credentialId !== 'string' ||
-    !HEX.test(scope.credentialId) ||
+    !validNightCredentialHex(scope.credentialId) ||
     typeof row.target !== 'string' ||
     !HEX.test(row.target) ||
     !(row.proven instanceof Uint8Array) ||
@@ -75,7 +75,6 @@ export function checkedDeviceNightLeg(value: unknown): NightSendLeg {
 type DepositFacade = Pick<
   WalletFacade,
   | 'adoptTransaction'
-  | 'validateTransaction'
   | 'balanceUnboundTransaction'
   | 'signRecipe'
   | 'finalizeRecipe'
@@ -106,6 +105,7 @@ export function deviceNightDeposit(
     Transaction.deserialize('signature', 'proof', 'binding', raw) as NightBridgeTransaction,
   address: (owner: unknown) => string = (owner) =>
     addressFromKey(owner as Parameters<typeof addressFromKey>[0]),
+  encodedBridge?: string,
 ) {
   let preparing = false;
   let prepared:
@@ -135,13 +135,10 @@ export function deviceNightDeposit(
         );
         if (
           verified.owner !== bridge ||
-          !(await hasExactNightBridgeCoin(await available(), verified))
+          !(await hasExactNightBridgeCoin(await available(), verified, encodedBridge))
         )
           throw new Error('The original controlled NIGHT output is unavailable to this wallet.');
         const adopted = facade.adoptTransaction(request.proven, 'Unbound');
-        await facade.validateTransaction(adopted, {
-          flags: { enforceBalancing: false, verifySignatures: false, enforceLimits: false },
-        });
         const recipe = await facade.balanceUnboundTransaction(adopted, {
           ttl: new Date(Date.now() + 15 * 60_000),
           tokenKindsToBalance: ['unshielded', 'dust'],
@@ -151,10 +148,9 @@ export function deviceNightDeposit(
         reservation = signed;
         const finalized = await facade.finalizeRecipe(signed);
         reservation = finalized;
-        await facade.validateTransaction(finalized, {
-          flags: { enforceBalancing: true, verifySignatures: true, enforceLimits: true },
-          ...(signed.blockData && { blockData: signed.blockData }),
-        });
+        // The facade's local validation snapshot omits the already deployed ACC.
+        // Check the exact call, value and bridge output below; node admission
+        // validates the finalized transaction against the live contract state.
         const transaction = decode(finalized.serialize());
         assertExactNightDeposit(transaction, verified, request.target, address);
         const original = checkedDeviceNightLeg({

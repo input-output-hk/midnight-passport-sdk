@@ -916,7 +916,8 @@
         <section class="panel" aria-labelledby="wallet-title">
           <h3 id="wallet-title">Built-in wallet</h3>
           <p class="empty" id="wallet-empty">
-            Not connected. The wallet is read-only: it never proves or pays.
+            Not connected. The public wallet connector is read-only. The optional local named NIGHT
+            preview uses this wallet only after owner review.
           </p>
           <dl class="facts" id="wallet-facts" hidden></dl>
           <button
@@ -930,6 +931,17 @@
           </button>
           <p class="prompts" id="walletRefresh-prompts"></p>
           <p class="action-desc" id="walletRefresh-desc"></p>
+          <button
+            id="walletDust"
+            class="btn btn-secondary"
+            type="button"
+            aria-describedby="walletDust-prompts walletDust-desc"
+            disabled
+          >
+            Enable DUST generation
+          </button>
+          <p class="prompts" id="walletDust-prompts"></p>
+          <p class="action-desc" id="walletDust-desc"></p>
         </section>
       </div>
 

@@ -352,6 +352,8 @@ test('installed Midnames v2.1 reads its generated registry over the Ledger 9 ind
     code: 'InvalidQuery',
   });
   assert.equal(await reads.isSupportedAccount(target, 'undeployed'), false);
+  assert.equal(await reads.readSupportedNightBalance(target, 'undeployed'), undefined);
+  assert.equal(await reads.readSupportedNightBalance(target, 'other-network'), undefined);
   // Keep the name-to-ID index but remove its record map.
   const malformed = ContractState.deserialize(result.serialize());
   const slots = malformed.data.state.asArray();

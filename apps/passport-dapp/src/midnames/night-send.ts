@@ -46,6 +46,8 @@ export interface NightSendJournal {
   markOwnerStarted?(intent: NightSendIntent): Promise<void>;
   /** Archive a name-recheck refusal only before the owner API was entered. */
   retireRefused?(intent: NightSendIntent, reason: 'name-recheck'): Promise<void>;
+  /** Reconcile only a proven pre-credential fence rejection; keep its history. */
+  retireUnsupportedFence?(intent: NightSendIntent): Promise<void>;
 }
 
 export class NightDepositInterrupted extends Error {

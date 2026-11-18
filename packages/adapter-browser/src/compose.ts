@@ -1,4 +1,5 @@
 import { authenticatedOwnerTransports } from './authenticated-transports.js';
+import { routeBrowserValueCalls } from './value-call-routing.js';
 import { browserKeyHandoffs } from './creation-handoffs.js';
 import { createPassportAccounts } from '@input-output-hk/mn-passport-account';
 import type {
@@ -64,7 +65,7 @@ export interface BrowserPassportConfig {
   readonly sponsorKeys: { readonly coinPublicKey: string; readonly encryptionPublicKey: string };
   readonly submitter: Submitter;
   /** Host-owned value-capable call path for ACC withdrawals; the fee sponsor cannot move value. */
-  readonly valueCalls?: Pick<Chain, 'call'>;
+  readonly valueCalls?: Pick<Chain, 'call'> & Partial<Pick<Chain, 'supportsBeforeSubmit'>>;
   readonly deployer: Deployer;
   readonly directory: AccountDirectory;
   readonly holdings?: VerifiedHoldingSource;
@@ -146,14 +147,7 @@ export function createBrowserPassport(config: BrowserPassportConfig): PassportCo
         sponsorKeys: config.sponsorKeys,
         submitter: transports.submitter,
       });
-      if (!transports.valueCalls) return chain;
-      return {
-        readAccount: chain.readAccount,
-        call: (request) =>
-          request.circuit.startsWith('withdraw_unshielded')
-            ? transports.valueCalls!.call(request)
-            : chain.call(request),
-      };
+      return routeBrowserValueCalls(chain, transports.valueCalls);
     },
     deployer: config.deployer,
     directory: config.directory,

@@ -24,6 +24,7 @@ export const ACTIONS: readonly ActionId[] = [
   'rotate',
   'wallet',
   'walletRefresh',
+  'walletDust',
   'fund',
   'withdraw',
   'sendNamedNight',

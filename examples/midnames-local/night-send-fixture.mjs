@@ -17,6 +17,7 @@ import { readHostConfirmation } from '../../apps/passport-service/src/host-confi
 import { prepareLocalnetNight } from '../../apps/passport-funding-service/src/night-preparation.ts';
 
 import { createOnce } from './create-once.mts';
+import { withMeasuredDeletionCredit } from './deletion-credit.mjs';
 import { interactiveReviewRequested, reviewInTerminal } from './terminal-review.mjs';
 
 function openJournal(directory) {
@@ -104,9 +105,10 @@ export async function qualifyNightSend({
   priorSplitId,
   step,
 }) {
-  const [{ versionOfRecord }, rx] = await Promise.all([
+  const [{ versionOfRecord }, rx, types] = await Promise.all([
     get('@midnight-ntwrk/midnight-js-protocol'),
     get('rxjs'),
+    get('@midnight-ntwrk/midnight-js-types'),
   ]);
   const directory = join(output, 'night-send');
   mkdirSync(directory, { mode: 0o700 });
@@ -128,14 +130,41 @@ export async function qualifyNightSend({
   };
   const makeCall = async (address, circuitId, args) => {
     const { privateStateProvider, ...publicProviders } = providers;
-    const {
-      private: { unprovenTx },
-    } = await contracts.createUnprovenCallTx(publicProviders, {
-      compiledContract: accountCompiled,
-      contractAddress: address,
-      circuitId,
-      args,
+    const captured = { snapshot: undefined };
+    const pinned = new Proxy(publicProviders.publicDataProvider, {
+      get(provider, property) {
+        if (property === 'queryZSwapAndContractState')
+          return async (...query) => {
+            const snapshot = await provider.queryZSwapAndContractState(...query);
+            if (query[0] === address) captured.snapshot = snapshot;
+            return snapshot;
+          };
+        const value = Reflect.get(provider, property, provider);
+        return typeof value === 'function' ? value.bind(provider) : value;
+      },
     });
+    const call = await contracts.createUnprovenCallTx(
+      { ...publicProviders, publicDataProvider: pinned },
+      {
+        compiledContract: accountCompiled,
+        contractAddress: address,
+        circuitId,
+        args,
+      },
+    );
+    let unprovenTx = call.private.unprovenTx;
+    if (circuitId === 'deposit_unshielded') {
+      assert.ok(captured.snapshot, 'NIGHT funding must use the executed chain snapshot');
+      unprovenTx = withMeasuredDeletionCredit(
+        call,
+        captured.snapshot[1],
+        captured.snapshot[2],
+        networkId,
+        ledger,
+        types,
+        address,
+      );
+    }
     const proven = await providers.proofProvider.proveTx({ version: 'v9', tx: unprovenTx });
     assert.equal(proven.version, 'v9');
     const balanced = await providers.walletProvider.balanceTx(proven);

@@ -111,6 +111,7 @@ export class ActionControls {
     this.dom.buttons.rotate.disabled = busy || !this.model.account;
     this.dom.buttons.wallet.disabled = busy;
     this.dom.buttons.walletRefresh.disabled = busy || !this.model.wallet.unshieldedAddress;
+    this.dom.buttons.walletDust.disabled = busy || !this.model.wallet.unshieldedAddress;
   };
   renderValueButtons = (busy: boolean) => {
     this.dom.buttons.fund.disabled = !canFund(

@@ -646,6 +646,16 @@ shared in-flight reads and stale-result fences across refresh/reconnect. DUST
 failure does not hide a ready NIGHT balance. The browser journey deliberately
 holds DUST pending and checks NIGHT plus usable wallet controls before releasing it.
 
+The local named NIGHT preview uses the selected device wallet to pay the Dust fee
+for an ACC withdrawal. A wallet-held NIGHT output must first be registered for
+DUST generation: connect the built-in wallet, fund its displayed unshielded
+address with enough NIGHT for the local network's fee model, then choose **Enable
+DUST generation**. That action shows a separate review, saves the original
+registration identifiers before dispatch, and checks finalized-chain inclusion.
+If its outcome is uncertain, the saved original blocks another registration until
+it is reconciled. Wait for a positive DUST balance before starting a named send.
+The ordinary fee-only sponsor still refuses value-bearing unshielded offers.
+
 ### Opt-in job transport source follow-up
 
 The default demo continues to use its existing transport. Hosts explicitly using
@@ -983,6 +993,16 @@ fresh journal handle, retaining the withdrawal through proof failure and later
 resume. The opt-in demo button uses this host. Native proof, connected browser
 payment and real-provider acceptance remain open.
 
+The retained Compact 0.35 `deposit_unshielded` call can misstate deletion
+credit against the current Ledger 9 cost model. A shared-chain predecessor was
+rejected before inclusion with node error 104 and a gas-budget log. The source
+adapter now measures the earned deleted bytes against the same indexed state
+used to construct the one guaranteed ACC call, rebuilds it, and proves it again.
+The standalone NIGHT fixture uses the same bounded correction. Its generated
+ACC replay test checks that both the original overclaim and zero credit fail,
+while measured credit executes. The connected recipient call declared 171 bytes
+where the live model measured 180; the same rebuild corrected that underclaim.
+
 ### Source preview: opt-in local named NIGHT send
 
 With a configured local Midnames 2.1.0 reader, the pinned `standalone-0.35`
@@ -1002,9 +1022,11 @@ The selected account's original intent and each transaction ID stay in the
 browser journal. A pending withdrawal or deposit is displayed under the same
 control and resumes only those original legs. An owner attempt with no saved
 withdrawal ID blocks automatic retry; inspect Audit and chain state before
-another send. Preserve this site's data. The page and tests are source-only:
-no native connected payment, real passkey/provider or online profile is
-qualified by this control yet. The configured indexer is trusted for
+another send. Preserve this site's data. A connected local Ledger 9 browser run
+finalized one original 4-unit named payment and recovered its withdrawal and
+deposit IDs after reload without a second dispatch. It used a local mock JubJub
+credential and a funded device wallet. Real passkey/provider and online profiles
+remain unqualified. The configured indexer is trusted for
 transaction inclusion; the finalized block check does not prove inclusion.
 The isolated `nix develop -c pnpm --filter passport-dapp test:midnames-night-page`
 browser check covers control visibility and the no-ID recovery refusal with a

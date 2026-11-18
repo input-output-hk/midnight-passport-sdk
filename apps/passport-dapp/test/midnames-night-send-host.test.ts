@@ -14,7 +14,7 @@ import type { DevWallet } from '../src/wallet/contracts.js';
 const source = 'a'.repeat(64);
 const bridgeAddress = 'b'.repeat(64);
 const target = 'c'.repeat(64);
-const credentialId = 'd'.repeat(64);
+const credentialId = 'd'.repeat(32);
 const withdrawal = { hash: 'e'.repeat(64), identifiers: ['00' + 'e'.repeat(64)] };
 const deposit = { hash: 'f'.repeat(64), identifiers: ['00' + 'f'.repeat(64)] };
 const output = {
@@ -75,7 +75,7 @@ test('connected NIGHT host reopens the original journal through withdrawal, depo
     networkId: 'undeployed',
     bindingId: 'acc-s3r1.1',
     scheme: 'jubjub-schnorr',
-    credentialId: new Uint8Array(32).fill(0xdd),
+    credentialId: new Uint8Array(16).fill(0xdd),
     state: async () => ({
       booted: true,
       authNonce: 1n,
@@ -144,6 +144,15 @@ test('connected NIGHT host reopens the original journal through withdrawal, depo
         assert.deepEqual((await host.readActive())?.deposit, deposit);
         calls.push('submit-deposit');
         return '00' + 'f'.repeat(64);
+      },
+      balanceWithdrawalFee: async () => {
+        throw new Error('The receive fixture must not balance a withdrawal.');
+      },
+      prepareDustRegistration: async () => {
+        throw new Error('The receive fixture must not register DUST.');
+      },
+      submitDustRegistration: async () => {
+        throw new Error('The receive fixture must not submit DUST registration.');
       },
     },
     stop: async () => {},

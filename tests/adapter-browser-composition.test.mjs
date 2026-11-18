@@ -3,6 +3,58 @@ import assert from 'node:assert/strict';
 import { createBrowserPassport } from '../packages/adapter-browser/dist/index.js';
 import { createAuthenticatedJubjubOwner } from '../packages/keys/dist/index.js';
 import { pureCircuits } from '../packages/contract/generated/acc-s3r1.1/index.js';
+import { routeBrowserValueCalls } from '../packages/adapter-browser/dist/value-call-routing.js';
+
+test('browser value routing refuses an unfenced host before any value dispatch', async () => {
+  /** @type {string[]} */
+  const calls = [];
+  /** @type {import('../packages/account/dist/ports/index.js').Chain} */
+  const direct = {
+    supportsBeforeSubmit: true,
+    readAccount: async () => undefined,
+    call: async (request) => {
+      calls.push(`direct:${request.circuit}`);
+      return { txHash: '1'.repeat(64) };
+    },
+  };
+  /** @type {Pick<import('../packages/account/dist/ports/index.js').Chain, 'call'>} */
+  const hosted = {
+    call: async (request) => {
+      calls.push(`hosted:${request.circuit}`);
+      return { txHash: '2'.repeat(64) };
+    },
+  };
+  const chain = routeBrowserValueCalls(direct, hosted);
+  assert.equal(chain.supportsBeforeSubmit, undefined);
+  assert.equal(
+    (await chain.call({ address: 'a', circuit: 'withdraw_unshielded_with_jubjub', args: [] }))
+      .txHash,
+    '2'.repeat(64),
+  );
+  assert.throws(
+    () =>
+      chain.call({
+        address: 'a',
+        circuit: 'withdraw_unshielded_with_jubjub',
+        args: [],
+        beforeSubmit: async () => {},
+      }),
+    { code: 'BindingUnsupported' },
+  );
+  assert.deepEqual(calls, ['hosted:withdraw_unshielded_with_jubjub']);
+  const fencedHost = routeBrowserValueCalls(direct, {
+    ...hosted,
+    supportsBeforeSubmit: true,
+  });
+  assert.equal(fencedHost.supportsBeforeSubmit, true);
+  await fencedHost.call({
+    address: 'a',
+    circuit: 'withdraw_unshielded_with_jubjub',
+    args: [],
+    beforeSubmit: async () => {},
+  });
+  assert.equal(calls.at(-1), 'hosted:withdraw_unshielded_with_jubjub');
+});
 
 for (const arm of /** @type {const} */ (['p256', 'jubjub']))
   test(`${arm} browser composition is lazy`, () => {

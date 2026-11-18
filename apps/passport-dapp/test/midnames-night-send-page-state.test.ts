@@ -8,6 +8,7 @@ import {
   localNightNetwork,
   namedNightStatus,
   newNamedNightRequest,
+  requiresNewNightLegFee,
   sameLocalNightIndexer,
 } from '../src/midnames/night-send-page-state.js';
 
@@ -94,4 +95,10 @@ test('page keeps each original NIGHT payment phase and transaction ID visible', 
   assert.match(namedNightStatus({ ...record, withdrawal }), /do not withdraw again/);
   assert.match(namedNightStatus({ ...record, withdrawal, deposit }), new RegExp(deposit.hash));
   assert.match(namedNightStatus({ ...record, withdrawal, deposit }), /Reconcile those originals/);
+});
+
+test('a retained deposit ID can reconcile after the wallet has spent its last DUST', () => {
+  assert.equal(requiresNewNightLegFee(undefined), true);
+  assert.equal(requiresNewNightLegFee({ ...record, withdrawal }), true);
+  assert.equal(requiresNewNightLegFee({ ...record, withdrawal, deposit }), false);
 });

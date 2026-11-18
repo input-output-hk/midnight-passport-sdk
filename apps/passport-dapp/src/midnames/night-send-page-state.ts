@@ -59,6 +59,10 @@ export function namedNightStatus(record: BrowserNightSendRecord | undefined): st
   return `${detail} Withdrawal ${record.withdrawal.hash} and deposit ${record.deposit.hash} are retained. Reconcile those originals; do not start another payment.`;
 }
 
+/** A retained deposit ID needs only finality reads; no new wallet fee is paid. */
+export const requiresNewNightLegFee = (record: BrowserNightSendRecord | undefined): boolean =>
+  !record?.deposit;
+
 /** Validate a fresh human request before any name lookup, wallet proof or credential call. */
 export function newNamedNightRequest(input: {
   readonly requestId: string;

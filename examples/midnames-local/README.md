@@ -530,6 +530,15 @@ record has a different profile default so the run can verify operation-specific
 contract routing. The fixture starts the source ACC with 10 smallest NIGHT
 units and requests a payment of 4 to the named account.
 
+For the retained Compact 0.35 binding on Ledger 9, the fixture rebuilds each
+single-call `deposit_unshielded` transaction with the deleted-byte credit
+measured against the exact indexed state and cost model used to prepare that
+call. The generated transcript can claim more credit than execution earns;
+dropping all credit instead exhausts this call's gas budget. The helper refuses
+another operation or unsupported partition and proves and balances the rebuilt
+transaction before submission. This adjustment does not alter the deployed
+verifier key or qualify a different Compact build.
+
 The synthetic owner approves a JubJub withdrawal to the controlled wallet and
 the recipient's separate `deposit_unshielded` call in one review. The fixture
 interrupts the flow after withdrawal finality. It reopens the durable intent

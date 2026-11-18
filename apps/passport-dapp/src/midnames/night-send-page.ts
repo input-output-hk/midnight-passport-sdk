@@ -9,6 +9,7 @@ import { byId } from '../ui-dom.js';
 import type { DevWallet } from '../wallet/contracts.js';
 import { createMidnamesIndexer, createMidnamesLedgerReads } from './ledger-reader.js';
 import { createConnectedNightSend } from './night-send-host.js';
+import { validNightCredentialBytes } from './night-send-credential.js';
 import {
   openBrowserNightSendJournal,
   type BrowserNightSendRecord,
@@ -18,6 +19,7 @@ import { NightDepositInterrupted, type NightSendIntent } from './night-send.js';
 import {
   namedNightStatus,
   newNamedNightRequest,
+  requiresNewNightLegFee,
   sameLocalNightIndexer,
 } from './night-send-page-state.js';
 import { registryProfile } from './registry-pins.js';
@@ -31,8 +33,7 @@ function selectedScope(account: PassportAccount | undefined): BrowserNightSendSc
     account.bindingId !== BINDING_ID ||
     account.scheme !== 'jubjub-schnorr' ||
     !/^[a-f0-9]{64}$/.test(account.address) ||
-    !(account.credentialId instanceof Uint8Array) ||
-    account.credentialId.length !== 32
+    !validNightCredentialBytes(account.credentialId)
   )
     return undefined;
   return {
@@ -64,6 +65,7 @@ async function connectedPageSend(
   resolver: PassportNameService,
   scope: BrowserNightSendScope,
   checkScope: () => void,
+  active: BrowserNightSendRecord | undefined,
 ) {
   const config = await fetchCheckedV1Config(
     SERVICE_URL,
@@ -100,6 +102,15 @@ async function connectedPageSend(
     BINDING_ID,
     registryProfile(import.meta.env.VITE_MIDNAMES_REGISTRY_PROFILE, scope.networkId),
   );
+  if (requiresNewNightLegFee(active)) {
+    const feeWallet = await wallet.descriptor.connect(scope.networkId);
+    const dust = await feeWallet.getDustBalance();
+    checkScope();
+    if (dust.balance <= 0n)
+      throw new Error(
+        'Fund the built-in wallet and wait for its DUST balance before sending NIGHT.',
+      );
+  }
   return createConnectedNightSend({
     account,
     scope,
@@ -108,9 +119,9 @@ async function connectedPageSend(
     isSupportedRecipient: reader.isSupportedAccount,
     readSourceBalance: async (address) => {
       checkScope();
-      const balances = await host.refreshAccountBalances(address);
+      const balance = await reader.readSupportedNightBalance(address, scope.networkId);
       checkScope();
-      return balances && /^\d+$/.test(balances.night) ? BigInt(balances.night) : undefined;
+      return balance;
     },
     async review(intent, balance) {
       host.stage('review');
@@ -210,7 +221,15 @@ export function createNamedNightPage(
         source: account.address,
         bridge,
       });
-    const connected = await connectedPageSend(host, account, wallet, resolver, scope, checkScope);
+    const connected = await connectedPageSend(
+      host,
+      account,
+      wallet,
+      resolver,
+      scope,
+      checkScope,
+      active,
+    );
     try {
       const result = await connected.send(request);
       host.stage('reconcile');
@@ -235,11 +254,12 @@ export function createNamedNightPage(
           : 'The original NIGHT payment remains pending. Keep its IDs and resume only those legs.',
       );
     } catch (error) {
-      if (error instanceof NightDepositInterrupted)
+      if (error instanceof NightDepositInterrupted) {
         traceOperation('namedNight.pending', {
           requestId: request.requestId,
           withdrawal: error.withdrawal.hash,
         });
+      }
       try {
         const retained = await readActive(scope);
         if (retained && !retained.withdrawal)

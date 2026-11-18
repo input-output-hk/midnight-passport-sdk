@@ -69,7 +69,10 @@ import { showSigningMode } from './signing-mode.js';
 const appState = createDemoAppState();
 const retainedTransactions = transactionReceipts(localStorage, NETWORK_ID, BINDING_ID);
 
-installShim();
+installShim(() => ({
+  ...(appState.account && { account: appState.account }),
+  ...(appState.devWallet && { wallet: appState.devWallet }),
+}));
 const mockPasskey = (navigator.credentials as unknown as { mock?: boolean }).mock === true;
 const network = NETWORK_ID;
 const injected = () =>
@@ -480,7 +483,7 @@ const opened = async (a: PassportAccount, how: string, lastTx?: PassportTxResult
     ?.inspect()
     .then((active) => {
       if (active) workspace.enableNamedNightSend(!!namesForNight);
-      if (active) ui.refreshActions();
+      ui.refreshActions();
     })
     .catch(() => {
       workspace.enableNamedNightSend(false);
@@ -550,3 +553,4 @@ ui.on('withdraw', transfersActions.withdraw);
 ui.on('sendNamedNight', namedNightPage.send);
 ui.on('wallet', walletActions.connect);
 ui.on('walletRefresh', walletActions.walletRefresh);
+ui.on('walletDust', walletActions.walletDust);
