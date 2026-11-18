@@ -37,6 +37,15 @@ exercise failures before broadcast and unknown outcomes after dispatch. The
 example covers wallet-to-ACC receive. The named NIGHT payment below uses a
 separate owner-authorized withdrawal and recipient deposit.
 
+The [shared-chain redacted receipt](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/shared-ledger9-paidfix-deposit-20261118.json)
+adds an existing claimed name and ACC on Ledger 9: the independent sender's
+one original `deposit_shielded` transaction finalized, then the saved
+mock-passkey owner reopened the same ACC and chain-verified the exact
+10-unit synthetic coin. The failed predecessor is recorded as rejected and
+reconciled, not as a successful deposit. The local fixture's deletion-credit
+adjustment is covered by a generated ACC replay test. Neither receipt
+qualifies online `passport.night`, human consent, or a real authenticator.
+
 ## Passport conformance for a named NIGHT payment
 
 | Requirement | Evidence and boundary |
@@ -99,7 +108,7 @@ Named shielded receive was qualified on later local source.
 | Plan operation proving requirements | `contract/capabilities`, `account/preflight`; SDK capabilities panel | Catalog drift, tamper, exact method/profile tests; browser operation/read-grant changes with no credential or driver calls | Advisory metadata only: no claim of host/key-endpoint readiness, ownership, available funds or proof success |
 | Compose an application→ACC payment | `mn-passport-export-compact`, merchant client example; engineer recipe link | Installed/compiler/offline checks; native positive payment and seven construction refusals | JubJub unshielded caller-pinned scope only; no browser merchant button, arbitrary contract acceptance or production privacy claim |
 | Review/resume a shielded deposit | `depositShielded`, protected journal and reviewed host example | Real encryption/filesystem revisions, captured original inputs, refusal, unknown and reconciliation tests | Host recipe, not a demo funding endpoint. Synthetic sender/finality tests do not establish native submission acceptance |
-| Deposit a shielded asset by name | Standalone Node sender using the real Midnames adapter and `deposit_shielded` | Native `undeployed` receipt on signed `d492487`: one finalized 10-unit test-token deposit to `alice.night`, with owner decryption and verified holding. Automated pre-dispatch refusal and unknown-outcome tests. | Source-only wallet-to-ACC receive on the standalone `.night` profile; earlier-head evidence relative to the claim-browser fix. |
+| Deposit a shielded asset by name | Standalone Node sender using the real Midnames adapter and `deposit_shielded` | Native `undeployed` receipt on signed `d492487`: one finalized 10-unit test-token deposit to `alice.night`, with owner decryption and verified holding. At signed `8165c73`, a separate sender finalized one deposit to existing `paidfix.night` on shared Ledger 9; the saved mock-passkey owner read the matching chain-verified holding. Automated pre-dispatch refusal, unknown-outcome, and generated ACC gas tests. | Source-only wallet-to-ACC receive on the transitional local `.night` profile. Automated approval and mock passkey; public namespace, real provider and online substitution remain open. |
 | Send NIGHT between named Passport ACCs | Standalone Node fixture using JubJub withdrawal and `deposit_unshielded` | Native `undeployed` payment on signed `d492487` interrupted after withdrawal. The reopened journal spent its exact output and confirmed 10→6 on the source, 0→4 on the target, with one dispatch per leg. Tests cover repoints, insufficient funds, invalid routes and retained receipts. | Source-only NIGHT route; earlier-head evidence. Browser passkeys and online profiles require separate qualification. |
 | Claim and reconcile a local name | Demo recovery form with a sponsor-prepared owner proof and durable original receipt | Native `undeployed` claim on signed `9a19757`: one sponsored dispatch, lost-response recovery after Chromium restart, alternate-credential refusal and 23 live indexer requests. | Synthetic browser credential and local `.night` registry. The fixture quote follows proof; real-provider pre-proof review, online namespace and total-loss continuity are open. |
 

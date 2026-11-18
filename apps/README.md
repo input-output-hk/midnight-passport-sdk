@@ -1085,6 +1085,12 @@ The independent Node sender example exercises the Midnames resolver and the
 shielded ACC deposit through a funded wallet. Its fixtures show the exact
 reviewed destination and verify the recipient holding. Follow the
 [standalone recipe](../examples/midnames-local/README.md#run-the-shielded-deposit-by-name).
+The [shared-chain recipe](../examples/midnames-local/README.md#deposit-to-an-existing-named-acc-on-shared-ledger-9)
+reuses an already claimed local `.night` name and activated ACC. Its sender
+uses the public local genesis wallet for a synthetic asset; the owner reopens
+the ACC with its saved development passkey and reads the held output. On the
+shared profile, the demo wrapper lets its service drain before releasing the
+genesis sponsor lease. Check the lease and chain anchor after stopping it.
 
 ### Standalone ACC-to-ACC payment by name
 

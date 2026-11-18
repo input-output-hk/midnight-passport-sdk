@@ -194,6 +194,15 @@ for a human-run local demonstration but has not been qualified here. This does
 not add a named-send page to the Passport owner demo or qualify an online
 provider.
 
+A later shared Ledger 9 run at signed `8165c73` used an existing claimed
+`paidfix.night` and activated ACC. The separate sender browser approved a
+10-unit synthetic shielded deposit, one original transaction finalized, and
+the saved development mock-passkey owner reopened that same ACC and read the
+matching chain-verified holding in **Balances**. The reference demo did not
+initiate the sender payment. A shutdown smoke at signed `d5fc680` verified
+that the demo service drains before its shared sponsor lease and chain marker
+are released.
+
 ### Standalone ACC-to-ACC payment by name
 
 The isolated NIGHT fixture reviews both operations together and keeps original

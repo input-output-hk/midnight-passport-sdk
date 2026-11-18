@@ -8,6 +8,8 @@ pageClass: comparison-page
 
 The milestone groups candidate work; assigning an issue to it does not mean every Passport v1.0 promise must ship in one SDK release. [Architecture conformance](/architecture/conformance) separates source capability, test evidence, and the broader Passport target.
 
+**Later named-receive result, 18 November:** The [shared Ledger 9 redacted receipt](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/shared-ledger9-paidfix-deposit-20261118.json) covers an already claimed `paidfix.night` and activated ACC. A separate sender approved the resolved destination in its browser and finalized one shielded 10-unit synthetic-token deposit at signed `8165c73`; the saved development mock-passkey owner reopened that same ACC and read the matching chain-verified holding. A preceding gas-budget rejection stayed `FAIL`, was reconciled after original expiry, and was never counted as a deposit. Signed `d5fc680` then passed a shared-demo shutdown smoke with service drain, chain-anchor finish and sponsor-lease release. This is local source evidence toward [#317](https://github.com/input-output-hk/midnight-passport-sdk/issues/317), not online or real-provider acceptance.
+
 ## Earlier merged PRs
 
 | Merged PR | Current source capability | Evidence and remaining boundary |

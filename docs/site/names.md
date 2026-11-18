@@ -462,6 +462,20 @@ resolution fields; payment authority stays in the sender process, while
 recipient signing, viewing and name-ownership secrets remain with the owner. See the
 [browser review recipe](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local#review-the-named-deposit-in-the-sender-browser).
 
+On the designated **shared** Ledger 9 chain, a later run at signed `8165c73`
+used the existing `paidfix.night` claim and activated ACC. The independent
+sender's browser displayed the exact destination before automated approval;
+one `deposit_shielded` transaction finalized at block 5361. The recipient
+reopened that same ACC with its saved local mock passkey and read the matching
+10-unit synthetic coin at inbox #2 through the demo's chain-verified holdings
+view. The [redacted receipt](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/shared-ledger9-paidfix-deposit-20261118.json)
+records source, chain, registry, claim, ACC and deposit pins. An earlier
+rejected deposit attempt was reconciled from its original identifiers after
+expiry before this new send. Its Ledger 9 rejection was excess deletion
+credit in the generated call, not a shortage of NIGHT or DUST; the local
+fixture now forgoes that credit before proving and balancing. This remains
+one local profile with automated sender approval and a development credential.
+
 Run the [standalone fixture](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local)
 from a source checkout containing #317. The fixture uses local `.night` on
 `undeployed` and a self-hosted indexer and proof server. Public
