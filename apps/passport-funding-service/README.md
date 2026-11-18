@@ -41,9 +41,10 @@ fee shape. The service makes a self-transfer of the requested amount, then build
 the ACC `deposit_unshielded` call with measured Ledger 9 deletion credit and
 records the final transaction hash **before** node submission. This addresses
 the Compact 0.35 gas estimate that the node rejected with `Custom error: 104`
-in a local demo run. An earlier live 10-unit run confirmed ACC credit; a native
-run of this measured funding-service path is still required. NIGHT remains
-disabled on other networks pending separate node-backed qualification.
+in a local demo run. A fresh native run of this measured funding-service path
+confirmed 10 units of ACC NIGHT credit on the shared Ledger 9 chain on
+2026-11-18. NIGHT remains disabled on other networks pending separate
+node-backed qualification.
 
 ```sh
 export PASSPORT_CONTRACT_DIR=/path/to/pinned/contract

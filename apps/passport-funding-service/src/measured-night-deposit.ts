@@ -1,4 +1,4 @@
-import { ContractCall, Transaction } from '@midnightntwrk/ledger-v9';
+import { Transaction } from '@midnightntwrk/ledger-v9';
 import {
   proveUnboundNightDeposit,
   type UnboundNightDepositRequest,
@@ -9,6 +9,26 @@ import type { createMidnightWalletPorts } from '@input-output-hk/mn-passport-ada
 type WalletProvider = Parameters<typeof createMidnightWalletPorts>[0];
 type MidnightProvider = Parameters<typeof createMidnightWalletPorts>[1];
 const ADDRESS = /^[0-9a-f]{64}$/;
+
+/** Wallet and adapter may load distinct WASM class instances for the same Ledger 9 action. */
+export function verifyMeasuredNightDepositCall(actions: readonly unknown[], target: string): void {
+  const [action] = actions;
+  if (
+    actions.length !== 1 ||
+    !action ||
+    typeof action !== 'object' ||
+    action.constructor.name !== 'ContractCall' ||
+    !('address' in action) ||
+    !('entryPoint' in action)
+  )
+    throw new Error('Funding wallet changed the pinned NIGHT deposit call.');
+  const circuit =
+    action.entryPoint instanceof Uint8Array
+      ? new TextDecoder().decode(action.entryPoint)
+      : action.entryPoint;
+  if (action.address !== target || circuit !== 'deposit_unshielded')
+    throw new Error('Funding wallet changed the pinned NIGHT deposit call.');
+}
 
 /** The local funding wallet pays for the exact ACC deposit after a durable send fence. */
 export async function submitMeasuredNightDeposit(
@@ -25,20 +45,7 @@ export async function submitMeasuredNightDeposit(
   if (balanced.version !== 'v9') throw new Error('Funding wallet returned a different ledger era.');
   const tx = balanced.tx;
   const calls = [...(tx.intents?.values() ?? [])].flatMap((intent) => intent.actions);
-  const [call] = calls;
-  const circuit =
-    call instanceof ContractCall && call.entryPoint instanceof Uint8Array
-      ? new TextDecoder().decode(call.entryPoint)
-      : call instanceof ContractCall
-        ? call.entryPoint
-        : undefined;
-  if (
-    calls.length !== 1 ||
-    !(call instanceof ContractCall) ||
-    call.address !== request.target ||
-    circuit !== 'deposit_unshielded'
-  )
-    throw new Error('Funding wallet changed the pinned NIGHT deposit call.');
+  verifyMeasuredNightDepositCall(calls, request.target);
   const txId = tx.transactionHash();
   const identifiers = tx.identifiers();
   if (
