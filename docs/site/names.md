@@ -183,6 +183,14 @@ establish public `passport.night` issuance or name-control recovery.
 
 ### Standalone registry profile
 
+For an operator walkthrough, use the [local demo launcher and setup
+recipe](../../examples/midnames-local/README.md#open-the-local-passport-and-midnames-demo).
+It attaches to a compatible running Ledger 9 stack or starts a separate
+Passport-owned project from the pinned Compose template. It verifies the
+recorded name claim and ACC against live chain state before enabling the
+browser's local resolver and named NIGHT control. A fresh chain needs ACC
+activation, registry bootstrap and a finalized name claim first.
+
 For a disposable `undeployed` network, set
 `VITE_MIDNAMES_REGISTRY_PROFILE=standalone-0.35` alongside the five settings
 above. This selects the independently pinned standalone verifier roster.

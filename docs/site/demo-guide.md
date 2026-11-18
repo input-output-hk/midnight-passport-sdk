@@ -56,6 +56,12 @@ restart. An existing configured demo may already be ready to use.
 
 ### Source preview: named NIGHT payment
 
+The [local Midnames launcher](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/README.md#open-the-local-passport-and-midnames-demo)
+checks the existing Ledger 9 chain and name claim before opening this page. If
+the shared stack is absent, its `stack` command starts a separate Passport-owned
+project from the pinned template; a fresh chain needs ACC and name setup before
+the named control is enabled. The launcher does not fund a new sender account.
+
 The opt-in local Midnames profile adds a separate **Send NIGHT to a Passport
 name** form under **Passport account → Withdraw**. It requires a JubJub ACC,
 connected built-in wallet, `undeployed` chain, pinned standalone registry and

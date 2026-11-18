@@ -100,6 +100,13 @@ handover. Push, merge, release and Pages publication are separate actions.
 
 ### Midnames lookup source preview
 
+The [local launcher](../../examples/midnames-local/README.md#open-the-local-passport-and-midnames-demo)
+now provides a checked way to open this opt-in demo against a running Ledger 9
+stack or a separate Passport-owned fallback. It pins a finalized name claim,
+live registry target, and supported ACC before the browser enables the named
+NIGHT control. Account setup on a new chain is a separate stage; a newly
+created source remains unfunded until the operator funds it.
+
 The Name service panel can use an explicitly configured Midnames registry.
 A partial configuration disables lookup and shows the setup requirement.
 Lookup displays a checked contract target for inspection without initiating an
