@@ -156,7 +156,7 @@ async function restoreLegacyJournal(page: Page, complete = false) {
   await page.evaluate(
     ({ registry, name, complete }) =>
       new Promise<void>((resolve, reject) => {
-        const request = indexedDB.open('mn-passport:midnames-claims', 2);
+        const request = indexedDB.open('mn-passport:midnames-claims', 3);
         request.onerror = () => reject(request.error);
         request.onsuccess = () => {
           const db = request.result;
@@ -230,7 +230,7 @@ async function verifyPreparation(
     await alternate.locator('#claim-review-quote').click();
     await alternate
       .locator('#claim-recovery-status')
-      .filter({ hasText: /^Claim check unavailable/ })
+      .filter({ hasText: /A different original claim is retained for this name/ })
       .waitFor();
     const resumed = await context.newPage();
     await resumed.goto(pageUrl + '?prepare');
@@ -344,7 +344,7 @@ try {
   try {
     const named = await setup.newPage();
     await named.goto(pageUrl + '?setup');
-    assert.match(await named.locator('#setup-status').innerText(), /Pending Passport setup/);
+    assert.match(await named.locator('#setup-status').innerText(), /Name registration/);
     await named.locator('#claim-recovery-name').fill(receipt.name);
     await named.locator('#claim-check-availability').click();
     await named
@@ -375,7 +375,7 @@ try {
     await named.locator('#claim-recovery-name').fill('bob.night');
     await named
       .locator('#setup-status')
-      .filter({ hasText: /^Pending Passport setup/ })
+      .filter({ hasText: /^Name registration/ })
       .waitFor();
     const secondAccount = await setup.newPage();
     await secondAccount.goto(pageUrl + '?setup&account2');
@@ -436,7 +436,7 @@ try {
     .waitFor();
   await outage
     .locator('#setup-status')
-    .filter({ hasText: 'Pending Passport setup. Name service unavailable' })
+    .filter({ hasText: 'Name registration. Name service unavailable' })
     .waitFor();
   await outage.close();
   await first.locator('#claim-dispatch').click();
@@ -451,7 +451,7 @@ try {
   await other.locator('#claim-dispatch').click();
   await other
     .locator('#claim-recovery-status')
-    .filter({ hasText: /^Claim check unavailable/ })
+    .filter({ hasText: /A different original claim is retained for this name/ })
     .waitFor();
   const reopened = await browser.newPage();
   await reopened.goto(pageUrl);

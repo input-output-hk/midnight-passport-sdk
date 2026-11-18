@@ -138,7 +138,7 @@ proof, review clearing when the name changes, and a pre-intent refusal followed
 by a newly reviewed retry. Native sponsor failure and real passkey consent
 remain open qualification.
 
-The opt-in **Finish Passport setup** panel on Passport account → Balances
+The opt-in **Register a .night name** panel on Passport account → Balances
 appears after creation or passkey-based opening of the target ACC. Reviewing a
 valid quote retains the selected local `.night` name per registry, ACC, and
 credential. It restores that selection after reopening and keeps the setup pending until the original

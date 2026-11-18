@@ -285,8 +285,9 @@ that the original transaction finalized successfully.
 ### Recover the sponsor's original claim in the demo
 
 For `standalone-0.35` with namespace `night`, create or open the target Passport
-ACC with its passkey, then use **Finish Passport setup** on Passport account →
-Balances. This is a post-ACC step for the same address. Reviewing a valid claim
+ACC with its passkey, then use **Register a .night name** on Passport account →
+Balances. This optional post-ACC step can happen later with the same account.
+Reviewing a valid claim
 quote stores the selected `.night` name per registry, ACC, and credential in
 this browser. Reopening with the same credential restores that selection and
 checks any retained original claim. Checking availability and importing a

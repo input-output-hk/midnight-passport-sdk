@@ -219,9 +219,12 @@ ports without stopping their occupants. See [AGENTS.md](../AGENTS.md) for prereq
 manual setup path.
 
 `demo up --funding` also starts the separate funding wallet. Supply
-`PASSPORT_FUNDING_TOKEN_FILE` and `PASSPORT_FUNDING_ASSETS_FILE` as in the
+`PASSPORT_FUNDING_TOKEN_FILE`, `PASSPORT_FUNDING_ASSETS_FILE`, and
+`PASSPORT_FUNDING_SEED_FILE` as in the
 [funding service guide](passport-funding-service/README.md), with NIGHT and/or another unshielded
-asset held by that wallet. The page then shows **Fund Passport account** and an asset selector;
+asset held by that separately funded wallet. The concurrent demo refuses the
+genesis seed for funding because the ACC fee sponsor already uses it. The page then
+shows **Fund Passport account** and an asset selector;
 open an ACC before clicking it. The Passport service forwards a fixed deposit of up to 10 smallest
 units of the selected asset while keeping its bearer token out of the browser.
 The account card reads unshielded NIGHT and test-token balances separately. The button shows the
@@ -1060,7 +1063,7 @@ after quote approval and sends only proved bytes to the sponsor. See the
 [owner and sponsor setup](../examples/midnames-local/README.md#send-an-acknowledged-receipt-from-the-browser).
 
 On the pinned `standalone-0.35` registry with namespace `night`, the demo
-shows **Finish Passport setup** on the Passport account's Balances page after
+shows **Register a .night name** on the Passport account's Balances page after
 creation or passkey-based opening. Reviewing a valid quote for the already
 deployed ACC retains the selected `.night` name per registry, ACC, and
 credential. It restores that choice after reopening with the same credential

@@ -169,11 +169,11 @@ try {
   await page.locator('#passport-name-setup').waitFor({ state: 'visible' });
   await page
     .locator('#passport-name-setup-status')
-    .getByText(/Pending Passport setup/)
+    .getByText(/Name registration/)
     .waitFor();
   assert.match(
     await page.locator('#passport-name-setup').innerText(),
-    /same account|after your ACC exists/i,
+    /same account|after activating your ACC/i,
   );
   assert.equal(await page.locator('#account-action-context').isVisible(), true);
   assert.equal(await page.evaluate(() => localStorage.getItem('handoff-fixture-creates')), '1');
@@ -197,7 +197,7 @@ try {
   await page.locator('#passport-name-setup').waitFor({ state: 'visible' });
   assert.match(
     (await page.locator('#passport-name-setup-status').textContent()) ?? '',
-    /^Pending Passport setup\./,
+    /^Name registration\./,
   );
   await page.locator('#claim-recovery-name').fill(original.name);
   await page.locator('#claim-recovery-check').click();
