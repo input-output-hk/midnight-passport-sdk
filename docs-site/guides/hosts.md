@@ -18,6 +18,15 @@ For application-contract → ACC calls, use the [standards and implementation ma
 
 ## Midnames source preview
 
+To inspect this locally, start with the [Midnames demo launcher](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/README.md#open-the-local-passport-and-midnames-demo).
+Its `check` command verifies the existing Ledger 9 stack, finalized name claim,
+registry contract target and activated ACC without changing Docker. `up`
+opens the opt-in JubJub demo; when no compatible stack exists, it can start a
+separate Passport-owned project from the pinned Ledger 9 Compose template.
+Fresh chains need ACC creation, registry bootstrap and a confirmed name claim
+before the named control is enabled. The launcher never funds a sender merely
+by opening the page.
+
 The reference demo can use Midnames 2.1.0 for read-only lookup. Configure the
 registry address, namespace, matching demo network, and public indexer URLs.
 Use paired Indexer API v4 HTTP and WebSocket endpoints. The demo refuses v3

@@ -1,4 +1,85 @@
-# Prepare a standalone Midnames registry
+# Midnames local demo and registry preparation
+
+## Open the local Passport and Midnames demo
+
+The launcher attaches to the designated owner's running Ledger 9 node,
+Indexer API v4 and proof server when they match the pinned profile. It uses
+the existing `paidfix.night` receipt as a read-only chain and ACC pin, then
+opens the opt-in JubJub Passport page with the real local Midnames resolver
+and named NIGHT control. The development mock passkey is the default; use
+`--real-passkey` for a PRF-capable authenticator. The script neither starts nor
+stops the owner's `midnight-network` project. It installs pinned workspace
+dependencies and builds the local SDK packages if needed before checking the
+live claim; this changes only rebuildable checkout outputs, not chain state.
+
+```sh
+nix develop -c node scripts/midnames-local-demo.mjs check
+nix develop -c node scripts/midnames-local-demo.mjs up \
+  --passport-repo /absolute/path/to/passport
+```
+
+Open the printed `http://localhost:5173/?mockPasskey` URL in a dedicated
+browser profile. In the app, inspect **Name service** and resolve
+`paidfix.night`; the verified contract target is the already activated local
+ACC. On **Passport account → Withdraw**, a funded JubJub source can review
+the recipient, registry, amount, controlled bridge wallet, and both NIGHT
+operations before one owner approval. The sender's ACC and built-in wallet
+must already hold the intended NIGHT and fee DUST, respectively. The launcher
+does not mint funds or silently create a new ACC. A newly created unfunded
+account can inspect resolution but cannot submit the named payment. The
+[shared named payment qualification](../../docs/site/names.md#source-preview-midnames-210)
+records the completed two-leg flow and its recovery evidence; this launcher
+does not claim a fresh payment merely by opening the page.
+
+Use `--contract-dir /absolute/path/to/prepared/contract` instead of
+`--passport-repo` to reuse a pinned ACC export and avoid another key build.
+The launcher runs the repo's `demo up` checks, uses a separate private
+deployment registry, and selects a compatible Compact 0.35 prover. If a
+compatible prover already listens on port 16320, it is only read; otherwise
+the launcher starts and later stops its own no-volume prover project. Ctrl-C
+drains only its demo services and stops only fallback containers that this
+invocation started. Receipts, browser state, and Docker volumes are retained.
+
+### When no shared stack is running
+
+`stack` starts a separate `midnight-passport-ledger9-demo-…` project from
+[`docker-compose.ledger9.yml`](../../infra/localnet/docker-compose.ledger9.yml),
+with the same pinned Ledger 9 images and loopback ports. It creates private
+indexer credentials under `~/.local/share/midnight-passport/local-demo` and
+never controls `midnight-network`. If any required port is occupied by an
+incompatible or partial stack, it refuses to start. `stack` leaves its owned
+project running so setup can continue; `stop` stops that exact recorded
+project while preserving its volumes.
+The launcher serializes `stack`, `up`, and `stop` with a private lock at
+`~/.local/share/midnight-passport/midnames-local-demo.lock`. It records full
+container IDs in `owned-stack.json` and `compat-prover.json` and verifies them
+before stopping its own fallback or prover. If Docker cannot confirm cleanup,
+the lock remains. Check the PID recorded in that lock, confirm the launcher is
+no longer active, compare the marker IDs with Docker's full IDs and Compose
+project labels, stop only those exact containers, and confirm the service and
+shared sponsor lease have drained before removing only this launcher's lock.
+Keep the private registry, receipts and Docker volumes intact.
+
+```sh
+nix develop -c node scripts/midnames-local-demo.mjs stack
+nix develop -c node scripts/midnames-local-demo.mjs up --setup \
+  --passport-repo /absolute/path/to/passport
+```
+
+Create and activate the intended ACC in setup mode. Then follow
+[Bootstrap the registry on an existing local stack](#bootstrap-the-registry-on-an-existing-local-stack)
+and [Claim one name on the shared Ledger 9 registry](#claim-one-name-on-the-shared-ledger-9-registry)
+using the fallback stack's same loopback endpoints. Both commands preserve
+their original receipts; use a fresh name and private naming secret. Once the
+claim receipt says `PASS`, run `up --profile /absolute/path/to/shared-claim.json`
+with the same ACC option. The launcher verifies that receipt's original block,
+live registry contract target, and activated ACC before enabling naming. It
+will refuse the shipped `paidfix.night` receipt on a different chain. For a
+later session, `check --profile ...` verifies an existing stack without
+starting Docker. Use `stop` only for the Passport-owned fallback project.
+
+This is a local transitional `.night` demo. It does not issue public
+`passport.night` subdomains or implement MIP-0007's delegated registry.
 
 This fixture uses the Midnames 2.1.0 registry source on the Passport standalone
 Ledger 9 stack. Prepare artifacts with the Passport SDK's pinned Nix toolchain.
