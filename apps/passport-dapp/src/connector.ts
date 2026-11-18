@@ -221,11 +221,15 @@ export async function connect(
     sponsorKeys: config,
     submitter: sponsor,
     valueCalls: {
-      supportsBeforeSubmit: true,
-      call: (request) =>
-        request.beforeSubmit && selected
-          ? fencedNightValueCall(request, selected, network, SERVICE_URL)
-          : reviewedOwnerValueCall(SERVICE_URL, request),
+      ...(selected && { supportsBeforeSubmit: true as const }),
+      call: (request) => {
+        if (request.beforeSubmit) {
+          if (!selected)
+            throw new Error('The selected owner has no callback-capable NIGHT wallet.');
+          return fencedNightValueCall(request, selected, network, SERVICE_URL);
+        }
+        return reviewedOwnerValueCall(SERVICE_URL, request);
+      },
     },
     deployer: remoteV1Deployer(SERVICE_URL, { fetch: tracedFetch }),
     directory: demoDirectory(),

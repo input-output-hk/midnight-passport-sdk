@@ -19,6 +19,7 @@ import { NightDepositInterrupted, type NightSendIntent } from './night-send.js';
 import {
   namedNightStatus,
   newNamedNightRequest,
+  requiresNewNightLegFee,
   sameLocalNightIndexer,
 } from './night-send-page-state.js';
 import { registryProfile } from './registry-pins.js';
@@ -64,6 +65,7 @@ async function connectedPageSend(
   resolver: PassportNameService,
   scope: BrowserNightSendScope,
   checkScope: () => void,
+  active: BrowserNightSendRecord | undefined,
 ) {
   const config = await fetchCheckedV1Config(
     SERVICE_URL,
@@ -100,11 +102,15 @@ async function connectedPageSend(
     BINDING_ID,
     registryProfile(import.meta.env.VITE_MIDNAMES_REGISTRY_PROFILE, scope.networkId),
   );
-  const feeWallet = await wallet.descriptor.connect(scope.networkId);
-  const dust = await feeWallet.getDustBalance();
-  checkScope();
-  if (dust.balance <= 0n)
-    throw new Error('Fund the built-in wallet and wait for its DUST balance before sending NIGHT.');
+  if (requiresNewNightLegFee(active)) {
+    const feeWallet = await wallet.descriptor.connect(scope.networkId);
+    const dust = await feeWallet.getDustBalance();
+    checkScope();
+    if (dust.balance <= 0n)
+      throw new Error(
+        'Fund the built-in wallet and wait for its DUST balance before sending NIGHT.',
+      );
+  }
   return createConnectedNightSend({
     account,
     scope,
@@ -215,7 +221,15 @@ export function createNamedNightPage(
         source: account.address,
         bridge,
       });
-    const connected = await connectedPageSend(host, account, wallet, resolver, scope, checkScope);
+    const connected = await connectedPageSend(
+      host,
+      account,
+      wallet,
+      resolver,
+      scope,
+      checkScope,
+      active,
+    );
     try {
       const result = await connected.send(request);
       host.stage('reconcile');

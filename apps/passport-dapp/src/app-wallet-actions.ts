@@ -12,7 +12,7 @@ import { routineKeys, checkRoutineReview } from './routine-access.js';
 import type { DemoActionHost } from './app-model.js';
 import { publishDemoWallet } from './browser-registry.js';
 import { readFinalizedDustRegistration } from './midnames/night-finality.js';
-import { dustRegistrationJournal } from './wallet/dust-registration-journal.js';
+import { openDustRegistrationJournal } from './wallet/dust-registration-journal.js';
 
 async function waitForRegistration(
   indexerUrl: string,
@@ -45,52 +45,61 @@ export class WalletActions {
     const connected = await wallet.descriptor.connect(this.host.network);
     const config = await connected.getConfiguration();
     const address = (await connected.getUnshieldedAddress()).unshieldedAddress;
-    const journal = dustRegistrationJournal(localStorage, this.host.network, address);
-    const pending = journal.read();
-    if (pending) {
-      this.host.stage('finality');
-      this.host.status(`Checking original DUST registration ${pending.original.hash}…`);
-      if (
-        !(await waitForRegistration(config.indexerUri, config.substrateNodeUri, pending.original))
-      )
-        throw new Error(
-          `Original DUST registration ${pending.original.hash} is not canonically final. Keep its ID; inspect the chain before another attempt.`,
-        );
-      journal.archive(pending.original);
-      await this.host.walletPresentation.refresh(connected, 'refresh');
-      this.host.status(
-        `DUST registration ${pending.original.hash} finalized. Refresh as DUST accrues.`,
-      );
-      return;
-    }
-    this.host.stage('review');
-    if (
-      !window.confirm(
-        `Enable DUST generation for this built-in wallet?\n\nNetwork: ${this.host.network}\nWallet: ${address}\n\nThis registers the wallet-held NIGHT output for DUST generation in a separate transaction. It does not move NIGHT out of the wallet. The exact transaction ID will be saved before submission.`,
-      )
-    )
-      throw new Error('DUST registration declined.');
-    this.host.stage('registration');
-    this.host.status('Preparing the wallet NIGHT registration and its own DUST fee…');
-    const original = await wallet.nightBridge.prepareDustRegistration();
-    journal.create(original);
+    const journal = await openDustRegistrationJournal(
+      indexedDB,
+      this.host.network,
+      address,
+      localStorage,
+    );
     try {
-      await wallet.nightBridge.submitDustRegistration(original);
-    } catch (error) {
-      throw new Error(
-        `DUST registration ${original.hash} may have been submitted. Keep its saved ID and reconcile before retrying.`,
-        { cause: error },
-      );
+      const pending = await journal.read();
+      if (pending) {
+        this.host.stage('finality');
+        this.host.status(`Checking original DUST registration ${pending.original.hash}…`);
+        if (
+          !(await waitForRegistration(config.indexerUri, config.substrateNodeUri, pending.original))
+        )
+          throw new Error(
+            `Original DUST registration ${pending.original.hash} is not canonically final. Keep its ID; inspect the chain before another attempt.`,
+          );
+        await journal.archive(pending.original);
+        await this.host.walletPresentation.refresh(connected, 'refresh');
+        this.host.status(
+          `DUST registration ${pending.original.hash} finalized. Refresh as DUST accrues.`,
+        );
+        return;
+      }
+      this.host.stage('review');
+      if (
+        !window.confirm(
+          `Enable DUST generation for this built-in wallet?\n\nNetwork: ${this.host.network}\nWallet: ${address}\n\nThis registers the wallet-held NIGHT output for DUST generation in a separate transaction. It does not move NIGHT out of the wallet. The exact transaction ID will be saved before submission.`,
+        )
+      )
+        throw new Error('DUST registration declined.');
+      this.host.stage('registration');
+      this.host.status('Preparing the wallet NIGHT registration and its own DUST fee…');
+      const original = await wallet.nightBridge.prepareDustRegistration();
+      await journal.create(original);
+      try {
+        await wallet.nightBridge.submitDustRegistration(original);
+      } catch (error) {
+        throw new Error(
+          `DUST registration ${original.hash} may have been submitted. Keep its saved ID and reconcile before retrying.`,
+          { cause: error },
+        );
+      }
+      this.host.stage('finality');
+      this.host.status(`Waiting for original DUST registration ${original.hash}…`);
+      if (!(await waitForRegistration(config.indexerUri, config.substrateNodeUri, original)))
+        throw new Error(
+          `DUST registration ${original.hash} is not canonically final yet. Keep its saved ID and inspect the chain.`,
+        );
+      await journal.archive(original);
+      await this.host.walletPresentation.refresh(connected, 'refresh');
+      this.host.status(`DUST registration ${original.hash} finalized. Refresh as DUST accrues.`);
+    } finally {
+      journal.close();
     }
-    this.host.stage('finality');
-    this.host.status(`Waiting for original DUST registration ${original.hash}…`);
-    if (!(await waitForRegistration(config.indexerUri, config.substrateNodeUri, original)))
-      throw new Error(
-        `DUST registration ${original.hash} is not canonically final yet. Keep its saved ID and inspect the chain.`,
-      );
-    journal.archive(original);
-    await this.host.walletPresentation.refresh(connected, 'refresh');
-    this.host.status(`DUST registration ${original.hash} finalized. Refresh as DUST accrues.`);
   };
   connect = async (): Promise<void> => {
     checkRoutineReview();

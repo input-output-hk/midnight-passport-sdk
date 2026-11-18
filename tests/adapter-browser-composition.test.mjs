@@ -5,7 +5,7 @@ import { createAuthenticatedJubjubOwner } from '../packages/keys/dist/index.js';
 import { pureCircuits } from '../packages/contract/generated/acc-s3r1.1/index.js';
 import { routeBrowserValueCalls } from '../packages/adapter-browser/dist/value-call-routing.js';
 
-test('browser value routing preserves the direct finalized-ID fence', async () => {
+test('browser value routing refuses an unfenced host before any value dispatch', async () => {
   /** @type {string[]} */
   const calls = [];
   /** @type {import('../packages/account/dist/ports/index.js').Chain} */
@@ -25,31 +25,28 @@ test('browser value routing preserves the direct finalized-ID fence', async () =
     },
   };
   const chain = routeBrowserValueCalls(direct, hosted);
-  assert.equal(chain.supportsBeforeSubmit, true);
+  assert.equal(chain.supportsBeforeSubmit, undefined);
   assert.equal(
     (await chain.call({ address: 'a', circuit: 'withdraw_unshielded_with_jubjub', args: [] }))
       .txHash,
     '2'.repeat(64),
   );
-  assert.equal(
-    (
-      await chain.call({
+  assert.throws(
+    () =>
+      chain.call({
         address: 'a',
         circuit: 'withdraw_unshielded_with_jubjub',
         args: [],
         beforeSubmit: async () => {},
-      })
-    ).txHash,
-    '1'.repeat(64),
+      }),
+    { code: 'BindingUnsupported' },
   );
-  assert.deepEqual(calls, [
-    'hosted:withdraw_unshielded_with_jubjub',
-    'direct:withdraw_unshielded_with_jubjub',
-  ]);
+  assert.deepEqual(calls, ['hosted:withdraw_unshielded_with_jubjub']);
   const fencedHost = routeBrowserValueCalls(direct, {
     ...hosted,
     supportsBeforeSubmit: true,
   });
+  assert.equal(fencedHost.supportsBeforeSubmit, true);
   await fencedHost.call({
     address: 'a',
     circuit: 'withdraw_unshielded_with_jubjub',
