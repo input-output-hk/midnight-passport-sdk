@@ -169,14 +169,16 @@ selection atomically. A fresh quote review is required before another
 preparation. Other partial outcomes, outage, uncertainty and changed binding keep the
 original fenced. The archived receipt can be inspected after reload.
 **Check original
-claim** reconciles the stored transaction and the current registry owner and
+claim** reconciles the stored transaction, local sponsor dispatch fence, and current registry owner and
 target. **Check registry status** verifies the open ACC and checks whether the
 name is registered. When a receipt already exists, the button reconciles the
-original claim. The loopback fixture offers **Send prepared claim** for an
+original claim. The loopback fixture offers **Review terms before send** for an
 original receipt already saved to the open credential. A lost response keeps the original receipt available across
 browser reloads. Sending requires a saved matching quote and a second click
 after the exact payment terms are displayed. Older quote-less receipts remain
-available for reconciliation only. The native dispatch fixture injects its
+available for reconciliation only. A prepared, unfenced receipt is explicitly
+shown as unsent; after expiry, the sponsor can verify and archive it before a
+fresh quote. A fenced or uncertain original stays pending. The native dispatch fixture injects its
 quote after proof, so that run does not qualify pre-proof user review. See
 [the recovery flow](../site/names.md#recover-the-sponsors-original-claim-in-the-demo).
 The separate native `claim-preproof` fixture displays a fixture-issued quote

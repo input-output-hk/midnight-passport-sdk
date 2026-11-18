@@ -56,6 +56,19 @@ export async function availableDemoAssets(
 /** Only an exact backend receipt may tell the browser it can replace this request ID. */
 export function preflightRefusal(result: Record<string, unknown>, requestId: string) {
   if (
+    result.requestId === requestId &&
+    result.code === 'FundingRequestReleased' &&
+    result.submission === 'reconciled-no-credit' &&
+    !('txId' in result) &&
+    !('preparationTxId' in result)
+  )
+    return {
+      requestId,
+      code: 'FundingRequestReleased',
+      submission: 'reconciled-no-credit',
+      error: 'The previous funding request was reconciled without ACC credit.',
+    };
+  if (
     result.requestId !== requestId ||
     result.submission !== 'not-started' ||
     'txId' in result ||

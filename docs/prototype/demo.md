@@ -74,16 +74,22 @@ nix develop -c node scripts/demo.mjs up --funding
 
 After creating or opening an ACC in the page, use **Fund Passport account** in Actions. The button
 deposits up to 10 smallest units of the selected allowlisted asset from the separate localnet funding
-wallet. A NIGHT deposit first splits an exact-value UTXO in the funding wallet, then calls the ACC's
-`deposit_unshielded` circuit; this transaction shape passed the pinned localnet's cost check and a
-live 10-unit deposit increased the ACC NIGHT balance from 0 to 10. It appears only when the demo was
+wallet. A NIGHT deposit first splits an exact-value UTXO in the funding wallet,
+then calls the ACC's `deposit_unshielded` circuit with measured Ledger 9
+deletion credit. The finalized transaction hash is journaled before node
+submission. A prior localnet qualification credited 10 units; the legacy
+reference call was later rejected with gas error 104 on the shared stack. The
+measured funding-service call still needs a fresh native confirmation. It appears only when the demo was
 started with `--funding` and is enabled only while an ACC
 is open. The account card reads the ACC's unshielded NIGHT and test-token balances separately, and
 shows the confirmed transaction. For NIGHT, the response and copied operation log also include
 the wallet self-transfer transaction ID. The browser never receives
 the funding wallet seed or bearer token. The browser keeps the same request ID for each asset after
 an uncertain result. A completed request replays its recorded result; a pending request returns 409
-and needs operator reconciliation before any new attempt. The button is localnet-only and does not fund the read-only built-in HD
+and needs operator reconciliation before any new attempt. After an operator
+releases a verified uncredited original, the next click receives an exact
+reconciliation receipt and clears that old browser ID; a further click starts a
+new request. The button is localnet-only and does not fund the read-only built-in HD
 wallet.
 
 The operator CLI remains available. Use the account address from the evidence panel and the color

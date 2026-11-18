@@ -1,6 +1,6 @@
 import { setTimeout as delay } from 'node:timers/promises';
 import type { ServiceWire } from '@input-output-hk/mn-passport-protocol';
-import type { FundingBackend } from './funding-route.js';
+import type { FundingBackend, FundingProgress } from './funding-route.js';
 import { serial } from './queue.js';
 import {
   fundingInventory,
@@ -28,6 +28,12 @@ export interface WalletFundingOptions {
   readonly inventory?: () => Promise<FundingInventory>;
   /** Optional wallet preparation, e.g. creating an exact-value NIGHT UTXO on localnet. */
   readonly prepareDeposit?: (color: Uint8Array, amount: bigint) => Promise<string | undefined>;
+  /** Local NIGHT call with measured gas; fence its finalized hash before node submission. */
+  readonly depositNight?: (
+    address: string,
+    amount: bigint,
+    recordProgress: (progress: FundingProgress) => Promise<void>,
+  ) => Promise<{ readonly txId: string }>;
   readonly pollMs?: number;
   readonly confirmationMs?: number;
   readonly now?: () => number;
@@ -96,9 +102,17 @@ export function createWalletFundingBackend(
         }
         const preparationTxId = await options.prepareDeposit?.(color, amount);
         if (preparationTxId) await recordProgress?.({ stage: 'prepared', preparationTxId });
-        const { txId } = await account.depositUnshielded(color, amount);
+        const measuredNight = color.every((byte) => byte === 0) && options.depositNight;
+        let txId: string;
+        if (measuredNight) {
+          if (!recordProgress)
+            throw new Error('Measured NIGHT deposit requires a durable submission fence');
+          ({ txId } = await measuredNight(request.accountAddress, amount, recordProgress));
+        } else {
+          ({ txId } = await account.depositUnshielded(color, amount));
+        }
         if (!txId) throw new Error('deposit returned no transaction ID');
-        await recordProgress?.({ stage: 'submitted', txId });
+        if (!measuredNight) await recordProgress?.({ stage: 'submitted', txId });
         const deadline = now() + confirmationMs;
         for (;;) {
           const credited = await balance(account, color);

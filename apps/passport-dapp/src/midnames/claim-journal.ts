@@ -18,9 +18,9 @@ export type ClaimJournal = Awaited<ReturnType<typeof openClaimJournal>>;
 const storeName = 'claims';
 const selectionStore = 'selections';
 const releasedStore = 'released-claims';
-export type ClaimReleaseReason = 'FAILURE' | 'CLAIM_SEGMENT_FAILURE';
+export type ClaimReleaseReason = 'FAILURE' | 'CLAIM_SEGMENT_FAILURE' | 'EXPIRED_UNSENT';
 const validReleaseReason = (value: unknown): value is ClaimReleaseReason =>
-  value === 'FAILURE' || value === 'CLAIM_SEGMENT_FAILURE';
+  value === 'FAILURE' || value === 'CLAIM_SEGMENT_FAILURE' || value === 'EXPIRED_UNSENT';
 
 const selectionKey = (registry: string, account: string, credential: string) =>
   JSON.stringify(['undeployed', registry, account, credential]);

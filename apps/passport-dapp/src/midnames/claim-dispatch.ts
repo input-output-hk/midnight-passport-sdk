@@ -17,7 +17,7 @@ export function isClaimSponsorOrigin(origin: string): boolean {
 
 /** A transport outcome never establishes claim finality. */
 export async function requestClaimDispatch(receipt: ClaimReceipt): Promise<void> {
-  await fetch(claimDispatchPath, {
+  const response = await fetch(claimDispatchPath, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(receipt),
@@ -25,4 +25,6 @@ export async function requestClaimDispatch(receipt: ClaimReceipt): Promise<void>
     redirect: 'error',
     signal: AbortSignal.timeout(15_000),
   });
+  if (response.status !== 202)
+    throw new Error('The local sponsor did not acknowledge the prepared claim.');
 }

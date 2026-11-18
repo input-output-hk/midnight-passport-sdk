@@ -73,6 +73,24 @@ test('proxy refuses to forward a no-start receipt with a different identity or t
     assert.equal(preflightRefusal(bad, 'original'), undefined);
 });
 
+test('proxy forwards only the exact operator-reconciled no-credit tombstone', () => {
+  const receipt = {
+    requestId: 'original',
+    code: 'FundingRequestReleased',
+    submission: 'reconciled-no-credit',
+  };
+  assert.deepEqual(preflightRefusal(receipt, 'original'), {
+    ...receipt,
+    error: 'The previous funding request was reconciled without ACC credit.',
+  });
+  for (const changed of [
+    { ...receipt, requestId: 'other' },
+    { ...receipt, txId: 'ab'.repeat(32) },
+    { ...receipt, submission: 'unknown' },
+  ])
+    assert.equal(preflightRefusal(changed, 'original'), undefined);
+});
+
 test('discovery observes a successful five-second wallet catch-up plus transport delay', async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] });
   t.mock.method(AbortSignal, 'timeout', (milliseconds: number) => {

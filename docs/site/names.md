@@ -343,9 +343,13 @@ registry, payee, future subdomain payment address, sponsor payment wallet, NIGHT
 DUST ceiling and expiry. **Approve and
 prepare claim** records that quote before owner-side proving. The form records
 the public owner commitment before asking the sponsor to balance the proved
-transaction. It then saves the matching receipt automatically. **Send prepared
-claim** shows the saved payment terms again and requires a second confirmation
-click before dispatch. A public receipt imported without the matching saved
+transaction. It then saves the matching receipt automatically. **Review terms
+before send** shows the saved payment terms; only the second **Confirm reviewed
+terms and send** click dispatches the claim. **Check original claim** reads both
+the indexer and the local sponsor's dispatch fence, so an unsent preparation is
+identified as such. If its quote expires, the sponsor can verify and archive
+that exact unsent original before a fresh quote; a fenced or uncertain send
+stays pending. A public receipt imported without the matching saved
 quote can be checked and reconciled, but cannot be sent from this browser.
 
 If the preparation response is lost, reopen with the original credential,
@@ -383,7 +387,7 @@ transaction stays pending; an unavailable read is distinct. Partial success, mal
 or changed transaction bytes, and a mismatched owner or target are conflicts.
 
 The isolated fixture prepares the proof in a separate owner process. The
-sponsor balances it and accepts an explicit **Send prepared claim** action
+sponsor balances it and accepts an explicit reviewed send action
 for a quote-bound receipt already saved to the open credential. The sponsor
 checks the exact registry payment and permits NIGHT inputs and change only at
 the quoted sponsor payment wallet. It also checks that the registered domain's

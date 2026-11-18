@@ -13,7 +13,7 @@ export function createClaimSendReview(send: HTMLButtonElement, summary: HTMLElem
       summary.textContent = '';
     }
     reviewed = undefined;
-    send.textContent = 'Send prepared claim';
+    send.textContent = 'Review terms before send';
   }
   function confirm(account: PassportAccount, receipt: ClaimReceipt, quote: ClaimQuote): boolean {
     const digest = receipt.quoteSha256;
@@ -62,7 +62,8 @@ export function createClaimSendReview(send: HTMLButtonElement, summary: HTMLElem
         return false;
       }
       if (!confirm(account, receipt, quote)) {
-        status.textContent = 'Review the saved payment terms above, then confirm the send.';
+        status.textContent =
+          'No transaction has been sent. Review the saved payment terms above, then click Confirm reviewed terms and send.';
         return false;
       }
       return true;

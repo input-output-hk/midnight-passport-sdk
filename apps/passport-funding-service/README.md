@@ -36,9 +36,14 @@ This example enables NIGHT on the standalone localnet. Add another entry for a n
 only after that asset is held by the funding wallet. The upstream
 [funding experiment](https://github.com/midnightntwrk/passport/blob/main/contract/evidence/grants-e4-funding-grants-unshielded-funding.json)
 confirmed a non-native unshielded deposit; its NIGHT deposit was refused by the node fee budget.
-On the pinned localnet, an exact-value NIGHT UTXO avoids that fee shape. The service makes a
-self-transfer of the requested amount before `deposit_unshielded`; a live 10-unit run confirmed
-ACC credit. NIGHT remains disabled on other networks pending separate node-backed qualification.
+On the pinned localnet, an exact-value NIGHT UTXO avoids the wallet change-output
+fee shape. The service makes a self-transfer of the requested amount, then builds
+the ACC `deposit_unshielded` call with measured Ledger 9 deletion credit and
+records the final transaction hash **before** node submission. This addresses
+the Compact 0.35 gas estimate that the node rejected with `Custom error: 104`
+in a local demo run. An earlier live 10-unit run confirmed ACC credit; a native
+run of this measured funding-service path is still required. NIGHT remains
+disabled on other networks pending separate node-backed qualification.
 
 ```sh
 export PASSPORT_CONTRACT_DIR=/path/to/pinned/contract
@@ -92,7 +97,13 @@ present. It does not read the wallet seed or bearer token. A request created bef
 journaling has no transaction IDs in its reservation. Even a new request can stop between node
 submission and recording the transaction ID, so missing progress does **not** prove that no value
 moved. The backend records `noSubmit` only if a preflight read or validation failed before it
-entered wallet preparation or the ACC deposit. An operator may release that one proved case:
+entered wallet preparation or the ACC deposit. A node rejection during a legacy
+deposit can leave a request pending with a preparation ID but no deposit ID. Keep
+that original reservation; its missing ID or unchanged ACC balance alone does
+not prove that every submission attempt was refused. The measured local NIGHT
+path records its hash before submission so future failures identify the exact
+transaction for operator inspection. An operator may release the one proved
+`noSubmit` case:
 
 ```sh
 nix develop -c pnpm --filter passport-funding-service reconcile --file \
@@ -105,6 +116,39 @@ reservation file, records the operator, timestamp and reason in the request tomb
 its daily quota. The original request ID remains unusable; a *new* ID is appropriate only after
 the original was released. Do not use the command for a request with no marker, after NIGHT
 preparation, after deposit submission, or after an uncertain crash. Those cases remain pending.
+
+For the specific old local NIGHT path that retried a node gas rejection four
+times, an operator can instead release an uncredited request after preserving
+the exact node log and checking that those four rejections belong to the one
+request. Stop only this Passport demo and its funding wallet before reconciling;
+leave the shared Midnight stack running. Save a bounded `docker logs --since …
+--until … <exact-node-container-id>` excerpt to a private mode-600 file. The
+command requires an explicit attribution attestation, four distinct gas-budget
+rejection hashes in a two-minute window at least ten minutes old, a currently
+empty node mempool, the complete ACC action history with no unshielded deposit,
+and an unchanged NIGHT balance. It refuses a request with a recorded deposit
+ID or without a preparation ID:
+
+```sh
+nix develop -c pnpm --filter passport-funding-service reconcile --file \
+  "$HOME/.midnight-passport/funding-reservations.json" \
+  --request-id '<original UUID>' --operator '<your-id>' \
+  --release-rejected yes --node-log /absolute/path/to/private-node-rejections.log \
+  --attest-same-request yes \
+  --indexer-url http://127.0.0.1:8088/api/v4/graphql \
+  --indexer-ws-url ws://127.0.0.1:8088/api/v4/graphql/ws
+```
+
+This is a local operator judgment: the node log alone does not bind its hashes
+to a funding reservation because the legacy wallet omitted them. Verify the
+service's four failed attempts and time window before attesting. The command
+backs up the reservation, retains the original as a released tombstone with
+the rejected hashes, log digest and ACC frontier, and never reuses its ID. If
+any evidence is missing, keep the original pending. When the browser next
+checks that exact released request, the funding service returns a bounded
+`FundingRequestReleased` receipt through the demo proxy. Only that exact receipt
+clears the browser's old ID; click **Fund Passport account** once more to start a
+new request. A timeout or ordinary 409 never clears it.
 For a request whose deposit transaction ID was durably journaled, the localnet operator can check
 the indexer's complete ACC action history and complete the original request only when that
 transaction contains exactly one successful `deposit_unshielded` call whose balance change is

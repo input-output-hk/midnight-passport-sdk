@@ -1,4 +1,5 @@
-import { join } from 'node:path';
+import { closeSync, existsSync, fsyncSync, mkdirSync, openSync, renameSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import {
   claimDestination,
   claimQuote,
@@ -22,11 +23,20 @@ import { createOnce } from './create-once.mts';
 
 export const claimPrepareLimit = 2 * 1024 * 1024 + claimReceiptLimit;
 
+export function claimRetiredArchivePath(directory: string, receipt: ClaimReceipt): string {
+  return join(
+    dirname(directory),
+    `claim-journal-retired-${claimReceipt(receipt).transaction.sha256}`,
+  );
+}
+
 export interface ClaimSponsorPreparationPorts {
   issue(destination: ClaimDestination): Promise<ClaimQuote>;
   /** Recheck the approved price, payee, sponsor, target and availability before any balance. */
   authorizeQuote(quote: ClaimQuote): Promise<void>;
   balance(proof: Uint8Array): Promise<Uint8Array>;
+  /** Confirm the exact expired original was never indexed and its name remains free. */
+  retireExpiredUnsent?: (receipt: ClaimReceipt) => Promise<void>;
 }
 
 function recordOnce(path: string, record: unknown): boolean {
@@ -117,6 +127,54 @@ export function createClaimPreparationJournal(
   }
 
   return {
+    async retireExpiredUnsent(input: unknown) {
+      if (!ports.retireExpiredUnsent)
+        throw new Error('Expired unsent claim retirement is unavailable.');
+      const receipt = claimReceipt(input);
+      const archive = claimRetiredArchivePath(directory, receipt);
+      if (existsSync(archive)) {
+        const archived = openClaimDispatch(archive).preparedReceipt();
+        if (JSON.stringify(archived) !== JSON.stringify(receipt))
+          throw new Error('Retired claim receipt differs.');
+        return { status: 'retired' as const };
+      }
+      const intent = readClaimRecord(intentPath, claimReceiptLimit);
+      if (
+        !intent ||
+        typeof intent !== 'object' ||
+        !('quoteId' in intent) ||
+        !claimHex(intent.quoteId)
+      )
+        throw new Error('The original claim preparation is unavailable.');
+      const quote = claimQuote(readClaimRecord(quotePath(intent.quoteId), claimReceiptLimit));
+      const digest = await claimQuoteDigest(quote);
+      if (
+        quote.expiresAt > Date.now() ||
+        receipt.quoteSha256 !== digest ||
+        !matchesDestination(receipt, quote) ||
+        !find(quote.id, digest, receipt.ownerCommitment)?.receipt ||
+        JSON.stringify(dispatch.preparedReceipt()) !== JSON.stringify(receipt) ||
+        dispatch.hasFence(receipt)
+      )
+        throw new Error('The original claim is not an expired, unsent preparation.');
+      await ports.retireExpiredUnsent(receipt);
+      // Recheck after the asynchronous chain read, while the HTTP handler excludes
+      // concurrent dispatch, then atomically retain the entire private journal.
+      if (
+        dispatch.hasFence(receipt) ||
+        JSON.stringify(dispatch.preparedReceipt()) !== JSON.stringify(receipt)
+      )
+        throw new Error('The original claim changed during retirement.');
+      renameSync(directory, archive);
+      mkdirSync(directory, { mode: 0o700 });
+      const parent = openSync(dirname(directory), 'r');
+      try {
+        fsyncSync(parent);
+      } finally {
+        closeSync(parent);
+      }
+      return { status: 'retired' as const };
+    },
     async issue(input: unknown) {
       const destination = claimDestination(input);
       const quote = claimQuote(await ports.issue(destination));

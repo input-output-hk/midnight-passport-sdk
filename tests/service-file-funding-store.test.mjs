@@ -155,7 +155,10 @@ test('a durable no-submit marker permits audited release and frees the daily quo
   assert.equal(after?.release?.actor, 'operator@example.org');
   assert.equal(after?.release?.reason, 'preflight-failed');
   assert.match(after?.release?.at ?? '', /^20\d\d-\d\d-\d\dT/);
-  assert.deepEqual(await store.reserve(request, policy, '2026-10-15'), { state: 'released' });
+  assert.deepEqual(await store.reserve(request, policy, '2026-10-15'), {
+    state: 'released',
+    reason: 'preflight-failed',
+  });
   const next = { ...request, requestId: '12345678-1234-1234-1234-123456789abd' };
   assert.deepEqual(await store.reserve(next, policy, '2026-10-15'), { state: 'reserved' });
   assert.equal(readdirSync(join(path, '..')).filter((name) => name.includes('.backup-')).length, 1);

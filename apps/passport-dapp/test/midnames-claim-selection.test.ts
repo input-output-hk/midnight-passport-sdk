@@ -287,6 +287,22 @@ test('release refuses a changed selection or an unsubmitted quote', async () => 
   journal.close();
 });
 
+test('expired unsent release keeps the exact receipt and permits a fresh quote', async () => {
+  const factory = new IDBFactory();
+  const journal = await openClaimJournal(factory);
+  const original = receiptFor('alice.night');
+  await journal.selectName(registry, account, credential, original.name);
+  await journal.retain(original, credential);
+  await journal.releaseFailed(original, credential, 'EXPIRED_UNSENT');
+  assert.equal(await journal.read(registry, original.name, credential), undefined);
+  assert.deepEqual(await journal.readReleased(registry, original.name, account, credential), [
+    original,
+  ]);
+  await journal.selectName(registry, account, credential, original.name);
+  await journal.reserve(quoteFor(original.name), credential);
+  journal.close();
+});
+
 test('released history remains ordered across two fast failed attempts at one name', async () => {
   const factory = new IDBFactory();
   const journal = await openClaimJournal(factory);

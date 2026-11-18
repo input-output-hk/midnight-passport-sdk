@@ -11,6 +11,7 @@ import {
   createMidnamesLedgerReads,
 } from '../../apps/passport-dapp/src/midnames/ledger-reader.ts';
 import { claimDestination } from '../../apps/passport-dapp/src/midnames/claim-quote.ts';
+import { readClaimFinality } from '../../apps/passport-dapp/src/midnames/claim-finality.ts';
 import { createClaimSponsorHandler } from './claim-sponsor-http.mts';
 import { startDemoOwnerBundle } from './claim-owner-browser-host.mjs';
 import { verifyPreparedRegistry } from './verify-prepared.mjs';
@@ -201,6 +202,14 @@ try {
         )
           throw new Error('The live registry or sponsor terms differ from the reviewed quote.');
         await inventory(terms.night);
+      },
+      async retireExpiredUnsent(receipt) {
+        if (
+          (await readClaimFinality(indexerUrl, receipt)) !== false ||
+          (await reader.hasDomain(receipt.name, profile)) ||
+          !(await reader.isSupportedAccount(receipt.accountAddress, networkId))
+        )
+          throw new Error('The expired claim could not be proved unsent and unregistered.');
       },
       async balance(bytes) {
         const tx = Transaction.deserialize('signature', 'proof', 'pre-binding', bytes);

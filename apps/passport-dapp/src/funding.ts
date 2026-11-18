@@ -32,13 +32,16 @@ export function fundingRequestFailure(input: {
   readonly storage: Pick<Storage, 'getItem' | 'removeItem'>;
   readonly keys: readonly string[];
   readonly onNotStarted: (details: { requestId: string; code: string }) => void;
+  readonly onReconciled?: (details: { requestId: string; code: string }) => void;
 }) {
   const failure = fundingFailure(input.status, input.result, input.requestId);
-  if (failure.notStarted) {
+  if (failure.notStarted || failure.released) {
     for (const key of input.keys) {
       if (input.storage.getItem(key) === input.requestId) input.storage.removeItem(key);
     }
-    input.onNotStarted({ requestId: input.requestId, code: failure.error.name });
+    if (failure.notStarted)
+      input.onNotStarted({ requestId: input.requestId, code: failure.error.name });
+    else input.onReconciled?.({ requestId: input.requestId, code: failure.error.name });
   }
   return failure.error;
 }
@@ -130,15 +133,24 @@ export function fundingFailure(status: number, value: unknown, requestId: string
     !('preparationTxId' in body) &&
     typeof body.code === 'string' &&
     ['FundingAssetUnavailable', 'FundingWalletUnavailable'].includes(body.code);
+  const released =
+    status === 409 &&
+    body.requestId === requestId &&
+    body.submission === 'reconciled-no-credit' &&
+    body.code === 'FundingRequestReleased' &&
+    !('txId' in body) &&
+    !('preparationTxId' in body);
   const error = new Error(
-    notStarted
-      ? body.code === 'FundingAssetUnavailable'
-        ? 'The funding wallet does not hold enough of this asset. No transfer was started.'
-        : 'The funding wallet is not ready. No transfer was started.'
-      : typeof body.error === 'string'
-        ? body.error
-        : 'Funding was refused',
+    released
+      ? 'The previous funding request was reconciled without ACC credit. Click Fund Passport account again to start a new deposit.'
+      : notStarted
+        ? body.code === 'FundingAssetUnavailable'
+          ? 'The funding wallet does not hold enough of this asset. No transfer was started.'
+          : 'The funding wallet is not ready. No transfer was started.'
+        : typeof body.error === 'string'
+          ? body.error
+          : 'Funding was refused',
   );
-  error.name = notStarted ? String(body.code) : 'FundingRejected';
-  return { error, notStarted };
+  error.name = notStarted || released ? String(body.code) : 'FundingRejected';
+  return { error, notStarted, released };
 }

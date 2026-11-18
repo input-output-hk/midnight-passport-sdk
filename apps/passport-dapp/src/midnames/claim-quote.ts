@@ -28,6 +28,10 @@ export interface ClaimPreparation {
   prove(quote: ClaimQuote, account: PassportAccount): Promise<OwnerProvedClaim>;
   prepare(quote: ClaimQuote, original: OwnerProvedClaim): Promise<unknown>;
   findPrepared(quote: ClaimQuote, ownerCommitment: string): Promise<unknown>;
+  /** Read the exact local sponsor fence; absence proves this sponsor has not sent it. */
+  dispatchStatus?(receipt: ClaimReceipt): Promise<'prepared' | 'sent-or-unknown' | 'retired'>;
+  /** Local sponsor verifies and archives one expired preparation that was never sent. */
+  retireExpiredUnsent?(receipt: ClaimReceipt): Promise<void>;
 }
 
 export interface OwnerProvedClaim {

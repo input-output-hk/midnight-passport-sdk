@@ -72,6 +72,50 @@ test('wallet backend submits a permissionless deposit and waits for the ACC cred
   ]);
 });
 
+test('measured NIGHT route durably fences the exact hash before submission', async () => {
+  /** @type {FundingProgress[]} */
+  const events = [];
+  let credited = false;
+  const night = { ...request, color: '00'.repeat(32) };
+  const backend = createWalletFundingBackend({
+    deployed: () => true,
+    connect: async () => ({
+      async ledgerState() {
+        return {
+          spec_version: 3n,
+          unshielded_balances: {
+            member: () => credited,
+            lookup: () => (credited ? 10n : 0n),
+          },
+        };
+      },
+      async depositUnshielded() {
+        assert.fail('Local NIGHT must use the measured call.');
+      },
+    }),
+    prepareDeposit: async () => 'prep-hash',
+    async depositNight(_address, _amount, recordProgress) {
+      assert.deepEqual(events, [
+        { stage: 'balance-observed', balanceBefore: '0' },
+        { stage: 'prepared', preparationTxId: 'prep-hash' },
+      ]);
+      await recordProgress({ stage: 'submitted', txId: 'exact-hash' });
+      assert.deepEqual(events.at(-1), { stage: 'submitted', txId: 'exact-hash' });
+      credited = true;
+      return { txId: 'exact-hash' };
+    },
+  });
+  assert.equal(
+    (
+      await backend.fund(night, async (event) => {
+        events.push(event);
+      })
+    ).txId,
+    'exact-hash',
+  );
+  assert.equal(events.filter((event) => event.stage === 'submitted').length, 1);
+});
+
 test('wallet backend rejects unlisted and wrong-version contracts before spending', async () => {
   let connected = 0;
   let deposited = 0;

@@ -93,6 +93,39 @@ test('only the exact no-start intent is removed; concurrent replacement and unkn
     assert.equal(notices.length, proved ? 1 : 0);
   }
 });
+test('only an exact operator-reconciled tombstone clears the old browser funding ID', () => {
+  const entries = new Map([['funding-key', 'original']]);
+  const notices: unknown[] = [];
+  const input = {
+    status: 409,
+    requestId: 'original',
+    storage: {
+      getItem: (key: string) => entries.get(key) ?? null,
+      removeItem: (key: string) => {
+        entries.delete(key);
+      },
+    },
+    keys: ['funding-key'],
+    onNotStarted: () => assert.fail('A rejected submission did start.'),
+    onReconciled: (event: unknown) => notices.push(event),
+  };
+  const receipt = {
+    requestId: 'original',
+    code: 'FundingRequestReleased',
+    submission: 'reconciled-no-credit',
+  };
+  for (const bad of [
+    { ...receipt, requestId: 'other' },
+    { ...receipt, txId: 'ab'.repeat(32) },
+    { ...receipt, submission: 'unknown' },
+  ]) {
+    assert.equal(fundingRequestFailure({ ...input, result: bad }).name, 'FundingRejected');
+    assert.equal(entries.get('funding-key'), 'original');
+  }
+  assert.equal(fundingRequestFailure({ ...input, result: receipt }).name, 'FundingRequestReleased');
+  assert.equal(entries.has('funding-key'), false);
+  assert.deepEqual(notices, [{ requestId: 'original', code: 'FundingRequestReleased' }]);
+});
 test('only a pinned no-start receipt permits forgetting a funding ID; old unknown responses remain unknown', () => {
   const receipt = {
     requestId: 'original',

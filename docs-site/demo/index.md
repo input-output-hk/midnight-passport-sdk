@@ -49,8 +49,12 @@ can attach to the shared Ledger 9 node and API v4 indexer. After activating an
 ACC, you may return later to **Passport account → Balances → Register a .night
 name**. A dedicated local sponsor quotes the registry price and payee; the
 browser reviews them before asking the open ACC passkey for a naming proof.
-The user then inspects and sends the original prepared claim, keeping its
-receipt until the indexed transaction and registry binding agree. This opt-in
+The first send click displays the saved payment terms without submitting; the
+second confirmation sends the original prepared claim. **Check original claim**
+shows whether this local sponsor has sent it and whether the name is registered.
+An expired preparation that the sponsor verifies was never sent can be archived
+before a fresh quote. Keep the original receipt until the indexed transaction
+and registry binding agree. This opt-in
 path requires a separately funded name sponsor, pinned Compact 0.35 registry
 artifacts, and the standalone local `.night` registry. It does not issue
 public `passport.night` names.

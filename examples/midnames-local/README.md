@@ -77,8 +77,16 @@ nix develop -c node scripts/midnames-local-demo.mjs up \
 Open the activated ACC with its passkey, go to **Passport account → Balances →
 Register a .night name**, enter an unregistered name such as `yurii.night`, and
 check registry status. Review the exact quote, approve owner-side proof, inspect
-the saved original receipt, then explicitly send the prepared claim. Recheck the
-original claim until it and the current registry binding agree. Registration is
+the saved original receipt, then click **Review terms before send**. This first
+click sends nothing; inspect the saved price and click **Confirm reviewed terms
+and send** before the quote expires. **Check original claim** distinguishes a
+prepared, unsent receipt from a claim whose send outcome needs reconciliation.
+If an unsent quote expires, use **Retire expired unsent original** after the
+local sponsor verifies that it has no dispatch fence, the original is absent
+from the indexer, and the name remains free. The old private journal is archived
+beside the new one; the browser retains the original in released history. Then
+review a fresh quote. A fenced or uncertain send stays pending for read-only
+reconciliation. Recheck the sent original until it and the registry binding agree. Registration is
 optional and can be done in a later session with the same account credential.
 The separate **Deposit** page offers the configured NIGHT amount. Each deposit
 requires the funding wallet's allowlisted asset and available balance.
@@ -910,7 +918,7 @@ the proof, credential continuity and sponsor balancing independently of
 the fixture's two-DUST admission test.
 
 Save the prepared public receipt while the matching ACC is open, then select
-**Send prepared claim**, review the saved terms, and confirm. **Check original claim** reads the original receipt
+**Review terms before send**, review the saved terms, and confirm. **Check original claim** reads the original receipt
 after a reload or lost response. This route is a local fixture. The live browser run used a fixture login for
 an already activated ACC and a Chromium virtual passkey to prove the fixed
 claim. It observed one assertion, one proof, one wallet balance, one dispatch

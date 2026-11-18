@@ -164,7 +164,7 @@ async function submitWithLostSponsorResponse(page: Page) {
     await page.locator('#claim-dispatch').click();
     await lost;
     assert.equal(responseStatus, 202, 'The sponsor must accept the original before response loss.');
-    await status(page, messages.pending);
+    await status(page, /^Send outcome unknown/);
     return;
   }
   await page.route('**/__drop-claim-response', async (route) => {

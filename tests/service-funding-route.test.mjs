@@ -134,6 +134,24 @@ test('funding is authenticated, pinned, bounded and idempotent', async (t) => {
   assert.equal(svc.calls.length, 1);
 });
 
+test('operator-released original returns an exact no-credit tombstone without wallet work', async (t) => {
+  /** @type {FundingStore} */
+  const store = {
+    ...memoryStore(),
+    reserve: async () => ({ state: 'released', reason: 'node-rejected' }),
+  };
+  const svc = await serve({ store });
+  t.after(svc.close);
+  const response = await svc.post();
+  assert.equal(response.status, 409);
+  assert.deepEqual(await response.json(), {
+    requestId: request.requestId,
+    code: 'FundingRequestReleased',
+    submission: 'reconciled-no-credit',
+  });
+  assert.equal(svc.calls.length, 0);
+});
+
 test('funding rejects bad pins, unsupported assets, amounts and ACCs before reserve', async (t) => {
   const svc = await serve({ eligible: async (account) => account === address });
   t.after(svc.close);

@@ -16,7 +16,7 @@ import { randomUUID } from 'node:crypto';
 import { dirname } from 'node:path';
 import type { ServiceWire } from '@input-output-hk/mn-passport-protocol';
 import type { FundingProgress, FundingStore } from './funding-route.js';
-import type { FundingCreditEvidence } from './funding-reconciliation.js';
+import type { FundingCreditEvidence, FundingRejectionEvidence } from './funding-reconciliation.js';
 
 interface ProgressRecord {
   readonly balanceBefore: string;
@@ -33,7 +33,8 @@ interface Entry {
   readonly release?: {
     readonly actor: string;
     readonly at: string;
-    readonly reason: 'preflight-failed';
+    readonly reason: 'preflight-failed' | 'node-rejected';
+    readonly evidence?: FundingRejectionEvidence;
   };
   readonly reconciliation?: FundingCreditEvidence & { readonly actor: string; readonly at: string };
 }
@@ -65,6 +66,50 @@ const fields = [
 const record = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+function validRelease(value: Record<string, unknown>): boolean {
+  const release = value.release;
+  if (!record(release)) return false;
+  if (
+    typeof release.actor !== 'string' ||
+    !ACTOR.test(release.actor) ||
+    typeof release.at !== 'string' ||
+    !Number.isFinite(Date.parse(release.at)) ||
+    value.result !== undefined
+  )
+    return false;
+  if (release.reason === 'preflight-failed')
+    return value.noSubmit === true && release.evidence === undefined;
+  if (
+    release.reason !== 'node-rejected' ||
+    value.noSubmit ||
+    !record(value.progress) ||
+    !record(value.request) ||
+    value.request.networkId !== 'undeployed' ||
+    value.request.color !== '00'.repeat(32)
+  )
+    return false;
+  const progress = value.progress;
+  const evidence = release.evidence;
+  return (
+    !!progress.preparationTxId &&
+    !progress.depositTxId &&
+    record(evidence) &&
+    Array.isArray(evidence.rejectedHashes) &&
+    evidence.rejectedHashes.length === 4 &&
+    evidence.rejectedHashes.every((hash) => typeof hash === 'string' && ADDRESS.test(hash)) &&
+    new Set(evidence.rejectedHashes).size === 4 &&
+    typeof evidence.nodeLogSha256 === 'string' &&
+    ADDRESS.test(evidence.nodeLogSha256) &&
+    typeof evidence.actionFrontierHash === 'string' &&
+    ADDRESS.test(evidence.actionFrontierHash) &&
+    evidence.observedBalance === progress.balanceBefore &&
+    typeof evidence.firstRejectionAt === 'string' &&
+    Number.isFinite(Date.parse(evidence.firstRejectionAt)) &&
+    typeof evidence.lastRejectionAt === 'string' &&
+    Number.isFinite(Date.parse(evidence.lastRejectionAt))
+  );
+}
+
 function validEntry(id: string, value: unknown): value is Entry {
   if (!UUID.test(id) || !record(value) || !record(value.request) || !DAY.test(String(value.day)))
     return false;
@@ -94,19 +139,7 @@ function validEntry(id: string, value: unknown): value is Entry {
   if (value.noSubmit !== undefined && value.noSubmit !== true) return false;
   if (value.noSubmit && (value.progress?.preparationTxId || value.progress?.depositTxId))
     return false;
-  if (value.release !== undefined) {
-    if (
-      !record(value.release) ||
-      typeof value.release.actor !== 'string' ||
-      !ACTOR.test(value.release.actor) ||
-      typeof value.release.at !== 'string' ||
-      !Number.isFinite(Date.parse(value.release.at)) ||
-      value.release.reason !== 'preflight-failed' ||
-      !value.noSubmit ||
-      value.result !== undefined
-    )
-      return false;
-  }
+  if (value.release !== undefined && !validRelease(value)) return false;
   if (value.reconciliation !== undefined) {
     if (
       !record(value.reconciliation) ||
@@ -238,21 +271,63 @@ function backup(file: string): string {
 const sameRequest = (a: ServiceWire.FundAccRequest, b: ServiceWire.FundAccRequest): boolean =>
   fields.every((field) => a[field] === b[field]);
 
+function withFundingLock<T>(file: string, work: () => T): T {
+  mkdirSync(dirname(file), { recursive: true, mode: 0o700 });
+  const lock = `${file}.lock`;
+  mkdirSync(lock, { mode: 0o700 });
+  try {
+    return work();
+  } finally {
+    rmdirSync(lock);
+  }
+}
+
+/** Preserve a rejected legacy request as a tombstone after exact operator reconciliation. */
+export async function releaseRejectedFundingReservation(
+  file: string,
+  requestId: string,
+  actor: string,
+  evidence: FundingRejectionEvidence,
+): Promise<void> {
+  withFundingLock(file, () => {
+    if (!ACTOR.test(actor)) throw new Error('operator identity is invalid');
+    const state = load(file);
+    const old = state.requests[requestId];
+    if (
+      !old ||
+      old.result ||
+      old.release ||
+      old.noSubmit ||
+      old.request.networkId !== 'undeployed' ||
+      old.request.color !== '00'.repeat(32) ||
+      !old.progress?.preparationTxId ||
+      old.progress.depositTxId ||
+      evidence.observedBalance !== old.progress.balanceBefore ||
+      evidence.rejectedHashes.length !== 4 ||
+      new Set(evidence.rejectedHashes).size !== 4 ||
+      evidence.rejectedHashes.some((hash) => !ADDRESS.test(hash)) ||
+      !ADDRESS.test(evidence.nodeLogSha256) ||
+      !ADDRESS.test(evidence.actionFrontierHash)
+    )
+      throw new Error('rejected-deposit evidence differs from the pending reservation');
+    const released: Entry = {
+      ...old,
+      release: { actor, at: new Date().toISOString(), reason: 'node-rejected', evidence },
+    };
+    if (!validEntry(requestId, released))
+      throw new Error('rejected-deposit evidence is not a valid durable record');
+    backup(file);
+    state.requests[requestId] = released;
+    save(file, state);
+  });
+}
+
 /**
  * Single-host reference store. An exclusive lock survives a crash: the operator must reconcile
  * wallet and chain state before removing it. Never run two replicas against separate files.
  */
 export function createFileFundingStore(file: string): FundingStore {
-  const lock = `${file}.lock`;
-  const withLock = <T>(work: () => T): T => {
-    mkdirSync(dirname(file), { recursive: true, mode: 0o700 });
-    mkdirSync(lock, { mode: 0o700 });
-    try {
-      return work();
-    } finally {
-      rmdirSync(lock);
-    }
-  };
+  const withLock = <T>(work: () => T): T => withFundingLock(file, work);
   return {
     async reserve(request, policy, utcDay) {
       return withLock(() => {
@@ -269,7 +344,9 @@ export function createFileFundingStore(file: string): FundingStore {
         if (old) {
           if (!sameRequest(old.request, request)) return { state: 'conflict' };
           if (old.result) return { state: 'complete', result: old.result };
-          return { state: old.release ? 'released' : 'pending' };
+          return old.release
+            ? { state: 'released', reason: old.release.reason }
+            : { state: 'pending' };
         }
         const amount = BigInt(request.amount);
         const spent = Object.values(state.requests)

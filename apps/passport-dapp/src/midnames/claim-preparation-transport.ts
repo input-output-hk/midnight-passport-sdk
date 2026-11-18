@@ -1,10 +1,12 @@
 import { isClaimSponsorOrigin } from './claim-dispatch.js';
-import { claimReceiptLimit } from './claim-receipt.js';
+import { claimReceiptLimit, type ClaimReceipt } from './claim-receipt.js';
 import { ClaimPreIntentRefusal, claimOwnerProof, type ClaimPreparation } from './claim-quote.js';
 
 export const claimQuotePath = '/v1/midnames/claim/quote';
 export const claimPreparePath = '/v1/midnames/claim/prepare';
 export const claimPreparedPath = '/v1/midnames/claim/prepared';
+export const claimRetirePath = '/v1/midnames/claim/retire-expired-unsent';
+export const claimStatusPath = '/v1/midnames/claim/dispatch-status';
 
 async function request(path: string, input: unknown): Promise<unknown> {
   const response = await fetch(path, {
@@ -52,5 +54,28 @@ export function createLocalClaimPreparation(prove: ClaimPreparation['prove']): C
     },
     findPrepared: (quote, ownerCommitment) =>
       request(claimPreparedPath, { quote, ownerCommitment }),
+    async dispatchStatus(receipt: ClaimReceipt) {
+      const result = await request(claimStatusPath, receipt);
+      if (
+        !result ||
+        typeof result !== 'object' ||
+        !('status' in result) ||
+        (result.status !== 'prepared' &&
+          result.status !== 'sent-or-unknown' &&
+          result.status !== 'retired')
+      )
+        throw new Error('The local sponsor did not confirm dispatch status.');
+      return result.status;
+    },
+    async retireExpiredUnsent(receipt: ClaimReceipt) {
+      const result = await request(claimRetirePath, receipt);
+      if (
+        !result ||
+        typeof result !== 'object' ||
+        !('status' in result) ||
+        result.status !== 'retired'
+      )
+        throw new Error('The local sponsor did not confirm retirement.');
+    },
   };
 }

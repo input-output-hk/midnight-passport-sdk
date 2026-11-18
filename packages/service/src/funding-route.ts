@@ -27,7 +27,8 @@ export interface FundingAssetPolicy {
 export type FundingReservation =
   | { readonly state: 'reserved' }
   | { readonly state: 'complete'; readonly result: ServiceWire.FundAccResponse }
-  | { readonly state: 'pending' | 'released' | 'conflict' | 'daily-limit' };
+  | { readonly state: 'released'; readonly reason: 'preflight-failed' | 'node-rejected' }
+  | { readonly state: 'pending' | 'conflict' | 'daily-limit' };
 
 /** Durable milestones for diagnosing an uncertain wallet outcome. */
 export type FundingProgress =
@@ -165,8 +166,14 @@ export function fundingRoute(options: FundingRouteOptions): Route {
       return true;
     }
     if (reservation.state === 'pending') throw new HttpError(409, 'funding request is pending');
-    if (reservation.state === 'released')
-      throw new HttpError(409, 'funding request was released; use a new request ID');
+    if (reservation.state === 'released') {
+      json(res, 409, {
+        requestId: request.requestId,
+        code: 'FundingRequestReleased',
+        submission: 'reconciled-no-credit',
+      });
+      return true;
+    }
     if (reservation.state === 'conflict') throw new HttpError(409, 'funding request ID was reused');
     if (reservation.state === 'daily-limit')
       throw new HttpError(429, 'daily funding limit reached');

@@ -107,6 +107,7 @@ export function openClaimDispatch(directory: string) {
 
   return {
     preparedReceipt: () => loadPrepared(preparedPath)?.receipt,
+    hasFence: (receipt: ClaimReceipt) => fenced(claimReceipt(receipt)),
     retain(bytes: Uint8Array, original: ClaimReceipt): void {
       const receipt = claimReceipt(original);
       checkBytes(bytes, receipt);

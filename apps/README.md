@@ -746,8 +746,10 @@ evidence. The demo remains one composition of these libraries.
 credentials, keeps its original ID for the wire and confirmation, and returns owned
 validated receipt fields. Only an explicit timeout bounds credentials through body
 observation; it never retries or invents an ID. See the library funding contract in
-`docs/site/service.md`. The demo's proxy, allowlist, wallet and reservation recovery
-policy are unchanged; an observation failure still needs original-ID reconciliation.
+`docs/site/service.md`. An observation failure still needs original-ID
+reconciliation. After an operator verifies an uncredited local request and
+tombstones it, the proxy forwards only the exact reconciliation receipt. The
+browser clears that old ID on the next click; another click starts a new deposit.
 
 Synthetic browser receipts now include monotonic setup, per-arm, checkpoint and
 cleanup timings, plus owned page/context counts. Checkpoint intervals include
@@ -1053,7 +1055,11 @@ bound to both. After a lost response the original credential can recover or
 import that receipt. A known sponsor refusal before any balance intent releases
 the rejected quote for fresh review; an uncertain response retains it. Imported
 receipts without a matching saved quote are reconciliation-only. A send first
-shows the saved price, payee, fee ceiling and expiry, then requires confirmation.
+shows the saved price, payee, fee ceiling and expiry without submitting, then
+requires confirmation. Checking the original reads the sponsor's dispatch fence
+as well as the indexer: an unfenced receipt is displayed as prepared but unsent.
+An expired unfenced preparation can be verified and archived by the local
+sponsor before reviewing a new quote.
 The quote pins the sponsor payment wallet; NIGHT inputs and change must use
 that wallet. It also pins the registered domain's future subdomain payment
 address. The sponsor HTTP route requires a prepared, quote-bound receipt.
@@ -1110,7 +1116,8 @@ preview does not establish name-owner recovery after total credential loss.
 It also checks availability against the configured registry and verifies the
 open ACC's binding. A retained receipt takes precedence over availability.
 The sponsor prepares the claim separately. The opt-in loopback fixture lets
-the user acknowledge a saved receipt with **Send prepared claim**. See the
+the user acknowledge a saved receipt with **Review terms before send**, then
+**Confirm reviewed terms and send**. See the
 [receipt and recovery flow](../docs/site/names.md#recover-the-sponsors-original-claim-in-the-demo).
 
 ### Standalone shielded deposit by name
