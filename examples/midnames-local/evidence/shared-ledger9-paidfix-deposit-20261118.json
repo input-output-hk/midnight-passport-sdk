@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "evidenceScope": "shared local undeployed Ledger 9; automated sender browser approval; saved development mock-passkey owner; source qualification only",
+  "chain": {
+    "networkId": "undeployed",
+    "genesisHash": "0x823383ec0302be8417cfcbcc62f21df08f4047bca37aaea89e3f54b550ebae1d",
+    "nodeVersion": "2.1.101-86774edf",
+    "ledgerVersion": "1.0.1",
+    "indexerApi": "v4",
+    "proofServerVersion": "9.0.0-rc.8"
+  },
+  "registry": {
+    "profile": "standalone-0.35",
+    "preparedManifestSha256": "ec909b1ab3bebce4470f3c2e9ea6514251ce4e8941f6478459c1f01a8f70de2a",
+    "address": "90e8734cc3ddc8aaf649b969ecfb61828f75d580725670a0718ed19a8f4a8fe0",
+    "name": "paidfix.night",
+    "claimSourceCommit": "3c9f998e4dc2f77e870db953ea5974d787f0b2c9",
+    "claimIdentifiers": [
+      "00d22a24c7212caaba14b098940e090814a1b97a1db784887fedf99b873d0be109",
+      "00b6d6892342e131acc435312d2b89cd9311805d4bf0b708a408d7fdb1bbe2129b"
+    ],
+    "claimBlock": {
+      "hash": "7916985f801111e7320f2a54225dad05a9a7e6ad44cb36977b7f1a232218a369",
+      "height": 3696
+    }
+  },
+  "recipient": {
+    "bindingId": "acc-s3r1.1",
+    "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+    "address": "efc52cee363c11201b4e9ae7854050f734987d54e01b576a17e3300f24e27f47"
+  },
+  "sender": {
+    "sourceCommit": "8165c73b6f9a8be62d181770fea0530118fa3217",
+    "workspaceSha256": "8604f73b04ae446cfdaae33fc0b4a695deef429b72836e766f62b738c8b654d6",
+    "circuit": "deposit_shielded",
+    "reviewedProviderId": "midnames:90e8734cc3ddc8aaf649b969ecfb61828f75d580725670a0718ed19a8f4a8fe0",
+    "reviewedAccountAddress": "efc52cee363c11201b4e9ae7854050f734987d54e01b576a17e3300f24e27f47",
+    "assetColor": "b5d10d87591dabbac699ccb6c82812e42a8766f843d000252454dd57587f1330",
+    "amountSmallestUnits": "10",
+    "browserReview": "automated approve",
+    "transactionHash": "8a7bfa17179ad53f8783982d7e1988e374aa8b98b771d77f13405e7a9fd74152",
+    "identifiers": [
+      "00f80ca84cf23a453bd189e95e2aad3dcc74305a2238d9fd76872fea9f103403cc",
+      "000c7641cdecab48826172c6762a793e09b0f30ff3013476866f582aa88c6bdc2d",
+      "0005dece7481a6f1f7ac05dbbb4a756dff401dadc350e6f2c33ab366f9a6824dc1",
+      "00926946038f01cc32a949e9fa712c3139f92895ab17df9c674270a9eeaa35e5cc"
+    ],
+    "blockHeight": 5361,
+    "dispatches": 1,
+    "walletStopped": true,
+    "inputsUnchanged": true,
+    "ownedCleanupComplete": true,
+    "leaseReleased": true,
+    "deletionCreditBytes": {
+      "circuit": "deposit_shielded",
+      "declaredDeleted": "216",
+      "provedDeleted": "0"
+    }
+  },
+  "owner": {
+    "source": "saved local mock-passkey profile",
+    "openedAccountAddress": "efc52cee363c11201b4e9ae7854050f734987d54e01b576a17e3300f24e27f47",
+    "chainVerifiedHolding": true,
+    "inboxIndex": 2,
+    "assetColor": "b5d10d87591dabbac699ccb6c82812e42a8766f843d000252454dd57587f1330",
+    "amountSmallestUnits": "10"
+  },
+  "rejectedOriginal": {
+    "status": "RECONCILED_REJECTED",
+    "originalHash": "c44603311e825686bb046f8913085a2d8f3079b495dfbf66d3c5aefb6d9a25c1",
+    "lastIntentExpiry": "2026-11-17T23:32:40.000Z",
+    "absenceFinalizedBlock": 5337,
+    "leaseReleased": true
+  },
+  "limits": [
+    "local transitional .night registry, not public passport.night",
+    "automated browser approval, not human consent",
+    "development mock passkey, not real authenticator",
+    "one local indexer/prover profile, not online provider substitution"
+  ]
+}

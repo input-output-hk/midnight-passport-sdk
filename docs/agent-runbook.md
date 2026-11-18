@@ -43,6 +43,15 @@ and browser profile. It uses the local development chain's public genesis
 sponsor by default; coordinate exclusive use across sessions. Online profiles
 require an explicitly configured funded sponsor seed.
 
+For a shared demo, stop the wrapper and wait for
+`midnight-shared-state: finished` and
+`midnight-shared-sponsor-lease: released` before another use of
+the genesis wallet. The wrapper signals the shared launcher; that launcher
+stops its page child, drains the service, then advances the chain anchor and
+releases the exact sponsor lease. If either marker remains active, preserve
+its original receipt and reconcile the stopped processes and canonical chain
+before reuse. Closed ports alone do not release a retained lease.
+
 
 ## Demo setup and launch
 

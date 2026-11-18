@@ -448,6 +448,80 @@ volumes and released the lease. Automated clicking demonstrates page rendering
 and operation order; it does not establish human approval, an online provider,
 public `passport.night`, or MIP-0007 delegated routing.
 
+### Deposit to an existing named ACC on shared Ledger 9
+
+`qualify-shared-deposit.mjs` uses an already activated ACC and an already claimed
+local `.night` name on the designated shared chain. It does not deploy either
+contract. Its separate sender process opens the public local genesis wallet,
+mints 10 smallest units of a new synthetic shielded asset, shows the resolved
+ACC and payment in a localhost browser review, then calls `deposit_shielded`.
+It retains the original transaction bytes and IDs before its one dispatch.
+The recipient's passkey, viewing key and naming secret stay outside the sender.
+
+First attach with `nix develop -c bash scripts/midnight-attach.sh`. Confirm the
+name, registry and ACC from their original receipts, keep the shared sponsor
+wallet unused by another session, and start only the
+[digest-pinned compatibility prover](../../infra/localnet/README.md#isolated-prover-for-the-pinned-compact-035-acc)
+on port 16320 with a fresh project name. The fixture requires a clean signed
+source, a free native lease, 15 GiB of disk space, the pinned prepared registry
+and ACC artifacts, and API v4 indexer endpoints. For example, from this SDK
+checkout, set `REGISTRY_CONTRACT_ADDRESS` and `ACC_CONTRACT_ADDRESS` to the
+64-hex values in **your** shared-chain receipts and use their prepared paths:
+
+```sh
+export PASSPORT_COMPAT_PROVER_PROJECT=midnight-passport-compat-deposit-my-run
+export PASSPORT_COMPAT_PROVER_PORT=16320
+nix develop -c docker compose -p "$PASSPORT_COMPAT_PROVER_PROJECT" \
+  -f infra/localnet/docker-compose.compat-prover.yml up -d --no-build --pull never proof-server
+
+PASSPORT_MIDNAMES_SHARED_DEPOSIT=1 PASSPORT_MIDNAMES_APPROVED_NAME=alice.night \
+PASSPORT_RC_LOCALNET=1 MIDNIGHT_NETWORK=local MN_NETWORK_ID=undeployed \
+MN_NODE_URL=http://127.0.0.1:9944 \
+MN_INDEXER_URL=http://127.0.0.1:8088/api/v4/graphql \
+MN_INDEXER_WS_URL=ws://127.0.0.1:8088/api/v4/graphql/ws \
+MN_PROOF_SERVER_URL=http://127.0.0.1:16320 \
+nix develop -c pnpm --filter passport-dapp exec node --import tsx \
+  --experimental-import-meta-resolve \
+  "$PWD/examples/midnames-local/qualify-shared-deposit.mjs" \
+  "$PWD/review/midnames-shared-deposit-my-run" \
+  /absolute/path/to/prepared-registry \
+  /absolute/path/to/acc-reference/contract \
+  "$REGISTRY_CONTRACT_ADDRESS" "$ACC_CONTRACT_ADDRESS" alice.night
+```
+
+A `SENDER_PASS` receipt proves the one original sender transaction finalized,
+the name stayed bound, inputs were unchanged, the sender wallet stopped and the
+native lease was released. It is not yet an owner receipt. Reopen the **same**
+ACC with its saved passkey profile in the reference demo, choose **Passport
+account → Balances → Read shielded holdings**, and match the displayed inbox
+index, full asset color and amount to `sender/sender.json`. Only the owner can
+open that sealed inbox; keep the browser profile and private screenshot outside
+Git. The [redacted shared-chain result](evidence/shared-ledger9-paidfix-deposit-20261118.json)
+records a finalized `paidfix.night` send and the matching mock-passkey owner
+holding on one local chain. It does not qualify a human approval, real
+authenticator, online provider, or public `passport.night` name.
+
+If a run fails, preserve its receipt and any prepared
+`sender/deposit.private.bin`; do not submit a replacement while the native
+lease is retained. Run `reconcile-shared-deposit.mjs` with that run's absolute
+receipt directory, first without and then, only for a confirmed
+`RECONCILED_PREPROOF`, `RECONCILED_REJECTED` or `RECONCILED_LANDED` outcome,
+with `--release`. The preproof lane requires no prepared original and a stopped
+sender. A prepared original needs a later canonical finalized block after its
+**latest** intent TTL before it can be called rejected. The landed lane checks
+the exact saved bytes, every original identifier, success and canonical block.
+All lanes recheck the name, ACC, unchanged inputs and owned cleanup; an
+ambiguous original or incomplete cleanup remains fenced. Stop only your
+compatibility prover
+project, without `-v`:
+
+```sh
+nix develop -c docker compose -p "$PASSPORT_COMPAT_PROVER_PROJECT" \
+  -f infra/localnet/docker-compose.compat-prover.yml down
+```
+
+Do not stop the shared project.
+
 ## Run the named ACC-to-ACC NIGHT payment
 
 Use the same command with a fresh output name beginning with
