@@ -1,4 +1,4 @@
-// Reconcile one rejected shared-chain deposit from its retained original bytes.
+// Reconcile one failed shared-chain deposit without replacing its original receipt.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
@@ -37,23 +37,50 @@ assert.ok(parent.leasePin);
 assert.equal(sender.scope, 'shared-ledger9');
 assert.equal(sender.name, parent.name);
 assert.equal(sender.registryAddress, parent.registryAddress);
-assert.equal(sender.review.accountAddress, parent.accountAddress);
 assert.equal(sender.walletStopped, true);
-assert.equal(sender.reviewDecision, 'approved');
-assert.equal(sender.dispatches, 1);
-assert.equal(sender.submissionId, undefined);
-assert.equal(sender.txHash, undefined);
-assert.ok(Array.isArray(sender.identifiers) && sender.identifiers.length > 0);
-const bytes = readFileSync(join(directory, 'sender', 'deposit.private.bin'));
+assert.ok(sender.dispatches === 0 || sender.dispatches === 1);
+if (sender.review) {
+  assert.equal(sender.review.accountAddress, parent.accountAddress);
+  assert.equal(sender.review.registryAddress, parent.registryAddress);
+  assert.equal(sender.review.operation, 'deposit_shielded');
+  assert.equal(sender.review.name, parent.name);
+  assert.equal(sender.review.networkId, 'undeployed');
+}
+if (sender.reviewDecision === 'declined') assert.equal(sender.dispatches, 0);
+if (sender.dispatches === 0) {
+  assert.equal(sender.submissionId, undefined);
+  assert.equal(sender.txHash, undefined);
+}
+const originalPath = join(directory, 'sender', 'deposit.private.bin');
+const prepared = sender.preparedSha256 !== undefined;
+assert.equal(existsSync(originalPath), prepared, 'Prepared original bytes and receipt disagree.');
+assert.equal(sender.identifiers !== undefined, prepared);
+if (sender.dispatches === 1) assert.equal(prepared, true);
+if (!prepared) {
+  assert.equal(sender.passed, undefined);
+  assert.equal(sender.txHash, undefined);
+}
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
-assert.equal(sha256(bytes), sender.preparedSha256);
-const requireFromApp = createRequire(join(root, 'apps/passport-dapp/package.json'));
-const { Transaction } = requireFromApp('@midnightntwrk/ledger-v9');
-const original = Transaction.deserialize('signature', 'proof', 'binding', bytes);
-assert.deepEqual(original.identifiers(), sender.identifiers);
-const ttls = [...original.intents.values()].map(({ ttl }) => ttl.getTime());
-assert.ok(ttls.length > 0 && ttls.every(Number.isSafeInteger));
-const expiresAt = Math.max(...ttls);
+let original;
+let expiresAt;
+let originalBytes;
+if (prepared) {
+  assert.match(sender.preparedSha256, /^[a-f0-9]{64}$/);
+  assert.ok(Array.isArray(sender.identifiers) && sender.identifiers.length > 0);
+  assert.equal(sender.reviewDecision, 'approved');
+  assert.ok(sender.review);
+  if (sender.submissionId !== undefined)
+    assert.ok(sender.identifiers.includes(sender.submissionId));
+  originalBytes = readFileSync(originalPath);
+  assert.equal(sha256(originalBytes), sender.preparedSha256);
+  const requireFromApp = createRequire(join(root, 'apps/passport-dapp/package.json'));
+  const { Transaction } = requireFromApp('@midnightntwrk/ledger-v9');
+  original = Transaction.deserialize('signature', 'proof', 'binding', originalBytes);
+  assert.deepEqual(original.identifiers(), sender.identifiers);
+  const ttls = [...original.intents.values()].map(({ ttl }) => ttl.getTime());
+  assert.ok(ttls.length > 0 && ttls.every(Number.isSafeInteger));
+  expiresAt = Math.max(...ttls);
+}
 const nodeUrl = 'http://127.0.0.1:9944';
 const indexerUrl = 'http://127.0.0.1:8088/api/v4/graphql';
 const post = async (url, body) => {
@@ -75,6 +102,14 @@ assert.equal(
   await rpc('chain_getBlockHash', [0]),
   '0x823383ec0302be8417cfcbcc62f21df08f4047bca37aaea89e3f54b550ebae1d',
 );
+if (parent.finalizedBeforeHeight !== undefined) {
+  assert.ok(Number.isSafeInteger(parent.finalizedBeforeHeight));
+  assert.equal(
+    await rpc('chain_getBlockHash', [parent.finalizedBeforeHeight]),
+    '0x' + parent.finalizedBefore,
+    'The original finalized chain anchor changed.',
+  );
+}
 const before = await dedicatedIndexerReadiness({ nodeUrl, indexerUrl });
 assert.ok(before.ready);
 const block = (
@@ -85,17 +120,47 @@ const block = (
 ).data.block;
 assert.equal(block.hash, before.finalizedHash.replace(/^0x/, ''));
 assert.equal(block.height, before.finalizedHeight);
-assert.ok(block.timestamp > expiresAt, 'Wait for finality after the longest original intent TTL.');
 const query =
-  'query($offset:TransactionOffset!){transactions(offset:$offset){__typename hash block{hash height} ... on RegularTransaction{identifiers transactionResult{status}}}}';
-const absent = async () => {
+  'query($offset:TransactionOffset!){transactions(offset:$offset){__typename protocolVersion raw hash block{hash height} ... on RegularTransaction{identifiers transactionResult{status}}}}';
+const observe = async () => {
+  if (!prepared) return { kind: 'preproof' };
+  const observed = [];
   for (const identifier of sender.identifiers) {
     const rows = (await post(indexerUrl, { query, variables: { offset: { identifier } } })).data
       .transactions;
-    assert.deepEqual(rows, [], 'An original deposit identifier is indexed.');
+    assert.ok(Array.isArray(rows) && rows.length <= 1, 'Ambiguous original identifier.');
+    observed.push(rows[0]);
   }
+  if (observed.every((row) => row === undefined)) return { kind: 'absent' };
+  assert.ok(observed.every(Boolean), 'Only some original identifiers are indexed.');
+  const hash = original.transactionHash();
+  for (const row of observed) {
+    assert.equal(row.__typename, 'RegularTransaction');
+    assert.equal(row.protocolVersion, 2001100);
+    assert.equal(row.transactionResult.status, 'SUCCESS');
+    assert.equal(row.hash, hash);
+    assert.match(row.raw, /^(?:[a-f0-9]{2})+$/);
+    assert.equal(sha256(Buffer.from(row.raw, 'hex')), sender.preparedSha256);
+    assert.deepEqual(row.identifiers, sender.identifiers);
+    assert.ok(row.block.height <= before.finalizedHeight);
+    assert.equal(await rpc('chain_getBlockHash', [row.block.height]), '0x' + row.block.hash);
+  }
+  const first = observed[0];
+  assert.ok(observed.every((row) => row.block.hash === first.block.hash));
+  if (sender.txHash !== undefined) assert.equal(sender.txHash, hash);
+  if (sender.blockHeight !== undefined) assert.equal(sender.blockHeight, first.block.height);
+  return { kind: 'landed', hash, block: first.block };
 };
-await absent();
+const observed = await observe();
+if (observed.kind === 'landed') assert.equal(sender.dispatches, 1);
+if (observed.kind === 'absent') {
+  assert.equal(sender.txHash, undefined, 'Sender recorded a finalized transaction.');
+  assert.equal(sender.passed, undefined);
+  assert.ok(
+    block.timestamp > expiresAt,
+    'Wait for finality after the longest original intent TTL.',
+  );
+}
 const reads = createMidnamesLedgerReads(
   createMidnamesIndexer('undeployed', indexerUrl, 'ws://127.0.0.1:8088/api/v4/graphql/ws'),
   'undeployed',
@@ -113,13 +178,33 @@ assert.equal(claim.ownerCommitment, parent.ownerCommitment);
 assert.ok(await reads.isSupportedAccount(parent.accountAddress, 'undeployed'));
 const after = await dedicatedIndexerReadiness({ nodeUrl, indexerUrl });
 assert.ok(after.ready && after.finalizedHeight >= before.finalizedHeight);
-await absent();
+const again = await observe();
+assert.deepEqual(again, observed, 'Original transaction outcome changed during reconciliation.');
+const current = await reads.readClaim(parent.name, {
+  networkId: 'undeployed',
+  namespace: 'night',
+  registryAddress: parent.registryAddress,
+});
+assert.deepEqual(current, claim, 'Name binding changed during reconciliation.');
+assert.ok(await reads.isSupportedAccount(parent.accountAddress, 'undeployed'));
+const status =
+  observed.kind === 'preproof'
+    ? 'RECONCILED_PREPROOF'
+    : observed.kind === 'landed'
+      ? 'RECONCILED_LANDED'
+      : 'RECONCILED_REJECTED';
 const result = {
-  status: 'RECONCILED_REJECTED',
+  status,
   sourceReceipt: join(directory, 'shared-deposit.json'),
-  originalHash: original.transactionHash(),
-  originalIdentifiers: sender.identifiers,
-  expiresAt: new Date(expiresAt).toISOString(),
+  ...(prepared && {
+    originalHash: original.transactionHash(),
+    originalIdentifiers: sender.identifiers,
+    expiresAt: new Date(expiresAt).toISOString(),
+  }),
+  ...(observed.kind === 'landed' && {
+    landedBlock: observed.block,
+    senderFinalized: sender.passed === true,
+  }),
   finalizedBlock: block,
   name: parent.name,
   registryAddress: parent.registryAddress,
@@ -144,7 +229,7 @@ if (prior) {
     },
     pending,
   );
-  assert.ok(prior.finalizedBlock.timestamp > expiresAt);
+  if (observed.kind === 'absent') assert.ok(prior.finalizedBlock.timestamp > expiresAt);
   assert.ok(prior.finalizedBlock.height <= after.finalizedHeight);
   assert.equal(
     await rpc('chain_getBlockHash', [prior.finalizedBlock.height]),

@@ -501,14 +501,18 @@ records a finalized `paidfix.night` send and the matching mock-passkey owner
 holding on one local chain. It does not qualify a human approval, real
 authenticator, online provider, or public `passport.night` name.
 
-If a submission fails or becomes uncertain, preserve its receipt and
+If a run fails, preserve its receipt and any prepared
 `sender/deposit.private.bin`; do not submit a replacement while the native
-lease is retained. After the **latest** original intent TTL and a later
-canonical finalized block, run `reconcile-shared-deposit.mjs` with that run's
-absolute receipt directory, first without and then, only if it reports
-`RECONCILED_REJECTED`, with `--release`. It checks every original identifier
-twice through the v4 indexer and rechecks the name and ACC. An indexed or
-ambiguous original remains fenced. Stop only your compatibility prover
+lease is retained. Run `reconcile-shared-deposit.mjs` with that run's absolute
+receipt directory, first without and then, only for a confirmed
+`RECONCILED_PREPROOF`, `RECONCILED_REJECTED` or `RECONCILED_LANDED` outcome,
+with `--release`. The preproof lane requires no prepared original and a stopped
+sender. A prepared original needs a later canonical finalized block after its
+**latest** intent TTL before it can be called rejected. The landed lane checks
+the exact saved bytes, every original identifier, success and canonical block.
+All lanes recheck the name, ACC, unchanged inputs and owned cleanup; an
+ambiguous original or incomplete cleanup remains fenced. Stop only your
+compatibility prover
 project, without `-v`:
 
 ```sh

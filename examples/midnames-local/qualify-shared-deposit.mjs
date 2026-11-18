@@ -115,6 +115,7 @@ const receipt = {
   accountAddress,
   ownerCommitment: claim.ownerCommitment,
   finalizedBefore: initial.finalizedHash,
+  finalizedBeforeHeight: initial.finalizedHeight,
   proofVersion,
   preparedManifestSha256: createHash('sha256')
     .update(readFileSync(join(prepared, 'prepared.json')))
@@ -211,6 +212,10 @@ try {
 } finally {
   deadline.abort('Shared named deposit finalizing');
   receipt.cleanup = await processes.stop(10_000);
+  if (receipt.cleanup.incomplete) {
+    receipt.status = 'FAIL';
+    receipt.cleanupError = 'Owned sender process did not close';
+  }
   try {
     if (inputs) {
       await inputs.verify(() => assert.ok(deadline.cleanupRemaining() > 0));
@@ -235,3 +240,6 @@ try {
   save();
 }
 assert.equal(receipt.status, 'SENDER_PASS');
+assert.equal(receipt.cleanup.incomplete, false);
+assert.equal(receipt.inputsUnchanged, true);
+assert.equal(receipt.leaseReleased, true);
