@@ -478,10 +478,6 @@ async function startClaimHost(options, claim, env) {
   const journal = join(options.stateDir, 'claim-journal');
   privateState(journal);
   const args = [
-    '--filter',
-    'passport-dapp',
-    'exec',
-    'node',
     '--experimental-import-meta-resolve',
     '--import',
     'tsx',
@@ -494,7 +490,13 @@ async function startClaimHost(options, claim, env) {
     String(sponsorPort),
     String(ownerPort),
   ];
-  const child = spawn('pnpm', args, { cwd: root, env, stdio: ['ignore', 'pipe', 'inherit'] });
+  // Keep the wallet process as our direct child. A pnpm wrapper can exit while
+  // its Node grandchild still holds the sponsor wallet and claim journal.
+  const child = spawn('node', args, {
+    cwd: join(root, 'apps/passport-dapp'),
+    env,
+    stdio: ['ignore', 'pipe', 'inherit'],
+  });
   let output = '';
   try {
     await new Promise((done, reject) => {
@@ -705,6 +707,8 @@ async function demo(options, claim) {
     if (outcome.code !== 0 && !interrupted)
       throw new Error(`Demo exited ${outcome.code ?? outcome.signal}.`);
   } finally {
+    /** @type {string[]} */
+    const cleanupErrors = [];
     if (claimHost) {
       const host = claimHost;
       host.child.kill('SIGINT');
@@ -714,12 +718,17 @@ async function demo(options, claim) {
         setTimeout(() => done(undefined), 15_000).unref();
       });
       if (host.child.exitCode === null && host.child.signalCode === null)
-        throw new CleanupUnconfirmedError(
-          'Claim host did not confirm shutdown; preserve its journal and launcher lock.',
-        );
+        cleanupErrors.push('Claim host did not confirm shutdown; preserve its journal.');
     }
-    if (prover.started && prover.project && prover.containerIds)
-      stopRecordedContainers(prover.project, prover.containerIds);
+    if (prover.started && prover.project && prover.containerIds) {
+      try {
+        stopRecordedContainers(prover.project, prover.containerIds);
+      } catch (error) {
+        cleanupErrors.push(`Owned compatibility prover did not confirm shutdown: ${String(error)}`);
+      }
+    }
+    if (cleanupErrors.length)
+      throw new CleanupUnconfirmedError(`${cleanupErrors.join(' ')} Preserve the launcher lock.`);
   }
 }
 

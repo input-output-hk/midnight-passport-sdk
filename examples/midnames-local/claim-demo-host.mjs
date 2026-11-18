@@ -21,7 +21,6 @@ const indexerWsUrl = 'ws://127.0.0.1:8088/api/v4/graphql/ws';
 const nodeUrl = 'http://127.0.0.1:9944';
 const proverUrl = 'http://127.0.0.1:16320';
 const origin = 'http://localhost:5173';
-const ownerAddress = '33'.repeat(32);
 const maximumDust = 100_000_000_000_000_000n;
 const address = /^[0-9a-f]{64}$/;
 const safeRefusals = new Set([
@@ -99,6 +98,9 @@ try {
   await walletModule.syncWallet(wallet, 'local Midnames claim sponsor');
   const providers = await walletModule.createProviders(wallet);
   const sponsorPaymentAddress = hex(walletModule.userAddressBytes(wallet));
+  // The registry stores this as the domain owner and future subdomain payee.
+  // Use an address actually controlled by the dedicated local sponsor wallet.
+  const domainOwnerAddress = sponsorPaymentAddress;
   const walletKeys = {
     coin: hex(await providers.walletProvider.getCoinPublicKey()),
     encryption: hex(await providers.walletProvider.getEncryptionPublicKey()),
@@ -152,7 +154,7 @@ try {
     {
       networkId,
       registryAddress,
-      sponsorAddress: ownerAddress,
+      sponsorAddress: domainOwnerAddress,
       indexerUrl,
       indexerWsUrl,
       walletKeys,
@@ -179,7 +181,7 @@ try {
         return {
           ...claimDestination(destination),
           id: randomBytes(32).toString('hex'),
-          sponsorAddress: ownerAddress,
+          sponsorAddress: domainOwnerAddress,
           sponsorPaymentAddress,
           registryPayee: terms.payee,
           night: String(terms.night),
@@ -190,7 +192,7 @@ try {
       async authorizeQuote(quote) {
         const terms = await live(quote);
         if (
-          quote.sponsorAddress !== ownerAddress ||
+          quote.sponsorAddress !== domainOwnerAddress ||
           quote.sponsorPaymentAddress !== sponsorPaymentAddress ||
           quote.registryPayee !== terms.payee ||
           quote.night !== String(terms.night) ||

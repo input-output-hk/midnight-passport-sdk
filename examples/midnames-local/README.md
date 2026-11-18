@@ -88,7 +88,10 @@ owner bundle are ready. It retains one original claim journal in this demo state
 directory. Reusing that journal for a different name or account refuses; preserve
 it for recovery. The sponsor wallet, funding wallet and ACC fee sponsor have
 distinct seeds, and the browser never receives either sponsor seed. This local
-standalone `.night` profile does not issue public `passport.night` names.
+standalone `.night` profile does not issue public `passport.night` names. The
+registered domain's future subdomain payment address is the dedicated local
+claim sponsor's controlled unshielded address; retain that wallet seed with the
+registry state if demonstrating later subdomain purchases.
 
 ### When no shared stack is running
 
