@@ -77,10 +77,10 @@ deposits up to 10 smallest units of the selected allowlisted asset from the sepa
 wallet. A NIGHT deposit first splits an exact-value UTXO in the funding wallet,
 then calls the ACC's `deposit_unshielded` circuit with measured Ledger 9
 deletion credit. The finalized transaction hash is journaled before node
-submission. A prior localnet qualification credited 10 units; the legacy
-reference call was later rejected with gas error 104 on the shared stack. The
-measured funding-service call still needs a fresh native confirmation. It appears only when the demo was
-started with `--funding` and is enabled only while an ACC
+submission. The legacy reference call was rejected with gas error 104 on the
+shared stack. A fresh native measured funding-service call confirmed 10 units
+of ACC NIGHT credit on that stack on 2026-11-18. It appears only when the demo
+was started with `--funding` and is enabled only while an ACC
 is open. The account card reads the ACC's unshielded NIGHT and test-token balances separately, and
 shows the confirmed transaction. For NIGHT, the response and copied operation log also include
 the wallet self-transfer transaction ID. The browser never receives
