@@ -140,14 +140,28 @@ export function exactNightBridgeOutput(
 export function hasExactNightBridgeCoin(
   available: readonly { readonly utxo: LedgerCoin }[],
   expected: NightBridgeOutput,
+  encodedOwner?: string,
 ): boolean {
+  const owner = (value: unknown) => {
+    if (typeof value === 'string' && HEX.test(value)) return value;
+    if (
+      value &&
+      typeof value === 'object' &&
+      'hexString' in value &&
+      typeof value.hexString === 'string' &&
+      HEX.test(value.hexString)
+    )
+      return value.hexString;
+    return String(value);
+  };
   const matches = available.filter(
     ({ utxo }) =>
       utxo.intentHash === expected.intentHash &&
       utxo.outputNo === expected.outputNo &&
       utxo.value === expected.value &&
       utxo.type === expected.type &&
-      utxo.owner === expected.owner,
+      (owner(utxo.owner) === expected.owner ||
+        (encodedOwner !== undefined && owner(utxo.owner) === encodedOwner)),
   );
   if (matches.length > 1) throw new Error('Ambiguous original NIGHT wallet output.');
   return matches.length === 1;

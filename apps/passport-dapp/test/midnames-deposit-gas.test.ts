@@ -186,15 +186,14 @@ test('ACC NIGHT funding keeps its exact call and earned deletion credit', async 
     measuredAccNightDeletionCredit(overclaimed, state, parameters, address),
     measured.bytesDeleted,
   );
-  assert.throws(
-    () =>
-      measuredAccNightDeletionCredit(
-        { ...overclaimed, gas: { ...overclaimed.gas, bytesDeleted: measured.bytesDeleted - 1n } },
-        state,
-        parameters,
-        address,
-      ),
-    /outside the declared budget/,
+  assert.equal(
+    measuredAccNightDeletionCredit(
+      { ...overclaimed, gas: { ...overclaimed.gas, bytesDeleted: measured.bytesDeleted - 1n } },
+      state,
+      parameters,
+      address,
+    ),
+    measured.bytesDeleted,
   );
   const originalCall = new ledger.ContractCallPrototype(
     address,

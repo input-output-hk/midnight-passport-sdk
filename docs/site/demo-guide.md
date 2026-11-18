@@ -63,8 +63,9 @@ loopback endpoints. The form reviews the resolved ACC and two operations before
 the actual owner credential call. A pending original remains visible for
 reconciliation, and an owner attempt without a transaction ID blocks automatic
 retry. See the [app configuration](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/README.md#source-preview-opt-in-local-named-night-send)
-and [naming limits]({{ '/names/' | relative_url }}). This page wiring has source
-checks only; a connected native payment and real-provider acceptance remain open.
+and [naming limits]({{ '/names/' | relative_url }}). A connected local Ledger 9
+browser run finalized both original payment legs and recovered the same request
+after reload. Real-provider acceptance and an online profile remain open.
 
 ## Enter and navigate
 
@@ -147,6 +148,11 @@ separate guarded internal NIGHT deposit methods. The page
 validates unknown replies before rendering and ignores completions after stop or
 scope replacement. NIGHT and DUST have separate progress/status; unavailable DUST
 does not turn NIGHT into zero.
+
+The local named NIGHT preview also exposes **Enable DUST generation** for a funded
+built-in wallet. This submits a separate wallet-held NIGHT registration after
+review and records its original transaction identity before dispatch. A pending
+registration must be reconciled from that original before another is prepared.
 
 The demo selects a **150,000 ms** client timeout for wallet requests, overriding the
 library's **120,000 ms** default, and retains the default **16** pending requests.

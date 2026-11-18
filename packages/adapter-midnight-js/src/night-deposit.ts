@@ -37,7 +37,7 @@ export interface UnboundNightDepositRequest {
   readonly prover: Prover;
 }
 
-/** The pinned Compact 0.35 call may claim only the bytes this state actually deletes. */
+/** Replace Compact 0.35's padded or short deletion credit with the measured value. */
 export function measuredAccNightDeletionCredit(
   transcript: Parameters<QueryContext['runTranscript']>[0],
   state: ContractState,
@@ -52,8 +52,6 @@ export function measuredAccNightDeletionCredit(
     typeof part === 'object' && 'popeq' in part ? { popeq: { ...part.popeq, result: null } } : part,
   );
   const credit = context().query(gather, model).gasCost.bytesDeleted;
-  if (credit <= 0n || credit > transcript.gas.bytesDeleted)
-    throw new Error('The pinned NIGHT deposit deletion credit is outside the declared budget.');
   context().runTranscript(
     { ...transcript, gas: { ...transcript.gas, bytesDeleted: credit } },
     model,
@@ -201,8 +199,8 @@ export async function proveUnboundNightDeposit(
   );
   if (!captured.snapshot) throw new Error('The named NIGHT recipient ACC is absent.');
   const [, state, parameters] = captured.snapshot;
-  // Compact 0.35 pads deleted bytes on this Ledger 9 profile. The ACC NIGHT
-  // deposit needs its earned credit, so measure it against the same indexed
+  // Compact 0.35 can pad or understate deleted bytes on this Ledger 9 profile.
+  // The ACC NIGHT deposit needs its earned credit, so measure it against the same indexed
   // state and cost model before proving the exact call.
   const unprovenTx = rebuildMeasuredDeposit(callData, state, parameters, target, network.networkId);
   const proven = await prover.proveTx(unprovenTx.serialize(), {

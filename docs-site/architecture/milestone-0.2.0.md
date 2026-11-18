@@ -71,13 +71,24 @@ per source ACC and network on the demo origin, credential-scoped retention,
 transactional per-leg fences and finality-gated archival of original IDs.
 Cross-tab/reload and corrupt-state checks pass with a synthetic IndexedDB.
 The opt-in local demo owner-send UI and two-leg host adapter now use it; the
-browser storage path has no native or provider qualification.
+browser storage path had no native or provider qualification at that slice.
 
 The next source-only slice adds an opt-in finalized-ID callback for P-256 and
 JubJub unshielded owner withdrawals. The standard Midnight adapter awaits the
 host's fence before dispatch and other adapters refuse the opt-in call before
 owner signing. The opt-in local reference demo now uses the browser journal;
-#318 still needs native connected payment qualification.
+#318 still needed native connected payment qualification at that slice.
+
+A later connected browser run on the designated shared Ledger 9 stack completed
+one 4-unit NIGHT payment to a claimed `.night` name and activated recipient ACC.
+The selected built-in wallet registered its held NIGHT for DUST generation and
+paid the withdrawal fee; the service sponsor retained its fee-only policy.
+After the withdrawal finalized, the browser retained its original ID through a
+deposit preparation failure. It then submitted one deposit, retained that ID,
+and after reload checked both originals against indexed SUCCESS results and
+canonical finalized node blocks. The remaining #318 scope includes a real
+provider and human consent, online name-service substitution, and additional
+native negative/recovery cases; this run used a local mock JubJub credential.
 
 The source-only named NIGHT orchestrator can now receive the account owner's
 finalized-ID callback, recheck the reviewed name at that point and fence the

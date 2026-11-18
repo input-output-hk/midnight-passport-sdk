@@ -59,7 +59,11 @@ function exactLeg(value: NightSendLeg): boolean {
   );
 }
 
-function transactionRow(body: Record<string, unknown>, original: NightSendLeg) {
+function transactionRow(
+  body: Record<string, unknown>,
+  original: NightSendLeg,
+  protocolVersions: readonly number[],
+) {
   if (body.errors !== undefined) return undefined;
   const data = body.data as Record<string, unknown> | undefined;
   const rows = data?.transactions;
@@ -69,7 +73,7 @@ function transactionRow(body: Record<string, unknown>, original: NightSendLeg) {
   const result = row?.transactionResult as Record<string, unknown> | undefined;
   if (
     row?.__typename !== 'RegularTransaction' ||
-    row.protocolVersion !== 2001000 ||
+    !protocolVersions.includes(row.protocolVersion as number) ||
     row.hash !== original.hash ||
     result?.status !== 'SUCCESS' ||
     !Array.isArray(row.identifiers) ||
@@ -120,13 +124,13 @@ async function canonicalFinalizedBlock(
 }
 
 /** Trust the indexer for transaction inclusion; check its reported block against the node's finalized chain. */
-export async function readFinalizedNightLeg(
+async function readFinalizedLedgerLeg(
   indexerUrl: string,
   nodeUrl: string,
   original: NightSendLeg,
-  request: typeof fetch = fetch,
-  decode: Decode = (raw) =>
-    Transaction.deserialize('signature', 'proof', 'binding', raw) as NightBridgeTransaction,
+  protocolVersions: readonly number[],
+  request: typeof fetch,
+  decode: Decode,
 ): Promise<
   | {
       readonly transaction: NightBridgeTransaction;
@@ -142,7 +146,7 @@ export async function readFinalizedNightLeg(
       variables: { offset: { identifier: original.identifiers[0] } },
     });
     if (!body) return undefined;
-    const row = transactionRow(body, original);
+    const row = transactionRow(body, original, protocolVersions);
     if (!row) return undefined;
     const raw = Uint8Array.from({ length: row.raw.length / 2 }, (_, index) =>
       Number.parseInt(row.raw.slice(index * 2, index * 2 + 2), 16),
@@ -158,4 +162,28 @@ export async function readFinalizedNightLeg(
   } catch {
     return undefined;
   }
+}
+
+/** ACC NIGHT legs use the pinned Ledger 9 protocol version. */
+export function readFinalizedNightLeg(
+  indexerUrl: string,
+  nodeUrl: string,
+  original: NightSendLeg,
+  request: typeof fetch = fetch,
+  decode: Decode = (raw) =>
+    Transaction.deserialize('signature', 'proof', 'binding', raw) as NightBridgeTransaction,
+) {
+  return readFinalizedLedgerLeg(indexerUrl, nodeUrl, original, [2001000, 2001100], request, decode);
+}
+
+/** Wallet DUST registration has its own Ledger 9 protocol version. */
+export function readFinalizedDustRegistration(
+  indexerUrl: string,
+  nodeUrl: string,
+  original: NightSendLeg,
+  request: typeof fetch = fetch,
+  decode: Decode = (raw) =>
+    Transaction.deserialize('signature', 'proof', 'binding', raw) as NightBridgeTransaction,
+) {
+  return readFinalizedLedgerLeg(indexerUrl, nodeUrl, original, [2001100], request, decode);
 }

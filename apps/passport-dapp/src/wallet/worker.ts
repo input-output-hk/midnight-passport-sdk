@@ -73,6 +73,20 @@ const methods: Record<string, (input: unknown) => Promise<unknown>> = {
     const { checkedDeviceNightLeg } = await import('./night-deposit.js');
     return wallet.nightBridge.submitDeposit(checkedDeviceNightLeg(input));
   },
+  async balanceNightWithdrawalFee(input) {
+    if (!wallet?.nightBridge) throw new Error('Wallet unavailable.');
+    const { checkedNightWithdrawalFeeRequest } = await import('./night-withdrawal-fee.js');
+    return wallet.nightBridge.balanceWithdrawalFee(checkedNightWithdrawalFeeRequest(input));
+  },
+  async prepareDustRegistration() {
+    if (!wallet?.nightBridge) throw new Error('Wallet unavailable.');
+    return wallet.nightBridge.prepareDustRegistration();
+  },
+  async submitDustRegistration(input) {
+    if (!wallet?.nightBridge) throw new Error('Wallet unavailable.');
+    const { checkedDeviceNightLeg } = await import('./night-deposit.js');
+    return wallet.nightBridge.submitDustRegistration(checkedDeviceNightLeg(input));
+  },
 };
 const reads = [
   'getConfiguration',

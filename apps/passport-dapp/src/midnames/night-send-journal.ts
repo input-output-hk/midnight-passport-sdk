@@ -4,6 +4,7 @@ import {
   type NightSendJournal,
   type NightSendLeg,
 } from './night-send.js';
+import { validNightCredentialHex } from './night-send-credential.js';
 
 const databaseName = 'mn-passport:night-send';
 const activeStore = 'active';
@@ -36,7 +37,8 @@ interface ArchivedNightSend extends StoredNightSend {
 
 interface RefusedNightSend extends StoredNightSend {
   readonly refusedAt: string;
-  readonly reason: 'name-recheck';
+  readonly reason:
+    'name-recheck' | 'unsupported-fence' | 'sponsor-policy-rejection' | 'device-fee-rejection';
 }
 
 function checkedIntent(value: unknown, scope: BrowserNightSendScope): NightSendIntent {
@@ -102,7 +104,7 @@ function checkedRow(value: unknown, scope: BrowserNightSendScope): StoredNightSe
   if (!value || typeof value !== 'object' || Array.isArray(value))
     throw new Error('Stored NIGHT payment is invalid.');
   const row = value as Record<string, unknown>;
-  if (row.version !== 1 || !hex32(row.credentialId))
+  if (row.version !== 1 || !validNightCredentialHex(row.credentialId))
     throw new Error('Stored NIGHT payment is invalid.');
   if (
     row.ownerStartedAt !== undefined &&
@@ -210,11 +212,16 @@ function readRefusedPayment(
         const { refusedAt, reason } = request.result as RefusedNightSend;
         if (
           !row ||
-          row.ownerStartedAt ||
           row.withdrawal ||
           row.deposit ||
           row.intent.requestId !== requestId ||
-          reason !== 'name-recheck' ||
+          !(
+            (reason === 'name-recheck' && !row.ownerStartedAt) ||
+            ((reason === 'unsupported-fence' ||
+              reason === 'sponsor-policy-rejection' ||
+              reason === 'device-fee-rejection') &&
+              !!row.ownerStartedAt)
+          ) ||
           typeof refusedAt !== 'string' ||
           !Number.isFinite(Date.parse(refusedAt))
         )
@@ -239,7 +246,9 @@ function ownerAttemptMethods(
   scope: BrowserNightSendScope,
   key: string,
   historyKey: (requestId: string) => string,
-): Required<Pick<NightSendJournal, 'markOwnerStarted' | 'retireRefused'>> {
+): Required<
+  Pick<NightSendJournal, 'markOwnerStarted' | 'retireRefused' | 'retireUnsupportedFence'>
+> {
   return {
     markOwnerStarted: async (value) => {
       const intent = checkedIntent(value, scope);
@@ -278,6 +287,26 @@ function ownerAttemptMethods(
         true,
       );
     },
+    retireUnsupportedFence: async (value) => {
+      const intent = checkedIntent(value, scope);
+      await access(
+        (row, tx) => {
+          if (!row?.ownerStartedAt || row.withdrawal || row.deposit || !same(row.intent, intent))
+            throw new Error('Only the exact pre-submission NIGHT attempt can be reconciled.');
+          tx.objectStore(historyStore).add(
+            {
+              ...row,
+              refusedAt: new Date().toISOString(),
+              reason: 'unsupported-fence',
+            } satisfies RefusedNightSend,
+            historyKey(row.intent.requestId),
+          );
+          tx.objectStore(activeStore).delete(key);
+        },
+        true,
+        true,
+      );
+    },
   };
 }
 
@@ -286,7 +315,11 @@ export async function openBrowserNightSendJournal(
   factory: IDBFactory,
   scope: BrowserNightSendScope,
 ) {
-  if (scope.networkId !== 'undeployed' || !hex32(scope.source) || !hex32(scope.credentialId))
+  if (
+    scope.networkId !== 'undeployed' ||
+    !hex32(scope.source) ||
+    !validNightCredentialHex(scope.credentialId)
+  )
     throw new Error('Invalid browser NIGHT payment scope.');
   const db = await openDatabase(factory);
   const key = JSON.stringify([scope.networkId, scope.source]);

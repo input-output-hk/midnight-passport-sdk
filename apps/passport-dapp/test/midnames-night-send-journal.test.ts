@@ -5,7 +5,7 @@ import { openBrowserNightSendJournal } from '../src/midnames/night-send-journal.
 import { NIGHT_SEND_OPERATIONS, type NightSendIntent } from '../src/midnames/night-send.js';
 
 const source = 'a'.repeat(64);
-const credentialId = '1'.repeat(64);
+const credentialId = '1'.repeat(32);
 const scope = { networkId: 'undeployed' as const, source, credentialId };
 const intent: NightSendIntent = {
   requestId: 'a1234567-a123-4123-8123-a123456789ab',
@@ -46,7 +46,7 @@ test('one source ACC keeps one active intent across tabs, reload and credential 
 
   const otherCredential = await openBrowserNightSendJournal(factory, {
     ...scope,
-    credentialId: '2'.repeat(64),
+    credentialId: '2'.repeat(32),
   });
   await assert.rejects(otherCredential.readIntent(), /another credential/);
   await assert.rejects(otherCredential.createIntent(intent), /another credential/);
@@ -114,6 +114,25 @@ test('a known pre-owner refusal retires only the exact no-leg intent and retains
   await assert.rejects(other.retireRefused(intent, 'name-recheck'), /exact unsubmitted/);
   assert.deepEqual(await other.readLeg('withdraw'), withdrawal);
   other.close();
+});
+
+test('a proven pre-credential fence rejection retains the started attempt in history', async () => {
+  const factory = new IDBFactory();
+  const journal = await openBrowserNightSendJournal(factory, scope);
+  await journal.createIntent(intent);
+  await assert.rejects(journal.retireUnsupportedFence(intent), /pre-submission/);
+  await journal.markOwnerStarted(intent);
+  await assert.rejects(
+    journal.retireUnsupportedFence({ ...intent, amount: '5' }),
+    /pre-submission/,
+  );
+  await journal.retireUnsupportedFence(intent);
+  assert.equal(await journal.readActive(), undefined);
+  const refusal = await journal.readRefused(intent.requestId);
+  assert.equal(refusal?.reason, 'unsupported-fence');
+  assert.ok(refusal?.ownerStartedAt);
+  await assert.rejects(journal.createIntent(intent), /already archived/);
+  journal.close();
 });
 
 test('an owner-start marker survives reload and prevents retiring an uncertain no-ID attempt', async () => {

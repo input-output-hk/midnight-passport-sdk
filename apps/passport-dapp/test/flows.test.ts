@@ -47,6 +47,7 @@ const ACTIONS: readonly ActionId[] = [
   'removeDevice',
   'rotate',
   'wallet',
+  'walletDust',
   'walletRefresh',
   'fund',
   'withdraw',
@@ -82,6 +83,7 @@ test('prompts per action, with and without an account open', () => {
   assert.equal(promptsFor('wallet', true), 1, 'pinned to the open account: one PRF prompt');
   assert.equal(promptsFor('wallet', false), 1, 'no account: combined discovery and PRF');
   assert.equal(promptsFor('walletRefresh', false), 0, 'refresh reuses the connected wallet');
+  assert.equal(promptsFor('walletDust', false), 0, 'wallet DUST registration uses its own review');
   assert.equal(promptsFor('fund', true), 0, 'funding needs no passkey prompt');
   assert.equal(promptsFor('withdraw', true), 1, 'owner withdrawal needs passkey consent');
   assert.deepEqual(promptsFor('sendNamedNight', true), [0, 1]);
@@ -113,6 +115,7 @@ test('the prompt table has an entry for each action and nothing the actions do n
     'startSession',
     'unlockOwner',
     'unlockRoutine',
+    'walletDust',
     'walletRefresh',
     'walletWithAccount',
     'walletWithoutAccount',
@@ -128,6 +131,7 @@ test('the prompt table has an entry for each action and nothing the actions do n
             (action === 'endSession' ||
             action === 'fund' ||
             action === 'refresh' ||
+            action === 'walletDust' ||
             action === 'walletRefresh' ||
             action === 'roster' ||
             action === 'grantRoster' ||

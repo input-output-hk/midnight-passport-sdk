@@ -28,10 +28,50 @@ import {
 import { devWalletSession, walletApiError as apiError } from './lifecycle.ts';
 import { walletSyncReady } from './sync.js';
 import { deviceNightDeposit } from './night-deposit.js';
+import { deviceNightWithdrawalFee } from './night-withdrawal-fee.js';
+import { deviceDustRegistration } from './dust-registration.js';
 import { exactFencedNightDeposit, journaledNightBridgeOutput } from './night-deposit-fence.js';
 
 import type { DevWallet, DevWalletConfig, DevWalletConnectedApi } from './contracts.js';
 const SYNC_TIMEOUT_MS = 120_000;
+
+function walletConnectedApi(
+  config: DevWalletConfig,
+  current: () => Promise<FacadeState>,
+  synced: (part: 'unshielded' | 'dust') => Promise<FacadeState>,
+): DevWalletConnectedApi {
+  const bech32 = (address: Parameters<typeof MidnightBech32m.encode>[1]): string =>
+    MidnightBech32m.encode(config.networkId, address).asString();
+  return {
+    getConfiguration: async () => ({
+      indexerUri: config.indexerUri,
+      indexerWsUri: config.indexerWsUri,
+      substrateNodeUri: config.nodeUri,
+      networkId: config.networkId,
+    }),
+    getConnectionStatus: async () => ({ status: 'connected', networkId: config.networkId }),
+    getShieldedAddresses: async () => {
+      const shielded = (await current()).shielded;
+      return {
+        shieldedAddress: bech32(shielded.address),
+        shieldedCoinPublicKey: shielded.coinPublicKey.toHexString(),
+        shieldedEncryptionPublicKey: shielded.encryptionPublicKey.toHexString(),
+      };
+    },
+    getUnshieldedAddress: async () => ({
+      unshieldedAddress: bech32((await current()).unshielded.address),
+    }),
+    getDustAddress: async () => ({ dustAddress: bech32((await current()).dust.address) }),
+    getUnshieldedBalances: async () => ({ ...(await synced('unshielded')).unshielded.balances }),
+    getDustBalance: async () => {
+      const dust = (await synced('dust')).dust;
+      return {
+        balance: dust.balance(new Date()),
+        cap: dust.availableCoins.reduce((total, coin) => total + coin.maxCap, 0n),
+      };
+    },
+  };
+}
 
 /**
  * Builds the wallet from a BIP-32 master seed and starts its sync against the service's indexer
@@ -107,48 +147,10 @@ export async function createWalletRuntime(
         }),
       ),
     );
-  const bech32 = (address: Parameters<typeof MidnightBech32m.encode>[1]): string =>
-    MidnightBech32m.encode(config.networkId, address).asString();
-
-  const connected: DevWalletConnectedApi = {
-    getConfiguration: async () => ({
-      indexerUri: config.indexerUri,
-      indexerWsUri: config.indexerWsUri,
-      substrateNodeUri: config.nodeUri,
-      networkId: config.networkId,
-    }),
-    getConnectionStatus: async () => ({ status: 'connected', networkId: config.networkId }),
-    getShieldedAddresses: async () => {
-      const shielded = (await current()).shielded;
-      return {
-        // FROM D.TS: ShieldedWalletState.address (ShieldedAddress), .coinPublicKey, .encryptionPublicKey
-        shieldedAddress: bech32(shielded.address),
-        shieldedCoinPublicKey: shielded.coinPublicKey.toHexString(),
-        shieldedEncryptionPublicKey: shielded.encryptionPublicKey.toHexString(),
-      };
-    },
-    // FROM D.TS: UnshieldedWalletState.address (UnshieldedAddress), encoded as mn_addr_<network>1…
-    getUnshieldedAddress: async () => ({
-      unshieldedAddress: bech32((await current()).unshielded.address),
-    }),
-    // FROM D.TS: DustWalletState.address (DustAddress), encoded as mn_dust_<network>1…
-    getDustAddress: async () => ({ dustAddress: bech32((await current()).dust.address) }),
-    // FROM D.TS: UnshieldedWalletState.balances (Record<RawTokenType, bigint>)
-    getUnshieldedBalances: async () => ({ ...(await synced('unshielded')).unshielded.balances }),
-    // FROM D.TS: DustWalletState.balance(time: Date): bigint (Specks); the cap is the sum of
-    // DustFullInfo.maxCap over DustWalletState.availableCoins. To be confirmed by the runtime
-    // probe at the localnet session (task-12 report), together with whether the API's `cap` is
-    // this sum.
-    getDustBalance: async () => {
-      const dust = (await synced('dust')).dust;
-      return {
-        balance: dust.balance(new Date()),
-        cap: dust.availableCoins.reduce((total, coin) => total + coin.maxCap, 0n),
-      };
-    },
-  };
+  const connected = walletConnectedApi(config, current, synced);
 
   const rawBridge = unshieldedKeystore.getAddress();
+  const encodedBridge = unshieldedKeystore.getBech32Address().asString();
   const deposit = deviceNightDeposit(
     facade,
     (bytes) => unshieldedKeystore.signDataAsync(bytes),
@@ -159,6 +161,29 @@ export async function createWalletRuntime(
     (scope, target, output) =>
       journaledNightBridgeOutput(scope, target, output, config.indexerUri, config.nodeUri),
     exactFencedNightDeposit,
+    undefined,
+    undefined,
+    encodedBridge,
+  );
+  const withdrawalFee = deviceNightWithdrawalFee(
+    facade,
+    (bytes) => unshieldedKeystore.signDataAsync(bytes),
+    rawBridge,
+    config.networkId,
+    async () => {
+      const dust = (await synced('dust')).dust;
+      if (dust.balance(new Date()) <= 0n)
+        throw apiError(
+          'InvalidRequest',
+          'The device wallet needs DUST before paying NIGHT withdrawal fees.',
+        );
+    },
+  );
+  const dustRegistration = deviceDustRegistration(
+    facade,
+    unshieldedKeystore.getPublicKey(),
+    (bytes) => unshieldedKeystore.signDataAsync(bytes),
+    () => synced('unshielded'),
   );
   return devWalletSession(config.networkId, connected, () => facade.stop(), {
     async getAddress() {
@@ -170,12 +195,13 @@ export async function createWalletRuntime(
       const expected = checkedNightBridgeOutput(input);
       if (config.networkId !== 'undeployed' || expected.owner !== rawBridge)
         throw apiError('InvalidRequest', 'The NIGHT output does not belong to this wallet.');
-      return hasExactNightBridgeCoin(
-        (await synced('unshielded')).unshielded.availableCoins,
-        expected,
-      );
+      const coins = (await synced('unshielded')).unshielded.availableCoins;
+      return hasExactNightBridgeCoin(coins, expected, encodedBridge);
     },
     prepareDeposit: (request) => deposit.prepare(request),
     submitDeposit: (original) => deposit.submit(original),
+    balanceWithdrawalFee: (request) => withdrawalFee(request),
+    prepareDustRegistration: () => dustRegistration.prepare(),
+    submitDustRegistration: (original) => dustRegistration.submit(original),
   });
 }

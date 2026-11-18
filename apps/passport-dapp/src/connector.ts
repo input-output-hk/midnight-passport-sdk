@@ -31,6 +31,8 @@ import {
 import { tracedFetch } from './operation-trace.js';
 import { browserAccountRecords, browserGrantJournal } from './grant-journal.js';
 import { reviewedOwnerValueCall } from './reviewed-value-call.js';
+import { fencedNightValueCall } from './midnames/night-value-call.js';
+import type { DevWallet } from './wallet/contracts.js';
 import { grantHandoffFromOpening, type GrantHandoff } from './grant-handoff.js';
 import { beforeDemoCeremony } from './consent.js';
 import {
@@ -107,9 +109,34 @@ function demoDirectory(): AccountDirectory {
   };
 }
 
+function demoHoldingPort(network: NetworkConfig): QualifiedHoldingSource {
+  let source: Promise<QualifiedHoldingSource> | undefined;
+  const holdings = (): Promise<QualifiedHoldingSource> =>
+    (source ??= import('@input-output-hk/mn-passport-adapter-midnight-js').then(
+      ({ createGraphqlHoldingIndexer, createMidnightHoldingSource }) =>
+        createMidnightHoldingSource(
+          createGraphqlHoldingIndexer({
+            networkId: network.networkId,
+            url: network.indexerUrl,
+            wsUrl: network.indexerWsUrl,
+          }),
+        ),
+    ));
+  return {
+    selectHeldEntries: async (account, entries, opened) =>
+      (await holdings()).selectHeldEntries(account, entries, opened),
+    selectQualifiedHeldCoins: async (account, entries, opened) =>
+      (await holdings()).selectQualifiedHeldCoins(account, entries, opened),
+  };
+}
+
 export async function connect(
   networkId: string,
   ownerSession?: AuthenticatedJubjubOwner,
+  selected?: () => {
+    readonly account?: import('@input-output-hk/mn-passport-protocol').PassportAccount;
+    readonly wallet?: DevWallet;
+  },
 ): Promise<PassportConnectorAPI> {
   const config = await fetchCheckedV1Config(
     SERVICE_URL,
@@ -131,24 +158,6 @@ export async function connect(
     artefactUrl: config.zkBaseUrl,
   };
   const sponsor = remoteV1Sponsor(SERVICE_URL, { fetch: tracedFetch });
-  let holdingSource: Promise<QualifiedHoldingSource> | undefined;
-  const holdings = (): Promise<QualifiedHoldingSource> =>
-    (holdingSource ??= import('@input-output-hk/mn-passport-adapter-midnight-js').then(
-      ({ createGraphqlHoldingIndexer, createMidnightHoldingSource }) =>
-        createMidnightHoldingSource(
-          createGraphqlHoldingIndexer({
-            networkId,
-            url: config.indexerUri,
-            wsUrl: config.indexerWsUri,
-          }),
-        ),
-    ));
-  const holdingPort: QualifiedHoldingSource = {
-    selectHeldEntries: async (account, entries, opened) =>
-      (await holdings()).selectHeldEntries(account, entries, opened),
-    selectQualifiedHeldCoins: async (account, entries, opened) =>
-      (await holdings()).selectQualifiedHeldCoins(account, entries, opened),
-  };
   let journal: ReturnType<typeof browserGrantJournal> | undefined;
   let recoverReadKey:
     ((account: string, grantId: string) => Promise<string | undefined>) | undefined;
@@ -211,10 +220,16 @@ export async function connect(
     sponsor,
     sponsorKeys: config,
     submitter: sponsor,
-    valueCalls: { call: (request) => reviewedOwnerValueCall(SERVICE_URL, request) },
+    valueCalls: {
+      supportsBeforeSubmit: true,
+      call: (request) =>
+        request.beforeSubmit && selected
+          ? fencedNightValueCall(request, selected, network, SERVICE_URL)
+          : reviewedOwnerValueCall(SERVICE_URL, request),
+    },
     deployer: remoteV1Deployer(SERVICE_URL, { fetch: tracedFetch }),
     directory: demoDirectory(),
-    holdings: holdingPort,
+    holdings: demoHoldingPort(network),
     ...(!ownerSession && {
       routineViewingKey: (
         context: Parameters<
@@ -314,12 +329,17 @@ function recoveryKeyring(prf: PrfKeySource, original: PrfKeySource) {
 }
 
 /** What lace-sdk would inject; the harness discovers it like any dApp would. */
-export function installShim(): void {
+export function installShim(
+  selected?: () => {
+    readonly account?: import('@input-output-hk/mn-passport-protocol').PassportAccount;
+    readonly wallet?: DevWallet;
+  },
+): void {
   injectPassportConnector(window as unknown as { midnight?: Record<string, unknown> }, {
     rdns: 'network.midnight.passport.prototype',
     name: 'Midnight Passport (prototype)',
     apiVersion: PASSPORT_API_VERSION,
     bindings: [BINDING_ID],
-    connect: (networkId) => connect(networkId),
+    connect: (networkId) => connect(networkId, undefined, selected),
   });
 }

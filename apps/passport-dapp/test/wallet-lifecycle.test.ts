@@ -54,6 +54,15 @@ test('internal NIGHT observation is guarded by the wallet lifetime and absent fr
       new Promise<string>((resolve) => {
         finishSubmit = resolve;
       }),
+    balanceWithdrawalFee: async () => {
+      throw new Error('Unexpected fee balance in wallet lifetime fixture.');
+    },
+    prepareDustRegistration: async () => {
+      throw new Error('Unexpected DUST registration in wallet lifetime fixture.');
+    },
+    submitDustRegistration: async () => {
+      throw new Error('Unexpected DUST submission in wallet lifetime fixture.');
+    },
   });
   const bridge = wallet.nightBridge;
   assert.ok(bridge);

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ContractCall } from '@midnightntwrk/ledger-v9';
+import { MidnightBech32m, UnshieldedAddress } from '@midnightntwrk/wallet-sdk-address-format';
 import {
   assertExactNightBridgeSpend,
   checkedNightBridgeOutput,
@@ -68,6 +69,31 @@ test('the original journaled output is the only acceptable deposit input', () =>
     value: 4n,
   });
   assert.equal(hasExactNightBridgeCoin([{ utxo: coin }], expected), true);
+  assert.equal(
+    hasExactNightBridgeCoin([{ utxo: { ...coin, owner: { hexString: bridge } } }], expected),
+    true,
+  );
+  assert.equal(
+    hasExactNightBridgeCoin(
+      [
+        {
+          utxo: {
+            ...coin,
+            owner: MidnightBech32m.encode(
+              'undeployed',
+              new UnshieldedAddress(Buffer.from(bridge, 'hex')),
+            ).asString(),
+          },
+        },
+      ],
+      expected,
+      MidnightBech32m.encode(
+        'undeployed',
+        new UnshieldedAddress(Buffer.from(bridge, 'hex')),
+      ).asString(),
+    ),
+    true,
+  );
   assert.equal(
     hasExactNightBridgeCoin([{ utxo: { ...coin, intentHash: 'f'.repeat(64) } }], expected),
     false,

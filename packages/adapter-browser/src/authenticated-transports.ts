@@ -9,7 +9,7 @@ interface Transports {
   readonly prover: Prover;
   readonly sponsor: FeeSponsor;
   readonly submitter: Submitter;
-  readonly valueCalls?: Pick<Chain, 'call'>;
+  readonly valueCalls?: Pick<Chain, 'call'> & Partial<Pick<Chain, 'supportsBeforeSubmit'>>;
 }
 
 /** Check immediately before handing work to a transport, never after its acknowledgement.
@@ -41,6 +41,9 @@ export function authenticatedOwnerTransports(check: () => void, ports: Transport
     },
     ...(ports.valueCalls && {
       valueCalls: {
+        ...(ports.valueCalls.supportsBeforeSubmit === true && {
+          supportsBeforeSubmit: true as const,
+        }),
         call: (...args: Parameters<Chain['call']>) => {
           check();
           return ports.valueCalls!.call(...args);

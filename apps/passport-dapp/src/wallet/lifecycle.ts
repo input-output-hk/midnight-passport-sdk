@@ -84,6 +84,12 @@ export function devWalletSession(
         prepareDeposit: (request: Parameters<typeof nightBridge.prepareDeposit>[0]) =>
           guard(() => nightBridge.prepareDeposit(request))(),
         submitDeposit: guardedDeposit,
+        balanceWithdrawalFee: (request: Parameters<typeof nightBridge.balanceWithdrawalFee>[0]) =>
+          guard(() => nightBridge.balanceWithdrawalFee(request))(),
+        prepareDustRegistration: () => guard(() => nightBridge.prepareDustRegistration())(),
+        submitDustRegistration: (
+          original: Parameters<typeof nightBridge.submitDustRegistration>[0],
+        ) => guard(() => nightBridge.submitDustRegistration(original))(),
       },
     }),
     stop() {

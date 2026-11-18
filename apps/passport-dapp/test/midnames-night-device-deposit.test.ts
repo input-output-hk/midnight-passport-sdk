@@ -22,7 +22,7 @@ const original = { hash: depositHash, identifiers: [identifier] };
 const scope = {
   networkId: 'undeployed' as const,
   source: '1'.repeat(64),
-  credentialId: '2'.repeat(64),
+  credentialId: '2'.repeat(32),
 };
 const call = Object.defineProperties(Object.create(ContractCall.prototype) as object, {
   address: { value: target },
@@ -55,6 +55,12 @@ test('the worker input parser owns the proof bytes and rejects a changed output'
   );
   assert.deepEqual(checkedDeviceNightLeg(original), original);
   assert.throws(() => checkedDeviceNightLeg({ hash, identifiers: [] }), /original transaction ID/);
+  for (const credentialId of ['', 'a', 'A'.repeat(32), 'a'.repeat(2048)]) {
+    assert.throws(
+      () => checkedDeviceNightDepositRequest({ ...request, scope: { ...scope, credentialId } }),
+      /Invalid NIGHT deposit request/,
+    );
+  }
 });
 
 test('the signer retains only one checked original and dispatches it once', async () => {
@@ -98,15 +104,7 @@ test('the signer retains only one checked original and dispatches it once', asyn
   durable = true;
   assert.equal(await deposit.submit(original), identifier);
   await assert.rejects(() => deposit.submit(original), /fenced original/);
-  assert.deepEqual(steps, [
-    'adopt',
-    'validate',
-    'balance',
-    'sign',
-    'finalize',
-    'validate',
-    'submit',
-  ]);
+  assert.deepEqual(steps, ['adopt', 'balance', 'sign', 'finalize', 'submit']);
 });
 
 test('concurrent worker requests cannot both cross an asynchronous journal fence', async () => {

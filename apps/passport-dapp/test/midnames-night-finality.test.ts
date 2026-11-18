@@ -76,6 +76,23 @@ test('the exact original is final only after indexer identity and canonical node
   assert.deepEqual(calls[3]?.body.params, [42]);
 });
 
+test('the current Ledger 9 protocol version accepts the same exact original checks', async () => {
+  const row = {
+    data: {
+      transactions: [{ ...indexer.data.transactions[0], protocolVersion: 2001100 }],
+    },
+  };
+  const { request } = network(row);
+  const result = await readFinalizedNightLeg(
+    'http://indexer',
+    'http://node',
+    original,
+    request,
+    decoder,
+  );
+  assert.equal(result?.transaction.transactionHash(), hash);
+});
+
 test('an included transaction is not final at a shorter or different canonical chain', async () => {
   for (const [height, canonical] of [
     ['0x29', '0x' + blockHash],
