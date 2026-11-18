@@ -106,6 +106,7 @@ replace the token or policy during a routine restart. Then run:
 PASSPORT_REPO=/path/to/passport \
 PASSPORT_FUNDING_TOKEN_FILE="$HOME/.midnight-passport/funding-token" \
 PASSPORT_FUNDING_ASSETS_FILE="$HOME/.midnight-passport/funding-assets.json" \
+PASSPORT_FUNDING_SEED_FILE="$HOME/.midnight-passport/funding-seed" \
 nix develop -c pnpm demo up --funding
 ```
 

@@ -48,6 +48,9 @@ const usage = `Usage: nix develop -c node scripts/midnames-local-demo.mjs [check
   --attach-only       Refuse to start an owned stack when the shared stack is absent.
   --real-passkey      Use a PRF-capable passkey instead of the development mock.
   --setup             Open account creation without a name (fresh chain only).
+  --claim             Enable registration against the verified local .night registry.
+  --funding           Enable deposits with the separately funded demo wallet.
+  --prepared-registry PATH  Pinned Compact 0.35 registry artifacts for --claim.
   --open              Open the page in the default browser after it is ready.
 
 The fallback uses the repo's digest-pinned Ledger 9 Compose template and a
@@ -59,7 +62,7 @@ and private records are preserved.
 
 class CleanupUnconfirmedError extends Error {}
 
-/** @typedef {{command: 'check'|'stack'|'up'|'stop', profile: string, stateDir: string, passportRepo: string|undefined, contractDir: string|undefined, attachOnly: boolean, mockPasskey: boolean, setup: boolean, open: boolean, help: boolean}} DemoOptions */
+/** @typedef {{command: 'check'|'stack'|'up'|'stop', profile: string, stateDir: string, passportRepo: string|undefined, contractDir: string|undefined, preparedRegistry: string|undefined, attachOnly: boolean, mockPasskey: boolean, setup: boolean, claim: boolean, funding: boolean, open: boolean, help: boolean}} DemoOptions */
 /** @typedef {{command: string, args: string[], env: NodeJS.ProcessEnv}} ComposeTarget */
 /** @typedef {{networkId: string, registryAddress: string, name: string, accountAddress: string, claimBlock: {height: number, hash: string}}} Claim */
 
@@ -76,24 +79,39 @@ export function parseArgs(argv) {
     stateDir: join(homedir(), '.local/share/midnight-passport/local-demo'),
     passportRepo: process.env.PASSPORT_REPO,
     contractDir: process.env.PASSPORT_CONTRACT_DIR,
+    preparedRegistry: process.env.PASSPORT_MIDNAMES_PREPARED_REGISTRY,
     attachOnly: false,
     mockPasskey: true,
     setup: false,
+    claim: false,
+    funding: false,
     open: false,
     help: false,
   };
   for (let index = 0; index < args.length; index++) {
     const arg = args[index];
-    if (arg && ['--profile', '--state-dir', '--passport-repo', '--contract-dir'].includes(arg)) {
+    if (
+      arg &&
+      [
+        '--profile',
+        '--state-dir',
+        '--passport-repo',
+        '--contract-dir',
+        '--prepared-registry',
+      ].includes(arg)
+    ) {
       const value = args[++index];
       if (!value || value.startsWith('--')) throw new Error(`${arg} needs a path.`);
       if (arg === '--profile') result.profile = resolve(value);
       else if (arg === '--state-dir') result.stateDir = resolve(value);
       else if (arg === '--passport-repo') result.passportRepo = resolve(value);
+      else if (arg === '--prepared-registry') result.preparedRegistry = resolve(value);
       else result.contractDir = resolve(value);
     } else if (arg === '--attach-only') result.attachOnly = true;
     else if (arg === '--real-passkey') result.mockPasskey = false;
     else if (arg === '--setup') result.setup = true;
+    else if (arg === '--claim') result.claim = true;
+    else if (arg === '--funding') result.funding = true;
     else if (arg === '--open') result.open = true;
     else if (arg === '--help' || arg === '-h') result.help = true;
     else throw new Error(`Unknown option: ${arg}`);
@@ -441,6 +459,94 @@ function ensureWorkspaceDependencies() {
   }
 }
 
+/** @param {DemoOptions} options @param {Claim|undefined} claim @param {NodeJS.ProcessEnv} env */
+async function startClaimHost(options, claim, env) {
+  assert.ok(
+    claim && options.preparedRegistry && options.contractDir,
+    '--claim needs a verified profile, --prepared-registry and --contract-dir.',
+  );
+  const ownerPort = 15190;
+  const sponsorPort = 15189;
+  await freePort(ownerPort);
+  await freePort(sponsorPort);
+  for (const name of ['claim-sponsor-seed.private.hex', 'claim-sponsor-wallet-provision.json'])
+    assert.ok(existsSync(join(options.stateDir, name)), `--claim needs funded ${name}.`);
+  const provision = JSON.parse(
+    readFileSync(join(options.stateDir, 'claim-sponsor-wallet-provision.json'), 'utf8'),
+  );
+  assert.equal(provision.status, 'complete', 'Claim sponsor wallet funding is unresolved.');
+  const journal = join(options.stateDir, 'claim-journal');
+  privateState(journal);
+  const args = [
+    '--experimental-import-meta-resolve',
+    '--import',
+    'tsx',
+    join(root, 'examples/midnames-local/claim-demo-host.mjs'),
+    options.preparedRegistry,
+    options.contractDir,
+    claim.registryAddress,
+    join(options.stateDir, 'claim-sponsor-seed.private.hex'),
+    journal,
+    String(sponsorPort),
+    String(ownerPort),
+  ];
+  // Keep the wallet process as our direct child. A pnpm wrapper can exit while
+  // its Node grandchild still holds the sponsor wallet and claim journal.
+  const child = spawn('node', args, {
+    cwd: join(root, 'apps/passport-dapp'),
+    env,
+    stdio: ['ignore', 'pipe', 'inherit'],
+  });
+  let output = '';
+  try {
+    await new Promise((done, reject) => {
+      const timer = setTimeout(
+        () => reject(new Error('Claim host did not become ready.')),
+        180_000,
+      );
+      /** @param {Error|undefined} error */
+      const finish = (error) => {
+        clearTimeout(timer);
+        child.stdout?.off('data', onData);
+        child.off('exit', onExit);
+        child.off('error', finish);
+        if (error) reject(error);
+        else done(undefined);
+      };
+      /** @param {number|null} code */
+      const onExit = (code) => finish(new Error(`Claim host exited before readiness (${code}).`));
+      /** @param {Buffer} chunk */
+      const onData = (chunk) => {
+        const text = chunk.toString();
+        process.stdout.write(text);
+        output = (output + text).slice(-4096);
+        if (
+          output.includes(`PASSPORT_MIDNAMES_OWNER_PORT=${ownerPort}`) &&
+          output.includes(`PASSPORT_MIDNAMES_SPONSOR_PORT=${sponsorPort}`)
+        )
+          finish(undefined);
+      };
+      child.stdout?.on('data', onData);
+      child.once('exit', onExit);
+      child.once('error', finish);
+    });
+    child.stdout?.pipe(process.stdout);
+  } catch (error) {
+    child.kill('SIGINT');
+    await new Promise((done) => {
+      if (child.exitCode !== null || child.signalCode !== null) return done(undefined);
+      child.once('exit', () => done(undefined));
+      setTimeout(() => done(undefined), 15_000).unref();
+    });
+    if (child.exitCode === null && child.signalCode === null)
+      throw new CleanupUnconfirmedError(
+        `Claim host startup failed and its wallet did not confirm shutdown: ${String(error)}`,
+      );
+    throw error;
+  }
+  return { child, ownerPort, sponsorPort };
+}
+
 /** @param {string} stateDir */
 async function compatProver(stateDir) {
   const url = 'http://127.0.0.1:16320/version';
@@ -514,6 +620,8 @@ async function compatProver(stateDir) {
 async function demo(options, claim) {
   privateState(options.stateDir);
   const prover = await compatProver(options.stateDir);
+  /** @type {Awaited<ReturnType<typeof startClaimHost>> | undefined} */
+  let claimHost;
   try {
     /** @type {NodeJS.ProcessEnv} */
     const env = {
@@ -522,6 +630,11 @@ async function demo(options, claim) {
       PASSPORT_REGISTRY_FILE: join(options.stateDir, 'registry.json'),
       PASSPORT_COMPAT_PROVER: '1',
       PASSPORT_COMPAT_PROVER_PORT: '16320',
+      MN_NETWORK_ID: 'undeployed',
+      MN_NODE_URL: 'http://127.0.0.1:9944',
+      MN_INDEXER_URL: 'http://127.0.0.1:8088/api/v4/graphql',
+      MN_INDEXER_WS_URL: 'ws://127.0.0.1:8088/api/v4/graphql/ws',
+      MN_PROOF_SERVER_URL: 'http://127.0.0.1:16320',
     };
     for (const key of Object.keys(env)) {
       if (key.startsWith('VITE_MIDNAMES_')) delete env[key];
@@ -539,7 +652,30 @@ async function demo(options, claim) {
         VITE_MIDNAMES_NIGHT_SEND: '1',
       });
     }
+    if (options.funding) {
+      const provision = JSON.parse(
+        readFileSync(join(options.stateDir, 'funding-wallet-provision.json'), 'utf8'),
+      );
+      assert.equal(provision.status, 'complete', 'Funding wallet setup is unresolved.');
+      Object.assign(env, {
+        PASSPORT_FUNDING_SEED_FILE: join(options.stateDir, 'funding-seed.private.hex'),
+        PASSPORT_FUNDING_TOKEN_FILE: join(options.stateDir, 'funding-token.private.txt'),
+        PASSPORT_FUNDING_ASSETS_FILE: join(options.stateDir, 'funding-assets.private.json'),
+        PASSPORT_FUNDING_RESERVATIONS_FILE: join(options.stateDir, 'funding-reservations.json'),
+        PASSPORT_FUNDING_DEPLOYMENTS_FILE: join(options.stateDir, 'registry.deployments.json'),
+      });
+    }
+    if (options.claim) {
+      claimHost = await startClaimHost(options, claim, env);
+      Object.assign(env, {
+        PASSPORT_MIDNAMES_OWNER_PORT: String(claimHost.ownerPort),
+        PASSPORT_MIDNAMES_SPONSOR_PORT: String(claimHost.sponsorPort),
+        VITE_MIDNAMES_CLAIM_SPONSOR: '1',
+        VITE_MIDNAMES_CLAIM_PREPARATION: '1',
+      });
+    }
     const args = ['demo', 'up', '--no-key-service', '--arm', 'jubjub'];
+    if (options.funding) args.push('--funding');
     if (options.mockPasskey) args.push('--mock-passkey');
     if (options.open) args.push('--open');
     if (options.contractDir) args.push('--contract-dir', options.contractDir);
@@ -571,8 +707,28 @@ async function demo(options, claim) {
     if (outcome.code !== 0 && !interrupted)
       throw new Error(`Demo exited ${outcome.code ?? outcome.signal}.`);
   } finally {
-    if (prover.started && prover.project && prover.containerIds)
-      stopRecordedContainers(prover.project, prover.containerIds);
+    /** @type {string[]} */
+    const cleanupErrors = [];
+    if (claimHost) {
+      const host = claimHost;
+      host.child.kill('SIGINT');
+      await new Promise((done) => {
+        if (host.child.exitCode !== null || host.child.signalCode !== null) return done(undefined);
+        host.child.once('exit', done);
+        setTimeout(() => done(undefined), 15_000).unref();
+      });
+      if (host.child.exitCode === null && host.child.signalCode === null)
+        cleanupErrors.push('Claim host did not confirm shutdown; preserve its journal.');
+    }
+    if (prover.started && prover.project && prover.containerIds) {
+      try {
+        stopRecordedContainers(prover.project, prover.containerIds);
+      } catch (error) {
+        cleanupErrors.push(`Owned compatibility prover did not confirm shutdown: ${String(error)}`);
+      }
+    }
+    if (cleanupErrors.length)
+      throw new CleanupUnconfirmedError(`${cleanupErrors.join(' ')} Preserve the launcher lock.`);
   }
 }
 
@@ -586,6 +742,10 @@ export async function main(argv = process.argv.slice(2)) {
   try {
     if (options.command === 'stop') return stopOwnedStack(options.stateDir);
     if (options.setup && options.command !== 'up') throw new Error('--setup applies only to up.');
+    if ((options.claim || options.funding) && options.command !== 'up')
+      throw new Error('--claim and --funding apply only to up.');
+    if (options.claim && options.setup)
+      throw new Error('--claim needs a verified local registry profile.');
     if (options.command === 'up' && !options.contractDir && !options.passportRepo)
       throw new Error('Pass --contract-dir or --passport-repo for the pinned ACC.');
     if (options.command === 'up') {

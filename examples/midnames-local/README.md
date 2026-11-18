@@ -40,6 +40,59 @@ the launcher starts and later stops its own no-volume prover project. Ctrl-C
 drains only its demo services and stops only fallback containers that this
 invocation started. Receipts, browser state, and Docker volumes are retained.
 
+### Register a name and fund a Passport account
+
+The local demo can register a name **after** ACC activation. Stop the demo first,
+then provision two dedicated wallets from the local genesis wallet. The provisioner
+requires the shared sponsor lease to be free, writes private seeds, a funding
+token and a NIGHT-only policy under the demo state directory, and records each
+transfer before proceeding. An interrupted transfer remains fenced for manual
+reconciliation; never rerun it by clearing a receipt or lease.
+
+```sh
+nix develop -c env \
+  MN_NETWORK_ID=undeployed \
+  MN_NODE_URL=http://127.0.0.1:9944 \
+  MN_INDEXER_URL=http://127.0.0.1:8088/api/v4/graphql \
+  MN_INDEXER_WS_URL=ws://127.0.0.1:8088/api/v4/graphql/ws \
+  MN_PROOF_SERVER_URL=http://127.0.0.1:16320 \
+  pnpm --filter passport-dapp exec node --experimental-import-meta-resolve --import tsx \
+  ../../scripts/midnames-demo-wallets.mjs \
+  "$HOME/.local/share/midnight-passport/local-demo" \
+  /absolute/path/to/prepared/acc/contract
+```
+
+Use the same pinned ACC contract directory and a prepared standalone registry
+from [registry preparation](#midnames-local-demo-and-registry-preparation).
+The shared Ledger 9 node and v4 indexer must already be attached. The provisioner
+does not start Docker. For the current local chain the complete demo is:
+
+```sh
+nix develop -c node scripts/midnames-local-demo.mjs up \
+  --contract-dir /absolute/path/to/prepared/acc/contract \
+  --prepared-registry /absolute/path/to/prepared/registry \
+  --claim --funding
+```
+
+Open the activated ACC with its passkey, go to **Passport account → Balances →
+Register a .night name**, enter an unregistered name such as `yurii.night`, and
+check registry status. Review the exact quote, approve owner-side proof, inspect
+the saved original receipt, then explicitly send the prepared claim. Recheck the
+original claim until it and the current registry binding agree. Registration is
+optional and can be done in a later session with the same account credential.
+The separate **Deposit** page offers the configured NIGHT amount. Each deposit
+requires the funding wallet's allowlisted asset and available balance.
+
+The launcher enables claim controls only when the funded sponsor and pinned
+owner bundle are ready. It retains one original claim journal in this demo state
+directory. Reusing that journal for a different name or account refuses; preserve
+it for recovery. The sponsor wallet, funding wallet and ACC fee sponsor have
+distinct seeds, and the browser never receives either sponsor seed. This local
+standalone `.night` profile does not issue public `passport.night` names. The
+registered domain's future subdomain payment address is the dedicated local
+claim sponsor's controlled unshielded address; retain that wallet seed with the
+registry state if demonstrating later subdomain purchases.
+
 ### When no shared stack is running
 
 `stack` starts a separate `midnight-passport-ledger9-demo-…` project from

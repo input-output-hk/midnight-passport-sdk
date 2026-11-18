@@ -125,12 +125,17 @@ function ownerViteConfig(root, plugins) {
       ],
     },
     build: { target: 'esnext' },
-    preview: { port: 0, host: 'localhost' },
+    preview: { port: 0, host: 'localhost', strictPort: true },
   };
 }
 
 /** Serve the owner bundle behind the regular demo's localhost origin. */
-export async function startDemoOwnerBundle(input, publicContext, origin = 'http://localhost:5173') {
+export async function startDemoOwnerBundle(
+  input,
+  publicContext,
+  origin = 'http://localhost:5173',
+  port = 0,
+) {
   const demo = new URL(origin);
   assert.equal(demo.origin, origin);
   assert.equal(demo.protocol, 'http:');
@@ -158,6 +163,7 @@ export async function startDemoOwnerBundle(input, publicContext, origin = 'http:
       ownerMiddleware(input.assets, context, origin),
       { name: 'midnames-owner-stage', closePreviewServer: removeStage },
     ]);
+    config.preview.port = port;
     config.base = '/owner-claim/';
     const entry = join(root, 'demo-entry.mjs');
     writeFileSync(entry, "export { proveReviewedClaim } from './claim-owner-browser-entry.mjs';");

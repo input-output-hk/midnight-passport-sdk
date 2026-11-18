@@ -62,6 +62,14 @@ the shared stack is absent, its `stack` command starts a separate Passport-owned
 project from the pinned template; a fresh chain needs ACC and name setup before
 the named control is enabled. The launcher does not fund a new sender account.
 
+The same source launcher can opt into **Register a .night name** after ACC
+activation and **Deposit** with two separately funded local wallets. Follow its
+[registration and funding setup](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/README.md#register-a-name-and-fund-a-passport-account).
+The browser reviews a registry quote before using the account passkey for the
+name-owner proof. It retains the original receipt until the transaction and
+registry binding agree. This is a standalone local `.night` demonstration; name
+registration is optional and can happen in a later session.
+
 The opt-in local Midnames profile adds a separate **Send NIGHT to a Passport
 name** form under **Passport account → Withdraw**. It requires a JubJub ACC,
 connected built-in wallet, `undeployed` chain, pinned standalone registry and

@@ -18,6 +18,9 @@ cell refuses. The inventory job downloads exactly eight current-run receipts and
 checks their source, runtime/catalog hashes, case order/union, purpose observations,
 complete setup/body/cleanup and monotonic timing accounting. Credential-purpose
 expectations are shared with the browser observer and specific to each cell.
+The `.nvmrc` file pins an exact Node 22 patch for every parallel cell: the
+inventory requires identical `nodeVersion` values, and a floating `22` allowed
+runner caches to select different patch releases during the same hosted run.
 Every cell installs Chrome for Testing `157.0.8103.78` through a SHA-pinned
 setup action, verifies that exact version and passes its binary path to the
 browser tests. This keeps the inventory's exact browser-version agreement while

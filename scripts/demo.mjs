@@ -3,7 +3,7 @@
 // existing service runner so its startup order and cleanup stay authoritative.
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -198,12 +198,24 @@ async function check(options) {
   run('bash', [join(root, 'scripts/prototype-up.sh'), '--check']);
   if (options.keyService) await freePort(keyPort);
   if (options.funding) {
-    if ((process.env.MIDNIGHT_STACK ?? 'undeployed') !== 'undeployed')
-      throw new Error('--funding currently requires the local undeployed stack');
-    for (const name of ['PASSPORT_FUNDING_TOKEN_FILE', 'PASSPORT_FUNDING_ASSETS_FILE']) {
+    if (!['undeployed', 'shared-ledger9'].includes(process.env.MIDNIGHT_STACK ?? 'undeployed'))
+      throw new Error('--funding requires an eligible local Ledger 9 stack');
+    for (const name of [
+      'PASSPORT_FUNDING_TOKEN_FILE',
+      'PASSPORT_FUNDING_ASSETS_FILE',
+      'PASSPORT_FUNDING_SEED_FILE',
+    ]) {
       if (!process.env[name] || !existsSync(process.env[name]))
         throw new Error(`--funding requires an existing ${name}`);
     }
+    const seedPath = process.env.PASSPORT_FUNDING_SEED_FILE;
+    if (!seedPath) throw new Error('--funding requires PASSPORT_FUNDING_SEED_FILE');
+    const seedStat = statSync(seedPath);
+    if (!seedStat.isFile() || (seedStat.mode & 0o077) !== 0 || seedStat.uid !== process.getuid?.())
+      throw new Error('--funding needs a private dedicated wallet seed file');
+    const seed = readFileSync(seedPath, 'utf8').trim();
+    if (!/^[0-9a-f]{64}$/.test(seed) || seed === '0'.repeat(63) + '1')
+      throw new Error('--funding needs a non-genesis dedicated wallet seed');
     await freePort(fundingPort);
   }
   console.log('demo: toolchain, Docker memory and ports are ready');

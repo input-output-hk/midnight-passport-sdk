@@ -42,6 +42,7 @@ export function createClaimSponsorHandler(
   directory: string,
   ports: ClaimDispatchPorts,
   preparation?: ClaimSponsorPreparationPorts,
+  onError?: (error: unknown) => void,
 ) {
   if (!isClaimSponsorOrigin(origin)) throw new Error('Claim sponsor requires a loopback origin.');
   const host = new URL(origin).host;
@@ -87,6 +88,7 @@ export function createClaimSponsorHandler(
         else response.writeHead(result ? 202 : 404).end();
       }
     } catch (error) {
+      onError?.(error);
       response.writeHead(error instanceof ClaimPreIntentRefusal ? 412 : 409).end();
     }
     return true;

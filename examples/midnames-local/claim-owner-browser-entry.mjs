@@ -207,12 +207,19 @@ export const commitment = (input, id) =>
 /** The demo passes the approved terms and its already-open credential. */
 export async function proveReviewedClaim(quote, credentialId, check) {
   const context = JSON.parse(new TextDecoder().decode(await binary('/owner-claim/context')));
+  const localIndexer = new URL(context.indexerUrl);
+  const allowedIndexer =
+    localIndexer.origin === 'http://127.0.0.1:8088' ||
+    localIndexer.origin === 'http://127.0.0.1:18108';
   if (
     context.networkId !== quote.networkId ||
     context.registryAddress !== quote.registryAddress ||
     context.sponsorAddress !== quote.sponsorAddress ||
-    context.indexerUrl !== 'http://127.0.0.1:18108/api/v4/graphql' ||
-    context.indexerWsUrl !== 'ws://127.0.0.1:18108/api/v4/graphql/ws'
+    !allowedIndexer ||
+    localIndexer.pathname !== '/api/v4/graphql' ||
+    localIndexer.search ||
+    localIndexer.hash ||
+    context.indexerWsUrl !== `ws://127.0.0.1:${localIndexer.port}/api/v4/graphql/ws`
   )
     throw new Error('The local proof context differs from the approved quote.');
   check();

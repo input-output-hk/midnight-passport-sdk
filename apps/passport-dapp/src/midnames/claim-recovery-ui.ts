@@ -46,9 +46,7 @@ function claimConflict(error: unknown): string | undefined {
 function claimReport(status: HTMLElement, onSetupStatus?: (message: string) => void) {
   return (message: string) => {
     status.textContent = message;
-    onSetupStatus?.(
-      message.startsWith('Registered.') ? message : `Pending Passport setup. ${message}`,
-    );
+    onSetupStatus?.(message.startsWith('Registered.') ? message : `Name registration. ${message}`);
   };
 }
 

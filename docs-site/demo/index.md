@@ -42,6 +42,19 @@ qualification. Do not co-start that shared default for this concurrent recipe.
 Keep each wallet's persistent state separate; a token allowlist does not mint or
 provision funds. A production ingress also needs its own authentication and limits.
 
+## Optional local .night registration
+
+The [source Midnames demo launcher](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/README.md#register-a-name-and-fund-a-passport-account)
+can attach to the shared Ledger 9 node and API v4 indexer. After activating an
+ACC, you may return later to **Passport account → Balances → Register a .night
+name**. A dedicated local sponsor quotes the registry price and payee; the
+browser reviews them before asking the open ACC passkey for a naming proof.
+The user then inspects and sends the original prepared claim, keeping its
+receipt until the indexed transaction and registry binding agree. This opt-in
+path requires a separately funded name sponsor, pinned Compact 0.35 registry
+artifacts, and the standalone local `.night` registry. It does not issue
+public `passport.night` names.
+
 
 The signed-out screen provides **Sign up** and **Log in**. After account access, use Passport account → Balances / Deposit / Withdraw; the separate Midnight wallet, Audit, and Settings workspaces have their own navigation. The demo shows **Powered by Lace** attribution for its Lace-inspired wallet and passkey experience. Lace remains a separate wallet/host with its own provider policy; this demo does not claim full Lace compatibility.
 
