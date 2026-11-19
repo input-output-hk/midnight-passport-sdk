@@ -4,8 +4,14 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { lstatSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
-import { isAbsolute, join, resolve } from 'node:path';
+import {
+  lstatSync,
+  readFileSync,
+  readdirSync,
+  realpathSync,
+  writeFileSync,
+} from 'node:fs';
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
@@ -14,6 +20,7 @@ const contract = process.argv[2];
 assert.ok(contract && isAbsolute(contract), 'Pass an absolute exported contract directory.');
 assert.ok(!lstatSync(contract).isSymbolicLink(), 'Contract directory must not be a symlink.');
 const dir = realpathSync(contract);
+assert.ok(lstatSync(dir).isDirectory(), 'Contract export must be a directory.');
 execFileSync(join(here, 'guard.sh'), [], { cwd: root, stdio: 'inherit' });
 
 const binding = JSON.parse(
@@ -28,6 +35,54 @@ assert.equal(
   'Refusing an export outside the pinned ACC binding.',
 );
 const packagePath = join(dir, 'package.json');
+const lockPath = join(dir, 'package-lock.json');
+for (const file of [packagePath, lockPath]) {
+  const stat = lstatSync(file);
+  assert.ok(stat.isFile() && !stat.isSymbolicLink(), `${file} must be a regular file.`);
+}
+const modules = join(dir, 'node_modules');
+function physicalLedgerVersions() {
+  let stat;
+  try {
+    stat = lstatSync(modules);
+  } catch (error) {
+    if (error?.code === 'ENOENT') return [];
+    throw error;
+  }
+  assert.ok(stat.isDirectory() && !stat.isSymbolicLink(), 'node_modules must be a real directory.');
+  const stack = [modules];
+  const versions = [];
+  let entries = 0;
+  while (stack.length) {
+    const current = stack.pop();
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      assert.ok(++entries <= 300_000, 'Dependency tree exceeds the inspection bound.');
+      const path = join(current, entry.name);
+      if (entry.isSymbolicLink()) {
+        const target = realpathSync(path);
+        const inside = relative(dir, target);
+        assert.ok(
+          basename(current) === '.bin' &&
+            inside !== '..' &&
+            !inside.startsWith(`..${sep}`) &&
+            !isAbsolute(inside),
+          `Refusing a dependency symlink outside the npm bin directory: ${path}`,
+        );
+      } else if (entry.isDirectory()) {
+        if (
+          entry.name === 'ledger-v9' &&
+          basename(current) === '@midnightntwrk' &&
+          basename(dirname(current)) === 'node_modules'
+        ) {
+          versions.push(JSON.parse(readFileSync(join(path, 'package.json'), 'utf8')).version);
+        }
+        stack.push(path);
+      }
+    }
+  }
+  return versions;
+}
+physicalLedgerVersions();
 const packageSource = readFileSync(packagePath, 'utf8');
 const pkg = JSON.parse(packageSource);
 assert.equal(pkg.name, 'midnight-account-custody');
@@ -45,18 +100,18 @@ pkg.dependencies['@midnightntwrk/ledger-v9'] = '1.0.2';
 pkg.overrides = { ...pkg.overrides, '@midnightntwrk/ledger-v9': '1.0.2' };
 const nextSource = JSON.stringify(pkg, null, 2) + '\n';
 function installedVersions() {
+  const physical = physicalLedgerVersions();
   try {
-    const lock = JSON.parse(readFileSync(join(dir, 'package-lock.json'), 'utf8'));
+    const lock = JSON.parse(readFileSync(lockPath, 'utf8'));
     if (lock.packages?.['']?.dependencies?.['@midnightntwrk/ledger-v9'] !== '1.0.2')
       return undefined;
     const versions = Object.entries(lock.packages)
       .filter(([name]) => name.endsWith('node_modules/@midnightntwrk/ledger-v9'))
       .map(([, entry]) => entry.version);
-    const installed = JSON.parse(
-      readFileSync(join(dir, 'node_modules/@midnightntwrk/ledger-v9/package.json'), 'utf8'),
-    );
-    return versions.length && versions.every((version) => version === '1.0.2') &&
-      installed.version === '1.0.2'
+    return versions.length &&
+      versions.every((version) => version === '1.0.2') &&
+      physical.length &&
+      physical.every((version) => version === '1.0.2')
       ? versions
       : undefined;
   } catch {
