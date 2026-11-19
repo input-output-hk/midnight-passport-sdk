@@ -30,8 +30,13 @@ All 13 Compact 0.36 ZKIR/prover/verifier key hashes match the pinned Compact 0.3
 A local source preview adds bounded sponsor archive lookup for the exact
 quote, owner-bound refusal of a sibling quote, and indexed-failure archival
 before browser-owned retry release. Its unit tests and a headless Chromium
-outage/retry path pass. The combined native sponsor/browser failure and fresh
-paid claim are still unqualified, so #334 remains open.
+outage/retry path pass. A later isolated release-stack run using a pinned
+Ledger 9 `1.0.2` reference client finalized the original fee-only claim
+failure, archived the exact sponsor journal, released the browser record after
+reload, and finalized a fresh paid claim to the same ACC. The fresh proof and
+dispatch were host-driven. #334 remains open for the complete demo-owned
+retry, real-provider, and negative native matrix; #363 still needs its
+separately pinned Compact 0.36 proof/write evaluation.
 
 ## Other open 0.2.0 work
 

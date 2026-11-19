@@ -29,9 +29,13 @@ sibling quote with an owner-bound marker, and archive a dispatched original
 only after its indexed failure is checked against a canonical finalized block.
 The browser retains its original until that sponsor archive succeeds, then
 checks the claim and registry again before offering a fresh quote. Unit and
-headless Chromium tests pass; the combined native sponsor/browser retry lane
-still needs an isolated qualification run. These checks do not establish an
-independent provider or prove a pending original was never submitted.
+headless Chromium tests pass. A separate isolated release-stack run with the
+Compact 0.35 artifacts and a pinned Ledger 9 `1.0.2` reference client
+finalized a fee-only claim failure, archived the exact sponsor original,
+released the browser record after reload, and finalized a different claim
+to the same ACC. Its proof and retry dispatch remained host-driven. These
+checks do not establish an independent provider, online naming, or real
+passkey consent.
 
 | Architecture surface | SDK status and evidence | Difference or limit against the target |
 | --- | --- | --- |

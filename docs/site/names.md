@@ -369,6 +369,13 @@ unchanged inputs, stopped its three owned containers, retained volumes, and
 released its native lease. The retry's new quote, proof, and dispatch remained
 host-driven; this does not qualify browser review before proving or a real
 passkey provider. Issue #334 remains open for those broader paths.
+The [release-stack retry receipt](../../examples/midnames-local/README.md#release-ledger-9-native-claim-retry)
+repeated this failure-and-retry path on node 2.1.101, indexer 4.4.101, and
+prover 9.0.2. It retained the Compact 0.35 artifacts and used Ledger 9
+`1.0.2` throughout the reference client. The first claim's fee-only
+`PARTIAL_SUCCESS` was archived and released after a browser reload; a
+different original then finalized `SUCCESS` for the same ACC. This is
+isolated local evidence, not an online or real-passkey qualification.
 If legacy storage contains multiple original claims,
 enter an original name to inspect it before preparing another.
 The synthetic full-app Chromium fixture now follows create/open into this form:

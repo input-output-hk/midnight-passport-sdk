@@ -427,6 +427,44 @@ read-only reconciliation verified both funding transactions and no submitted
 claim before releasing that attempt's lease. The successful run is a new,
 independently funded claim, not a replay of the earlier attempt.
 
+### Release Ledger 9 native claim retry
+
+An isolated node 2.1.101, indexer 4.4.101, and prover 9.0.2 run at signed
+`3dda8ec` passed the complete failed-claim retry fixture using the unchanged
+Compact 0.35 ACC and registry artifacts. Its first sponsored transaction
+finalized `PARTIAL_SUCCESS`: the DUST fee succeeded and the registration
+claim failed. The sponsor archived that exact original after canonical finality
+and an absent-name check. Headless Chromium released the browser record after
+a reload. A new quote, owner proof, and sponsor dispatch then finalized
+`SUCCESS` to the same ACC and the registry reader confirmed the binding.
+Both originals were dispatched once. The private receipt is
+`review/midnames-claim-retry-20261120-ledger102`; its supervisor stopped the
+three exact owned containers, preserved volumes, and released the native lease.
+The [redacted summary](evidence/release-ledger9-claim-retry-20261120.json)
+records the image pins, transaction IDs, outcome, and remaining limits.
+
+The release node rejected an earlier activation with error 104 when the
+reference client used Ledger 9 `1.0.0-rc.5`. A full Midnight.js 5.0.1 client
+cannot load this contract's Compact runtime 0.20 artifacts. The passing run
+kept the artifact-compatible Midnight.js and Compact.js versions while
+pinning every reference-client `@midnightntwrk/ledger-v9` dependency to
+`1.0.2`. This isolates a working local configuration; it does not establish
+the exact internal cause of either earlier gas rejection or online
+compatibility. Prepare an **idle** exported reference tree inside the Nix
+shell before a release-stack run:
+
+```sh
+nix develop -c node experiments/acc-0.35/prepare-ledger9-client.mjs \
+  /absolute/path/to/compiled/contract
+```
+
+The command verifies the pinned ACC manifest, updates only that generated
+tree's client package and lockfile, installs its dependencies, and refuses
+mixed Ledger 9 versions. The shared-stack demo launcher invokes it for its
+selected contract tree; an isolated native fixture must receive a separately
+prepared tree. Do not use this pin as a substitute for the separate Compact
+0.36 migration gate in [#363](https://github.com/input-output-hk/midnight-passport-sdk/issues/363).
+
 ### Compact 0.36 registry compatibility probe
 
 A [read-only compatibility receipt](evidence/compact036-readonly-20261119.json)
