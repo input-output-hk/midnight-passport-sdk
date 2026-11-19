@@ -76,6 +76,9 @@ async function openClaim(page: Page, origin: string) {
   await page.locator('#workspace-account').waitFor();
   await reveal(page, '#claim-recovery');
   await page.locator('#claim-recovery-name').fill(original.name);
+  // The prepared-claim profile keeps recovery details collapsed. Open the
+  // actual disclosure before using its receipt and check controls.
+  await reveal(page, '#claim-recovery-receipt');
 }
 const status = (page: Page, expected: RegExp) =>
   page
