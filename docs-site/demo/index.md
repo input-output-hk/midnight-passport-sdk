@@ -64,7 +64,7 @@ funded name sponsor, pinned Compact 0.35 registry
 artifacts, and the standalone local `.night` registry. It does not issue
 public `passport.night` names.
 
-An optional [Preprod indexer proxy](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-online/README.md)
+An optional [Preprod indexer proxy](https://github.com/input-output-hk/midnight-passport-sdk/blob/b40e6eec307f9a83c6ba226f17fb647759fc9095/examples/midnames-online/README.md)
 keeps a Blockfrost token on the host for read-only online profiles. It does not
 provide the independent second reader or known name-to-ACC mapping required
 before this demo enables online naming.
