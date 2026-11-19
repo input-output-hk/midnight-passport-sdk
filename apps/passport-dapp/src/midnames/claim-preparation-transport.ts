@@ -1,6 +1,11 @@
 import { isClaimSponsorOrigin } from './claim-dispatch.js';
 import { claimReceiptLimit, type ClaimReceipt } from './claim-receipt.js';
-import { ClaimPreIntentRefusal, claimOwnerProof, type ClaimPreparation } from './claim-quote.js';
+import {
+  ClaimPreIntentRefusal,
+  ClaimSponsorBusy,
+  claimOwnerProof,
+  type ClaimPreparation,
+} from './claim-quote.js';
 
 export const claimQuotePath = '/v1/midnames/claim/quote';
 export const claimPreparePath = '/v1/midnames/claim/prepare';
@@ -18,6 +23,10 @@ async function request(path: string, input: unknown): Promise<unknown> {
     signal: AbortSignal.timeout(60_000),
   });
   if (response.status === 202 || response.status === 404) return undefined;
+  if (path === claimQuotePath && response.status === 423)
+    throw new ClaimSponsorBusy(
+      'The local sponsor has an unresolved original claim. This quote request did not prepare or send a new claim. Preserve any earlier receipt and reconcile it before requesting another quote.',
+    );
   if ((path === claimPreparePath || path === claimPreparedPath) && response.status === 412)
     throw new ClaimPreIntentRefusal('The sponsor refused this quote before preparation began.');
   if (!response.ok || !response.body)

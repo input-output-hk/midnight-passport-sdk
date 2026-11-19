@@ -22,7 +22,10 @@ import {
   createClaimPreparationJournal,
   type ClaimSponsorPreparationPorts,
 } from './claim-preparation.mts';
-import { ClaimPreIntentRefusal } from '../../apps/passport-dapp/src/midnames/claim-quote.ts';
+import {
+  ClaimPreIntentRefusal,
+  ClaimSponsorBusy,
+} from '../../apps/passport-dapp/src/midnames/claim-quote.ts';
 
 async function readJson(request: IncomingMessage, limit: number): Promise<unknown> {
   const chunks: Buffer[] = [];
@@ -125,7 +128,15 @@ export function createClaimSponsorHandler(
       }
     } catch (error) {
       onError?.(error);
-      response.writeHead(error instanceof ClaimPreIntentRefusal ? 412 : 409).end();
+      response
+        .writeHead(
+          error instanceof ClaimSponsorBusy
+            ? 423
+            : error instanceof ClaimPreIntentRefusal
+              ? 412
+              : 409,
+        )
+        .end();
     } finally {
       if (retire) retiring = false;
       else active--;

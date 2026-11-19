@@ -197,6 +197,17 @@ stops the operation. It spans multiple transactions: if it is interrupted after 
 inspect the live roster and inbox before attempting another removal. The removed passkey should
 no longer open the ACC; confirm the owner can still open it.
 
+## Local `.night` name claim
+
+For the opt-in local `.night` demo, create or reopen the ACC first, then choose a
+name on its Balances page. Review the sponsor quote before approving the naming
+proof; a second click reviews the saved terms before sending. **Prepared but never
+sent** is not a registered name. Check the original claim until its transaction
+and registry binding agree. The reference sponsor holds one original at a time:
+if another account asks for a quote while that original is unresolved, it reports
+busy before requesting a naming proof. Reconcile the original in its own browser
+instead of clearing either browser's site data or starting a replacement claim.
+
 ## Scoped grant demonstration
 
 With an ACC open, choose **Read grant roster** to see its chain-confirmed grant generation, nonce,

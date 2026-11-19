@@ -3,6 +3,7 @@ import { byId } from '../ui-dom.js';
 import { openClaimJournal, type ClaimJournal } from './claim-journal.js';
 import { showClaimPreparation } from './claim-preparation-ui.js';
 import { reviewedDispatchQuote } from './claim-quote.js';
+import { ClaimSponsorBusy } from './claim-quote.js';
 import { createClaimSendReview } from './claim-send-review.js';
 import {
   claimDigest,
@@ -33,6 +34,7 @@ const availabilityMessages = {
 
 function claimConflict(error: unknown): string | undefined {
   if (!(error instanceof Error)) return undefined;
+  if (error instanceof ClaimSponsorBusy) return error.message;
   if (error.message === 'This failed original was already released. Review a fresh claim.')
     return error.message;
   if (error.message === 'A different original claim is retained for this name.')

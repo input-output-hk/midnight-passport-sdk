@@ -5,6 +5,7 @@ import {
   claimQuote,
   claimQuoteDigest,
   ClaimPreIntentRefusal,
+  ClaimSponsorBusy,
   matchesDestination,
   type ClaimDestination,
   type ClaimQuote,
@@ -177,7 +178,12 @@ export function createClaimPreparationJournal(
     },
     async issue(input: unknown) {
       const destination = claimDestination(input);
+      const busy = () =>
+        readClaimRecord(intentPath, claimReceiptLimit) !== undefined ||
+        dispatch.preparedReceipt() !== undefined;
+      if (busy()) throw new ClaimSponsorBusy('The sponsor has an unresolved original claim.');
       const quote = claimQuote(await ports.issue(destination));
+      if (busy()) throw new ClaimSponsorBusy('The sponsor has an unresolved original claim.');
       if (!matchesDestination(quote, destination) || quote.expiresAt <= Date.now())
         throw new Error('The sponsor cannot issue this quote.');
       const path = quotePath(quote.id);

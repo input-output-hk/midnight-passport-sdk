@@ -525,6 +525,37 @@ try {
   } finally {
     await refusalContext.close();
   }
+  const busyContext = await browser.newContext();
+  try {
+    const busyPage = await busyContext.newPage();
+    busyPage.on('pageerror', (error) => errors.push(error.message));
+    await busyPage.route(origin + claimQuotePath, (route) =>
+      route.fulfill({ status: 423, body: '' }),
+    );
+    await busyPage.goto(`${origin}/?preproof&http`);
+    await busyPage
+      .locator('#status')
+      .filter({ hasText: /^Ready\./ })
+      .waitFor({ state: 'attached' });
+    await busyPage.locator('#create').click();
+    await busyPage.locator('#passport-name-setup').waitFor({ state: 'visible' });
+    await busyPage.locator('#claim-recovery-name').fill(original.name);
+    await busyPage.locator('#claim-review-quote').click();
+    await busyPage
+      .locator('#claim-recovery-status')
+      .getByText(/sponsor has an unresolved original claim/i)
+      .waitFor();
+    assert.equal(await busyPage.locator('#claim-prepare').isVisible(), false);
+    assert.deepEqual(
+      await busyPage.evaluate(() => ({
+        proofs: Number(localStorage.getItem('handoff-proofs') || '0'),
+        preparations: Number(localStorage.getItem('handoff-preparations') || '0'),
+      })),
+      { proofs: 0, preparations: 0 },
+    );
+  } finally {
+    await busyContext.close();
+  }
   assert.deepEqual(errors, []);
   console.log(
     'Midnames synthetic create/open, failed original, sponsor HTTP quote, and pre-proof approval/refusal: PASS',

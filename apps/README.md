@@ -1075,6 +1075,12 @@ requires confirmation. Checking the original reads the sponsor's dispatch fence
 as well as the indexer: an unfenced receipt is displayed as prepared but unsent.
 An expired unfenced preparation can be verified and archived by the local
 sponsor before reviewing a new quote.
+The reference sponsor journal holds one original at a time. While an unresolved
+preparation occupies it, a different account's quote request returns a distinct
+busy result **before** naming proof or preparation. The page explains that no new
+claim was started by that request; reconcile or retire the original through its
+own browser flow before another account asks for a quote. A busy refusal does not
+authorize clearing the sponsor journal or the other browser's site data.
 The quote pins the sponsor payment wallet; NIGHT inputs and change must use
 that wallet. It also pins the registered domain's future subdomain payment
 address. The sponsor HTTP route requires a prepared, quote-bound receipt.

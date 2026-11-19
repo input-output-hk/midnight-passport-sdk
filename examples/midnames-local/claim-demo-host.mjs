@@ -32,6 +32,7 @@ const safeRefusals = new Set([
   'Claim target is not an activated Passport ACC.',
   'The dedicated claim sponsor needs NIGHT and two DUST inputs.',
   'The live registry or sponsor terms differ from the reviewed quote.',
+  'The sponsor has an unresolved original claim.',
 ]);
 const appPackage = pathToFileURL(
   new URL('../../apps/passport-dapp/package.json', import.meta.url).pathname,

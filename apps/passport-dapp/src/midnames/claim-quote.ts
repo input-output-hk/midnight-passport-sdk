@@ -42,6 +42,9 @@ export interface OwnerProvedClaim {
 /** The sponsor durably refused this quote before recording any balance intent. */
 export class ClaimPreIntentRefusal extends Error {}
 
+/** The local sponsor already holds an original claim and cannot issue a new quote. */
+export class ClaimSponsorBusy extends Error {}
+
 export function claimOwnerProof(value: OwnerProvedClaim): OwnerProvedClaim {
   if (
     !claimHex(value.ownerCommitment) ||

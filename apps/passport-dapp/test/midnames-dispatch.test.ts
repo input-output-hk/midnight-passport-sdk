@@ -257,8 +257,10 @@ test('recovers a retained sponsor preparation over HTTP after reopening the jour
       assert.fail('This test must never broadcast.');
     },
   };
+  let quoteIssues = 0;
   const preparation = {
     async issue() {
+      quoteIssues++;
       return quote;
     },
     async authorizeQuote() {},
@@ -294,12 +296,16 @@ test('recovers a retained sponsor preparation over HTTP after reopening the jour
     }),
   );
   reopen();
+  assert.equal((await post(claimQuotePath, destination)).status, 423);
+  assert.equal(quoteIssues, 1);
   assert.equal((await post(claimPreparedPath, lookup)).status, 202);
   assert.equal((await post(claimPreparePath, { ...lookup, proof: '020305' })).status, 202);
   assert.equal((await post(claimPreparePath, { ...lookup, proof: '020304' })).status, 409);
   const retained = { ...original, quoteSha256: digest };
   journal.retain(bytes, retained);
   reopen();
+  assert.equal((await post(claimQuotePath, destination)).status, 423);
+  assert.equal(quoteIssues, 1);
   assert.deepEqual(await (await post(claimPreparedPath, lookup)).json(), retained);
   assert.deepEqual(
     await (await post(claimPreparePath, { ...lookup, proof: '020305' })).json(),
