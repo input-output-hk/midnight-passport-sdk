@@ -16,16 +16,33 @@ export const ISOLATED_IMAGES = Object.freeze([
   { service: 'indexer', tag: 'ghcr.io/midnightntwrk/indexer-standalone:4.4.0-rc.6-b5e6c809' },
   { service: 'proof-server', tag: 'midnightntwrk/proof-server:9.0.0-rc.8' },
 ]);
+// The local Midnames retry lane uses the release stack's immutable image pins.
+// Historical mounted publication plans retain the separate RC image roster above.
+export const MIDNAMES_RELEASE_IMAGES = Object.freeze([
+  {
+    service: 'node',
+    tag: 'ghcr.io/midnight-ntwrk/midnight-node@sha256:0c1ad548d523c1109aa1f16daab1bf72dcb78c7e17b8a8c6d97424ad0eba7b8a',
+  },
+  {
+    service: 'indexer',
+    tag: 'ghcr.io/midnight-ntwrk/indexer-standalone@sha256:119f35db548ba1c390845f215bb1e928e73038bef7c315825aee0461bd54499d',
+  },
+  {
+    service: 'proof-server',
+    tag: 'ghcr.io/midnight-ntwrk/proof-server@sha256:787ef99db4b4706eb14d94ad389ca45f1c09bcdf740afecb01899bfbda63dc64',
+  },
+]);
 /** @param {string} encoded */
 function inspected(encoded) {
   const result = JSON.parse(encoded);
   assert.ok(Array.isArray(result) && result.length === 1);
   return isolationObject(result[0]);
 }
-/** @param {DockerCommand} docker @param {string} arch */
-export function isolatedImages(docker, arch) {
+/** @param {DockerCommand} docker @param {string} arch @param {typeof ISOLATED_IMAGES} [pins] */
+export function isolatedImages(docker, arch, pins = ISOLATED_IMAGES) {
   assert.ok(['arm64', 'amd64'].includes(arch));
-  return ISOLATED_IMAGES.map(({ service, tag }) => {
+  assert.ok(pins === ISOLATED_IMAGES || pins === MIDNAMES_RELEASE_IMAGES);
+  return pins.map(({ service, tag }) => {
     const image = inspected(docker(['image', 'inspect', tag]));
     assert.match(String(image.Id), /^sha256:[a-f0-9]{64}$/);
     assert.equal(image.Os, 'linux');
@@ -64,7 +81,8 @@ export function isolatedContainerArguments(profile, service, image) {
     '-p',
     `127.0.0.1:${port}:${inner}`,
   ];
-  if (service !== 'proof-server') args.push('-v', `${p.project}-${service}-data:/data`);
+  if (service !== 'proof-server')
+    args.push('-v', `${p.project}-${service}-data:${service === 'node' ? '/node/chain' : '/data'}`);
   if (service === 'node')
     args.push(
       '--cap-add',

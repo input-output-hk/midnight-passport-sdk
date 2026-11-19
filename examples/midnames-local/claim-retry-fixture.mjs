@@ -105,7 +105,7 @@ export async function qualifyClaimRetry(input) {
             receipt: original,
             nodeUrl: process.env.MN_NODE_URL,
             indexerUrl: process.env.MN_INDEXER_URL,
-            protocolVersion: 2001000,
+            protocolVersion: 2001100,
             reader: reads,
             profile,
           });
@@ -216,12 +216,20 @@ export async function qualifyClaimRetry(input) {
         assert.equal(retryDispatches, 1);
         const deadline = Date.now() + 120_000;
         while (Date.now() < deadline) {
-          const status = await readClaimFinality(process.env.MN_INDEXER_URL, nextReceipt);
+          const status = await readClaimFinality(
+            process.env.MN_INDEXER_URL,
+            nextReceipt,
+            fetch,
+            2001100,
+          );
           if (status === true) break;
           assert.ok(status === false || status === undefined, `Fresh retry status: ${status}`);
           await delay(1500);
         }
-        assert.equal(await readClaimFinality(process.env.MN_INDEXER_URL, nextReceipt), true);
+        assert.equal(
+          await readClaimFinality(process.env.MN_INDEXER_URL, nextReceipt, fetch, 2001100),
+          true,
+        );
         assert.deepEqual(await reads.readClaim(nextQuote.name, profile), {
           ownerCommitment: nextQuote.ownerCommitment,
           target: { kind: 'contract', address: accountAddress },
@@ -235,7 +243,10 @@ export async function qualifyClaimRetry(input) {
   assert.equal(second.indexedRetrySuccess, true);
   assert.equal(retryDispatches, 1);
   assert.ok(retryReceipt);
-  assert.equal(await readClaimFinality(process.env.MN_INDEXER_URL, receipt), 'claim-failed');
+  assert.equal(
+    await readClaimFinality(process.env.MN_INDEXER_URL, receipt, fetch, 2001100),
+    'claim-failed',
+  );
   saveIsolationReceipt(join(output, 'indexed-claim-retry.json'), {
     original: receipt,
     retry: retryReceipt,

@@ -107,7 +107,7 @@ network as the Passport demo.
 | `VITE_MIDNAMES_NETWORK_ID` | Exact Passport demo network, such as `undeployed` |
 | `VITE_MIDNAMES_NAMESPACE` | `night` or an explicitly configured canonical namespace |
 | `VITE_MIDNAMES_REGISTRY_ADDRESS` | 64 lowercase hex characters for the pinned registry |
-| `VITE_MIDNAMES_CLAIM_PROTOCOL_VERSION` | Required for standalone claim reconciliation: exact Indexer v4 transaction `protocolVersion` observed on this chain (`2001000` for the isolated fixture, `2001100` for shared Ledger 9); this is distinct from the `/api/v4/graphql` API version |
+| `VITE_MIDNAMES_CLAIM_PROTOCOL_VERSION` | Required for standalone claim reconciliation: exact Indexer v4 transaction `protocolVersion` observed on this chain (`2001100` for the shared stack and release-image isolated fixture); this is distinct from the `/api/v4/graphql` API version |
 | `VITE_MIDNAMES_INDEXER_URL` | Public HTTPS GraphQL endpoint, or HTTP on loopback |
 | `VITE_MIDNAMES_INDEXER_WS_URL` | Public WSS endpoint, or WS on loopback |
 | `VITE_MIDNAMES_VERIFICATION_INDEXER_URL` | Second HTTPS GraphQL endpoint on a distinct origin; required for a non-`undeployed` network or non-loopback primary indexer |
