@@ -35,6 +35,7 @@ export async function qualifyClaimRetry(input) {
     compiled,
     registry,
     regProviders,
+    walletModule,
     contracts,
     providers,
     ledger,
@@ -155,61 +156,82 @@ export async function qualifyClaimRetry(input) {
   const freshSponsorQuote = await sponsorJournal.issue(fixtureQuote);
   assert.notEqual(freshSponsorQuote.id, fixtureQuote.id);
   assert.equal(freshSponsorQuote.accountAddress, accountAddress);
+  // Rebuild the sponsor's coin view after the first transaction's partial result.
+  step('refresh-sponsor-wallet-after-partial-result');
+  const freshSponsor = await walletModule.createWallet('0'.repeat(63) + '1');
+  let freshProviders;
+  try {
+    await walletModule.syncWallet(freshSponsor, 'isolated retry sponsor');
+    assert.equal(
+      Buffer.from(walletModule.userAddressBytes(freshSponsor)).toString('hex'),
+      sponsorPaymentAddress,
+    );
+    freshProviders = await walletModule.createProviders(freshSponsor);
+  } catch (error) {
+    await freshSponsor.wallet.stop();
+    throw error;
+  }
   const retryDir = join(output, 'retry');
-  mkdirSync(retryDir, { mode: 0o700 });
   let retryReceipt;
   let retryDispatches = 0;
-  const second = await qualifyClaimHandoff({
-    output: retryDir,
-    ref,
-    assets,
-    modulePath,
-    registryManifestHash,
-    registryAddress,
-    accountAddress,
-    sponsorPaymentAddress,
-    walletProvider: regProviders.walletProvider,
-    ledger,
-    rootId,
-    parentDomain: parent,
-    sponsorIssuedQuote: freshSponsorQuote,
-    step,
-    async dispatch(nextQuote, nextReceipt, nextFixtureQuote) {
-      await readLive(nextQuote);
-      assert.equal(nextQuote.name, quote.name);
-      assert.notEqual(nextReceipt.transaction.sha256, receipt.transaction.sha256);
-      assert.equal(nextFixtureQuote.id, freshSponsorQuote.id);
-      assert.ok(Date.now() < freshSponsorQuote.expiresAt);
-      retryReceipt = nextReceipt;
-      const journal = openClaimDispatch(retryDir);
-      const pending = await journal.dispatch(nextReceipt, {
-        async authorize(bytes, acknowledged) {
-          await readLive(nextQuote);
-          admitNativeClaim(bytes, acknowledged, nextQuote, 100_000_000_000_000_000n);
-        },
-        async submit(bytes) {
-          retryDispatches++;
-          const tx = ledger.Transaction.deserialize('signature', 'proof', 'binding', bytes);
-          await providers.midnightProvider.submitTx({ version: 'v9', tx });
-        },
-      });
-      assert.equal(pending.status, 'pending');
-      assert.equal(retryDispatches, 1);
-      const deadline = Date.now() + 120_000;
-      while (Date.now() < deadline) {
-        const status = await readClaimFinality(process.env.MN_INDEXER_URL, nextReceipt);
-        if (status === true) break;
-        assert.ok(status === false || status === undefined);
-        await delay(1500);
-      }
-      assert.equal(await readClaimFinality(process.env.MN_INDEXER_URL, nextReceipt), true);
-      assert.deepEqual(await reads.readClaim(nextQuote.name, profile), {
-        ownerCommitment: nextQuote.ownerCommitment,
-        target: { kind: 'contract', address: accountAddress },
-      });
-      return { indexedRetrySuccess: true, retryDispatches };
-    },
-  });
+  let second;
+  try {
+    mkdirSync(retryDir, { mode: 0o700 });
+    second = await qualifyClaimHandoff({
+      output: retryDir,
+      ref,
+      assets,
+      modulePath,
+      registryManifestHash,
+      registryAddress,
+      accountAddress,
+      sponsorPaymentAddress,
+      walletProvider: freshProviders.walletProvider,
+      ledger,
+      rootId,
+      parentDomain: parent,
+      sponsorIssuedQuote: freshSponsorQuote,
+      step,
+      async dispatch(nextQuote, nextReceipt, nextFixtureQuote) {
+        await readLive(nextQuote);
+        assert.equal(nextQuote.name, quote.name);
+        assert.notEqual(nextReceipt.transaction.sha256, receipt.transaction.sha256);
+        assert.equal(nextFixtureQuote.id, freshSponsorQuote.id);
+        assert.ok(Date.now() < freshSponsorQuote.expiresAt);
+        retryReceipt = nextReceipt;
+        const journal = openClaimDispatch(retryDir);
+        const pending = await journal.dispatch(nextReceipt, {
+          async authorize(bytes, acknowledged) {
+            await readLive(nextQuote);
+            assert.ok(Date.now() < freshSponsorQuote.expiresAt, 'Fresh sponsor quote expired.');
+            admitNativeClaim(bytes, acknowledged, nextQuote, 100_000_000_000_000_000n);
+          },
+          async submit(bytes) {
+            retryDispatches++;
+            const tx = ledger.Transaction.deserialize('signature', 'proof', 'binding', bytes);
+            await providers.midnightProvider.submitTx({ version: 'v9', tx });
+          },
+        });
+        assert.equal(pending.status, 'pending');
+        assert.equal(retryDispatches, 1);
+        const deadline = Date.now() + 120_000;
+        while (Date.now() < deadline) {
+          const status = await readClaimFinality(process.env.MN_INDEXER_URL, nextReceipt);
+          if (status === true) break;
+          assert.ok(status === false || status === undefined, `Fresh retry status: ${status}`);
+          await delay(1500);
+        }
+        assert.equal(await readClaimFinality(process.env.MN_INDEXER_URL, nextReceipt), true);
+        assert.deepEqual(await reads.readClaim(nextQuote.name, profile), {
+          ownerCommitment: nextQuote.ownerCommitment,
+          target: { kind: 'contract', address: accountAddress },
+        });
+        return { indexedRetrySuccess: true, retryDispatches };
+      },
+    });
+  } finally {
+    await freshSponsor.wallet.stop();
+  }
   assert.equal(second.indexedRetrySuccess, true);
   assert.equal(retryDispatches, 1);
   assert.ok(retryReceipt);

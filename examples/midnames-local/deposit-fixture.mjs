@@ -377,6 +377,7 @@ try {
             compiled: compiled(rootSecret),
             registry,
             regProviders,
+            walletModule,
             contracts,
             providers,
             ledger,
