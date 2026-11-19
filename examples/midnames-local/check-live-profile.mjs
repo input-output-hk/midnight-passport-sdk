@@ -6,6 +6,7 @@ import {
   createMidnamesIndexer,
   createMidnamesLedgerReads,
 } from '../../apps/passport-dapp/src/midnames/ledger-reader.ts';
+import { waitForFinalizedIndexerBlock } from './finalized-indexer.mjs';
 
 const [file] = process.argv.slice(2);
 assert.ok(file, 'Pass a local Midnames profile JSON file.');
@@ -64,14 +65,15 @@ assert.equal(
 );
 const finalizedHash = await rpc('chain_getFinalizedHead', []);
 assert.match(finalizedHash, /^0x[a-f0-9]{64}$/);
-const blockHash = finalizedHash.slice(2);
+const finalizedHeader = await rpc('chain_getHeader', [finalizedHash]);
+assert.match(finalizedHeader?.number, /^0x[a-f0-9]+$/);
+const finalizedHeight = Number(BigInt(finalizedHeader.number));
+assert.ok(Number.isSafeInteger(finalizedHeight));
 const indexer = createMidnamesIndexer('undeployed', indexerUrl, indexerWsUrl);
 try {
-  const block = await indexer.queryBlock({ type: 'blockHash', blockHash });
-  assert.equal(block?.hash, blockHash, 'Indexer has not indexed the node-finalized block.');
-  assert.ok(
-    Number.isSafeInteger(block.height) && block.height >= profile.registry.claimBlock.height,
-  );
+  assert.ok(finalizedHeight >= profile.registry.claimBlock.height);
+  const blockHash = finalizedHash.slice(2);
+  const block = await waitForFinalizedIndexerBlock(indexer, blockHash, finalizedHeight);
   // Midnames and ACC must be read as of the same canonical finalized block. A
   // fresh read of each contract at the indexer tip can straddle a name update.
   const pinned = {
@@ -95,7 +97,7 @@ try {
   assert.equal(claim.target.address, profile.recipient.address, 'The name target changed.');
   assert.ok(await reader.isSupportedAccount(profile.recipient.address, 'undeployed'));
   assert.equal(
-    await rpc('chain_getBlockHash', [block.height]),
+    await rpc('chain_getBlockHash', [finalizedHeight]),
     finalizedHash,
     'The anchored indexer block is not canonical on the node.',
   );
