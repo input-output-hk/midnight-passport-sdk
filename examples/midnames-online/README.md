@@ -49,3 +49,64 @@ preflight, rejection of untrusted and missing origins, replacement of an
 upstream wildcard CORS header, an off-scope 404, and absence of the test ID
 from client URLs and process logs.
 That check does not establish a live Blockfrost response or provider agreement.
+
+## Check one known mapping at a finalized block
+
+Before considering an online profile, obtain a dated name-to-deployed-ACC
+mapping from an independent source and two indexers operated by genuinely
+different providers. Save a private profile with the exact chain, public
+registry, node and tokenless indexer endpoints:
+
+```json
+{
+  "schemaVersion": 1,
+  "networkId": "preprod",
+  "nodeRpcUrl": "https://rpc.midnight-preprod.blockfrost.io/",
+  "registryProfile": "midnames-2.1.0",
+  "registryAddress": "<64 lowercase hex characters>",
+  "bindingId": "acc-s3r1.1",
+  "namespace": "night",
+  "knownName": "<independently observed name>.night",
+  "knownAcc": "<64 lowercase hex characters>",
+  "observationDate": "<YYYY-MM-DD>",
+  "primaryIndexer": {
+    "http": "https://<operator-controlled-host>/api/v4/graphql",
+    "ws": "wss://<operator-controlled-host>/api/v4/graphql/ws"
+  },
+  "witnessIndexer": {
+    "http": "https://<independent-host>/api/v4/graphql",
+    "ws": "wss://<independent-host>/api/v4/graphql/ws"
+  }
+}
+```
+
+Run the read-only check with two independent readers available. The browser
+proxy above intentionally requires a browser Origin and refuses this Node CLI;
+do not weaken that gate. Point the CLI at separately provisioned tokenless
+Indexer API v4 endpoints or operator-controlled host proxies that admit its
+requests. The Blockfrost project ID stays in the host environment; it is sent
+as a header only when the node URL is the exact official Blockfrost host for
+that network.
+Other node hosts receive no project ID. Use new absolute paths for the private
+profile and receipt:
+
+```sh
+export BLOCKFROST_PROJECT_ID=<your-nightpreprod-project-id>
+nix develop -c pnpm --filter passport-dapp exec node --import tsx \
+  ../../examples/midnames-online/check-known-mapping.mjs \
+  /private/online-profile.json /private/online-check.json
+```
+
+The script verifies the node's chain ID and finalized block, waits for both
+indexers to expose that exact block hash and height, and decodes the registry
+and activated ACC at that block through each reader. It refuses a missing,
+moved or unsupported contract target, a wrong chain, lagging or disagreeing
+indexer, and a block no longer canonical on the node. The receipt is created
+once with private file permissions and contains public pins, origins and
+limits, never the project ID. The witness URL must use a separate backend:
+two origins that proxy the same provider are not independent.
+
+This checks one operator-supplied known mapping. It cannot prove that the
+mapping was independently observed, that the readers are separately operated,
+or that future online lookups remain fresh. Keep the browser online profile
+disabled until those provider and ownership gates are evidenced separately.
