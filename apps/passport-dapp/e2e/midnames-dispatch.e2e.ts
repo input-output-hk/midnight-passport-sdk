@@ -125,12 +125,15 @@ const vite = await createServer({
             availability: async () => 'available',
             check: async ({ quoteSha256, ...saved }) => {
               if (outage) throw Error('indexer offline');
+              if (new URLSearchParams(location.search).has('resumePending')) return 'pending';
               return JSON.stringify(saved) === JSON.stringify(original) ? 'registered' : 'conflict';
             },
             ...(!readOnly && { dispatch: requestClaimDispatch }),
-            ...(preparing && { preparation: createLocalClaimPreparation(
+            ...(preparing && { preparation: { ...createLocalClaimPreparation(
               async () => ({ ownerCommitment: original.ownerCommitment, bytes: new Uint8Array([2, 3, 5]) }),
-            ) }),
+            ), ...(new URLSearchParams(location.search).has('resumePending') && {
+              dispatchStatus: async () => 'prepared',
+            }) } }),
           }, () => account, (message) => {
             document.getElementById('setup-status').textContent = message;
           });
@@ -254,7 +257,7 @@ async function verifyPreparation(
     await resumed.getByRole('button', { name: 'Recover prepared receipt' }).click();
     await resumed
       .locator('#claim-recovery-status')
-      .filter({ hasText: 'Original receipt saved' })
+      .filter({ hasText: 'No transaction has been sent' })
       .waitFor();
     assert.deepEqual(preparationRequests, ['quote', 'quote', 'prepare', 'find', 'find', 'find']);
     await resumed.locator('#claim-recovery-check').click();
@@ -399,7 +402,7 @@ try {
     .waitFor();
   assert.equal(
     await readOnly.locator('#claim-recovery-title').innerText(),
-    'Local .night name and receipt',
+    'Register a .night name',
   );
   assert.equal(
     await readOnly.locator('label[for="claim-recovery-name"]').innerText(),
@@ -466,18 +469,16 @@ try {
   await verifyPreparation(origin, pageUrl, () => openBrowser('chrome-preparation-profile'));
   browser = await openBrowser('chrome-preparation-profile');
   const prepared = await browser.newPage();
-  await prepared.goto(pageUrl + '?prepare');
-  await prepared.locator('#claim-recovery-name').fill(receipt.name);
+  await prepared.goto(pageUrl + '?prepare&resumePending&setup');
   let quotedDispatches = 0;
   await prepared.route(origin + claimDispatchPath, async (route) => {
     quotedDispatches++;
     assert.deepEqual(route.request().postDataJSON(), preparedReceipt);
     await route.fulfill({ status: 202 });
   });
-  await prepared.locator('#claim-dispatch').click();
   await prepared
     .locator('#claim-recovery-status')
-    .filter({ hasText: /Review the saved payment terms above/ })
+    .filter({ hasText: /No transaction has been sent\. Review the payment terms/ })
     .waitFor();
   assert.match(
     await prepared.locator('#claim-quote-summary').innerText(),
@@ -487,7 +488,7 @@ try {
   await prepared.locator('#claim-dispatch').click();
   await prepared
     .locator('#claim-recovery-status')
-    .filter({ hasText: /^Claim pending/ })
+    .filter({ hasText: /Prepared but never sent/ })
     .waitFor();
   assert.equal(quotedDispatches, 1);
   await browser.close();

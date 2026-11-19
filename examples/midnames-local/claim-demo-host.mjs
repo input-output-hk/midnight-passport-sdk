@@ -204,7 +204,6 @@ try {
           quote.expiresAt <= Date.now()
         )
           throw new Error('The live registry or sponsor terms differ from the reviewed quote.');
-        await inventory(terms.night);
       },
       async retireExpiredUnsent(receipt) {
         if (
@@ -214,9 +213,9 @@ try {
         )
           throw new Error('The expired claim could not be proved unsent and unregistered.');
       },
-      async balance(bytes) {
+      async balance(bytes, ttl) {
         const tx = Transaction.deserialize('signature', 'proof', 'pre-binding', bytes);
-        const balanced = await providers.walletProvider.balanceTx({ version: 'v9', tx });
+        const balanced = await providers.walletProvider.balanceTx({ version: 'v9', tx }, ttl);
         assert.equal(balanced.version, 'v9');
         return balanced.tx.serialize();
       },

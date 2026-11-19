@@ -97,17 +97,18 @@ nix develop -c node scripts/midnames-local-demo.mjs up \
 
 Open the activated ACC with its passkey, go to **Passport account → Balances →
 Register a .night name**, enter an unregistered name such as `yurii.night`, and
-check registry status. Review the exact quote, approve owner-side proof, inspect
-the saved original receipt, then click **Review terms before send**. This first
-click sends nothing; inspect the saved price and click **Confirm reviewed terms
-and send** before the quote expires. **Check original claim** distinguishes a
-prepared, unsent receipt from a claim whose send outcome needs reconciliation.
-If an unsent quote expires, use **Retire expired unsent original** after the
-local sponsor verifies that it has no dispatch fence, the original is absent
-from the indexer, and the name remains free. The old private journal is archived
-beside the new one; the browser retains the original in released history. Then
-review a fresh quote. A fenced or uncertain send stays pending for read-only
-reconciliation. Recheck the sent original until it and the registry binding agree. Registration is
+click **Continue registration**. Review the exact quote and click **Approve with
+passkey**. The page then displays the saved payment terms without sending; click
+**Confirm payment and register** after reviewing them. The page checks the
+original claim after dispatch. Raw receipts and manual checks remain under
+**Receipt and recovery details** for diagnostics.
+The local sponsor gives its balanced transaction a four-minute dispatch window;
+review and confirm promptly after preparation. **Continue registration** first
+reconciles any retained original. For an unsent transaction past its TTL, the
+sponsor verifies no dispatch fence, no indexed original and an unregistered
+name before it archives the private journal; the browser retains the receipt
+in released history. A fenced or uncertain send stays pending for read-only
+reconciliation. Registration is
 optional and can be done in a later session with the same account credential.
 The separate **Deposit** page offers the configured NIGHT amount. Each deposit
 requires the funding wallet's allowlisted asset and available balance.

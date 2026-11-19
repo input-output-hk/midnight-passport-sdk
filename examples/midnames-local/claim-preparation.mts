@@ -17,12 +17,23 @@ import {
   claimReceiptLimit,
   type ClaimReceipt,
 } from '../../apps/passport-dapp/src/midnames/claim-receipt.ts';
-import { admitNativeClaim } from '../../apps/passport-dapp/src/midnames/claim-native-admission.ts';
+import {
+  admitNativeClaim,
+  preparedClaimExpired,
+} from '../../apps/passport-dapp/src/midnames/claim-native-admission.ts';
 import { prepareSponsoredClaim } from '../../apps/passport-dapp/src/midnames/claim-sponsorship.ts';
 import { openClaimDispatch, readClaimRecord } from './claim-dispatch.mts';
 import { createOnce } from './create-once.mts';
 
 export const claimPrepareLimit = 2 * 1024 * 1024 + claimReceiptLimit;
+const minimumQuoteRemaining = 2 * 60_000;
+
+/** Balance with enough time for deliberate browser review, within the reviewed quote. */
+export function claimBalanceTtl(quoteExpiresAt: number, now = Date.now()): Date {
+  if (quoteExpiresAt - now < minimumQuoteRemaining)
+    throw new Error('The claim quote has too little time left for preparation and review.');
+  return new Date(quoteExpiresAt);
+}
 
 export function claimRetiredArchivePath(directory: string, receipt: ClaimReceipt): string {
   return join(
@@ -35,7 +46,7 @@ export interface ClaimSponsorPreparationPorts {
   issue(destination: ClaimDestination): Promise<ClaimQuote>;
   /** Recheck the approved price, payee, sponsor, target and availability before any balance. */
   authorizeQuote(quote: ClaimQuote): Promise<void>;
-  balance(proof: Uint8Array): Promise<Uint8Array>;
+  balance(proof: Uint8Array, ttl: Date): Promise<Uint8Array>;
   /** Confirm the exact expired original was never indexed and its name remains free. */
   retireExpiredUnsent?: (receipt: ClaimReceipt) => Promise<void>;
 }
@@ -187,8 +198,10 @@ export function createClaimPreparationJournal(
         throw new Error('The original claim preparation is unavailable.');
       const quote = claimQuote(readClaimRecord(quotePath(intent.quoteId), claimReceiptLimit));
       const digest = await claimQuoteDigest(quote);
+      const bytes = dispatch.preparedBytes(receipt);
       if (
-        quote.expiresAt > Date.now() ||
+        !bytes ||
+        (quote.expiresAt > Date.now() && !preparedClaimExpired(bytes)) ||
         receipt.quoteSha256 !== digest ||
         !matchesDestination(receipt, quote) ||
         !find(quote.id, digest, receipt.ownerCommitment)?.receipt ||
@@ -297,7 +310,7 @@ export function createClaimPreparationJournal(
       let enteredBalance = false;
       try {
         const prepared = await prepareSponsoredClaim(paid, bytes, async (proved) => {
-          if (quote.expiresAt <= Date.now()) throw new Error('The claim quote expired.');
+          const ttl = claimBalanceTtl(quote.expiresAt);
           if (
             !recordOnce(decisionPath(quote.id), {
               kind: 'intent',
@@ -313,7 +326,7 @@ export function createClaimPreparationJournal(
           enteredBalance = true;
           if (!recordOnce(intentPath, { quoteId: quote.id, digest, ownerCommitment, proofSha256 }))
             throw occupied;
-          return ports.balance(proved);
+          return ports.balance(proved, ttl);
         });
         const receipt = claimReceipt({ ...prepared.receipt, quoteSha256: digest });
         admitNativeClaim(prepared.bytes, receipt, paid, BigInt(quote.maximumDust));

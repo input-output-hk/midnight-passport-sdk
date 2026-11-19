@@ -7,6 +7,13 @@ import {
   type PaidClaimQuote,
 } from './claim-sponsorship.js';
 
+/** An unfenced original can be retired once one intent is past its TTL with margin. */
+export function preparedClaimExpired(bytes: Uint8Array, now = Date.now()): boolean {
+  const tx = Transaction.deserialize('signature', 'proof', 'binding', bytes);
+  const ttls = [...(tx.intents?.values() ?? [])].map(({ ttl }) => ttl.getTime());
+  return ttls.length > 0 && ttls.every(Number.isFinite) && Math.min(...ttls) + 30_000 <= now;
+}
+
 /** Check exact retained bytes against the standalone fixture's explicit DUST budget. */
 export function admitNativeClaim(
   bytes: Uint8Array,

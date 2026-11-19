@@ -807,41 +807,44 @@
         <p id="name-service-status" role="status" aria-live="polite">No lookup yet.</p>
         <pre id="name-service-result" tabindex="0" aria-label="Name resolution result"></pre>
         <form id="claim-recovery" hidden aria-labelledby="claim-recovery-title">
-          <h3 id="claim-recovery-title">Local .night name and receipt</h3>
+          <h3 id="claim-recovery-title">Register a .night name</h3>
           <label for="claim-recovery-name">Exact .night name</label>
           <input id="claim-recovery-name" class="action-input" maxlength="38" required />
-          <button id="claim-check-availability" class="btn btn-secondary" type="submit">
-            Check registry status
-          </button>
-          <button id="claim-review-quote" class="btn btn-secondary" type="submit" hidden>
-            Review claim quote
+          <button id="claim-review-quote" class="btn btn-primary" type="submit" hidden>
+            Continue registration
           </button>
           <pre id="claim-quote-summary" tabindex="0" aria-label="Original claim quote" hidden></pre>
-          <button id="claim-prepare" class="btn btn-secondary" type="submit" hidden>
-            Approve and prepare claim
+          <button id="claim-prepare" class="btn btn-primary" type="submit" hidden>
+            Approve with passkey
           </button>
-          <label for="claim-recovery-receipt">Original public receipt (JSON)</label>
-          <textarea
-            id="claim-recovery-receipt"
-            class="action-input"
-            maxlength="8192"
-            rows="4"
-          ></textarea>
-          <div class="actions">
-            <button id="claim-recovery-retain" class="btn btn-secondary" type="submit">
-              Save original receipt
-            </button>
-            <button id="claim-dispatch" class="btn btn-secondary" type="submit" hidden>
-              Review terms before send
-            </button>
-            <button id="claim-recovery-check" class="btn btn-secondary" type="submit">
-              Check original claim
-            </button>
-            <button id="claim-release-failed" class="btn btn-secondary" type="submit" hidden>
-              Release failed original for a new attempt
-            </button>
-          </div>
+          <button id="claim-dispatch" class="btn btn-primary" type="submit" hidden>
+            Confirm payment and register
+          </button>
           <p id="claim-recovery-status" role="status"></p>
+          <details id="claim-recovery-details" open>
+            <summary>Receipt and recovery details</summary>
+            <button id="claim-check-availability" class="btn btn-secondary" type="submit">
+              Check registry status
+            </button>
+            <label for="claim-recovery-receipt">Original public receipt (JSON)</label>
+            <textarea
+              id="claim-recovery-receipt"
+              class="action-input"
+              maxlength="8192"
+              rows="4"
+            ></textarea>
+            <div class="actions">
+              <button id="claim-recovery-retain" class="btn btn-secondary" type="submit">
+                Save original receipt
+              </button>
+              <button id="claim-recovery-check" class="btn btn-secondary" type="submit">
+                Check original claim
+              </button>
+              <button id="claim-release-failed" class="btn btn-secondary" type="submit" hidden>
+                Release failed original for a new attempt
+              </button>
+            </div>
+          </details>
         </form>
       </section>
 

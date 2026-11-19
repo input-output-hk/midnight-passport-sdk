@@ -17,6 +17,21 @@ import {
   prepareSponsoredClaim,
   type PaidClaimQuote,
 } from '../src/midnames/claim-sponsorship.js';
+import { preparedClaimExpired } from '../src/midnames/claim-native-admission.js';
+
+test('unfenced prepared claim waits past the earliest transaction TTL before retirement', () => {
+  const now = Date.UTC(2026, 10, 19, 11, 40);
+  const bytes = Transaction.fromParts(
+    'undeployed',
+    undefined,
+    undefined,
+    Intent.new(new Date(now - 29_000)),
+  )
+    .mockProve()
+    .serialize();
+  assert.equal(preparedClaimExpired(bytes, now), false);
+  assert.equal(preparedClaimExpired(bytes, now + 1000), true);
+});
 
 const quote: PaidClaimQuote = {
   networkId: 'undeployed',

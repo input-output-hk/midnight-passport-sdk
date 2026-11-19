@@ -39,8 +39,8 @@ async function readJson(request: IncomingMessage, limit: number): Promise<unknow
   return JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown;
 }
 
-function sendJson(response: ServerResponse, body: unknown) {
-  response.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify(body));
+function sendJson(response: ServerResponse, body: unknown, status = 200) {
+  response.writeHead(status, { 'Content-Type': 'application/json' }).end(JSON.stringify(body));
 }
 
 /** Bind a single prepared journal to a trusted loopback demo origin. */
@@ -128,6 +128,13 @@ export function createClaimSponsorHandler(
       }
     } catch (error) {
       onError?.(error);
+      if (
+        error instanceof Error &&
+        error.message === 'The dedicated claim sponsor needs NIGHT and two DUST inputs.'
+      ) {
+        sendJson(response, { code: 'SponsorNeedsFunding' }, 409);
+        return true;
+      }
       response
         .writeHead(
           error instanceof ClaimSponsorBusy

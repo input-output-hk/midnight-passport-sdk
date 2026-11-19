@@ -124,9 +124,14 @@ claim. The quote review describes the passkey request before the user approves.
 The owner bundle rechecks the current root price and payee before requesting
 the credential. Receipt recovery remains a read, and dispatch remains a
 separate action.
+The localhost sponsor uses a four-minute balanced-transaction window and
+refuses preparation when the reviewed quote has too little time left. The page
+still requires a separate payment review and send confirmation; an uncertain
+send keeps the original receipt for fence and indexer reconciliation.
 
-With a host preparation adapter, **Review claim quote** shows the exact
-destination and sponsor terms. **Approve and prepare claim** saves the quote
+With a host preparation adapter, **Continue registration** checks any retained
+original and shows the exact destination and sponsor terms. **Approve with
+passkey** saves the quote
 and owner commitment before the sponsor request. If the response is lost,
 **Recover prepared receipt** looks up that original. The user can also import
 the matching public receipt. The current browser preparation test uses a

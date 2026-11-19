@@ -22,16 +22,16 @@ interface PreparationContext {
 
 export function claimQuoteSummary(quote: ClaimQuote): string {
   return [
-    `Name ${quote.name}`,
+    `Register ${quote.name}`,
+    `Registry price ${quote.night} smallest NIGHT units`,
+    `Maximum sponsor fee ${quote.maximumDust} SPECKs`,
+    `Quote expires ${new Date(quote.expiresAt).toISOString()}`,
     `Network ${quote.networkId}`,
     `Passport account ${quote.accountAddress}`,
     `Registry ${quote.registryAddress}`,
     `Registry payee ${quote.registryPayee}`,
     `Future subdomain payment address ${quote.sponsorAddress}`,
     `Sponsor payment wallet ${quote.sponsorPaymentAddress}`,
-    `Registry price ${quote.night} smallest NIGHT units`,
-    `Maximum sponsor fee ${quote.maximumDust} SPECKs`,
-    `Quote expires ${new Date(quote.expiresAt).toISOString()}`,
   ].join('\n');
 }
 
@@ -87,7 +87,7 @@ export function showClaimPreparation(
         : ['Preparing uses the open account’s passkey to derive the naming key.']),
     ].join('\n');
     summary.hidden = false;
-    prepare.textContent = recovering ? 'Recover prepared receipt' : 'Approve and prepare claim';
+    prepare.textContent = recovering ? 'Recover prepared receipt' : 'Approve with passkey';
     prepare.hidden = false;
   }
 
@@ -99,6 +99,9 @@ export function showClaimPreparation(
     },
     handles(button: HTMLElement | null) {
       return button === review || button === prepare;
+    },
+    isReview(button: HTMLElement | null) {
+      return button === review;
     },
     async run(button: HTMLElement | null, context: PreparationContext) {
       const { account, name, credential, journal, ensureAccount } = context;

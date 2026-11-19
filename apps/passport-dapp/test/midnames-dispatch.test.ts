@@ -16,7 +16,10 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { openClaimDispatch } from '../../../examples/midnames-local/claim-dispatch.mts';
 import { createClaimSponsorHandler } from '../../../examples/midnames-local/claim-sponsor-http.mts';
-import { createClaimPreparationJournal } from '../../../examples/midnames-local/claim-preparation.mts';
+import {
+  claimBalanceTtl,
+  createClaimPreparationJournal,
+} from '../../../examples/midnames-local/claim-preparation.mts';
 import { createOnce } from '../../../examples/midnames-local/create-once.mts';
 import { claimDispatchPath, isClaimSponsorOrigin } from '../src/midnames/claim-dispatch.js';
 import {
@@ -31,6 +34,14 @@ import { ClaimPreIntentRefusal } from '../src/midnames/claim-quote.js';
 import type { ClaimReceipt } from '../src/midnames/claim-receipt.js';
 
 const bytes = Uint8Array.of(2, 3, 5);
+
+test('sponsor balance leaves browser review time without outliving the quote', () => {
+  const now = Date.UTC(2026, 10, 19, 11, 20);
+  assert.equal(claimBalanceTtl(now + 600_000, now).getTime(), now + 600_000);
+  assert.equal(claimBalanceTtl(now + 150_000, now).getTime(), now + 150_000);
+  assert.throws(() => claimBalanceTtl(now + 119_999, now), /too little time/);
+});
+
 const original: ClaimReceipt = {
   networkId: 'undeployed',
   registryAddress: '12'.repeat(32),
@@ -172,6 +183,39 @@ test('the HTTP sponsor cannot dispatch a quote-less original without preparation
     body: JSON.stringify(original),
   });
   assert.equal(response.status, 409);
+  assert.equal(existsSync(fence), false);
+});
+
+test('a sponsor funding refusal is explicit and leaves the original unfenced', async (t) => {
+  const { root, fence } = fixture(t);
+  let handler: ReturnType<typeof createClaimSponsorHandler>;
+  const server = createServer((request, response) => {
+    void handler(request, response).then(
+      () => {},
+      () => response.destroy(),
+    );
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(async () => new Promise<void>((resolve) => server.close(() => resolve())));
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  const origin = 'http://127.0.0.1:' + address.port;
+  handler = createClaimSponsorHandler(origin, root, {
+    async authorize() {
+      throw new Error('The dedicated claim sponsor needs NIGHT and two DUST inputs.');
+    },
+    async submit() {
+      assert.fail('A refused claim must not be submitted.');
+    },
+  });
+  const response = await fetch(origin + claimDispatchPath, {
+    method: 'POST',
+    headers: { Origin: origin, 'Content-Type': 'application/json' },
+    body: JSON.stringify(original),
+  });
+  assert.equal(response.status, 409);
+  assert.deepEqual(await response.json(), { code: 'SponsorNeedsFunding' });
   assert.equal(existsSync(fence), false);
 });
 
