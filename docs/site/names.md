@@ -144,8 +144,10 @@ claiming online qualification. Claim availability and finality still read the
 primary path after the known-name gate; this slice does not qualify an online
 claim flow.
 
-The reference demo uses the published Midnames 2.1.0 reader from its
-[`ledger-9-live` source branch](https://github.com/midnames/ns-sdk/tree/ledger-9-live).
+The reference demo pins the published Midnames 2.1.0 reader. Its generated
+reader matches the pinned
+[`ledger-9-live` commit](https://github.com/midnames/ns-sdk/tree/f8f2edd425221b95c9158d74e7318d2fbb4f61b2),
+and the app checks that byte identity in its tests.
 Midnames 2.1.0 uses a Ledger 9 reader built with runtime 0.21.0 and Midnight JS
 5.0.0. The ACC still uses runtime 0.20.0. The indexer hands out tagged bytes,
 so each decoder uses its own runtime. The exact dependency exceptions in

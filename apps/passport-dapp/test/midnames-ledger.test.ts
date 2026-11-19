@@ -175,6 +175,15 @@ function assertGasBoundary(
   );
 }
 
+test('installed Midnames reader matches the pinned ledger-9-live commit', () => {
+  const reader = new URL('./reader/contract/index.js', import.meta.resolve('@midnames/sdk/core'));
+  // midnames/ns-sdk@f8f2edd425221b95c9158d74e7318d2fbb4f61b2/src/reader/contract/index.js
+  assert.equal(
+    createHash('sha256').update(readFileSync(reader)).digest('hex'),
+    '38d45296d24e11dcb3270937634836242d78a8563f685a982846f465b20fa6a3',
+  );
+});
+
 test('create_domain replay refuses an overclaimed deletion credit', async () => {
   const { state, trace } = await registryFixture();
   assertGasBoundary(state, trace);

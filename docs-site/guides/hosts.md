@@ -27,9 +27,10 @@ Fresh chains need ACC creation, registry bootstrap and a confirmed name claim
 before the named control is enabled. The launcher never funds a sender merely
 by opening the page.
 
-The reference demo uses Midnames 2.1.0, built from its
-[`ledger-9-live` branch](https://github.com/midnames/ns-sdk/tree/ledger-9-live),
-for read-only lookup. Configure the
+The reference demo pins the published Midnames 2.1.0 reader for lookups. Its
+generated reader matches the pinned
+[`ledger-9-live` commit](https://github.com/midnames/ns-sdk/tree/f8f2edd425221b95c9158d74e7318d2fbb4f61b2),
+which the app checks in its tests. Configure the
 registry address, namespace, matching demo network, and public indexer URLs.
 Use paired Indexer API v4 HTTP and WebSocket endpoints. The demo refuses v3
 paths even though the upstream package still contains older defaults.
