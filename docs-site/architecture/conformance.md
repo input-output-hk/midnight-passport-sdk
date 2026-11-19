@@ -17,6 +17,12 @@ chain. The local demo's separate finalized-block check uses the node as a
 canonical block anchor before enabling naming; neither check establishes an
 authenticated online provider or the proposed MIP-0007 delegated resolver.
 
+The [Compact 0.36 read-only registry probe](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact036-readonly-20261119.json)
+reproduced all 13 pinned circuit and key bytes and decoded an existing local
+name at a node-finalized block. It does not qualify a 0.36 proof or submitted
+claim, so the deployed 0.35 profile and its gas guard remain the demonstrated
+write path.
+
 | Architecture surface | SDK status and evidence | Difference or limit against the target |
 | --- | --- | --- |
 | ACC custody and account lifecycle · C1, C4, P1 | **Implemented subset.** The pinned [`acc-s3r1.1` binding](https://github.com/input-output-hk/midnight-passport-sdk/blob/8117a10f9938093d21d656f8c504398957c58ac9/packages/contract/src/capabilities.generated.ts), [account flows](/guides/account-lifecycle), and [asset guide](/guides/assets) cover deployment, activation, reads, deposits, and supported withdrawals. | This is one binding and supported circuit set, not all future ACC versions. Deployment, credential access, proof, sponsorship, and settlement still require host ports. [Upstream reference limits](https://github.com/midnightntwrk/passport/blob/99062671d939641cb9ed9274d3d18fce764d539a/contract/README.md) are separate from this SDK's qualification. |

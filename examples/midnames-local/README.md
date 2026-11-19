@@ -414,6 +414,26 @@ read-only reconciliation verified both funding transactions and no submitted
 claim before releasing that attempt's lease. The successful run is a new,
 independently funded claim, not a replay of the earlier attempt.
 
+### Compact 0.36 registry compatibility probe
+
+A [read-only compatibility receipt](evidence/compact036-readonly-20261119.json)
+records a rebuild of the exact pinned Midnames source with only its language
+pragma changed from 0.22 to 0.28. Compact 0.36.0 generated runtime 0.21.0 code
+and all 13 ZKIR circuits. Regenerating all 13 key pairs produced byte-identical
+ZKIR, prover keys and verifier keys to the pinned Compact 0.35 standalone
+manifest. The `create_domain` and `transfer_domain` circuits measured
+`k=15`/20,954 rows and `k=14`/8,288 rows, respectively. A synthetic Ledger 9
+transcript replay accepted both operations, and the 0.36 generated reader
+decoded the existing `paidfix.night` contract target from the deployed registry
+at node-finalized block 20,862.
+
+This establishes compiler output and read compatibility for this exact source;
+it does not qualify 0.36 proof generation, the transaction composer, fee
+calculation, or a submitted write. The live 0.35 registry and ACC were not
+changed. Keep the current deletion-credit guard for all deployed fixture calls
+until an exact original 0.36 transaction passes its own native gate. Key-byte
+equality alone is not authorization to change the live profile.
+
 For an operator-controlled local registry, a separate root-assisted fixture
 can issue the name without a paid claim. It proves `create_domain` under the
 root owner's existing witness, then proves `transfer_domain` to a distinct

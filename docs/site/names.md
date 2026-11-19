@@ -234,6 +234,15 @@ absent claim were reconciled before the fresh run. These scoped fixtures do not
 qualify browser onboarding, passkey recovery, public `passport.night` issuance
 or online sponsor funding. No live `alice.night` mapping was established by
 the earlier failed receipts.
+A later [read-only Compact 0.36 evaluation](../../examples/midnames-local/evidence/compact036-readonly-20261119.json)
+recompiled the same pinned registry source for runtime 0.21.0. All 13 ZKIR
+circuits and all 13 prover/verifier key pairs matched the 0.35 standalone
+manifest byte for byte. Its generated reader decoded `paidfix.night` and the
+same ACC at a node-finalized block. This narrows the migration question but
+does not qualify 0.36 proof, transaction gas, submission, browser registration,
+or a change to the deployed profile. The local 0.35 deletion-credit guard stays
+in place.
+
 For an online deployment, the host must configure its actual registry address
 and a funded sponsor wallet through `PASSPORT_SPONSOR_SEED` in the service
 environment; the local genesis seed does not fund Preview or Preprod. The wallet
