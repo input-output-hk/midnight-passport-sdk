@@ -163,17 +163,25 @@ starting Docker. Use `stop` only for the Passport-owned fallback project.
 This is a local transitional `.night` demo. It does not issue public
 `passport.night` subdomains or implement MIP-0007's delegated registry.
 
-This fixture uses the Midnames 2.1.0 registry source on the Passport standalone
-Ledger 9 stack. Prepare artifacts with the Passport SDK's pinned Nix toolchain.
-Supply a local copy of [`ns.compact` at the pinned upstream revision](https://github.com/midnames/ns-sdk/blob/f8f2edd425221b95c9158d74e7318d2fbb4f61b2/ns.compact)
-recorded in [the manifest](registry-manifest.json). The command verifies those bytes,
-updates the language pragma for Compact 0.35.0, and verifies each generated
-module, circuit, prover and verifier against the reviewed hashes.
+This fixture uses the [`ledger-9-live` Midnames source](https://github.com/midnames/ns-sdk/tree/ledger-9-live)
+on the Passport standalone Ledger 9 stack. Prepare artifacts with the Passport
+SDK's pinned Nix toolchain. [The manifest](registry-manifest.json) records the
+exact upstream commit and source hash; the command fetches `ns.compact` from
+that branch and checks its bytes against the hash. A changed branch source fails closed
+until its contract and generated artifacts are reviewed and repinned. It updates
+the language pragma for Compact 0.35.0, compiles with `--feature-zkir-v3`, and
+verifies each generated module, circuit, prover and verifier against the
+reviewed hashes. This is a fresh local deployment; the upstream 2.1.0 SDK's
+write pause applies to its previously deployed registry, not this local one.
 
 ```sh
 nix develop -c node examples/midnames-local/prepare.mjs \
-  /absolute/path/to/ns.compact /absolute/path/to/fresh-output
+  --upstream-ledger9 /absolute/path/to/fresh-output
 ```
+
+For an offline preparation, replace `--upstream-ledger9` with an absolute path
+to a local copy of [`ns.compact` at the pinned commit](https://github.com/midnames/ns-sdk/blob/f8f2edd425221b95c9158d74e7318d2fbb4f61b2/ns.compact).
+The same source hash check applies.
 
 The output directory must be new. A failure leaves the original diagnostics
 and partial output available for inspection. Use the standalone resolver

@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, readlinkSync, writeFileSync } from 'node:fs';
 import { isAbsolute, join, resolve } from 'node:path';
+import { fetchPinnedMidnamesSource } from './upstream-source.mjs';
 
 const manifest = JSON.parse(
   readFileSync(new URL('./registry-manifest.json', import.meta.url), 'utf8'),
@@ -13,13 +14,16 @@ const sha = (/** @type {Uint8Array|string} */ input) =>
 const verify = (/** @type {string} */ path, /** @type {string} */ expected) =>
   assert.equal(sha(readFileSync(path)), expected, `Artifact differs: ${path}`);
 const [source, output] = process.argv.slice(2);
-assert.ok(source && output && isAbsolute(source) && isAbsolute(output));
+const fromUpstream = source === '--upstream-ledger9';
+assert.ok(source && output && (fromUpstream || isAbsolute(source)) && isAbsolute(output));
 assert.equal(resolve(output), output);
 assert.ok(process.env.IN_NIX_SHELL && process.env.COMPACT_DIRECTORY, 'Use the pinned Nix shell');
 const compiler = readlinkSync(join(process.env.COMPACT_DIRECTORY, 'bin', 'compactc'));
 assert.match(compiler, /\/versions\/0\.35\.0\//);
 
-const upstream = readFileSync(source, 'utf8');
+const upstream = fromUpstream
+  ? await fetchPinnedMidnamesSource(manifest)
+  : readFileSync(source, 'utf8');
 assert.equal(sha(upstream), manifest.sourceSha256, 'Wrong Midnames source bytes');
 const adapted = upstream.replace(
   /^pragma language_version 0\.22;/,

@@ -144,6 +144,8 @@ claiming online qualification. Claim availability and finality still read the
 primary path after the known-name gate; this slice does not qualify an online
 claim flow.
 
+The reference demo uses the published Midnames 2.1.0 reader from its
+[`ledger-9-live` source branch](https://github.com/midnames/ns-sdk/tree/ledger-9-live).
 Midnames 2.1.0 uses a Ledger 9 reader built with runtime 0.21.0 and Midnight JS
 5.0.0. The ACC still uses runtime 0.20.0. The indexer hands out tagged bytes,
 so each decoder uses its own runtime. The exact dependency exceptions in
@@ -204,8 +206,9 @@ separate backends, so it does not enable the online demo profile.
 The 2.1.0 tarball includes a read generation and an older managed write
 generation. Its root export can fail at load because the managed module expects
 runtime 0.15.0, and its write wrapper reports writes paused. The demo uses only
-the read subpaths. A claim flow requires compatible registry write artifacts
-and separate proof and submission checks. A local `.night` profile does not
+the read subpaths. Its local claim flow recompiles the pinned branch's registry
+source with ZKIR v3, deploys a new contract, and qualifies proof and submission
+against that contract. A local `.night` profile does not
 establish public `passport.night` issuance or name-control recovery.
 
 ### Standalone registry profile
