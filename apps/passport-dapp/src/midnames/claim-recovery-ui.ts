@@ -209,6 +209,7 @@ async function restoreSelection(
   const account = currentAccount();
   const credentialId = account?.credentialId && Uint8Array.from(account.credentialId);
   if (!account || !credentialId?.length || account.networkId !== 'undeployed') return;
+  let restoredName: string | undefined;
   try {
     const scope = await claimDigest(credentialId);
     const journal = await openClaimJournal(indexedDB);
@@ -218,6 +219,7 @@ async function restoreSelection(
         account.address,
         scope,
       );
+      restoredName = selected;
       if (account !== currentAccount() || name.value !== '' || !selected) return;
       name.value = selected;
       const original = await journal.read(recovery.registryAddress, selected, scope);
@@ -234,15 +236,25 @@ async function restoreSelection(
         );
         return;
       }
-      const result = await recovery.check(original).catch(() => 'unavailable' as const);
-      if (account !== currentAccount() || name.value !== selected) return;
-      release.hidden = result !== 'failed' && result !== 'claim-failed';
-      report(messages[result]);
+      await inspectOriginalClaim(
+        recovery,
+        journal,
+        original,
+        account,
+        selected,
+        scope,
+        release,
+        report,
+        () => {
+          if (account !== currentAccount() || name.value !== selected)
+            throw new Error('Claim context changed.');
+        },
+      );
     } finally {
       journal.close();
     }
   } catch (error) {
-    if (account === currentAccount())
+    if (account === currentAccount() && (!restoredName || name.value === restoredName))
       report(
         claimConflict(error) ??
           'Claim state unavailable. Preserve this browser’s data and inspect the original claim.',

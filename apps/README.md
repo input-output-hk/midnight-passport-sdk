@@ -1082,6 +1082,9 @@ credential. It restores that choice after reopening with the same credential
 and reconciles a retained original receipt. Availability and imported-receipt
 checks leave the name unselected; enter it again after a reload. A pending claim stays visibly
 pending until the original transaction and current registry binding agree.
+On reopen, a retained original also checks the sponsor's dispatch fence: if it is
+still prepared and unsent while the registry shows the name available, the panel
+says so instead of implying a transaction was sent.
 An unavailable indexer stays an unavailable check rather than a pending claim;
 the original receipt remains available for reconciliation. If neither preparation nor
 sponsor dispatch is configured, the panel labels itself as read-only receipt
@@ -1094,10 +1097,12 @@ synthetic connector and naming reader. It verifies the panel, receipt scope,
 one stub `createAccount` invocation, and failed-original release with archived
 history after reload. A conflicting status never shows the release action;
 an unavailable recheck hides it until the user checks the original again.
-An isolated profile checks that reviewing the full synthetic quote calls neither
-owner proving nor sponsor preparation; one explicit approval then calls each
-once and retains the receipt after reopening. The fixture does not deploy an
-ACC, use a real passkey or sponsor, send a claim, or qualify a chain/provider.
+An isolated profile checks that the full app obtains a quote through the actual
+same-origin HTTP sponsor handler before any owner proving or preparation; one
+explicit approval then calls each once. Reopening a pending original shows the
+synthetic sponsor's prepared-but-unsent status before a later registered check.
+The fixture does not deploy an ACC, use a real passkey or funded sponsor, send
+a claim, or qualify a chain/provider.
 Another isolated profile refuses an unavailable or wrong-ACC quote before proof,
 clears review after the name changes, and checks that a synthetic pre-intent
 sponsor refusal needs a fresh quote. A successful retry keeps the same ACC and

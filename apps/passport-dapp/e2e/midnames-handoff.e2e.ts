@@ -108,12 +108,15 @@ const naming = `
             return { ...original, quoteSha256: await claimQuoteDigest(quote) };
           },
           async findPrepared() { throw Error('Recovery is outside this handoff fixture'); },
+          async dispatchStatus() {
+            return localStorage.getItem('handoff-sponsor-status') || 'prepared';
+          },
         } }),
         async check(receipt) {
           if (receipt.name !== 'alice.night' ||
               receipt.accountAddress !== ${JSON.stringify(account)}) return 'conflict';
           const status = localStorage.getItem('handoff-claim-status');
-          return status === 'failed' || status === 'unavailable' || status === 'conflict'
+          return status === 'failed' || status === 'unavailable' || status === 'conflict' || status === 'pending'
             ? status : 'registered';
         },
       },
@@ -408,14 +411,40 @@ try {
       .waitFor();
     assert.deepEqual(await counts(), { quotes: 1, proofs: 1, preparations: 1, creates: 1 });
 
-    await preparationPage.goto(origin);
+    await preparationPage.evaluate(() => localStorage.setItem('handoff-claim-status', 'pending'));
+    await preparationPage.goto(`${origin}/?preproof&http`);
     await preparationPage
       .locator('#status')
       .filter({ hasText: /^Ready\./ })
       .waitFor({ state: 'attached' });
     await preparationPage.locator('#open').click();
     await preparationPage.locator('#passport-name-setup').waitFor({ state: 'visible' });
-    await preparationPage.locator('#claim-recovery-name').fill(original.name);
+    await preparationPage
+      .locator('#claim-recovery-status')
+      .getByText(/Prepared but never sent\. The name is unregistered/)
+      .waitFor();
+    assert.match(
+      (await preparationPage.locator('#passport-name-setup-status').textContent()) ?? '',
+      /^Name registration\./,
+    );
+    assert.equal(await preparationPage.locator('#claim-recovery-name').inputValue(), original.name);
+    await preparationPage.evaluate(() =>
+      localStorage.setItem('handoff-sponsor-status', 'sent-or-unknown'),
+    );
+    await preparationPage.goto(`${origin}/?preproof&http`);
+    await preparationPage
+      .locator('#status')
+      .filter({ hasText: /^Ready\./ })
+      .waitFor({ state: 'attached' });
+    await preparationPage.locator('#open').click();
+    await preparationPage
+      .locator('#claim-recovery-status')
+      .getByText(/Claim pending\. Check this original receipt again/)
+      .waitFor();
+    assert.equal(await preparationPage.locator('#claim-release-failed').isVisible(), false);
+    await preparationPage.evaluate(() =>
+      localStorage.setItem('handoff-claim-status', 'registered'),
+    );
     await preparationPage.locator('#claim-recovery-check').click();
     await preparationPage
       .locator('#passport-name-setup-status')

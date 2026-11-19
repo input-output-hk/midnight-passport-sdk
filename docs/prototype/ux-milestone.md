@@ -147,6 +147,9 @@ credential. It restores that selection after reopening and keeps the setup pendi
 transaction and current registry record match. It does not deploy another ACC
 or automatically send a claim. Availability and imported-receipt checks do not
 select a name; enter it again after a reload. The panel can save a standalone sponsor receipt.
+For a retained original, reopening also checks the sponsor's dispatch fence and
+shows **Prepared but never sent** when the sponsor confirms that state and the
+registry still shows the name available. It does not show registration success.
 An unavailable indexer leaves the original receipt intact and reports the
 check as unavailable. Without claim preparation or sponsor dispatch, the panel
 is labelled read-only receipt inspection and offers no claim action.
@@ -157,9 +160,10 @@ credential cannot inherit the first one's local receipt, and counts one stub
 `createAccount` invocation. It also checks the failed-original release and
 archived receipt across reload in an isolated browser profile. A conflicting
 status hides release; an unavailable recheck hides it until the user checks
-the original again. A third isolated profile confirms that full quote display
-precedes any synthetic owner proof or sponsor preparation and that explicit
-approval calls each once before reopening the retained receipt. Native
+the original again. A third isolated profile confirms that a same-origin HTTP
+sponsor quote is displayed before any synthetic owner proof or preparation,
+that approval calls each once, and that a pending original reports the
+synthetic prepared-but-unsent sponsor state after reopen. Native
 create/open, actual indexed failure, real passkey review and sponsored retry
 acceptance remain separate.
 An exact failed original with no registry record exposes **Release failed
