@@ -1,9 +1,33 @@
+import { createHash } from 'node:crypto';
 import { readClaimFinality } from '../../apps/passport-dapp/src/midnames/claim-finality.ts';
 import { dedicatedIndexerReadiness } from '../../scripts/qualification/indexer-readiness.mjs';
 
 const address = /^[0-9a-f]{64}$/;
 const claimBlockQuery =
-  'query ClaimBlock($offset:TransactionOffset!){transactions(offset:$offset){block{hash height}}}';
+  'query ClaimBlock($offset:TransactionOffset!){transactions(offset:$offset){__typename protocolVersion hash raw ... on RegularTransaction{identifiers transactionResult{status segments{id success}} block{hash height}}}}';
+
+/** Keep the block observation tied to the original bytes, not just its offset. */
+export function indexedClaimBlock(row, receipt, protocolVersion) {
+  const block = row?.block;
+  if (
+    row?.__typename !== 'RegularTransaction' ||
+    row.protocolVersion !== protocolVersion ||
+    !address.test(row.hash) ||
+    typeof row.raw !== 'string' ||
+    row.raw.length === 0 ||
+    row.raw.length > 2 * 1024 * 1024 ||
+    row.raw.length % 2 !== 0 ||
+    !/^[0-9a-f]+$/.test(row.raw) ||
+    createHash('sha256').update(Buffer.from(row.raw, 'hex')).digest('hex') !==
+      receipt.transaction.sha256 ||
+    JSON.stringify(row.identifiers) !== JSON.stringify(receipt.transaction.identifiers) ||
+    !address.test(block?.hash) ||
+    !Number.isSafeInteger(block?.height) ||
+    block.height < 1
+  )
+    return undefined;
+  return block;
+}
 
 /** Require the exact indexed claim to be in a canonical node-finalized block. */
 export async function verifyIndexedClaimFailure({
@@ -33,14 +57,25 @@ export async function verifyIndexedClaimFailure({
     signal: AbortSignal.timeout(6_000),
   });
   if (!response.ok) throw new Error('The claim block is unavailable.');
+  // Validate the exact same response with the full Ledger transaction parser;
+  // another transaction at this offset must never lend its block to the claim.
+  const blockReason = await readClaimFinality(
+    indexerUrl,
+    receipt,
+    async () => response.clone(),
+    protocolVersion,
+  );
+  if (blockReason !== reason)
+    throw new Error('The indexed claim changed while checking its block.');
   const body = await response.json();
   const rows = body?.data?.transactions;
-  const block = Array.isArray(rows) && rows.length === 1 ? rows[0]?.block : undefined;
+  const block =
+    Array.isArray(rows) && rows.length === 1
+      ? indexedClaimBlock(rows[0], receipt, protocolVersion)
+      : undefined;
   if (
     body.errors ||
-    !address.test(block?.hash) ||
-    !Number.isSafeInteger(block?.height) ||
-    block.height < 1 ||
+    !block ||
     block.height > finalized.finalizedHeight ||
     (block.height === finalized.finalizedHeight && block.hash !== finalized.finalizedHash)
   )
