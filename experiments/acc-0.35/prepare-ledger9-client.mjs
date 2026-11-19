@@ -38,7 +38,10 @@ const packagePath = join(dir, 'package.json');
 const lockPath = join(dir, 'package-lock.json');
 for (const file of [packagePath, lockPath]) {
   const stat = lstatSync(file);
-  assert.ok(stat.isFile() && !stat.isSymbolicLink(), `${file} must be a regular file.`);
+  assert.ok(
+    stat.isFile() && !stat.isSymbolicLink() && stat.nlink === 1,
+    `${file} must be an unshared regular file.`,
+  );
 }
 const modules = join(dir, 'node_modules');
 function physicalLedgerVersions() {
@@ -52,6 +55,7 @@ function physicalLedgerVersions() {
   assert.ok(stat.isDirectory() && !stat.isSymbolicLink(), 'node_modules must be a real directory.');
   const stack = [modules];
   const versions = [];
+  const linkedFiles = new Map();
   let entries = 0;
   while (stack.length) {
     const current = stack.pop();
@@ -77,9 +81,19 @@ function physicalLedgerVersions() {
           versions.push(JSON.parse(readFileSync(join(path, 'package.json'), 'utf8')).version);
         }
         stack.push(path);
+      } else if (entry.isFile()) {
+        const file = lstatSync(path);
+        if (file.nlink > 1) {
+          const key = `${file.dev}:${file.ino}`;
+          const seen = linkedFiles.get(key) ?? { count: 0, links: file.nlink };
+          seen.count++;
+          linkedFiles.set(key, seen);
+        }
       }
     }
   }
+  for (const { count, links } of linkedFiles.values())
+    assert.equal(count, links, 'Dependency file has a hardlink outside this export.');
   return versions;
 }
 physicalLedgerVersions();
