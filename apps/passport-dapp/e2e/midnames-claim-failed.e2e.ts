@@ -27,6 +27,7 @@ Object.assign(process.env, {
   VITE_MIDNAMES_NETWORK_ID: 'undeployed',
   VITE_MIDNAMES_INDEXER_URL: indexer,
   VITE_MIDNAMES_INDEXER_WS_URL: process.env.MN_INDEXER_WS_URL,
+  VITE_MIDNAMES_CLAIM_PROTOCOL_VERSION: '2001000',
 });
 const connector = `
   export const ARM = 'p256', SIGNING_MODE = 'passkey', NETWORK_ID = 'undeployed';
@@ -75,6 +76,7 @@ async function openClaim(page: Page, origin: string) {
   await page.locator('#open').click();
   await page.locator('#workspace-account').waitFor();
   await reveal(page, '#claim-recovery');
+  await page.locator('#claim-recovery').waitFor({ state: 'visible' });
   await page.locator('#claim-recovery-name').fill(original.name);
   // The prepared-claim profile keeps recovery details collapsed. Open the
   // actual disclosure before using its receipt and check controls.
