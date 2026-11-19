@@ -17,6 +17,11 @@ export interface MidnamesReads {
     profile: Readonly<MidnamesProfile>,
   ): Promise<{ readonly kind: 'contract' | 'other'; readonly address?: string } | undefined>;
   isSupportedAccount(address: string, networkId: string): Promise<boolean>;
+  /** Optional atomic read: target and ACC binding are checked at one provider block. */
+  readSupportedTarget?(
+    name: string,
+    profile: Readonly<MidnamesProfile>,
+  ): Promise<{ readonly kind: 'contract' | 'other'; readonly address?: string } | undefined>;
 }
 
 const label = '[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?';
@@ -60,12 +65,15 @@ export function createMidnamesNameService(
       const { name, networkId } = query;
       if (!canonicalQuery(name, networkId, profile.networkId, profile.namespace))
         throw new PassportNameError('InvalidQuery');
-      const target = await reads.readTarget(name, profile);
+      const atomic = reads.readSupportedTarget;
+      const target = atomic
+        ? await atomic.call(reads, name, profile)
+        : await reads.readTarget(name, profile);
       if (target === undefined) return undefined;
       if (target.kind !== 'contract' || !target.address || !isContractAddress(target.address))
         throw new PassportNameError('InvalidRecord');
       const accountAddress = target.address;
-      if (!(await reads.isSupportedAccount(accountAddress, networkId)))
+      if (!atomic && !(await reads.isSupportedAccount(accountAddress, networkId)))
         throw new PassportNameError('InvalidRecord');
       return Object.freeze({ name, networkId, accountAddress, namespace: profile.namespace });
     },

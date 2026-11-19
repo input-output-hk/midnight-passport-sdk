@@ -35,6 +35,7 @@ function readDomainTarget(domain: DomainRecord): DomainTarget {
 
 const hex = (value: Uint8Array): string =>
   Array.from(value, (byte) => byte.toString(16).padStart(2, '0')).join('');
+const ADDRESS = /^[a-f0-9]{64}$/;
 
 async function sha256(value: Uint8Array): Promise<string> {
   return hex(new Uint8Array(await crypto.subtle.digest('SHA-256', new Uint8Array(value))));
@@ -71,6 +72,10 @@ export function createMidnamesLedgerReads(
   bindingId: string,
   profileId: MidnamesRegistryProfile = 'midnames-2.1.0',
 ): MidnamesReads & {
+  readSupportedTarget(
+    name: string,
+    profile: Readonly<MidnamesProfile>,
+  ): Promise<DomainTarget | undefined>;
   hasDomain(name: string, profile: Readonly<MidnamesProfile>): Promise<boolean>;
   readSupportedNightBalance(address: string, requestedNetwork: string): Promise<bigint | undefined>;
   readClaim(
@@ -87,13 +92,17 @@ export function createMidnamesLedgerReads(
     ),
   );
   const accVerifiers = compatibleVerifiers(bindingId);
-  const readDomain = async (name: string, profile: Readonly<MidnamesProfile>) => {
+  const readDomain = async (
+    name: string,
+    profile: Readonly<MidnamesProfile>,
+    source: RegistryProvider = provider,
+  ) => {
     if (profile.networkId !== networkId) throw new PassportNameError('InvalidQuery');
     // Check the registry fingerprint and resolve from the same observed state.
-    const observed = await provider.queryContractState(profile.registryAddress);
+    const observed = await source.queryContractState(profile.registryAddress);
     if (!observed) throw new PassportNameError('Unavailable');
     const snapshot: RegistryProvider = {
-      ...provider,
+      ...source,
       async queryContractState(address) {
         if (address !== profile.registryAddress) throw new PassportNameError('InvalidQuery');
         return observed;
@@ -118,9 +127,13 @@ export function createMidnamesLedgerReads(
     if (domain.owner_public_key.length !== 32) throw new PassportNameError('InvalidRecord');
     return { ownerCommitment: hex(domain.owner_public_key), target: readDomainTarget(domain) };
   };
-  const supportedAccount = async (address: string, requestedNetwork: string) => {
+  const supportedAccount = async (
+    address: string,
+    requestedNetwork: string,
+    source: RegistryProvider = provider,
+  ) => {
     if (requestedNetwork !== networkId) return undefined;
-    const observed = await provider.queryContractState(address);
+    const observed = await source.queryContractState(address);
     if (!observed) return undefined;
     try {
       const account = observed.contractState.deserialize({ v9: ContractState });
@@ -134,6 +147,32 @@ export function createMidnamesLedgerReads(
   return {
     async readTarget(name, profile) {
       return (await readClaim(name, profile))?.target;
+    },
+    async readSupportedTarget(name, profile) {
+      if (profile.networkId !== networkId) throw new PassportNameError('InvalidQuery');
+      const block = await provider.queryBlock();
+      if (
+        !block ||
+        !ADDRESS.test(block.hash) ||
+        !Number.isSafeInteger(block.height) ||
+        block.height < 0
+      )
+        throw new PassportNameError('Unavailable');
+      const source: RegistryProvider = {
+        ...provider,
+        queryContractState: (address) =>
+          provider.queryContractState(address, { type: 'blockHash', blockHash: block.hash }),
+      };
+      const domain = await readDomain(name, profile, source);
+      if (domain === undefined) return undefined;
+      const target = readDomainTarget(domain);
+      if (target.kind === 'contract') {
+        if (!target.address || !ADDRESS.test(target.address))
+          throw new PassportNameError('InvalidRecord');
+        if (!(await supportedAccount(target.address, networkId, source)))
+          throw new PassportNameError('InvalidRecord');
+      }
+      return target;
     },
     readClaim,
     async hasDomain(name, profile) {

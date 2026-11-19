@@ -906,10 +906,12 @@ See the [funding image and operator guide](passport-funding-service/README.md).
 
 The demo's optional Midnames reader uses the existing **Name service** panel.
 Set the base build inputs in the [naming adapter guide](../docs/site/names.md#source-preview-midnames-210).
-A configured lookup uses the registry's contract target and verifies the
-deployed ACC binding before displaying it. A non-`undeployed` network or
-non-loopback indexer also requires an independently observed, public known-name
-and ACC pin plus a second, distinct-origin indexer endpoint pair. Each lookup
+A configured lookup reads the registry's contract target and verifies the
+deployed ACC binding at the same indexer block before displaying it. The
+indexer is still trusted for the block and contract-state bytes. A
+non-`undeployed` network or non-loopback indexer also requires an independently
+observed, public known-name and ACC pin plus a second, distinct-origin indexer
+endpoint pair. Each lookup
 rechecks the known pair through both paths and refuses an absent, changed or
 divergent binding. Configure `VITE_MIDNAMES_VERIFICATION_INDEXER_URL` and
 `VITE_MIDNAMES_VERIFICATION_INDEXER_WS_URL` together. Distinct origins do not

@@ -46,6 +46,26 @@ test('resolves the currently observed contract target for the captured registry 
   assert.equal((await resolvePassportName(adapter, query))?.accountAddress, repointed);
 });
 
+test('uses an atomic target and ACC check when the provider supports one', async () => {
+  const calls: string[] = [];
+  const adapter = createMidnamesNameService(profile, {
+    async readTarget() {
+      assert.fail('The separate target read must not run.');
+    },
+    async isSupportedAccount() {
+      assert.fail('The separate account read must not run.');
+    },
+    async readSupportedTarget(name, scope) {
+      assert.equal(name, query.name);
+      assert.deepEqual(scope, profile);
+      calls.push('atomic');
+      return { kind: 'contract', address: account };
+    },
+  });
+  assert.equal((await resolvePassportName(adapter, query))?.accountAddress, account);
+  assert.deepEqual(calls, ['atomic']);
+});
+
 test('absence, invalid targets, invalid query and provider failure are distinct', async () => {
   const absent = createMidnamesNameService(
     profile,

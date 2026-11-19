@@ -115,13 +115,14 @@ network as the Passport demo.
 | `VITE_MIDNAMES_KNOWN_ACC` | Its independently observed 64-hex deployed ACC address; required on non-`undeployed` networks or with a non-loopback indexer |
 
 The panel rejects partial configuration. It accepts exact canonical lowercase
-names within the chosen namespace. Each lookup checks the registry verifier
-roster and resolves the name from that observed state using the Midnames
-`/core` subpath. Only its contract target proceeds. The adapter then checks
-that the address is an activated ACC with the complete verifier roster for the
-pinned binding. Missing names, wrong target types and unavailable reads have
-separate outcomes. An indexer is a trusted read input, and a lookup reflects
-its observed state. The demo presents the result for inspection.
+names within the chosen namespace. Each lookup captures one indexer block,
+checks the registry verifier roster and resolves the name from that block using
+the Midnames `/core` subpath. Only its contract target proceeds. The adapter
+checks the activated ACC and complete verifier roster at **the same block**.
+Missing names, wrong target types and unavailable reads have separate outcomes.
+An indexer is a trusted read input: a stale or dishonest indexer can still
+serve a stale block. The demo presents the result for inspection and value
+routes re-resolve before submission.
 
 For any non-`undeployed` network or non-loopback indexer, the two known-mapping
 inputs and a complete second indexer path are fail-closed readiness gates.
@@ -132,9 +133,10 @@ malformed, or unavailable known record stops the requested lookup and any
 remote standalone claim availability or receipt check; it never falls back to
 a different destination. The operator must obtain and record the
 known pair from an independent source with its observation date before setting
-these public inputs. The two paths use the same pinned network, registry and
-ACC verifier checks; a missing record on only one path, a changed target, or
-an unavailable path refuses the lookup. Different origins alone do not prove
+these public inputs. Each path uses one internally consistent indexer block
+with the same pinned network, registry and ACC verifier checks; a missing
+record on only one path, a changed target, or an unavailable path refuses the
+lookup. Different origins alone do not prove
 independent backends, matching chain height, or independently verified live
 mapping. The operator must establish those properties separately before
 claiming online qualification. Claim availability and finality still read the

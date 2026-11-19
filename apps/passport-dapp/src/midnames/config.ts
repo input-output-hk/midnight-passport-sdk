@@ -136,6 +136,7 @@ export function configureMidnames(
     createMidnamesNameService(profile, {
       readTarget: async (...args) => (await source()).readTarget(...args),
       isSupportedAccount: async (...args) => (await source()).isSupportedAccount(...args),
+      readSupportedTarget: async (...args) => (await source()).readSupportedTarget(...args),
     });
   const readerService = serviceFor(reads);
   const checkedService = verificationReads
