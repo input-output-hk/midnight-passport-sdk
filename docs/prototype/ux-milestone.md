@@ -141,7 +141,10 @@ by a newly reviewed retry. Native sponsor failure and real passkey consent
 remain open qualification.
 
 The opt-in **Register a .night name** panel on Passport account → Balances
-appears after creation or passkey-based opening of the target ACC. Reviewing a
+appears after creation or passkey-based opening of the target ACC. The claim
+profile requires the observed Indexer v4 transaction protocol
+pin (`2001100` on the shared Ledger 9 demo; `2001000` in the isolated fixture).
+This is separate from the `/api/v4/graphql` endpoint version. Reviewing a
 valid quote retains the selected local `.night` name per registry, ACC, and
 credential. It restores that selection after reopening and keeps the setup pending until the original
 transaction and current registry record match. It does not deploy another ACC

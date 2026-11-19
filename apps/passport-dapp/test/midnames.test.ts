@@ -164,6 +164,34 @@ test('configured name lookup requires an explicit matching network, registry and
       'acc-s3r1.1',
     ),
   );
+  const standalone = { ...config, namespace: 'night', registryProfile: 'standalone-0.35' };
+  const resolverOnly = configureMidnames(standalone, profile.networkId, 'acc-s3r1.1');
+  assert.equal(resolverOnly?.provider.mode, 'external');
+  assert.equal(resolverOnly?.recovery, undefined);
+  assert.ok(
+    configureMidnames(
+      { ...standalone, claimProtocolVersion: '2001000' },
+      profile.networkId,
+      'acc-s3r1.1',
+    ),
+  );
+  assert.ok(
+    configureMidnames(
+      { ...standalone, claimProtocolVersion: '2001100' },
+      profile.networkId,
+      'acc-s3r1.1',
+    )?.recovery,
+  );
+  for (const version of ['2001100.0', '2001001', '2001200', ''])
+    assert.throws(
+      () =>
+        configureMidnames(
+          { ...standalone, claimProtocolVersion: version },
+          profile.networkId,
+          'acc-s3r1.1',
+        ),
+      /observed standalone claim transaction protocol/,
+    );
   assert.throws(() =>
     configureMidnames(
       {
@@ -189,6 +217,7 @@ test('configured name lookup requires an explicit matching network, registry and
     { networkId: 'preview' },
     { indexerUrl: 'http://127.0.0.1:18108/api/v3/graphql' },
     { indexerWsUrl: 'ws://127.0.0.1:18108/api/v3/graphql/ws' },
+    { claimProtocolVersion: '2001100' },
     { indexerUrl: 'http://example.test/graphql' },
     { indexerUrl: 'https://user:password@example.test/graphql' },
     { indexerWsUrl: 'wss://example.test/graphql?token=secret' },

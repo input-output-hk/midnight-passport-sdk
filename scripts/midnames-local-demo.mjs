@@ -642,6 +642,7 @@ async function demo(options, claim) {
     if (claim) {
       Object.assign(env, {
         VITE_MIDNAMES_REGISTRY_PROFILE: 'standalone-0.35',
+        VITE_MIDNAMES_CLAIM_PROTOCOL_VERSION: '2001100',
         VITE_MIDNAMES_REGISTRY_ADDRESS: claim.registryAddress,
         VITE_MIDNAMES_NAMESPACE: 'night',
         VITE_MIDNAMES_NETWORK_ID: 'undeployed',

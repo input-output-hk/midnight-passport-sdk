@@ -12,6 +12,8 @@ import type { ClaimPreparation } from './claim-quote.js';
 
 export interface MidnamesConfig {
   readonly claimSponsor?: string | undefined;
+  /** Exact Indexer v4 transaction protocol observed on this chain, not the API version. */
+  readonly claimProtocolVersion?: string | undefined;
   readonly registryProfile?: string | undefined;
   readonly registryAddress?: string | undefined;
   readonly namespace?: string | undefined;
@@ -48,6 +50,31 @@ function requireOnlinePin(
   const hasPin = name !== undefined || account !== undefined;
   if ((hasPin && (!name?.trim() || !account?.trim())) || (online && !hasPin))
     throw new Error('Online naming requires a complete independently observed name-to-ACC pin.');
+}
+
+function claimProtocolVersion(value: string | undefined): number {
+  if (value !== '2001000' && value !== '2001100')
+    throw new Error('Pin the observed standalone claim transaction protocol version.');
+  return Number(value);
+}
+
+function selectedClaimProtocolVersion(
+  standalone: boolean,
+  config: MidnamesConfig,
+  preparation: ClaimPreparation | undefined,
+): number | undefined {
+  if (!standalone) {
+    if (config.claimProtocolVersion !== undefined)
+      throw new Error('Claim protocol version applies only to the standalone registry.');
+    return undefined;
+  }
+  if (
+    !preparation &&
+    config.claimSponsor === undefined &&
+    config.claimProtocolVersion === undefined
+  )
+    return undefined;
+  return claimProtocolVersion(config.claimProtocolVersion);
 }
 
 function configuredIndexers(config: MidnamesConfig, networkId: string) {
@@ -159,7 +186,8 @@ export function configureMidnames(
       !isClaimSponsorOrigin(globalThis.location?.origin ?? ''))
   )
     throw new Error('Claim dispatch requires the loopback standalone sponsor.');
-  if (!standalone) return service;
+  const protocolVersion = selectedClaimProtocolVersion(standalone, config, preparation);
+  if (protocolVersion === undefined) return service;
   return {
     ...service,
     recovery: {
@@ -184,7 +212,7 @@ export function configureMidnames(
           return 'unavailable';
         }
         const { readClaimFinality } = await import('./claim-finality.js');
-        const finality = await readClaimFinality(http, receipt);
+        const finality = await readClaimFinality(http, receipt, fetch, protocolVersion);
         if (finality === undefined) return 'unavailable';
         if (finality === 'conflict') return 'conflict';
         if (finality === 'failed' || finality === 'claim-failed') {

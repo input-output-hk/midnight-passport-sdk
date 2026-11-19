@@ -308,6 +308,8 @@ with the operator, outside Git and any browser/service request.
 On `PASS`, read `registryAddress` from `bootstrap.json` and configure the demo's
 `VITE_MIDNAMES_REGISTRY_ADDRESS` with it, together with
 `VITE_MIDNAMES_REGISTRY_PROFILE=standalone-0.35`,
+`VITE_MIDNAMES_CLAIM_PROTOCOL_VERSION=2001100` for this observed shared
+Ledger 9 chain (the isolated fixture uses `2001000`),
 `VITE_MIDNAMES_NAMESPACE=night`, `VITE_MIDNAMES_NETWORK_ID=undeployed`, and
 `VITE_MIDNAMES_INDEXER_URL` / `VITE_MIDNAMES_INDEXER_WS_URL` matching the
 bootstrap pair. The deployed root is a transitional

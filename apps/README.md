@@ -1054,6 +1054,15 @@ synthetic connector and registry; it does not perform a payment.
 
 ### Standalone Midnames claim recovery
 
+Standalone claim reconciliation requires an explicit
+`VITE_MIDNAMES_CLAIM_PROTOCOL_VERSION` alongside the Indexer API v4 URLs.
+The shared Ledger 9 demo launcher pins the observed transaction protocol
+`2001100`; the isolated fixture uses `2001000`. The values identify transaction
+formats, not GraphQL API revisions. A missing or unsupported pin disables the
+claim profile instead of misclassifying a finalized original as unavailable.
+Resolver-only standalone configurations can omit the pin; they keep name
+lookup and named sends but expose no claim recovery panel.
+
 An opt-in host can supply the demo's preparation adapter. The user reviews the
 exact sponsor quote and explicitly approves preparation. The form saves the
 quote and owner commitment before the sponsor request and accepts only a receipt

@@ -22,6 +22,8 @@ const indexerWsUrl = 'ws://127.0.0.1:8088/api/v4/graphql/ws';
 const nodeUrl = 'http://127.0.0.1:9944';
 const proverUrl = 'http://127.0.0.1:16320';
 const origin = 'http://localhost:5173';
+const claimProtocolVersion = Number(process.env.VITE_MIDNAMES_CLAIM_PROTOCOL_VERSION);
+assert.equal(claimProtocolVersion, 2001100, 'Pin the shared Ledger 9 claim protocol.');
 const maximumDust = 100_000_000_000_000_000n;
 const address = /^[0-9a-f]{64}$/;
 const safeRefusals = new Set([
@@ -205,7 +207,7 @@ try {
       },
       async retireExpiredUnsent(receipt) {
         if (
-          (await readClaimFinality(indexerUrl, receipt)) !== false ||
+          (await readClaimFinality(indexerUrl, receipt, fetch, claimProtocolVersion)) !== false ||
           (await reader.hasDomain(receipt.name, profile)) ||
           !(await reader.isSupportedAccount(receipt.accountAddress, networkId))
         )
