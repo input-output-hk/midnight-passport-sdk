@@ -5,7 +5,10 @@ import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { admitNativeClaim } from '../../apps/passport-dapp/src/midnames/claim-native-admission.ts';
 import { readClaimFinality } from '../../apps/passport-dapp/src/midnames/claim-finality.ts';
-import { claimQuoteDigest } from '../../apps/passport-dapp/src/midnames/claim-quote.ts';
+import {
+  claimDestination,
+  claimQuoteDigest,
+} from '../../apps/passport-dapp/src/midnames/claim-quote.ts';
 import { saveIsolationReceipt } from '../../scripts/qualification/native-isolation-files.mjs';
 import { openClaimDispatch } from './claim-dispatch.mts';
 import { claimFailedArchivePath, createClaimPreparationJournal } from './claim-preparation.mts';
@@ -80,7 +83,8 @@ export async function qualifyClaimRetry(input) {
   let sponsorChecks = 0;
   const sponsorPorts = {
     async issue(destination) {
-      await readLive(destination);
+      assert.deepEqual(destination, claimDestination(fixtureQuote));
+      await readLive(quote);
       return {
         ...fixtureQuote,
         id: randomBytes(32).toString('hex'),
@@ -168,12 +172,14 @@ export async function qualifyClaimRetry(input) {
     ledger,
     rootId,
     parentDomain: parent,
+    sponsorIssuedQuote: freshSponsorQuote,
     step,
     async dispatch(nextQuote, nextReceipt, nextFixtureQuote) {
       await readLive(nextQuote);
       assert.equal(nextQuote.name, quote.name);
       assert.notEqual(nextReceipt.transaction.sha256, receipt.transaction.sha256);
-      assert.notEqual(nextFixtureQuote.id, fixtureQuote.id);
+      assert.equal(nextFixtureQuote.id, freshSponsorQuote.id);
+      assert.ok(Date.now() < freshSponsorQuote.expiresAt);
       retryReceipt = nextReceipt;
       const journal = openClaimDispatch(retryDir);
       const pending = await journal.dispatch(nextReceipt, {
