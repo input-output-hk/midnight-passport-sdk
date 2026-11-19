@@ -20,6 +20,7 @@ const file = option('--file');
 const requestId = option('--request-id');
 const operator = option('--operator');
 const release = option('--release-no-submit');
+const releaseAcc = option('--release-acc-not-submitted');
 const confirm = option('--confirm-credit');
 const rejected = option('--release-rejected');
 const nodeLogFile = option('--node-log');
@@ -30,7 +31,7 @@ if (
   !file ||
   !requestId ||
   !operator ||
-  [release, confirm, rejected].filter((value) => value === 'yes').length !== 1
+  [release, releaseAcc, confirm, rejected].filter((value) => value === 'yes').length !== 1
 )
   throw new Error(
     'pass --file PATH --request-id UUID --operator ID and exactly one reconciliation mode',
@@ -59,6 +60,8 @@ const allowed = new Set([
   operator,
   '--release-no-submit',
   release,
+  '--release-acc-not-submitted',
+  releaseAcc,
   '--confirm-credit',
   confirm,
   '--release-rejected',
@@ -85,6 +88,10 @@ const store = createFileFundingStore(file);
 if (release === 'yes') {
   if (before.noSubmit !== true) throw new Error('request has no durable no-submit marker');
   await store.releaseNoSubmit(requestId, operator);
+} else if (releaseAcc === 'yes') {
+  if (before.accNotSubmitted !== true)
+    throw new Error('request has no durable ACC-not-submitted marker');
+  await store.releaseAccNotSubmitted(requestId, operator);
 } else if (rejected === 'yes') {
   if (!nodeLogFile) throw new Error('node log is required');
   const fd = openSync(nodeLogFile, constants.O_RDONLY | constants.O_NOFOLLOW);

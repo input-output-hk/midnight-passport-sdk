@@ -9,7 +9,11 @@ responsive Activity panel/sheet and a dedicated Audit workspace using portable
 action to its new location. **Passport account** now uses **Balances / Deposit /
 Withdraw** pages: refresh/shielded reads stay with balances, one transfer form is
 shown at a time, and the open ACC/network remains visible. Contract counters are
-expandable. Deposit uses the configured demo funding wallet; navigation never
+expandable. Deposit uses the configured demo funding wallet. A local NIGHT proof/balance
+failure before the ACC send fence can release the exact reserved request only
+after a durable no-ACC-submission marker; the wallet's preparation self-transfer
+remains separately inspectable. Later or unmarked failures keep the original ID
+pending for reconciliation. Navigation never
 starts a transfer or credential request. Form values survive same-page tab and
 workspace changes; Settings’ session-target shortcut opens Withdraw. The [optional React host example](../docs/site/react-example.md) uses synthetic
 public snapshots only; the optional Lace Wallet reader has separate real-provider

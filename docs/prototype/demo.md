@@ -85,7 +85,12 @@ is open. The account card reads the ACC's unshielded NIGHT and test-token balanc
 shows the confirmed transaction. For NIGHT, the response and copied operation log also include
 the wallet self-transfer transaction ID. The browser never receives
 the funding wallet seed or bearer token. The browser keeps the same request ID for each asset after
-an uncertain result. A completed request replays its recorded result; a pending request returns 409
+an uncertain result. If local NIGHT proof or balancing fails before the ACC send
+fence, the service durably records that no ACC deposit was submitted, then returns
+an exact `FundingRequestReleased` receipt. Its preparation self-transfer may
+already have happened in the funding wallet. A failed marker/release write or a
+failure after the final hash fence retains the original request for operator
+reconciliation. A completed request replays its recorded result; a pending request returns 409
 and needs operator reconciliation before any new attempt. After an operator
 releases a verified uncredited original, the next click receives an exact
 reconciliation receipt and clears that old browser ID; a further click starts a

@@ -166,6 +166,56 @@ test('a durable no-submit marker permits audited release and frees the daily quo
   await assert.rejects(store.releaseNoSubmit(request.requestId, 'operator@example.org'));
 });
 
+test('a durable measured NIGHT pre-submit marker releases only the ACC deposit', async () => {
+  const path = file();
+  const store = createFileFundingStore(path);
+  const night = { ...request, color: '00'.repeat(32) };
+  const nightPolicy = { ...policy, color: night.color };
+  await store.reserve(night, nightPolicy, '2026-10-15');
+  await store.recordProgress(night.requestId, { stage: 'balance-observed', balanceBefore: '0' });
+  await store.recordProgress(night.requestId, {
+    stage: 'prepared',
+    preparationTxId: 'wallet-self-transfer',
+  });
+  await store.recordProgress(night.requestId, { stage: 'acc-not-submitted' });
+  const restarted = createFileFundingStore(path);
+  const before = inspectFileFundingStore(path).entries[0];
+  assert.equal(before?.state, 'pending');
+  assert.equal(before?.accNotSubmitted, true);
+  assert.equal(before?.progress?.preparationTxId, 'wallet-self-transfer');
+  await assert.rejects(
+    restarted.recordProgress(night.requestId, { stage: 'submitted', txId: 'new' }),
+  );
+  await assert.rejects(restarted.complete(night.requestId, result));
+  await restarted.releaseAccNotSubmitted(night.requestId, 'operator@example.org');
+  const after = inspectFileFundingStore(path).entries[0];
+  assert.equal(after?.state, 'released');
+  assert.equal(after?.release?.reason, 'acc-not-submitted');
+  assert.equal(after?.progress?.preparationTxId, 'wallet-self-transfer');
+  assert.deepEqual(await restarted.reserve(night, nightPolicy, '2026-10-15'), {
+    state: 'released',
+    reason: 'acc-not-submitted',
+  });
+  assert.equal(readdirSync(join(path, '..')).filter((name) => name.includes('.backup-')).length, 1);
+});
+
+test('missing preparation, other assets and a final hash cannot assert no ACC submission', async () => {
+  for (const mode of ['missing-preparation', 'other-asset', 'submitted']) {
+    const path = file();
+    const store = createFileFundingStore(path);
+    const night = { ...request, color: mode === 'other-asset' ? color : '00'.repeat(32) };
+    await store.reserve(night, { ...policy, color: night.color }, '2026-10-15');
+    await store.recordProgress(night.requestId, { stage: 'balance-observed', balanceBefore: '0' });
+    if (mode !== 'missing-preparation')
+      await store.recordProgress(night.requestId, { stage: 'prepared', preparationTxId: 'prep' });
+    if (mode === 'submitted')
+      await store.recordProgress(night.requestId, { stage: 'submitted', txId: 'final-hash' });
+    await assert.rejects(store.recordProgress(night.requestId, { stage: 'acc-not-submitted' }));
+    await assert.rejects(store.releaseAccNotSubmitted(night.requestId, 'operator@example.org'));
+    assert.equal(inspectFileFundingStore(path).entries[0]?.state, 'pending');
+  }
+});
+
 test('missing, prepared or submitted evidence can never release an uncertain reservation', async () => {
   for (const milestone of ['none', 'prepared', 'submitted']) {
     const path = file();

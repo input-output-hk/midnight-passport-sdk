@@ -30,10 +30,11 @@ interface Entry {
   readonly progress?: ProgressRecord;
   readonly result?: ServiceWire.FundAccResponse;
   readonly noSubmit?: true;
+  readonly accNotSubmitted?: true;
   readonly release?: {
     readonly actor: string;
     readonly at: string;
-    readonly reason: 'preflight-failed' | 'node-rejected';
+    readonly reason: 'preflight-failed' | 'acc-not-submitted' | 'node-rejected';
     readonly evidence?: FundingRejectionEvidence;
   };
   readonly reconciliation?: FundingCreditEvidence & { readonly actor: string; readonly at: string };
@@ -79,9 +80,12 @@ function validRelease(value: Record<string, unknown>): boolean {
     return false;
   if (release.reason === 'preflight-failed')
     return value.noSubmit === true && release.evidence === undefined;
+  if (release.reason === 'acc-not-submitted')
+    return value.accNotSubmitted === true && release.evidence === undefined;
   if (
     release.reason !== 'node-rejected' ||
     value.noSubmit ||
+    value.accNotSubmitted ||
     !record(value.progress) ||
     !record(value.request) ||
     value.request.networkId !== 'undeployed' ||
@@ -108,6 +112,17 @@ function validRelease(value: Record<string, unknown>): boolean {
     typeof evidence.lastRejectionAt === 'string' &&
     Number.isFinite(Date.parse(evidence.lastRejectionAt))
   );
+}
+
+function validAccNotSubmitted(
+  value: Record<string, unknown>,
+  request: Record<string, unknown>,
+): boolean {
+  if (value.accNotSubmitted === undefined) return true;
+  if (value.accNotSubmitted !== true || value.noSubmit || value.result) return false;
+  if (request.networkId !== 'undeployed' || request.color !== '00'.repeat(32)) return false;
+  if (!record(value.progress)) return false;
+  return !!value.progress.preparationTxId && !value.progress.depositTxId;
 }
 
 function validEntry(id: string, value: unknown): value is Entry {
@@ -139,6 +154,7 @@ function validEntry(id: string, value: unknown): value is Entry {
   if (value.noSubmit !== undefined && value.noSubmit !== true) return false;
   if (value.noSubmit && (value.progress?.preparationTxId || value.progress?.depositTxId))
     return false;
+  if (!validAccNotSubmitted(value, request)) return false;
   if (value.release !== undefined && !validRelease(value)) return false;
   if (value.reconciliation !== undefined) {
     if (
@@ -204,6 +220,7 @@ export interface FundingInspection {
     readonly progress?: ProgressRecord;
     readonly result?: ServiceWire.FundAccResponse;
     readonly noSubmit?: true;
+    readonly accNotSubmitted?: true;
     readonly release?: Entry['release'];
     readonly reconciliation?: Entry['reconciliation'];
   }[];
@@ -222,6 +239,7 @@ export function inspectFileFundingStore(file: string): FundingInspection {
       ...(entry.progress && { progress: entry.progress }),
       ...(entry.result && { result: entry.result }),
       ...(entry.noSubmit && { noSubmit: entry.noSubmit }),
+      ...(entry.accNotSubmitted && { accNotSubmitted: entry.accNotSubmitted }),
       ...(entry.release && { release: entry.release }),
       ...(entry.reconciliation && { reconciliation: entry.reconciliation }),
     })),
@@ -282,6 +300,89 @@ function withFundingLock<T>(file: string, work: () => T): T {
   }
 }
 
+function releaseMarkedNoSubmit(file: string, requestId: string, actor: string): void {
+  withFundingLock(file, () => {
+    if (!ACTOR.test(actor)) throw new Error('operator identity is invalid');
+    const state = load(file);
+    const old = state.requests[requestId];
+    if (!old || old.result || old.release || !old.noSubmit)
+      throw new Error('only a proved no-submit reservation may be released');
+    if (old.progress?.preparationTxId || old.progress?.depositTxId)
+      throw new Error('wallet submission may have started');
+    backup(file);
+    state.requests[requestId] = {
+      ...old,
+      release: { actor, at: new Date().toISOString(), reason: 'preflight-failed' },
+    };
+    save(file, state);
+  });
+}
+
+function releaseMarkedAccNotSubmitted(file: string, requestId: string, actor: string): void {
+  withFundingLock(file, () => {
+    if (!ACTOR.test(actor)) throw new Error('operator identity is invalid');
+    const state = load(file);
+    const old = state.requests[requestId];
+    if (
+      !old ||
+      old.result ||
+      old.release ||
+      old.noSubmit ||
+      !old.accNotSubmitted ||
+      !old.progress?.preparationTxId ||
+      old.progress.depositTxId
+    )
+      throw new Error('only a proved ACC pre-submit reservation may be released');
+    backup(file);
+    state.requests[requestId] = {
+      ...old,
+      release: { actor, at: new Date().toISOString(), reason: 'acc-not-submitted' },
+    };
+    save(file, state);
+  });
+}
+
+function completeVerifiedCredit(
+  file: string,
+  requestId: string,
+  actor: string,
+  result: ServiceWire.FundAccResponse,
+  evidence: FundingCreditEvidence,
+): void {
+  withFundingLock(file, () => {
+    if (!ACTOR.test(actor)) throw new Error('operator identity is invalid');
+    const state = load(file);
+    const old = state.requests[requestId];
+    const progress = old?.progress;
+    if (
+      !old ||
+      old.result ||
+      old.release ||
+      old.noSubmit ||
+      old.accNotSubmitted ||
+      !progress?.depositTxId ||
+      result.requestId !== requestId ||
+      result.txId !== progress.depositTxId ||
+      result.preparationTxId !== progress.preparationTxId ||
+      !validTxId(evidence.txHash) ||
+      !NONNEGATIVE_DECIMAL.test(evidence.previousBalance) ||
+      !NONNEGATIVE_DECIMAL.test(evidence.creditedBalance) ||
+      result.creditedBalance !== evidence.creditedBalance ||
+      BigInt(evidence.previousBalance) < BigInt(progress.balanceBefore) ||
+      BigInt(evidence.creditedBalance) - BigInt(evidence.previousBalance) !==
+        BigInt(old.request.amount)
+    )
+      throw new Error('reconciliation evidence differs from the pending reservation');
+    backup(file);
+    state.requests[requestId] = {
+      ...old,
+      result,
+      reconciliation: { ...evidence, actor, at: new Date().toISOString() },
+    };
+    save(file, state);
+  });
+}
+
 /** Preserve a rejected legacy request as a tombstone after exact operator reconciliation. */
 export async function releaseRejectedFundingReservation(
   file: string,
@@ -298,6 +399,7 @@ export async function releaseRejectedFundingReservation(
       old.result ||
       old.release ||
       old.noSubmit ||
+      old.accNotSubmitted ||
       old.request.networkId !== 'undeployed' ||
       old.request.color !== '00'.repeat(32) ||
       !old.progress?.preparationTxId ||
@@ -365,7 +467,13 @@ export function createFileFundingStore(file: string): FundingStore {
       withLock(() => {
         const state = load(file);
         const old = state.requests[requestId];
-        if (!old || old.release || old.noSubmit || result.requestId !== requestId)
+        if (
+          !old ||
+          old.release ||
+          old.noSubmit ||
+          old.accNotSubmitted ||
+          result.requestId !== requestId
+        )
           throw new Error('funding reservation does not match the result');
         if (
           (old.progress?.depositTxId && old.progress.depositTxId !== result.txId) ||
@@ -403,7 +511,21 @@ export function createFileFundingStore(file: string): FundingStore {
           save(file, state);
           return;
         }
-        if (old.noSubmit) throw new Error('funding request is marked no-submit');
+        if (progress.stage === 'acc-not-submitted') {
+          if (
+            old.noSubmit ||
+            old.request.networkId !== 'undeployed' ||
+            old.request.color !== '00'.repeat(32) ||
+            !previous?.preparationTxId ||
+            previous.depositTxId
+          )
+            throw new Error('ACC pre-submit milestone is out of order');
+          state.requests[requestId] = { ...old, accNotSubmitted: true };
+          save(file, state);
+          return;
+        }
+        if (old.noSubmit || old.accNotSubmitted)
+          throw new Error('funding request is marked as not submitted');
         let next: ProgressRecord;
         if (progress.stage === 'balance-observed') {
           if (
@@ -431,54 +553,13 @@ export function createFileFundingStore(file: string): FundingStore {
       });
     },
     async releaseNoSubmit(requestId, actor) {
-      withLock(() => {
-        if (!ACTOR.test(actor)) throw new Error('operator identity is invalid');
-        const state = load(file);
-        const old = state.requests[requestId];
-        if (!old || old.result || old.release || !old.noSubmit)
-          throw new Error('only a proved no-submit reservation may be released');
-        if (old.progress?.preparationTxId || old.progress?.depositTxId)
-          throw new Error('wallet submission may have started');
-        backup(file);
-        state.requests[requestId] = {
-          ...old,
-          release: { actor, at: new Date().toISOString(), reason: 'preflight-failed' },
-        };
-        save(file, state);
-      });
+      releaseMarkedNoSubmit(file, requestId, actor);
+    },
+    async releaseAccNotSubmitted(requestId, actor) {
+      releaseMarkedAccNotSubmitted(file, requestId, actor);
     },
     async completeReconciled(requestId, actor, result, evidence) {
-      withLock(() => {
-        if (!ACTOR.test(actor)) throw new Error('operator identity is invalid');
-        const state = load(file);
-        const old = state.requests[requestId];
-        const progress = old?.progress;
-        if (
-          !old ||
-          old.result ||
-          old.release ||
-          old.noSubmit ||
-          !progress?.depositTxId ||
-          result.requestId !== requestId ||
-          result.txId !== progress.depositTxId ||
-          result.preparationTxId !== progress.preparationTxId ||
-          !validTxId(evidence.txHash) ||
-          !NONNEGATIVE_DECIMAL.test(evidence.previousBalance) ||
-          !NONNEGATIVE_DECIMAL.test(evidence.creditedBalance) ||
-          result.creditedBalance !== evidence.creditedBalance ||
-          BigInt(evidence.previousBalance) < BigInt(progress.balanceBefore) ||
-          BigInt(evidence.creditedBalance) - BigInt(evidence.previousBalance) !==
-            BigInt(old.request.amount)
-        )
-          throw new Error('reconciliation evidence differs from the pending reservation');
-        backup(file);
-        state.requests[requestId] = {
-          ...old,
-          result,
-          reconciliation: { ...evidence, actor, at: new Date().toISOString() },
-        };
-        save(file, state);
-      });
+      completeVerifiedCredit(file, requestId, actor, result, evidence);
     },
   };
 }

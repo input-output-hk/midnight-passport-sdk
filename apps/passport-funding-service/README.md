@@ -103,7 +103,14 @@ deposit can leave a request pending with a preparation ID but no deposit ID. Kee
 that original reservation; its missing ID or unchanged ACC balance alone does
 not prove that every submission attempt was refused. The measured local NIGHT
 path records its hash before submission so future failures identify the exact
-transaction for operator inspection. An operator may release the one proved
+transaction for operator inspection. If local proof, balancing or call validation
+fails after the exact-value wallet self-transfer, the backend durably records
+`accNotSubmitted` before it can enter the ACC submitter. The route releases that
+exact request, preserves the preparation ID, and returns `FundingRequestReleased`.
+This proves only that the **ACC deposit** was not submitted; the wallet
+self-transfer may already be on-chain. If the marker or release write fails, the
+request remains pending. A failure after the final deposit hash is recorded also
+remains pending, even if the node returned an error. An operator may release the one proved
 `noSubmit` case:
 
 ```sh
@@ -115,8 +122,21 @@ nix develop -c pnpm --filter passport-funding-service reconcile --file \
 The command rechecks the marker under the store lock, makes a mode-600, fsynced backup beside the
 reservation file, records the operator, timestamp and reason in the request tombstone, then frees
 its daily quota. The original request ID remains unusable; a *new* ID is appropriate only after
-the original was released. Do not use the command for a request with no marker, after NIGHT
-preparation, after deposit submission, or after an uncertain crash. Those cases remain pending.
+the original was released. The corresponding operator recovery after a crash
+between the durable `accNotSubmitted` marker and automatic release is:
+
+```sh
+nix develop -c pnpm --filter passport-funding-service reconcile --file \
+  "$HOME/.midnight-passport/funding-reservations.json" \
+  --request-id '<original UUID>' --operator '<your-id>' --release-acc-not-submitted yes
+```
+
+This mode requires the persisted marker, a local NIGHT reservation, a preparation
+ID and no final deposit hash. Inspect the wallet self-transfer separately; its
+absence is not implied by this release. The `--release-no-submit` mode is only
+for the earlier preflight boundary. Neither mode accepts a request with no marker
+or an uncertain final submission. Legacy pending requests without a marker stay
+pending for independent chain and wallet reconciliation.
 
 For the specific old local NIGHT path that retried a node gas rejection four
 times, an operator can instead release an uncredited request after preserving

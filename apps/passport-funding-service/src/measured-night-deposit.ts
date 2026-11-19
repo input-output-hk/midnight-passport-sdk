@@ -30,13 +30,11 @@ export function verifyMeasuredNightDepositCall(actions: readonly unknown[], targ
     throw new Error('Funding wallet changed the pinned NIGHT deposit call.');
 }
 
-/** The local funding wallet pays for the exact ACC deposit after a durable send fence. */
-export async function submitMeasuredNightDeposit(
+/** Prove and balance locally; this helper never submits the ACC transaction. */
+async function prepareMeasuredNightDeposit(
   request: UnboundNightDepositRequest,
   walletProvider: WalletProvider,
-  midnightProvider: MidnightProvider,
-  recordProgress: (progress: FundingProgress) => Promise<void>,
-): Promise<{ readonly txId: string }> {
+) {
   const proven = await proveUnboundNightDeposit(request);
   const balanced = await walletProvider.balanceTx({
     version: 'v9',
@@ -55,9 +53,42 @@ export async function submitMeasuredNightDeposit(
     identifiers.some((id) => !/^[0-9a-f]{66}$/.test(id))
   )
     throw new Error('Measured NIGHT deposit has no stable transaction identity.');
+  return { tx, txId };
+}
+
+/** The local funding wallet pays for the exact ACC deposit after a durable send fence. */
+export async function submitMeasuredNightDepositAfterPreparation<T>(
+  prepare: () => Promise<{ readonly tx: T; readonly txId: string }>,
+  submit: (tx: T) => Promise<void>,
+  recordProgress: (progress: FundingProgress) => Promise<void>,
+): Promise<{ readonly txId: string }> {
+  let prepared: Awaited<ReturnType<typeof prepare>>;
+  try {
+    prepared = await prepare();
+  } catch (error) {
+    // Proving, balancing and validating cannot submit to the node. Only this
+    // pre-fence boundary may durably mark the ACC deposit as not submitted.
+    await recordProgress({ stage: 'acc-not-submitted' });
+    throw error;
+  }
   // Record the original before handing it to the node. A lost response or rejected
   // submission leaves this exact ID available for read-only reconciliation.
-  await recordProgress({ stage: 'submitted', txId });
-  await midnightProvider.submitTx({ version: 'v9', tx });
-  return { txId };
+  await recordProgress({ stage: 'submitted', txId: prepared.txId });
+  await submit(prepared.tx);
+  return { txId: prepared.txId };
+}
+
+export async function submitMeasuredNightDeposit(
+  request: UnboundNightDepositRequest,
+  walletProvider: WalletProvider,
+  midnightProvider: MidnightProvider,
+  recordProgress: (progress: FundingProgress) => Promise<void>,
+): Promise<{ readonly txId: string }> {
+  return submitMeasuredNightDepositAfterPreparation(
+    () => prepareMeasuredNightDeposit(request, walletProvider),
+    async (tx) => {
+      await midnightProvider.submitTx({ version: 'v9', tx });
+    },
+    recordProgress,
+  );
 }
