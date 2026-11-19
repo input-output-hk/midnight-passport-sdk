@@ -1,8 +1,14 @@
 // Synthetic full-app composition check. The connector and naming reads are fixtures;
 // no claim transaction, passkey, chain, or provider is simulated as qualified.
 import assert from 'node:assert/strict';
+import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { chromium } from 'playwright-core';
 import { createServer } from 'vite';
+import { createClaimSponsorHandler } from '../../../examples/midnames-local/claim-sponsor-http.mts';
+import { claimQuotePath } from '../src/midnames/claim-preparation-transport.js';
+import { claimQuote } from '../src/midnames/claim-quote.js';
 
 const registry = '12'.repeat(32);
 const account = '34'.repeat(32);
@@ -56,6 +62,7 @@ const connector = `
 
 const naming = `
   import { ClaimPreIntentRefusal, claimQuoteDigest } from './claim-quote.js';
+  import { createLocalClaimPreparation } from './claim-preparation-transport.js';
   const quote = ${JSON.stringify(quote)};
   const original = ${JSON.stringify(original)};
   const count = (key) => localStorage.setItem(key,
@@ -76,6 +83,10 @@ const naming = `
               networkId: quote.networkId, registryAddress: quote.registryAddress,
               accountAddress: quote.accountAddress, name: quote.name,
             })) throw Error('Unexpected claim destination');
+            if (new URLSearchParams(location.search).has('http'))
+              return createLocalClaimPreparation(async () => {
+                throw Error('The HTTP quote does not invoke a proof');
+              }).quote(destination);
             const mode = localStorage.getItem('handoff-quote-mode');
             if (mode === 'unavailable') throw Error('Sponsor unavailable');
             if (mode === 'wrong-account')
@@ -111,6 +122,9 @@ const naming = `
 `;
 
 process.env.PASSPORT_MANIFEST_SHA256 = manifest;
+const sponsorRoot = realpathSync(mkdtempSync(join(tmpdir(), 'midnames-handoff-quote-')));
+const httpQuotes: unknown[] = [];
+let sponsorHandler: ReturnType<typeof createClaimSponsorHandler> | undefined;
 const server = await createServer({
   root: process.cwd(),
   configFile: 'vite.config.ts',
@@ -120,6 +134,14 @@ const server = await createServer({
     {
       name: 'midnames-handoff-fixtures',
       enforce: 'pre',
+      configureServer(server) {
+        server.middlewares.use((request, response, next) => {
+          if (request.url !== claimQuotePath || !sponsorHandler) return next();
+          void sponsorHandler(request, response).then((handled) => {
+            if (!handled) next();
+          }, next);
+        });
+      },
       load(id) {
         const path = id.split('?')[0];
         if (path === `${process.cwd()}/src/connector.ts`) return connector;
@@ -132,6 +154,30 @@ await server.listen();
 const address = server.httpServer?.address();
 assert.ok(address && typeof address !== 'string');
 const origin = `http://127.0.0.1:${address.port}`;
+sponsorHandler = createClaimSponsorHandler(
+  origin,
+  sponsorRoot,
+  {
+    async authorize() {
+      throw Error('Dispatch is outside this quote check');
+    },
+    async submit() {
+      throw Error('Dispatch is outside this quote check');
+    },
+  },
+  {
+    async issue(destination) {
+      httpQuotes.push(destination);
+      return claimQuote(quote);
+    },
+    async authorizeQuote() {
+      throw Error('Preparation is outside this quote check');
+    },
+    async balance() {
+      throw Error('Preparation is outside this quote check');
+    },
+  },
+);
 let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
 try {
   browser = await chromium.launch({
@@ -301,8 +347,8 @@ try {
     await retryContext.close();
   }
 
-  // Exercise the full app's pre-proof decision with a synthetic owner/sponsor.
-  // The real credential ceremony and registry transaction need native evidence.
+  // Exercise the full app's pre-proof decision with a same-origin sponsor HTTP quote.
+  // Owner proof and preparation remain fixtures; the registry transaction needs native evidence.
   const preparationContext = await browser.newContext();
   try {
     const preparationPage = await preparationContext.newPage();
@@ -314,7 +360,7 @@ try {
         preparations: Number(localStorage.getItem('handoff-preparations') || '0'),
         creates: Number(localStorage.getItem('handoff-fixture-creates') || '0'),
       }));
-    await preparationPage.goto(`${origin}/?preproof`);
+    await preparationPage.goto(`${origin}/?preproof&http`);
     await preparationPage
       .locator('#status')
       .filter({ hasText: /^Ready\./ })
@@ -325,6 +371,7 @@ try {
     assert.equal(await preparationPage.locator('#claim-review-quote').isVisible(), true);
     assert.equal(await preparationPage.locator('#claim-prepare').isVisible(), false);
     assert.deepEqual(await counts(), { quotes: 0, proofs: 0, preparations: 0, creates: 1 });
+    assert.deepEqual(httpQuotes, []);
 
     await preparationPage.locator('#claim-review-quote').click();
     const summary = preparationPage.locator('#claim-quote-summary');
@@ -345,6 +392,14 @@ try {
     assert.match(reviewed, /Preparing uses the open account’s passkey/);
     assert.equal(await preparationPage.locator('#claim-prepare').isVisible(), true);
     assert.deepEqual(await counts(), { quotes: 1, proofs: 0, preparations: 0, creates: 1 });
+    assert.deepEqual(httpQuotes, [
+      {
+        networkId: original.networkId,
+        registryAddress: registry,
+        accountAddress: account,
+        name: original.name,
+      },
+    ]);
 
     await preparationPage.locator('#claim-prepare').click();
     await preparationPage
@@ -443,9 +498,10 @@ try {
   }
   assert.deepEqual(errors, []);
   console.log(
-    'Midnames synthetic create/open, failed original, and pre-proof approval/refusal: PASS',
+    'Midnames synthetic create/open, failed original, sponsor HTTP quote, and pre-proof approval/refusal: PASS',
   );
 } finally {
   await browser?.close();
   await server.close();
+  rmSync(sponsorRoot, { recursive: true, force: true });
 }
