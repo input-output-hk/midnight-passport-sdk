@@ -5,24 +5,56 @@
 
 # Browser-visible Indexer API v4 paths. Only this loopback process sees the
 # Blockfrost project token; the upstream has the same GraphQL schema at /api/v0.
+# Require the exact local demo Origin for HTTP and WebSocket requests so an
+# unrelated webpage cannot spend the operator's Blockfrost quota.
 http://127.0.0.1:18088 {
-	@graphql path /api/v4/graphql
-	handle @graphql {
-		rewrite * /api/v0
-		reverse_proxy {$PASSPORT_BLOCKFROST_UPSTREAM:https://midnight-preprod.blockfrost.io} {
-			header_up project_id {$BLOCKFROST_PROJECT_ID}
-			header_up Host {upstream_hostport}
-		}
+	@demo_origin {
+		header Origin http://localhost:5173
+		header Origin http://127.0.0.1:5173
 	}
+	handle @demo_origin {
+		header Access-Control-Allow-Origin {http.request.header.Origin}
+		header Access-Control-Allow-Methods "POST, OPTIONS"
+		header Access-Control-Allow-Headers content-type
+		header Vary Origin
 
-	@websocket path /api/v4/graphql/ws
-	handle @websocket {
-		rewrite * /api/v0/ws
-		reverse_proxy {$PASSPORT_BLOCKFROST_UPSTREAM:https://midnight-preprod.blockfrost.io} {
-			header_up project_id {$BLOCKFROST_PROJECT_ID}
-			header_up Host {upstream_hostport}
+		@preflight {
+			method OPTIONS
+			path /api/v4/graphql
 		}
-	}
+		handle @preflight {
+			respond "" 204
+		}
 
-	respond 404
+		@graphql {
+			method POST
+			path /api/v4/graphql
+		}
+		handle @graphql {
+			rewrite * /api/v0
+			reverse_proxy {$PASSPORT_BLOCKFROST_UPSTREAM:https://midnight-preprod.blockfrost.io} {
+				header_up project_id {$BLOCKFROST_PROJECT_ID}
+				header_up Host {upstream_hostport}
+				header_down -Access-Control-Allow-Origin
+			}
+		}
+
+		@websocket {
+			method GET
+			path /api/v4/graphql/ws
+			header Upgrade websocket
+		}
+		handle @websocket {
+			rewrite * /api/v0/ws
+			reverse_proxy {$PASSPORT_BLOCKFROST_UPSTREAM:https://midnight-preprod.blockfrost.io} {
+				header_up project_id {$BLOCKFROST_PROJECT_ID}
+				header_up Host {upstream_hostport}
+				header_down -Access-Control-Allow-Origin
+			}
+		}
+		respond 404
+	}
+	handle {
+		respond 403
+	}
 }

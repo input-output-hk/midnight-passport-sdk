@@ -16,8 +16,13 @@ nix develop -c bash examples/midnames-online/preprod-indexer-proxy.sh
 ```
 
 The proxy listens only on `127.0.0.1:18088`, disables Caddy's admin endpoint,
-and forwards only `/api/v4/graphql` and `/api/v4/graphql/ws`. The browser-facing
-pair is:
+and forwards only `/api/v4/graphql` and `/api/v4/graphql/ws`. It accepts HTTP
+and WebSocket requests only with an exact `Origin` of `http://localhost:5173`
+or `http://127.0.0.1:5173` (the local demo); missing and other origins receive
+HTTP 403. It handles the browser's GraphQL preflight locally and replaces any
+upstream wildcard CORS header with the accepted origin. Other app origins need
+their own reviewed allowlist before using this example. The browser-facing pair
+is:
 
 ```text
 http://127.0.0.1:18088/api/v4/graphql
@@ -39,6 +44,8 @@ that mapping or qualify an online claim, deposit, or NIGHT send. The current
 during its Ledger 9 migration.
 
 The Caddyfile was checked with Caddy 2.9.1. A local synthetic upstream check
-verified HTTP and WebSocket path rewrites, upstream header injection, an
-off-scope 404, and absence of the test ID from client URLs and process logs.
+verified HTTP and WebSocket path rewrites, upstream header injection, local
+preflight, rejection of untrusted and missing origins, replacement of an
+upstream wildcard CORS header, an off-scope 404, and absence of the test ID
+from client URLs and process logs.
 That check does not establish a live Blockfrost response or provider agreement.
