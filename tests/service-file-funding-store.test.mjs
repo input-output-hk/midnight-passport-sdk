@@ -187,6 +187,7 @@ test('a durable measured NIGHT pre-submit marker releases only the ACC deposit',
     restarted.recordProgress(night.requestId, { stage: 'submitted', txId: 'new' }),
   );
   await assert.rejects(restarted.complete(night.requestId, result));
+  assert.ok(restarted.releaseAccNotSubmitted);
   await restarted.releaseAccNotSubmitted(night.requestId, 'operator@example.org');
   const after = inspectFileFundingStore(path).entries[0];
   assert.equal(after?.state, 'released');
@@ -211,6 +212,7 @@ test('missing preparation, other assets and a final hash cannot assert no ACC su
     if (mode === 'submitted')
       await store.recordProgress(night.requestId, { stage: 'submitted', txId: 'final-hash' });
     await assert.rejects(store.recordProgress(night.requestId, { stage: 'acc-not-submitted' }));
+    assert.ok(store.releaseAccNotSubmitted);
     await assert.rejects(store.releaseAccNotSubmitted(night.requestId, 'operator@example.org'));
     assert.equal(inspectFileFundingStore(path).entries[0]?.state, 'pending');
   }

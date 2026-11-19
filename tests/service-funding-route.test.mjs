@@ -270,6 +270,58 @@ test('a failed pre-submit marker write keeps the request pending', async (t) => 
   assert.equal(svc.calls.length, 1);
 });
 
+test('a failed release after the marker write keeps the original request pending', async (t) => {
+  const path = join(mkdtempSync(join(tmpdir(), 'passport-funding-route-')), 'reservations.json');
+  const night = { ...request, color: '00'.repeat(32) };
+  const fileStore = createFileFundingStore(path);
+  const svc = await serve({
+    store: {
+      ...fileStore,
+      async releaseAccNotSubmitted() {
+        throw new Error('release write failed');
+      },
+    },
+    fund: async (_input, recordProgress) => {
+      assert.ok(recordProgress);
+      await recordProgress({ stage: 'balance-observed', balanceBefore: '0' });
+      await recordProgress({ stage: 'prepared', preparationTxId: 'wallet-self-transfer' });
+      await recordProgress({ stage: 'acc-not-submitted' });
+      throw new Error('local proof failed');
+    },
+  });
+  t.after(svc.close);
+  assert.equal((await svc.post(night)).status, 502);
+  const record = inspectFileFundingStore(path).entries[0];
+  assert.equal(record?.state, 'pending');
+  assert.equal(record?.accNotSubmitted, true);
+  assert.equal((await svc.post(night)).status, 409);
+  assert.equal(svc.calls.length, 1);
+});
+
+test('a host store without the optional release port keeps a marked request pending', async (t) => {
+  const path = join(mkdtempSync(join(tmpdir(), 'passport-funding-route-')), 'reservations.json');
+  const night = { ...request, color: '00'.repeat(32) };
+  const legacyStore = createFileFundingStore(path);
+  delete legacyStore.releaseAccNotSubmitted;
+  const svc = await serve({
+    store: legacyStore,
+    fund: async (_input, recordProgress) => {
+      assert.ok(recordProgress);
+      await recordProgress({ stage: 'balance-observed', balanceBefore: '0' });
+      await recordProgress({ stage: 'prepared', preparationTxId: 'wallet-self-transfer' });
+      await recordProgress({ stage: 'acc-not-submitted' });
+      throw new Error('local proof failed');
+    },
+  });
+  t.after(svc.close);
+  assert.equal((await svc.post(night)).status, 502);
+  const record = inspectFileFundingStore(path).entries[0];
+  assert.equal(record?.state, 'pending');
+  assert.equal(record?.accNotSubmitted, true);
+  assert.equal((await svc.post(night)).status, 409);
+  assert.equal(svc.calls.length, 1);
+});
+
 test('concurrent requests with one ID invoke the wallet once', async (t) => {
   let release = () => {};
   const wait = new Promise((resolve) => {

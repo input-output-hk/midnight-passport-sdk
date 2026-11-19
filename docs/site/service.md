@@ -267,3 +267,10 @@ reconciliation. A missing hash on a legacy request is not equivalent to this
 marker. See the [funding operations guide](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/passport-funding-service/README.md)
 for inspection and recovery commands. This is a source preview, not an RC9 image
 or an online-network qualification.
+
+Version axis: the new `FundingProgress` stage and released `FundingReservation`
+reason are source additions for the proposed 0.2.0 line, not a change to RC9's
+published types. Hosts with exhaustive switches need to handle them when opting
+into that line. The `FundingStore.releaseAccNotSubmitted` port is optional so an
+existing store still type-checks; when absent, the route keeps the request pending
+and returns an unknown outcome. The reference file store implements the port.

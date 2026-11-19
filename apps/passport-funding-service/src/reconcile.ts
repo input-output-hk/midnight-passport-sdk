@@ -91,6 +91,7 @@ if (release === 'yes') {
 } else if (releaseAcc === 'yes') {
   if (before.accNotSubmitted !== true)
     throw new Error('request has no durable ACC-not-submitted marker');
+  if (!store.releaseAccNotSubmitted) throw new Error('funding store cannot release this marker');
   await store.releaseAccNotSubmitted(requestId, operator);
 } else if (rejected === 'yes') {
   if (!nodeLogFile) throw new Error('node log is required');

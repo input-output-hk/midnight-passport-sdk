@@ -57,7 +57,7 @@ export interface FundingStore {
   /** Atomically tombstone a request proved to have stopped before any wallet submission. */
   releaseNoSubmit(requestId: string, actor: string): Promise<void>;
   /** Release only a durable measured-NIGHT marker proving the ACC submitter was not entered. */
-  releaseAccNotSubmitted(requestId: string, actor: string): Promise<void>;
+  releaseAccNotSubmitted?(requestId: string, actor: string): Promise<void>;
   /** Atomically persist independently verified deposit evidence and the original result. */
   completeReconciled(
     requestId: string,
@@ -130,7 +130,7 @@ async function respondToFundingFailure(
   error: unknown,
 ): Promise<true> {
   const log = options.log ?? ((message: string) => console.error(message));
-  if (accNotSubmitted) {
+  if (accNotSubmitted && options.store.releaseAccNotSubmitted) {
     try {
       await options.store.releaseAccNotSubmitted(requestId, 'funding-pre-submit');
       log(
