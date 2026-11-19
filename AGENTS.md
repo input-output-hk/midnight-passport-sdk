@@ -142,6 +142,13 @@ nix develop -c bash -c 'pnpm run lint && pnpm run format:check && pnpm run build
 
 ## Evidence, reviews and publication
 
+- For demo or browser-flow acceptance, run the affected path headlessly with a
+  fresh virtual PRF-capable credential and the intended local services. Reproduce
+  reported failures, verify the user-visible result and exact retained journal,
+  then rerun against the fix. Do not make the owner relay routine browser state
+  or debug an agent-owned flow. A virtual credential does not qualify a real
+  keychain provider. Never dispatch a synthetic payment or name claim merely to
+  test preparation; honor the separate review and consent boundary.
 - Source unit/type, fake-chain process, synthetic browser, native proof,
   real-provider, production-image and installed/released-consumer evidence are
   distinct. No test or source receipt alone establishes another tier or full Lace.

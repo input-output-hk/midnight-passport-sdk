@@ -43,6 +43,13 @@ this repo before presenting the shared profile as compatible.
 5. Optional but wise: do a dry run with the mock first ([Mock mode](#mock-mode)). It shows any
    problem with the stack before an audience does.
 
+For agent-owned `.night` demo changes, use the
+[headless claim acceptance check](../agent-runbook.md#headless-midnames-claim-acceptance)
+against the intended local sponsor before asking someone to try the page. It
+creates a fresh virtual passkey, proves a synthetic name and verifies sponsor
+preparation and original recovery without sending a registration. A pass here
+does not stand in for the final real-provider ceremony.
+
 For an intentionally reset chain, archive the old registry, deployment records and
 unknown-operation evidence before selecting fresh state. A routine restart never
 requires deleting registry files, passkeys, journals or pending transaction IDs.
