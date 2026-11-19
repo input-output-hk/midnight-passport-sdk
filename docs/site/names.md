@@ -183,6 +183,17 @@ v4 HTTP/WebSocket paths to the browser and adds the project ID only upstream.
 It is a transport example, not an online naming qualification. The Preprod
 registry, independently known name-to-ACC mapping, and a genuinely separate
 second indexer must still be verified before enabling the online profile.
+The optional [known-mapping host check](../../examples/midnames-online/README.md#check-one-known-mapping-at-a-finalized-block)
+accepts a dated, independently observed name-to-ACC pin and two tokenless
+Indexer API v4 readers. It waits for both readers to expose the same
+node-finalized block, reads the registry and activated ACC at that block, and
+refuses a changed target or a noncanonical block. It sends a Blockfrost project
+ID only to the exact official node RPC origin. The browser proxy above rejects
+this host CLI because it requires a browser Origin; operator-controlled CLI
+endpoints need their own access policy. This source-only check has synthetic
+tests, not a live public provider receipt. It cannot establish that the
+operator's known pair was independently observed or that two origins have
+separate backends, so it does not enable the online demo profile.
 
 | Passport naming constraint | Implemented local subset | Deviation or remaining gate |
 | --- | --- | --- |
