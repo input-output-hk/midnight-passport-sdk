@@ -280,6 +280,11 @@ test('recovers a retained sponsor preparation over HTTP after reopening the jour
     });
   assert.equal((await post(claimQuotePath, destination, 'http://127.0.0.1:1')).status, 403);
   assert.deepEqual(await (await post(claimQuotePath, destination)).json(), quote);
+  const earlierQuotes = ['94', '96'].map((prefix) =>
+    claimQuote({ ...quote, id: prefix.repeat(32) }),
+  );
+  for (const earlier of earlierQuotes)
+    createOnce(join(root, `quote-${earlier.id}.json`), JSON.stringify(earlier));
   const lookup = { quote, ownerCommitment: original.ownerCommitment };
   assert.equal((await post(claimPreparedPath, lookup)).status, 404);
   assert.equal((await post(claimPreparePath, { ...lookup, proof: 'invalid' })).status, 409);
@@ -298,6 +303,12 @@ test('recovers a retained sponsor preparation over HTTP after reopening the jour
   reopen();
   assert.equal((await post(claimQuotePath, destination)).status, 423);
   assert.equal(quoteIssues, 1);
+  const originalIntent = readFileSync(intentPath);
+  const superseded = { quote: earlierQuotes[0], ownerCommitment: original.ownerCommitment };
+  assert.equal((await post(claimPreparedPath, superseded)).status, 412);
+  assert.equal((await post(claimPreparePath, { ...superseded, proof: '020305' })).status, 412);
+  assert.deepEqual(readFileSync(intentPath), originalIntent);
+  assert.equal(existsSync(join(root, 'claim-dispatch-fence.json')), false);
   assert.equal((await post(claimPreparedPath, lookup)).status, 202);
   assert.equal((await post(claimPreparePath, { ...lookup, proof: '020305' })).status, 202);
   assert.equal((await post(claimPreparePath, { ...lookup, proof: '020304' })).status, 409);
@@ -306,6 +317,14 @@ test('recovers a retained sponsor preparation over HTTP after reopening the jour
   reopen();
   assert.equal((await post(claimQuotePath, destination)).status, 423);
   assert.equal(quoteIssues, 1);
+  const supersededAfterReceipt = {
+    quote: earlierQuotes[1],
+    ownerCommitment: original.ownerCommitment,
+    proof: '020305',
+  };
+  assert.equal((await post(claimPreparePath, supersededAfterReceipt)).status, 412);
+  assert.deepEqual(readFileSync(intentPath), originalIntent);
+  assert.deepEqual(journal.preparedReceipt(), retained);
   assert.deepEqual(await (await post(claimPreparedPath, lookup)).json(), retained);
   assert.deepEqual(
     await (await post(claimPreparePath, { ...lookup, proof: '020305' })).json(),

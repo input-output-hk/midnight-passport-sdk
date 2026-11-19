@@ -56,8 +56,11 @@ An expired preparation that the sponsor verifies was never sent can be archived
 before a fresh quote. Keep the original receipt until the indexed transaction
 and registry binding agree. The reference sponsor holds one original at a time:
 a different account receives a busy message at quote time, before the naming
-proof. Reconcile the existing original instead of clearing site data. This
-opt-in path requires a separately funded name sponsor, pinned Compact 0.35 registry
+proof. Reconcile the existing original instead of clearing site data.
+Older proved quotes can use **Recover prepared receipt** to obtain an exact
+pre-intent refusal; only that unprepared browser reservation is then released.
+The occupying original remains intact. This opt-in path requires a separately
+funded name sponsor, pinned Compact 0.35 registry
 artifacts, and the standalone local `.night` registry. It does not issue
 public `passport.night` names.
 

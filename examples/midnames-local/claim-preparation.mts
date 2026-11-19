@@ -95,6 +95,27 @@ export function createClaimPreparationJournal(
     throw new ClaimPreIntentRefusal('The sponsor refused before any balance intent.');
   }
 
+  function refuseQuoteSupersededByOriginal(id: string, digest: string): void {
+    const intent = readClaimRecord(intentPath, claimReceiptLimit);
+    if (intent === undefined) return;
+    if (
+      !intent ||
+      typeof intent !== 'object' ||
+      !('quoteId' in intent) ||
+      !claimHex(intent.quoteId)
+    )
+      throw new Error('The original preparation record is unavailable.');
+    if (intent.quoteId === id) return;
+    // An older quote cannot have entered this sponsor's one balance intent.
+    // Refuse that exact quote durably so its browser can release only its own
+    // unprepared reservation; never alter the occupying original or its fence.
+    if (dispatch.preparedReceipt()?.quoteSha256 === digest)
+      throw new Error('The original prepared receipt differs from its intent.');
+    if (!recordOnce(decisionPath(id), { kind: 'refused', digest }) && !wasRefused(id, digest))
+      throw new Error('The quote decision differs from its original.');
+    throw new ClaimPreIntentRefusal('The sponsor refused before any balance intent.');
+  }
+
   async function approved(input: unknown) {
     const { quote, ownerCommitment } = requestFields(input);
     const issued = claimQuote(readClaimRecord(quotePath(quote.id), claimReceiptLimit));
@@ -197,6 +218,7 @@ export function createClaimPreparationJournal(
     },
     async findPrepared(input: unknown) {
       const { quote, digest, ownerCommitment } = await approved(input);
+      refuseQuoteSupersededByOriginal(quote.id, digest);
       const result = find(quote.id, digest, ownerCommitment);
       if (!result && wasRefused(quote.id, digest))
         throw new ClaimPreIntentRefusal('The sponsor refused before any balance intent.');
@@ -241,6 +263,7 @@ export function createClaimPreparationJournal(
         throw new Error('Invalid proved transaction bytes.');
       const bytes = Buffer.from(proof, 'hex');
       const proofSha256 = await claimDigest(bytes);
+      refuseQuoteSupersededByOriginal(quote.id, digest);
       const previous = find(quote.id, digest, ownerCommitment, proofSha256);
       if (previous) return previous;
       if (wasRefused(quote.id, digest))
