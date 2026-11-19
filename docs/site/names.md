@@ -166,16 +166,23 @@ different indexer tips in that operator check. The interactive resolver still
 reads current indexer state when each lookup runs; the check does not turn an
 indexer response into a cryptographic state proof or qualify online providers.
 
-As checked on 14 November 2026, the pinned SDK's historical Midnight-hosted
-preprod indexer endpoints return HTTP 410. The [current network endpoint
-guide](https://docs.midnight.network/relnotes/network) uses Blockfrost project
-authentication for preprod. The same guide records a 6 November Preview reset;
+As checked on 19 November 2026, the pinned SDK's historical Midnight-hosted
+preprod indexer endpoint returns HTTP 410. The [current network endpoint
+guide](https://docs.midnight.network/guides/networks-and-environments) uses Blockfrost project
+authentication for preprod. The guide records a 7 November Preview reset;
 a read of the SDK's pinned Preview registry address through the current v4
 indexer returned no contract on 14 November. No independently known online name-to-ACC contract
 mapping has been qualified, so this demo does not enable an online Midnames
 profile. Keep a project token in a host-controlled indexer proxy or provider,
-never in `VITE_` browser inputs; this reference browser does not provide that
+never in `VITE_` browser inputs. The reference browser does not host an
 authenticated proxy itself.
+
+For a local host using Midnight Preprod, the optional
+[Blockfrost indexer proxy](../../examples/midnames-online/README.md) exposes the
+v4 HTTP/WebSocket paths to the browser and adds the project ID only upstream.
+It is a transport example, not an online naming qualification. The Preprod
+registry, independently known name-to-ACC mapping, and a genuinely separate
+second indexer must still be verified before enabling the online profile.
 
 | Passport naming constraint | Implemented local subset | Deviation or remaining gate |
 | --- | --- | --- |

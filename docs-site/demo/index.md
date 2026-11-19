@@ -64,6 +64,11 @@ funded name sponsor, pinned Compact 0.35 registry
 artifacts, and the standalone local `.night` registry. It does not issue
 public `passport.night` names.
 
+An optional [Preprod indexer proxy](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-online/README.md)
+keeps a Blockfrost token on the host for read-only online profiles. It does not
+provide the independent second reader or known name-to-ACC mapping required
+before this demo enables online naming.
+
 
 The signed-out screen provides **Sign up** and **Log in**. After account access, use Passport account → Balances / Deposit / Withdraw; the separate Midnight wallet, Audit, and Settings workspaces have their own navigation. The demo shows **Powered by Lace** attribution for its Lace-inspired wallet and passkey experience. Lace remains a separate wallet/host with its own provider policy; this demo does not claim full Lace compatibility.
 

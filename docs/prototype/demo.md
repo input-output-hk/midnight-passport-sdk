@@ -211,6 +211,11 @@ For an older proved but unprepared quote, **Recover prepared receipt** can
 confirm that another original holds the sponsor and release only that browser's
 unprepared reservation. A missing or uncertain sponsor response retains it.
 
+For a separate Preprod read-only profile, the optional
+[Blockfrost indexer proxy](../../examples/midnames-online/README.md) keeps the
+project ID on the host. It does not replace the required known mapping and
+independent second indexer, and it does not enable a Preprod claim or payment.
+
 ## Scoped grant demonstration
 
 With an ACC open, choose **Read grant roster** to see its chain-confirmed grant generation, nonce,

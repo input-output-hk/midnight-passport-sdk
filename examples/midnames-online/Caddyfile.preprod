@@ -1,0 +1,28 @@
+{
+	admin off
+	auto_https off
+}
+
+# Browser-visible Indexer API v4 paths. Only this loopback process sees the
+# Blockfrost project token; the upstream has the same GraphQL schema at /api/v0.
+http://127.0.0.1:18088 {
+	@graphql path /api/v4/graphql
+	handle @graphql {
+		rewrite * /api/v0
+		reverse_proxy {$PASSPORT_BLOCKFROST_UPSTREAM:https://midnight-preprod.blockfrost.io} {
+			header_up project_id {$BLOCKFROST_PROJECT_ID}
+			header_up Host {upstream_hostport}
+		}
+	}
+
+	@websocket path /api/v4/graphql/ws
+	handle @websocket {
+		rewrite * /api/v0/ws
+		reverse_proxy {$PASSPORT_BLOCKFROST_UPSTREAM:https://midnight-preprod.blockfrost.io} {
+			header_up project_id {$BLOCKFROST_PROJECT_ID}
+			header_up Host {upstream_hostport}
+		}
+	}
+
+	respond 404
+}
