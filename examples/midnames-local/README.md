@@ -26,8 +26,8 @@ nix develop -c node --import tsx \
   ../../examples/midnames-local/evidence/shared-ledger9-paidfix-deposit-20261118.json
 ```
 
-The verifier checks the recorded claim block against the node, waits up to
-20 seconds for the indexer to serve the exact node-finalized block, reads both
+The verifier checks the recorded claim block against the node, makes up to
+20 indexer attempts one second apart for the exact node-finalized block, reads both
 contracts at that canonical block hash, and checks it again. An older indexer
 tip refuses rather than making a moved name look current. This is a local chain-state
 observation through one indexer, not an authenticated online provider or a
