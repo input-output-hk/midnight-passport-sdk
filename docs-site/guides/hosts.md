@@ -40,8 +40,8 @@ To create that registry on a healthy local stack after activating an ACC, use
 the [pinned local bootstrap recipe](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/README.md#bootstrap-the-registry-on-an-existing-local-stack).
 It records the deployment waves and keeps root naming authority private; the
 resulting `.night` root is separate from public `passport.night` issuance.
-The local preparation command fetches the branch's pinned `ns.compact`,
-recompiles it with ZKIR v3, and deploys that contract as a separate registry.
+The local preparation command fetches the branch's pinned `ns.compact` and
+recompiles it with ZKIR v3. The bootstrap command then deploys the separate registry.
 Midnames' paused writes to its older deployed registry do not block this
 local claim path.
 
