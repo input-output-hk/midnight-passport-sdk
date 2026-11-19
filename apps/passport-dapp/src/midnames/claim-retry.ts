@@ -68,18 +68,7 @@ export async function settleOriginalForReview(
 ): Promise<'start-fresh' | 'resume-prepared' | 'inspect'> {
   const result = await recovery.check(original).catch(() => 'unavailable' as const);
   ensureAccount();
-  if (result === 'failed' || result === 'claim-failed') {
-    await releaseVerifiedFailure(
-      recovery,
-      journal,
-      original,
-      account,
-      selected,
-      scope,
-      ensureAccount,
-    );
-    return 'start-fresh';
-  }
+  if (result === 'failed' || result === 'claim-failed') return 'inspect';
   if (result !== 'pending') return 'inspect';
   const sponsor = await recovery.preparation?.dispatchStatus?.(original).catch(() => undefined);
   ensureAccount();

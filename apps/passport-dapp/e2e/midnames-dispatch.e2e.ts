@@ -122,9 +122,10 @@ const vite = await createServer({
             credentialId: new Uint8Array([other ? 2 : 1]) };
           const reset = showClaimRecovery({
             registryAddress: original.registryAddress,
-            availability: async () => 'available',
+            availability: async () => new URLSearchParams(location.search).has('taken') ? 'taken' : 'available',
             check: async ({ quoteSha256, ...saved }) => {
               if (outage) throw Error('indexer offline');
+              if (new URLSearchParams(location.search).has('failed')) return 'failed';
               if (new URLSearchParams(location.search).has('resumePending')) return 'pending';
               return JSON.stringify(saved) === JSON.stringify(original) ? 'registered' : 'conflict';
             },
@@ -491,6 +492,24 @@ try {
     .filter({ hasText: /Prepared but never sent/ })
     .waitFor();
   assert.equal(quotedDispatches, 1);
+  await prepared.goto(pageUrl + '?prepare&resumePending&setup&taken');
+  await prepared
+    .locator('#claim-recovery-status')
+    .filter({ hasText: /The name is now registered; inspect the registry/ })
+    .waitFor();
+  assert.equal(await prepared.locator('#claim-dispatch').isVisible(), false);
+  await prepared.locator('#claim-review-quote').click();
+  assert.equal(await prepared.locator('#claim-dispatch').isVisible(), false);
+  await prepared.goto(pageUrl + '?prepare&setup&failed');
+  await prepared
+    .locator('#claim-recovery-status')
+    .filter({ hasText: /local sponsor must reconcile its retained original/ })
+    .waitFor();
+  assert.equal(await prepared.locator('#claim-release-failed').isVisible(), false);
+  const requestsBefore = preparationRequests.length;
+  await prepared.locator('#claim-review-quote').click();
+  assert.equal(preparationRequests.length, requestsBefore);
+  assert.equal(await prepared.locator('#claim-dispatch').isVisible(), false);
   await browser.close();
   await verifyPreparedImport(origin, pageUrl, () => openBrowser('chrome-preparation-import'));
   browser = await openBrowser('chrome-refused-profile');

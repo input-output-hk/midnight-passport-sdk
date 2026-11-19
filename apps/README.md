@@ -1147,10 +1147,10 @@ receipt has that quote's digest and one browser claim dispatch. Fresh signed
 not the full demo's sponsor HTTP quote or real-provider create/open ceremony.
 An exact indexed `FAILURE`, or an exact `PARTIAL_SUCCESS` whose only failed
 segment is the standalone registration claim while the sponsor's DUST fee
-succeeds, can enable **Release failed original for a new attempt** when the
-registry record is absent. The fee is not refunded. The action rechecks the same outcome,
-archives the original public receipt and IDs in IndexedDB, and requires fresh
-name and quote review before a new reservation. Other partial outcomes,
+succeeds, can be released from a separately managed browser journal when the
+registry record is absent. The fee is not refunded. The local sponsor still
+retains its private original, so this demo keeps the browser record and does
+not offer a fresh quote until the sponsor is reconciled. Other partial outcomes,
 uncertain results or an unavailable registry cannot release the original.
 The choice and public receipt live in this browser's IndexedDB, so a different
 device needs the original receipt and credential to recover it. This source

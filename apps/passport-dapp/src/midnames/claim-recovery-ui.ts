@@ -26,12 +26,20 @@ const messages = {
   conflict:
     'The original transaction or current registry binding conflicts with this claim. Preserve and inspect the original receipt.',
   failed:
-    'The exact original transaction failed and the name is unregistered. You can explicitly release this attempt, then review a fresh claim quote.',
+    'The exact original transaction failed and the name is unregistered. You can release this browser record after checking the original.',
   'claim-failed':
-    'The exact registration claim failed while the sponsor fee succeeded. The name is unregistered. You can explicitly release this attempt, then review a fresh quote; the fee is not returned.',
+    'The registration claim failed while the sponsor fee succeeded. The fee is not returned. You can release this browser record after checking the original.',
   registered: 'Registered. The original claim and current registry record match this account.',
   unavailable: 'Name service unavailable. Keep the original receipt and check it again later.',
 } as const;
+
+function claimResultMessage(result: keyof typeof messages, localSponsor: boolean): string {
+  if (localSponsor && result === 'failed')
+    return 'The exact original transaction failed. The local sponsor must reconcile its retained original before another quote can be issued.';
+  if (localSponsor && result === 'claim-failed')
+    return 'The registration claim failed while the sponsor fee succeeded. The fee is not returned. The local sponsor must reconcile its retained original before another quote can be issued.';
+  return messages[result];
+}
 
 const availabilityMessages = {
   available: 'Unregistered at the last registry read. Registration is a separate step.',
@@ -130,7 +138,9 @@ async function inspectOriginalClaim(
     !!recovery.preparation?.retireExpiredUnsent &&
     !!quote &&
     quote.expiresAt <= Date.now();
-  release.hidden = !expiredUnsent && result !== 'failed' && result !== 'claim-failed';
+  release.hidden =
+    !expiredUnsent &&
+    (!!recovery.preparation || (result !== 'failed' && result !== 'claim-failed'));
   release.dataset.reason = expiredUnsent ? 'expired-unsent' : 'failed';
   release.textContent = expiredUnsent
     ? 'Retire expired unsent original'
@@ -152,9 +162,9 @@ async function inspectOriginalClaim(
           : messages.unavailable,
     );
   } else {
-    report(messages[result]);
+    report(claimResultMessage(result, !!recovery.preparation));
   }
-  return { result, sponsorStatus };
+  return { result, sponsorStatus, registryAvailability };
 }
 
 async function restoreSelection(
@@ -211,7 +221,11 @@ async function restoreSelection(
             throw new Error('Claim context changed.');
         },
       );
-      if (checked.result === 'pending' && checked.sponsorStatus === 'prepared') {
+      if (
+        checked.result === 'pending' &&
+        checked.sponsorStatus === 'prepared' &&
+        checked.registryAvailability === 'available'
+      ) {
         receipt.value = JSON.stringify(original);
         await sendReview.ready(
           account,
@@ -382,7 +396,7 @@ async function runClaimAction(context: ClaimActionContext): Promise<void> {
           ensureAccount,
         );
         if (decision !== 'start-fresh') {
-          await inspectOriginalClaim(
+          const checked = await inspectOriginalClaim(
             recovery,
             journal,
             existing,
@@ -393,7 +407,12 @@ async function runClaimAction(context: ClaimActionContext): Promise<void> {
             report,
             ensureAccount,
           );
-          if (decision === 'resume-prepared')
+          if (
+            decision === 'resume-prepared' &&
+            checked.result === 'pending' &&
+            checked.sponsorStatus === 'prepared' &&
+            checked.registryAvailability === 'available'
+          )
             await sendReview.ready(account, existing, journal, scope, ensureAccount, status);
           return;
         }

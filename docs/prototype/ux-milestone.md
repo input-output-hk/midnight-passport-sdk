@@ -124,7 +124,7 @@ claim. The quote review describes the passkey request before the user approves.
 The owner bundle rechecks the current root price and payee before requesting
 the credential. Receipt recovery remains a read, and dispatch remains a
 separate action.
-The localhost sponsor uses a four-minute balanced-transaction window and
+The localhost sponsor balances the transaction to the displayed quote expiry and
 refuses preparation when the reviewed quote has too little time left. The page
 still requires a separate payment review and send confirmation; an uncertain
 send keeps the original receipt for fence and indexer reconciliation.
@@ -174,8 +174,11 @@ that approval calls each once, and that a pending original reports the
 synthetic prepared-but-unsent sponsor state after reopen. Native
 create/open, actual indexed failure, real passkey review and sponsored retry
 acceptance remain separate.
-An exact failed original with no registry record exposes **Release failed
-original for a new attempt**. The indexed result can be `FAILURE`, or a
+For the local sponsor, an exact indexed failure remains retained until the
+sponsor's private journal can be reconciled; the browser does not offer a new
+quote by releasing only its own record. In a separately managed host, an exact
+failed original with no registry record can expose **Release failed original
+for a new attempt**. The indexed result can be `FAILURE`, or a
 `PARTIAL_SUCCESS` with a verified failed registration claim and only a successful
 sponsor DUST fee. The fee is not refunded. The action rechecks the same outcome and availability,
 archives the public receipt and original transaction IDs, and clears the prior

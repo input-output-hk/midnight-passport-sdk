@@ -102,13 +102,15 @@ passkey**. The page then displays the saved payment terms without sending; click
 **Confirm payment and register** after reviewing them. The page checks the
 original claim after dispatch. Raw receipts and manual checks remain under
 **Receipt and recovery details** for diagnostics.
-The local sponsor gives its balanced transaction a four-minute dispatch window;
-review and confirm promptly after preparation. **Continue registration** first
+The local sponsor sets the balanced transaction deadline to the displayed quote
+expiry; review and confirm before that deadline. **Continue registration** first
 reconciles any retained original. For an unsent transaction past its TTL, the
 sponsor verifies no dispatch fence, no indexed original and an unregistered
 name before it archives the private journal; the browser retains the receipt
 in released history. A fenced or uncertain send stays pending for read-only
-reconciliation. Registration is
+reconciliation. An indexed failed claim also remains in the local sponsor's
+private journal; this demo does not offer a fresh quote until that sponsor state
+is separately reconciled. Registration is
 optional and can be done in a later session with the same account credential.
 The separate **Deposit** page offers the configured NIGHT amount. Each deposit
 requires the funding wallet's allowlisted asset and available balance.
