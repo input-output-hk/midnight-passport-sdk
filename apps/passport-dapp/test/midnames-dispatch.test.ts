@@ -280,9 +280,11 @@ test('recovers a retained sponsor preparation over HTTP after reopening the jour
     });
   assert.equal((await post(claimQuotePath, destination, 'http://127.0.0.1:1')).status, 403);
   assert.deepEqual(await (await post(claimQuotePath, destination)).json(), quote);
-  const earlierQuotes = ['94', '96'].map((prefix) =>
-    claimQuote({ ...quote, id: prefix.repeat(32) }),
-  );
+  const earlierQuotes = [
+    claimQuote({ ...quote, id: '94'.repeat(32) }),
+    claimQuote({ ...quote, id: '96'.repeat(32) }),
+    claimQuote({ ...quote, id: '98'.repeat(32) }),
+  ] as const;
   for (const earlier of earlierQuotes)
     createOnce(join(root, `quote-${earlier.id}.json`), JSON.stringify(earlier));
   const lookup = { quote, ownerCommitment: original.ownerCommitment };
@@ -291,6 +293,17 @@ test('recovers a retained sponsor preparation over HTTP after reopening the jour
   const intentPath = join(root, 'claim-prepare-intent.json');
   assert.equal(existsSync(intentPath), false);
   const digest = await claimQuoteDigest(quote);
+  const losingDecisionPath = join(root, `quote-decision-${earlierQuotes[2].id}.json`);
+  createOnce(
+    losingDecisionPath,
+    JSON.stringify({
+      kind: 'intent',
+      digest: await claimQuoteDigest(earlierQuotes[2]),
+      ownerCommitment: original.ownerCommitment,
+      proofSha256: createHash('sha256').update(bytes).digest('hex'),
+    }),
+  );
+  const losingDecision = readFileSync(losingDecisionPath);
   createOnce(
     intentPath,
     JSON.stringify({
@@ -307,6 +320,10 @@ test('recovers a retained sponsor preparation over HTTP after reopening the jour
   const superseded = { quote: earlierQuotes[0], ownerCommitment: original.ownerCommitment };
   assert.equal((await post(claimPreparedPath, superseded)).status, 412);
   assert.equal((await post(claimPreparePath, { ...superseded, proof: '020305' })).status, 412);
+  const lostRace = { quote: earlierQuotes[2], ownerCommitment: original.ownerCommitment };
+  assert.equal((await post(claimPreparedPath, lostRace)).status, 412);
+  assert.equal((await post(claimPreparePath, { ...lostRace, proof: '020305' })).status, 412);
+  assert.deepEqual(readFileSync(losingDecisionPath), losingDecision);
   assert.deepEqual(readFileSync(intentPath), originalIntent);
   assert.equal(existsSync(join(root, 'claim-dispatch-fence.json')), false);
   assert.equal((await post(claimPreparedPath, lookup)).status, 202);

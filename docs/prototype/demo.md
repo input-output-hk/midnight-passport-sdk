@@ -207,9 +207,9 @@ and registry binding agree. The reference sponsor holds one original at a time:
 if another account asks for a quote while that original is unresolved, it reports
 busy before requesting a naming proof. Reconcile the original in its own browser
 instead of clearing either browser's site data or starting a replacement claim.
-For a quote prepared before this busy gate, **Recover prepared receipt** can
-confirm that a different original holds the sponsor and release only the
-unprepared browser reservation. A missing or uncertain sponsor response retains it.
+For an older proved but unprepared quote, **Recover prepared receipt** can
+confirm that another original holds the sponsor and release only that browser's
+unprepared reservation. A missing or uncertain sponsor response retains it.
 
 ## Scoped grant demonstration
 

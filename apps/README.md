@@ -1081,7 +1081,7 @@ busy result **before** naming proof or preparation. The page explains that no ne
 claim was started by that request; reconcile or retire the original through its
 own browser flow before another account asks for a quote. A busy refusal does not
 authorize clearing the sponsor journal or the other browser's site data.
-If an older quote was proved before a different original occupied the sponsor,
+If an older quote was proved while another original held the sponsor,
 **Recover prepared receipt** obtains an exact pre-intent refusal and releases
 only that browser's unprepared reservation. The occupying original remains.
 The quote pins the sponsor payment wallet; NIGHT inputs and change must use

@@ -111,8 +111,25 @@ export function createClaimPreparationJournal(
     // unprepared reservation; never alter the occupying original or its fence.
     if (dispatch.preparedReceipt()?.quoteSha256 === digest)
       throw new Error('The original prepared receipt differs from its intent.');
-    if (!recordOnce(decisionPath(id), { kind: 'refused', digest }) && !wasRefused(id, digest))
-      throw new Error('The quote decision differs from its original.');
+    if (!recordOnce(decisionPath(id), { kind: 'refused', digest }) && !wasRefused(id, digest)) {
+      const decision = readClaimRecord(decisionPath(id), claimReceiptLimit);
+      if (
+        !decision ||
+        typeof decision !== 'object' ||
+        !('kind' in decision) ||
+        !('digest' in decision) ||
+        !('ownerCommitment' in decision) ||
+        !('proofSha256' in decision) ||
+        decision.kind !== 'intent' ||
+        decision.digest !== digest ||
+        !claimHex(decision.ownerCommitment) ||
+        !claimHex(decision.proofSha256)
+      )
+        throw new Error('The quote decision differs from its original.');
+      // This quote wrote its decision before the competing original claimed
+      // intentPath. Because intentPath is create-once, its different quote ID
+      // proves this quote never reached ports.balance.
+    }
     throw new ClaimPreIntentRefusal('The sponsor refused before any balance intent.');
   }
 
