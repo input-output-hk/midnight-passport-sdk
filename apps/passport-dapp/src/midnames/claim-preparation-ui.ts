@@ -22,16 +22,16 @@ interface PreparationContext {
 
 export function claimQuoteSummary(quote: ClaimQuote): string {
   return [
-    `Name ${quote.name}`,
+    `Register ${quote.name}`,
+    `Registry price ${quote.night} smallest NIGHT units`,
+    `Maximum sponsor fee ${quote.maximumDust} SPECKs`,
+    `Quote expires ${new Date(quote.expiresAt).toISOString()}`,
     `Network ${quote.networkId}`,
     `Passport account ${quote.accountAddress}`,
     `Registry ${quote.registryAddress}`,
     `Registry payee ${quote.registryPayee}`,
     `Future subdomain payment address ${quote.sponsorAddress}`,
     `Sponsor payment wallet ${quote.sponsorPaymentAddress}`,
-    `Registry price ${quote.night} smallest NIGHT units`,
-    `Maximum sponsor fee ${quote.maximumDust} SPECKs`,
-    `Quote expires ${new Date(quote.expiresAt).toISOString()}`,
   ].join('\n');
 }
 
@@ -57,6 +57,70 @@ function currentReservation(reservation: Awaited<ReturnType<ClaimJournal['readPr
   return reservation && (reservation.ownerCommitment || reservation.quote.expiresAt > Date.now())
     ? reservation
     : undefined;
+}
+
+async function retireExpiredPreparation(
+  host: ClaimPreparation,
+  journal: ClaimJournal,
+  quote: ClaimQuote,
+  credential: string,
+  owner: string,
+  ensureAccount: () => void,
+) {
+  if (!host.retireExpiredUnprepared)
+    throw new Error('The expired preparation needs sponsor recovery.');
+  await host.retireExpiredUnprepared(quote, owner);
+  ensureAccount();
+  await journal.releaseExpiredUnprepared(quote, credential, owner);
+}
+
+async function savePrepared(
+  result: unknown,
+  journal: ClaimJournal,
+  quote: ClaimQuote,
+  credential: string,
+  owner: string,
+) {
+  const original = claimReceipt(result);
+  if (
+    !matchesDestination(original, quote) ||
+    original.ownerCommitment !== owner ||
+    original.quoteSha256 !== (await claimQuoteDigest(quote))
+  )
+    throw new Error('Prepared receipt differs from the original quote.');
+  await journal.retain(original, credential, quote);
+}
+
+async function recoverExpiredPreparation(
+  host: ClaimPreparation,
+  journal: ClaimJournal,
+  quote: ClaimQuote,
+  credential: string,
+  owner: string,
+  ensureAccount: () => void,
+): Promise<'prepared' | 'released' | 'pending'> {
+  const result = await preparationReply(
+    host.findPrepared(quote, owner),
+    journal,
+    quote,
+    credential,
+    owner,
+  );
+  ensureAccount();
+  if (result === refusedBeforeIntent) return 'released';
+  if (result !== undefined) {
+    await savePrepared(result, journal, quote, credential, owner);
+    ensureAccount();
+    return 'prepared';
+  }
+  try {
+    await retireExpiredPreparation(host, journal, quote, credential, owner, ensureAccount);
+    ensureAccount();
+    return 'released';
+  } catch {
+    ensureAccount();
+    return 'pending';
+  }
 }
 
 export function showClaimPreparation(
@@ -87,7 +151,7 @@ export function showClaimPreparation(
         : ['Preparing uses the open account’s passkey to derive the naming key.']),
     ].join('\n');
     summary.hidden = false;
-    prepare.textContent = recovering ? 'Recover prepared receipt' : 'Approve and prepare claim';
+    prepare.textContent = recovering ? 'Check saved claim' : 'Approve with passkey';
     prepare.hidden = false;
   }
 
@@ -100,6 +164,9 @@ export function showClaimPreparation(
     handles(button: HTMLElement | null) {
       return button === review || button === prepare;
     },
+    isReview(button: HTMLElement | null) {
+      return button === review;
+    },
     async run(button: HTMLElement | null, context: PreparationContext) {
       const { account, name, credential, journal, ensureAccount } = context;
       const destination = {
@@ -110,7 +177,7 @@ export function showClaimPreparation(
       };
       const reservation = await journal.readPreparation(registryAddress, name, credential);
       ensureAccount();
-      const stored = currentReservation(reservation);
+      let stored = currentReservation(reservation);
       if (await journal.read(registryAddress, name, credential)) {
         ensureAccount();
         clear();
@@ -120,6 +187,27 @@ export function showClaimPreparation(
       ensureAccount();
       if (button === review) {
         clear();
+        if (stored?.ownerCommitment && stored.quote.expiresAt <= Date.now()) {
+          const resolved = await recoverExpiredPreparation(
+            host,
+            journal,
+            stored.quote,
+            credential,
+            stored.ownerCommitment,
+            ensureAccount,
+          );
+          if (resolved === 'prepared') {
+            status.textContent = 'Original receipt saved. Review the payment terms.';
+            return;
+          }
+          if (resolved === 'pending') {
+            display(stored.quote, account, true);
+            status.textContent =
+              'The original preparation is still unresolved. Continue registration to check it again.';
+            return;
+          }
+          stored = undefined;
+        }
         const quote = stored?.quote ?? claimQuote(await host.quote(destination));
         ensureAccount();
         if (!matchesDestination(quote, destination) || (!stored && quote.expiresAt <= Date.now()))
@@ -173,18 +261,12 @@ export function showClaimPreparation(
       }
       if (result === undefined) {
         ensureAccount();
-        status.textContent = 'Preparation response unavailable. Recover using the saved quote.';
+        status.textContent =
+          'The sponsor response is unavailable. Your original is saved; continue registration to check its result.';
         return;
       }
-      const original = claimReceipt(result);
-      if (
-        !matchesDestination(original, selected) ||
-        original.ownerCommitment !== owner ||
-        original.quoteSha256 !== (await claimQuoteDigest(selected))
-      )
-        throw new Error('Prepared receipt differs from the original quote.');
       // A late reply is still retained for the captured credential, even if the UI locked.
-      await journal.retain(original, credential, selected);
+      await savePrepared(result, journal, selected, credential, owner);
       ensureAccount();
       clear();
       status.textContent = 'Original receipt saved. Send the prepared claim when ready.';

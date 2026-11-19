@@ -190,7 +190,7 @@ try {
           registryPayee: terms.payee,
           night: String(terms.night),
           maximumDust: String(maximumDust),
-          expiresAt: Date.now() + 600_000,
+          expiresAt: Date.now() + 240_000,
         };
       },
       async authorizeQuote(quote) {
@@ -204,7 +204,6 @@ try {
           quote.expiresAt <= Date.now()
         )
           throw new Error('The live registry or sponsor terms differ from the reviewed quote.');
-        await inventory(terms.night);
       },
       async retireExpiredUnsent(receipt) {
         if (
@@ -214,9 +213,16 @@ try {
         )
           throw new Error('The expired claim could not be proved unsent and unregistered.');
       },
-      async balance(bytes) {
+      async retireExpiredUnprepared(quote) {
+        if (
+          (await reader.hasDomain(quote.name, profile)) ||
+          !(await reader.isSupportedAccount(quote.accountAddress, networkId))
+        )
+          throw new Error('The expired unprepared name is no longer available.');
+      },
+      async balance(bytes, ttl) {
         const tx = Transaction.deserialize('signature', 'proof', 'pre-binding', bytes);
-        const balanced = await providers.walletProvider.balanceTx({ version: 'v9', tx });
+        const balanced = await providers.walletProvider.balanceTx({ version: 'v9', tx }, ttl);
         assert.equal(balanced.version, 'v9');
         return balanced.tx.serialize();
       },

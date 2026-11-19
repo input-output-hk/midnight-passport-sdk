@@ -67,10 +67,12 @@ activation and **Deposit** with two separately funded local wallets. Follow its
 [registration and funding setup](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/README.md#register-a-name-and-fund-a-passport-account).
 The browser reviews a registry quote before using the account passkey for the
 name-owner proof. It retains the original receipt until the transaction and
-registry binding agree. After preparation, the first send click displays the
-payment terms and sends nothing; the second confirmation dispatches. Checking
-the original distinguishes an unsent preparation from an uncertain send. An
-expired unsent original can be verified and archived before a new quote. This is
+registry binding agree. **Continue registration** reconciles an earlier attempt,
+then shows the quote. After passkey preparation the payment terms appear without
+sending; **Confirm payment and register** dispatches the claim. The page checks
+the original after a send and can safely archive an expired unsent original
+before offering a new quote. Raw receipts are under **Receipt and recovery
+details**. This is
 a standalone local `.night` demonstration; name
 registration is optional and can happen in a later session.
 

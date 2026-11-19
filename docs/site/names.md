@@ -144,6 +144,10 @@ claiming online qualification. Claim availability and finality still read the
 primary path after the known-name gate; this slice does not qualify an online
 claim flow.
 
+The reference demo pins the published Midnames 2.1.0 reader. Its generated
+reader matches the pinned
+[`ledger-9-live` commit](https://github.com/midnames/ns-sdk/tree/f8f2edd425221b95c9158d74e7318d2fbb4f61b2),
+and the app checks that byte identity in its tests.
 Midnames 2.1.0 uses a Ledger 9 reader built with runtime 0.21.0 and Midnight JS
 5.0.0. The ACC still uses runtime 0.20.0. The indexer hands out tagged bytes,
 so each decoder uses its own runtime. The exact dependency exceptions in
@@ -204,8 +208,9 @@ separate backends, so it does not enable the online demo profile.
 The 2.1.0 tarball includes a read generation and an older managed write
 generation. Its root export can fail at load because the managed module expects
 runtime 0.15.0, and its write wrapper reports writes paused. The demo uses only
-the read subpaths. A claim flow requires compatible registry write artifacts
-and separate proof and submission checks. A local `.night` profile does not
+the read subpaths. Its local claim flow recompiles the pinned branch's registry
+source with ZKIR v3, deploys a new contract, and qualifies proof and submission
+against that contract. A local `.night` profile does not
 establish public `passport.night` issuance or name-control recovery.
 
 ### Standalone registry profile
@@ -394,9 +399,18 @@ that exact unsent original before a fresh quote; a fenced or uncertain send
 stays pending. A public receipt imported without the matching saved
 quote can be checked and reconciled, but cannot be sent from this browser.
 
-If the preparation response is lost, reopen with the original credential,
-review the saved quote, and select **Recover prepared receipt**. The host
-looks up that original preparation. You can also import the original public
+If the preparation response is lost, reopen with the original credential and
+select **Continue registration**, then **Check saved claim** when offered. The host looks up the original preparation.
+If its quote expired before a transaction was prepared, the local sponsor checks
+that it has no prepared transaction or dispatch fence, retains an exact
+retirement record, and checks that the name is still available. A recorded
+balance intent is archived; a quote that never reached the sponsor keeps its
+issued record and gains a durable refusal marker. The browser then releases
+only that matching quote and shows fresh terms. A sponsor still balancing the
+original refuses this recovery until the work has stopped; the browser keeps
+the original in that case. The local demo quotes expire after four minutes so
+the displayed review deadline matches the sponsor wallet's transaction TTL.
+You can also import the original public
 receipt when its quote digest and owner commitment match. Once the owner commitment is recorded,
 the browser can recover the receipt after expiry and leaves preparation
 unchanged. The optional adapter requires an owner-side prover and a sponsor

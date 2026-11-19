@@ -5,7 +5,11 @@ import type { ClaimJournal } from './claim-journal.js';
 import type { ClaimReceipt } from './claim-receipt.js';
 
 /** Require a second deliberate click after showing the exact saved payment terms. */
-export function createClaimSendReview(send: HTMLButtonElement, summary: HTMLElement) {
+export function createClaimSendReview(
+  send: HTMLButtonElement,
+  summary: HTMLElement,
+  hideUntilPrepared = false,
+) {
   let reviewed: { account: PassportAccount; receipt: string; quoteSha256: string } | undefined;
   function clear() {
     if (reviewed) {
@@ -13,7 +17,8 @@ export function createClaimSendReview(send: HTMLButtonElement, summary: HTMLElem
       summary.textContent = '';
     }
     reviewed = undefined;
-    send.textContent = 'Review terms before send';
+    send.hidden = hideUntilPrepared;
+    send.textContent = 'Confirm payment and register';
   }
   function confirm(account: PassportAccount, receipt: ClaimReceipt, quote: ClaimQuote): boolean {
     const digest = receipt.quoteSha256;
@@ -27,7 +32,8 @@ export function createClaimSendReview(send: HTMLButtonElement, summary: HTMLElem
       reviewed = { account, receipt: key, quoteSha256: digest };
       summary.textContent = claimQuoteSummary(quote);
       summary.hidden = false;
-      send.textContent = 'Confirm reviewed terms and send';
+      send.textContent = 'Confirm payment and register';
+      send.hidden = false;
       return false;
     }
     clear();
@@ -63,7 +69,7 @@ export function createClaimSendReview(send: HTMLButtonElement, summary: HTMLElem
       }
       if (!confirm(account, receipt, quote)) {
         status.textContent =
-          'No transaction has been sent. Review the saved payment terms above, then click Confirm reviewed terms and send.';
+          'No transaction has been sent. Review the payment terms above, then confirm registration.';
         return false;
       }
       return true;

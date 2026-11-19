@@ -57,9 +57,15 @@ before a fresh quote. Keep the original receipt until the indexed transaction
 and registry binding agree. The reference sponsor holds one original at a time:
 a different account receives a busy message at quote time, before the naming
 proof. Reconcile the existing original instead of clearing site data.
-An older proved but unprepared quote can use **Recover prepared receipt** while
-another original holds the sponsor; only that browser reservation is then released.
-The occupying original remains intact. This opt-in path requires a separately
+An expired quote with no prepared transaction or send fence can be retired by
+the local sponsor when you choose **Continue registration**. The sponsor archives
+an existing balance intent or records a durable refusal if the prepare request
+never arrived.
+The browser then reviews fresh terms without a separate receipt or retirement
+action. A sponsor still processing an intent, or a claim that might have been
+sent, keeps the original for reconciliation. An older quote that was refused
+before balance can be released without disturbing another occupying original.
+The local quote and transaction expire after four minutes. This opt-in path requires a separately
 funded name sponsor, pinned Compact 0.35 registry
 artifacts, and the standalone local `.night` registry. It does not issue
 public `passport.night` names.

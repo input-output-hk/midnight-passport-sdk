@@ -97,17 +97,20 @@ nix develop -c node scripts/midnames-local-demo.mjs up \
 
 Open the activated ACC with its passkey, go to **Passport account → Balances →
 Register a .night name**, enter an unregistered name such as `yurii.night`, and
-check registry status. Review the exact quote, approve owner-side proof, inspect
-the saved original receipt, then click **Review terms before send**. This first
-click sends nothing; inspect the saved price and click **Confirm reviewed terms
-and send** before the quote expires. **Check original claim** distinguishes a
-prepared, unsent receipt from a claim whose send outcome needs reconciliation.
-If an unsent quote expires, use **Retire expired unsent original** after the
-local sponsor verifies that it has no dispatch fence, the original is absent
-from the indexer, and the name remains free. The old private journal is archived
-beside the new one; the browser retains the original in released history. Then
-review a fresh quote. A fenced or uncertain send stays pending for read-only
-reconciliation. Recheck the sent original until it and the registry binding agree. Registration is
+click **Continue registration**. Review the exact quote and click **Approve with
+passkey**. The page then displays the saved payment terms without sending; click
+**Confirm payment and register** after reviewing them. The page checks the
+original claim after dispatch. Raw receipts and manual checks remain under
+**Receipt and recovery details** for diagnostics.
+The local sponsor sets the balanced transaction deadline to the displayed quote
+expiry; review and confirm before that deadline. **Continue registration** first
+reconciles any retained original. For an unsent transaction past its TTL, the
+sponsor verifies no dispatch fence, no indexed original and an unregistered
+name before it archives the private journal; the browser retains the receipt
+in released history. A fenced or uncertain send stays pending for read-only
+reconciliation. An indexed failed claim also remains in the local sponsor's
+private journal; this demo does not offer a fresh quote until that sponsor state
+is separately reconciled. Registration is
 optional and can be done in a later session with the same account credential.
 The separate **Deposit** page offers the configured NIGHT amount. Each deposit
 requires the funding wallet's allowlisted asset and available balance.
@@ -163,17 +166,25 @@ starting Docker. Use `stop` only for the Passport-owned fallback project.
 This is a local transitional `.night` demo. It does not issue public
 `passport.night` subdomains or implement MIP-0007's delegated registry.
 
-This fixture uses the Midnames 2.1.0 registry source on the Passport standalone
-Ledger 9 stack. Prepare artifacts with the Passport SDK's pinned Nix toolchain.
-Supply a local copy of [`ns.compact` at the pinned upstream revision](https://github.com/midnames/ns-sdk/blob/f8f2edd425221b95c9158d74e7318d2fbb4f61b2/ns.compact)
-recorded in [the manifest](registry-manifest.json). The command verifies those bytes,
-updates the language pragma for Compact 0.35.0, and verifies each generated
-module, circuit, prover and verifier against the reviewed hashes.
+This fixture uses the [`ledger-9-live` Midnames source](https://github.com/midnames/ns-sdk/tree/ledger-9-live)
+on the Passport standalone Ledger 9 stack. Prepare artifacts with the Passport
+SDK's pinned Nix toolchain. [The manifest](registry-manifest.json) records the
+exact upstream commit and source hash; the command fetches `ns.compact` from
+that branch and checks its bytes against the hash. A changed branch source fails closed
+until its contract and generated artifacts are reviewed and repinned. It updates
+the language pragma for Compact 0.35.0, compiles with `--feature-zkir-v3`, and
+verifies each generated module, circuit, prover and verifier against the
+reviewed hashes. This is a fresh local deployment; the upstream 2.1.0 SDK's
+write pause applies to its previously deployed registry, not this local one.
 
 ```sh
 nix develop -c node examples/midnames-local/prepare.mjs \
-  /absolute/path/to/ns.compact /absolute/path/to/fresh-output
+  --upstream-ledger9 /absolute/path/to/fresh-output
 ```
+
+For an offline preparation, replace `--upstream-ledger9` with an absolute path
+to a local copy of [`ns.compact` at the pinned commit](https://github.com/midnames/ns-sdk/blob/f8f2edd425221b95c9158d74e7318d2fbb4f61b2/ns.compact).
+The same source hash check applies.
 
 The output directory must be new. A failure leaves the original diagnostics
 and partial output available for inspection. Use the standalone resolver
@@ -902,9 +913,13 @@ The quote also pins `sponsorPaymentAddress`, the NIGHT input and change wallet.
 The browser transport accepts the literal loopback origins `localhost` and
 `127.0.0.1`. Keep the handler and browser on the same origin. The sponsor
 retains the exact quote, checks its live terms before balancing, and records
-a durable intent before invoking the wallet. **Recover prepared receipt**
-reads that original journal after a lost response. An intent with no
-prepared receipt stays pending after restart. The dispatch handler rechecks
+a durable intent before invoking the wallet. **Check saved claim**
+reads that original journal after a lost response. An expired intent with no
+prepared receipt or dispatch fence can be archived after the local sponsor
+confirms the name remains free; active sponsor work excludes that retirement.
+If the prepare request never reached the sponsor, the same exclusive check
+records a durable refusal for the exact expired quote without moving the journal.
+The dispatch handler rechecks
 the approved quote and original transaction before opening the dispatch fence.
 If live terms change before any intent is recorded, the sponsor durably refuses
 that quote and the browser asks for fresh review. An uncertain response keeps

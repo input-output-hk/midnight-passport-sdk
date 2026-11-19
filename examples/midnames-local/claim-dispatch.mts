@@ -107,7 +107,20 @@ export function openClaimDispatch(directory: string) {
 
   return {
     preparedReceipt: () => loadPrepared(preparedPath)?.receipt,
+    preparedBytes: (receipt: ClaimReceipt): Uint8Array | undefined => {
+      const prepared = loadPrepared(preparedPath);
+      if (!prepared) return undefined;
+      if (!sameReceipt(claimReceipt(receipt), prepared.receipt))
+        throw new Error('Claim acknowledgement differs.');
+      return new Uint8Array(prepared.bytes);
+    },
     hasFence: (receipt: ClaimReceipt) => fenced(claimReceipt(receipt)),
+    hasAnyFence: () => {
+      const value = readClaimRecord(fencePath, claimReceiptLimit);
+      if (value === undefined) return false;
+      claimReceipt(value);
+      return true;
+    },
     retain(bytes: Uint8Array, original: ClaimReceipt): void {
       const receipt = claimReceipt(original);
       checkBytes(bytes, receipt);

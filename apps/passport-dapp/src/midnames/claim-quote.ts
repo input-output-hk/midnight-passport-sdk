@@ -32,6 +32,8 @@ export interface ClaimPreparation {
   dispatchStatus?(receipt: ClaimReceipt): Promise<'prepared' | 'sent-or-unknown' | 'retired'>;
   /** Local sponsor verifies and archives one expired preparation that was never sent. */
   retireExpiredUnsent?(receipt: ClaimReceipt): Promise<void>;
+  /** Sponsor archives only an expired balance intent with no prepared or sent transaction. */
+  retireExpiredUnprepared?(quote: ClaimQuote, ownerCommitment: string): Promise<void>;
 }
 
 export interface OwnerProvedClaim {

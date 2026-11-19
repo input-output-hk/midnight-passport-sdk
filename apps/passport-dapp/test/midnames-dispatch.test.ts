@@ -16,7 +16,10 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { openClaimDispatch } from '../../../examples/midnames-local/claim-dispatch.mts';
 import { createClaimSponsorHandler } from '../../../examples/midnames-local/claim-sponsor-http.mts';
-import { createClaimPreparationJournal } from '../../../examples/midnames-local/claim-preparation.mts';
+import {
+  claimBalanceTtl,
+  createClaimPreparationJournal,
+} from '../../../examples/midnames-local/claim-preparation.mts';
 import { createOnce } from '../../../examples/midnames-local/create-once.mts';
 import { claimDispatchPath, isClaimSponsorOrigin } from '../src/midnames/claim-dispatch.js';
 import {
@@ -31,6 +34,141 @@ import { ClaimPreIntentRefusal } from '../src/midnames/claim-quote.js';
 import type { ClaimReceipt } from '../src/midnames/claim-receipt.js';
 
 const bytes = Uint8Array.of(2, 3, 5);
+
+test('sponsor balance leaves browser review time without outliving the quote', () => {
+  const now = Date.UTC(2026, 10, 19, 11, 20);
+  assert.equal(claimBalanceTtl(now + 240_000, now).getTime(), now + 240_000);
+  assert.equal(claimBalanceTtl(now + 150_000, now).getTime(), now + 150_000);
+  assert.throws(() => claimBalanceTtl(now + 119_999, now), /too little time/);
+});
+
+test('archives only an expired unprepared intent and releases the sponsor for a fresh quote', async (t) => {
+  const parent = realpathSync(mkdtempSync(join(tmpdir(), 'midnames-unprepared-')));
+  t.after(() => rmSync(parent, { recursive: true, force: true }));
+  const root = join(parent, 'claim-journal');
+  mkdirSync(root, { mode: 0o700 });
+  const quote = claimQuote({
+    ...claimDestination(original),
+    id: 'a1'.repeat(32),
+    sponsorAddress: 'a2'.repeat(32),
+    sponsorPaymentAddress: 'a3'.repeat(32),
+    registryPayee: 'a4'.repeat(32),
+    night: '1',
+    maximumDust: '10000',
+    expiresAt: Date.now() - 1000,
+  });
+  const digest = await claimQuoteDigest(quote);
+  const intent = {
+    quoteId: quote.id,
+    digest,
+    ownerCommitment: original.ownerCommitment,
+    proofSha256: original.transaction.sha256,
+  };
+  createOnce(join(root, `quote-${quote.id}.json`), JSON.stringify(quote));
+  createOnce(
+    join(root, `quote-decision-${quote.id}.json`),
+    JSON.stringify({
+      kind: 'intent',
+      digest,
+      ownerCommitment: intent.ownerCommitment,
+      proofSha256: intent.proofSha256,
+    }),
+  );
+  createOnce(join(root, 'claim-prepare-intent.json'), JSON.stringify(intent));
+  const ports = {
+    async issue() {
+      return { ...quote, id: 'b1'.repeat(32), expiresAt: Date.now() + 240_000 };
+    },
+    async authorizeQuote() {},
+    async balance() {
+      assert.fail('No balancing during retirement.');
+    },
+    async retireExpiredUnprepared(value: typeof quote) {
+      assert.deepEqual(value, quote);
+    },
+  };
+  const dispatch = openClaimDispatch(root);
+  const prep = createClaimPreparationJournal(root, dispatch, ports);
+  const input = { quote, ownerCommitment: original.ownerCommitment };
+  await assert.rejects(
+    prep.retireExpiredUnprepared({ ...input, ownerCommitment: 'ff'.repeat(32) }),
+  );
+  createOnce(
+    join(root, 'claim-dispatch-fence.json'),
+    JSON.stringify({ ...original, quoteSha256: digest }),
+  );
+  await assert.rejects(prep.retireExpiredUnprepared(input), /expired, unprepared/);
+  rmSync(join(root, 'claim-dispatch-fence.json'));
+  dispatch.retain(bytes, { ...original, quoteSha256: digest });
+  await assert.rejects(prep.retireExpiredUnprepared(input), /expired, unprepared/);
+  rmSync(join(root, 'claim-prepared.private.json'));
+  assert.deepEqual(await prep.retireExpiredUnprepared(input), { status: 'retired' });
+  assert.deepEqual(await prep.retireExpiredUnprepared(input), { status: 'retired' });
+  const archive = join(parent, `claim-journal-unprepared-${quote.id}`);
+  assert.deepEqual(
+    JSON.parse(readFileSync(join(archive, 'claim-prepare-intent.json'), 'utf8')),
+    intent,
+  );
+  assert.equal(existsSync(join(root, 'claim-prepare-intent.json')), false);
+  assert.equal((await prep.issue(claimDestination(original))).id, 'b1'.repeat(32));
+  assert.equal(dispatch.hasAnyFence(), false);
+});
+
+test('retires an expired issued quote whose prepare request never reached the sponsor', async (t) => {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), 'midnames-no-intent-')));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const quote = claimQuote({
+    ...claimDestination(original),
+    id: 'c1'.repeat(32),
+    sponsorAddress: 'c2'.repeat(32),
+    sponsorPaymentAddress: 'c3'.repeat(32),
+    registryPayee: 'c4'.repeat(32),
+    night: '1',
+    maximumDust: '10000',
+    expiresAt: Date.now() - 1000,
+  });
+  const digest = await claimQuoteDigest(quote);
+  createOnce(join(root, `quote-${quote.id}.json`), JSON.stringify(quote));
+  const dispatch = openClaimDispatch(root);
+  let confirmations = 0;
+  const prep = createClaimPreparationJournal(root, dispatch, {
+    async issue() {
+      return quote;
+    },
+    async authorizeQuote() {},
+    async balance() {
+      assert.fail('A retired quote must not balance.');
+    },
+    async retireExpiredUnprepared() {
+      confirmations++;
+    },
+  });
+  const request = { quote, ownerCommitment: original.ownerCommitment };
+  const loneDecision = join(root, `quote-decision-${quote.id}.json`);
+  createOnce(
+    loneDecision,
+    JSON.stringify({
+      kind: 'intent',
+      digest,
+      ownerCommitment: original.ownerCommitment,
+      proofSha256: original.transaction.sha256,
+    }),
+  );
+  await assert.rejects(prep.retireExpiredUnprepared(request), /expired, unprepared/);
+  rmSync(loneDecision);
+  assert.deepEqual(await prep.retireExpiredUnprepared(request), { status: 'retired' });
+  assert.deepEqual(await prep.retireExpiredUnprepared(request), { status: 'retired' });
+  assert.equal(confirmations, 1);
+  assert.deepEqual(
+    JSON.parse(readFileSync(join(root, `quote-unprepared-retired-${quote.id}.json`), 'utf8')),
+    { digest, ownerCommitment: original.ownerCommitment },
+  );
+  await assert.rejects(prep.findPrepared(request), ClaimPreIntentRefusal);
+  await assert.rejects(prep.prepare({ ...request, proof: '020305' }), ClaimPreIntentRefusal);
+  assert.equal(dispatch.preparedReceipt(), undefined);
+  assert.equal(dispatch.hasAnyFence(), false);
+});
+
 const original: ClaimReceipt = {
   networkId: 'undeployed',
   registryAddress: '12'.repeat(32),
@@ -172,6 +310,39 @@ test('the HTTP sponsor cannot dispatch a quote-less original without preparation
     body: JSON.stringify(original),
   });
   assert.equal(response.status, 409);
+  assert.equal(existsSync(fence), false);
+});
+
+test('a sponsor funding refusal is explicit and leaves the original unfenced', async (t) => {
+  const { root, fence } = fixture(t);
+  let handler: ReturnType<typeof createClaimSponsorHandler>;
+  const server = createServer((request, response) => {
+    void handler(request, response).then(
+      () => {},
+      () => response.destroy(),
+    );
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(async () => new Promise<void>((resolve) => server.close(() => resolve())));
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  const origin = 'http://127.0.0.1:' + address.port;
+  handler = createClaimSponsorHandler(origin, root, {
+    async authorize() {
+      throw new Error('The dedicated claim sponsor needs NIGHT and two DUST inputs.');
+    },
+    async submit() {
+      assert.fail('A refused claim must not be submitted.');
+    },
+  });
+  const response = await fetch(origin + claimDispatchPath, {
+    method: 'POST',
+    headers: { Origin: origin, 'Content-Type': 'application/json' },
+    body: JSON.stringify(original),
+  });
+  assert.equal(response.status, 409);
+  assert.deepEqual(await response.json(), { code: 'SponsorNeedsFunding' });
   assert.equal(existsSync(fence), false);
 });
 

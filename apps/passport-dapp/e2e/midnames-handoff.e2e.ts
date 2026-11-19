@@ -8,7 +8,7 @@ import { chromium } from 'playwright-core';
 import { createServer } from 'vite';
 import { createClaimSponsorHandler } from '../../../examples/midnames-local/claim-sponsor-http.mts';
 import { claimQuotePath } from '../src/midnames/claim-preparation-transport.js';
-import { claimQuote } from '../src/midnames/claim-quote.js';
+import { claimQuote, claimQuoteDigest } from '../src/midnames/claim-quote.js';
 
 const registry = '12'.repeat(32);
 const account = '34'.repeat(32);
@@ -407,9 +407,13 @@ try {
     await preparationPage.locator('#claim-prepare').click();
     await preparationPage
       .locator('#claim-recovery-status')
-      .getByText(/Original receipt saved\. Send the prepared claim/)
+      .getByText(/No transaction has been sent\. Review the payment terms/)
       .waitFor();
     assert.deepEqual(await counts(), { quotes: 1, proofs: 1, preparations: 1, creates: 1 });
+    assert.deepEqual(
+      JSON.parse(await preparationPage.locator('#claim-recovery-receipt').inputValue()),
+      { ...original, quoteSha256: await claimQuoteDigest(claimQuote(quote)) },
+    );
 
     await preparationPage.evaluate(() => localStorage.setItem('handoff-claim-status', 'pending'));
     await preparationPage.goto(`${origin}/?preproof&http`);
@@ -421,8 +425,9 @@ try {
     await preparationPage.locator('#passport-name-setup').waitFor({ state: 'visible' });
     await preparationPage
       .locator('#claim-recovery-status')
-      .getByText(/Prepared but never sent\. The name is unregistered/)
+      .getByText(/No transaction has been sent\. Review the payment terms/)
       .waitFor();
+    assert.equal(await preparationPage.locator('#claim-dispatch').isVisible(), true);
     assert.match(
       (await preparationPage.locator('#passport-name-setup-status').textContent()) ?? '',
       /^Name registration\./,
@@ -439,7 +444,7 @@ try {
     await preparationPage.locator('#open').click();
     await preparationPage
       .locator('#claim-recovery-status')
-      .getByText(/Claim pending\. Check this original receipt again/)
+      .getByText(/The original claim is pending\. This attempt is preserved/)
       .waitFor();
     assert.equal(await preparationPage.locator('#claim-release-failed').isVisible(), false);
     await preparationPage.evaluate(() =>
@@ -519,7 +524,7 @@ try {
     await refusalPage.locator('#claim-prepare').click();
     await refusalPage
       .locator('#claim-recovery-status')
-      .getByText(/Original receipt saved\. Send the prepared claim/)
+      .getByText(/No transaction has been sent\. Review the payment terms/)
       .waitFor();
     assert.deepEqual(await counts(), { quotes: 5, proofs: 2, preparations: 2, creates: 1 });
   } finally {

@@ -1,9 +1,15 @@
 import type { PassportAccount } from '@input-output-hk/mn-passport-protocol';
 import { byId } from '../ui-dom.js';
+import { ClaimSponsorFundingError } from './claim-dispatch.js';
 import { openClaimJournal, type ClaimJournal } from './claim-journal.js';
 import { showClaimPreparation } from './claim-preparation-ui.js';
 import { reviewedDispatchQuote } from './claim-quote.js';
 import { ClaimSponsorBusy } from './claim-quote.js';
+import {
+  releaseExpiredUnsent,
+  releaseVerifiedFailure,
+  settleOriginalForReview,
+} from './claim-retry.js';
 import { createClaimSendReview } from './claim-send-review.js';
 import {
   claimDigest,
@@ -15,16 +21,25 @@ import {
 } from './claim-receipt.js';
 
 const messages = {
-  pending: 'Claim pending. Check this original receipt again after the indexer catches up.',
+  pending:
+    'The original claim is pending. This attempt is preserved while confirmation is checked.',
   conflict:
     'The original transaction or current registry binding conflicts with this claim. Preserve and inspect the original receipt.',
   failed:
-    'The exact original transaction failed and the name is unregistered. You can explicitly release this attempt, then review a fresh claim quote.',
+    'The exact original transaction failed and the name is unregistered. You can release this browser record after checking the original.',
   'claim-failed':
-    'The exact registration claim failed while the sponsor fee succeeded. The name is unregistered. You can explicitly release this attempt, then review a fresh quote; the fee is not returned.',
+    'The registration claim failed while the sponsor fee succeeded. The fee is not returned. You can release this browser record after checking the original.',
   registered: 'Registered. The original claim and current registry record match this account.',
   unavailable: 'Name service unavailable. Keep the original receipt and check it again later.',
 } as const;
+
+function claimResultMessage(result: keyof typeof messages, localSponsor: boolean): string {
+  if (localSponsor && result === 'failed')
+    return 'The exact original transaction failed. The local sponsor must reconcile its retained original before another quote can be issued.';
+  if (localSponsor && result === 'claim-failed')
+    return 'The registration claim failed while the sponsor fee succeeded. The fee is not returned. The local sponsor must reconcile its retained original before another quote can be issued.';
+  return messages[result];
+}
 
 const availabilityMessages = {
   available: 'Unregistered at the last registry read. Registration is a separate step.',
@@ -91,60 +106,6 @@ async function saveOriginalReceipt(
   ensureAccount();
 }
 
-async function releaseVerifiedFailure(
-  recovery: ClaimRecovery,
-  journal: ClaimJournal,
-  original: ClaimReceipt,
-  account: PassportAccount,
-  selected: string,
-  scope: string,
-  ensureAccount: () => void,
-) {
-  const result = await recovery.check(original).catch(() => 'unavailable' as const);
-  if (result !== 'failed' && result !== 'claim-failed')
-    throw new Error('The original failure is no longer confirmed. Preserve its receipt.');
-  ensureAccount();
-  const availability = await recovery
-    .availability(selected, account.address)
-    .catch(() => undefined);
-  ensureAccount();
-  if (availability !== 'available')
-    throw new Error('Registry availability is not confirmed. Preserve the original receipt.');
-  if ((await recovery.check(original).catch(() => 'unavailable' as const)) !== result)
-    throw new Error('The original failure changed. Preserve its receipt.');
-  ensureAccount();
-  await journal.releaseFailed(
-    original,
-    scope,
-    result === 'claim-failed' ? 'CLAIM_SEGMENT_FAILURE' : 'FAILURE',
-  );
-  ensureAccount();
-}
-
-async function releaseExpiredUnsent(
-  recovery: ClaimRecovery,
-  journal: ClaimJournal,
-  original: ClaimReceipt,
-  account: PassportAccount,
-  scope: string,
-  ensureAccount: () => void,
-) {
-  const retire = recovery.preparation?.retireExpiredUnsent;
-  const saved = await journal.readPreparation(original.registryAddress, original.name, scope);
-  const quote = await reviewedDispatchQuote(original, saved);
-  if (!retire || !quote || quote.expiresAt > Date.now())
-    throw new Error('The original quote is not an expired, unsent preparation.');
-  if ((await recovery.check(original).catch(() => 'unavailable' as const)) !== 'pending')
-    throw new Error('The original claim changed. Preserve its receipt.');
-  if ((await recovery.availability(original.name, account.address)) !== 'available')
-    throw new Error('Registry availability is not confirmed. Preserve the original receipt.');
-  ensureAccount();
-  await retire(original);
-  ensureAccount();
-  await journal.releaseFailed(original, scope, 'EXPIRED_UNSENT');
-  ensureAccount();
-}
-
 async function inspectOriginalClaim(
   recovery: ClaimRecovery,
   journal: ClaimJournal,
@@ -155,7 +116,7 @@ async function inspectOriginalClaim(
   release: HTMLButtonElement,
   report: (message: string) => void,
   ensureAccount: () => void,
-): Promise<void> {
+) {
   const result = await recovery.check(original).catch(() => 'unavailable' as const);
   ensureAccount();
   const saved = await journal.readPreparation(original.registryAddress, original.name, scope);
@@ -177,7 +138,9 @@ async function inspectOriginalClaim(
     !!recovery.preparation?.retireExpiredUnsent &&
     !!quote &&
     quote.expiresAt <= Date.now();
-  release.hidden = !expiredUnsent && result !== 'failed' && result !== 'claim-failed';
+  release.hidden =
+    !expiredUnsent &&
+    (!!recovery.preparation || (result !== 'failed' && result !== 'claim-failed'));
   release.dataset.reason = expiredUnsent ? 'expired-unsent' : 'failed';
   release.textContent = expiredUnsent
     ? 'Retire expired unsent original'
@@ -188,6 +151,8 @@ async function inspectOriginalClaim(
         ? 'The sponsor archived the expired, unsent original. Release its browser record to review a fresh quote.'
         : 'Prepared but never sent. The quote expired and the name is unregistered. Retire this original before reviewing a fresh quote.',
     );
+  } else if (result === 'pending' && sponsorStatus === 'retired') {
+    report('The sponsor archived the unsent original. Continue registration for a fresh quote.');
   } else if (result === 'pending' && sponsorStatus === 'prepared') {
     report(
       registryAvailability === 'taken'
@@ -197,8 +162,9 @@ async function inspectOriginalClaim(
           : messages.unavailable,
     );
   } else {
-    report(messages[result]);
+    report(claimResultMessage(result, !!recovery.preparation));
   }
+  return { result, sponsorStatus, registryAvailability };
 }
 
 async function restoreSelection(
@@ -207,6 +173,9 @@ async function restoreSelection(
   name: HTMLInputElement,
   release: HTMLButtonElement,
   report: (message: string) => void,
+  sendReview: ReturnType<typeof createClaimSendReview>,
+  status: HTMLElement,
+  receipt: HTMLTextAreaElement,
 ): Promise<void> {
   const account = currentAccount();
   const credentialId = account?.credentialId && Uint8Array.from(account.credentialId);
@@ -238,7 +207,7 @@ async function restoreSelection(
         );
         return;
       }
-      await inspectOriginalClaim(
+      const checked = await inspectOriginalClaim(
         recovery,
         journal,
         original,
@@ -252,6 +221,25 @@ async function restoreSelection(
             throw new Error('Claim context changed.');
         },
       );
+      if (
+        checked.result === 'pending' &&
+        checked.sponsorStatus === 'prepared' &&
+        checked.registryAvailability === 'available'
+      ) {
+        receipt.value = JSON.stringify(original);
+        await sendReview.ready(
+          account,
+          original,
+          journal,
+          scope,
+          () => {
+            if (account !== currentAccount() || name.value !== selected)
+              throw new Error('Claim context changed.');
+          },
+          status,
+        );
+        report(status.textContent ?? '');
+      }
     } finally {
       journal.close();
     }
@@ -282,6 +270,86 @@ interface ClaimActionContext {
   readonly ensureAccount: () => void;
 }
 
+async function handleRetainedOriginal(
+  context: ClaimActionContext,
+  journal: ClaimJournal,
+  original: ClaimReceipt,
+  account: PassportAccount,
+  selected: string,
+  scope: string,
+) {
+  const {
+    recovery,
+    submitter,
+    receipt,
+    send,
+    release,
+    status,
+    report,
+    preparation,
+    sendReview,
+    ensureAccount,
+  } = context;
+  const inspect = () =>
+    inspectOriginalClaim(
+      recovery,
+      journal,
+      original,
+      account,
+      selected,
+      scope,
+      release,
+      report,
+      ensureAccount,
+    );
+  if (submitter === release) {
+    if (release.hidden) throw new Error('Check the failed original before release.');
+    release.hidden = true;
+    if (release.dataset.reason === 'expired-unsent') {
+      await releaseExpiredUnsent(recovery, journal, original, account, scope, ensureAccount);
+      preparation?.clear();
+      sendReview.clear();
+      receipt.value = JSON.stringify(original);
+      report('Expired unsent original archived. Continue registration to try again.');
+      return;
+    }
+    await releaseVerifiedFailure(
+      recovery,
+      journal,
+      original,
+      account,
+      selected,
+      scope,
+      ensureAccount,
+    );
+    preparation?.clear();
+    sendReview.clear();
+    receipt.value = JSON.stringify(original);
+    report('Failed original retained in local history. Continue registration to retry.');
+    return;
+  }
+  if (submitter === send && recovery.dispatch) {
+    if (!(await sendReview.ready(account, original, journal, scope, ensureAccount, status))) return;
+    try {
+      await recovery.dispatch(original);
+    } catch (error) {
+      await inspect();
+      if (error instanceof ClaimSponsorFundingError)
+        report('No transaction was sent. The local name sponsor needs NIGHT and two DUST inputs.');
+      return;
+    }
+    ensureAccount();
+    let checked = await inspect();
+    for (let attempt = 0; attempt < 12 && checked.result === 'pending'; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 2_000));
+      ensureAccount();
+      checked = await inspect();
+    }
+    return;
+  }
+  await inspect();
+}
+
 async function runClaimAction(context: ClaimActionContext): Promise<void> {
   const {
     recovery,
@@ -292,7 +360,6 @@ async function runClaimAction(context: ClaimActionContext): Promise<void> {
     receipt,
     availability,
     retain,
-    send,
     release,
     status,
     report,
@@ -302,8 +369,6 @@ async function runClaimAction(context: ClaimActionContext): Promise<void> {
   } = context;
   const checkingAvailability = submitter === availability;
   const saving = submitter === retain;
-  const sending = submitter === send;
-  const releasing = submitter === release;
   if (account?.networkId !== 'undeployed' || !account.credentialId?.length) {
     report('Open this Passport account with its passkey first.');
     return;
@@ -317,6 +382,45 @@ async function runClaimAction(context: ClaimActionContext): Promise<void> {
   const journal = await openClaimJournal(indexedDB);
   try {
     ensureAccount();
+    if (preparation?.isReview(submitter)) {
+      const existing = await journal.read(recovery.registryAddress, selected, scope);
+      ensureAccount();
+      if (existing) {
+        const decision = await settleOriginalForReview(
+          recovery,
+          journal,
+          existing,
+          account,
+          selected,
+          scope,
+          ensureAccount,
+        );
+        if (decision !== 'start-fresh') {
+          const checked = await inspectOriginalClaim(
+            recovery,
+            journal,
+            existing,
+            account,
+            selected,
+            scope,
+            release,
+            report,
+            ensureAccount,
+          );
+          if (
+            decision === 'resume-prepared' &&
+            checked.result === 'pending' &&
+            checked.sponsorStatus === 'prepared' &&
+            checked.registryAvailability === 'available'
+          )
+            await sendReview.ready(account, existing, journal, scope, ensureAccount, status);
+          return;
+        }
+        preparation.clear();
+        sendReview.clear();
+        receipt.value = '';
+      }
+    }
     if (preparation?.handles(submitter)) {
       await preparation.run(submitter, {
         account,
@@ -325,6 +429,12 @@ async function runClaimAction(context: ClaimActionContext): Promise<void> {
         journal,
         ensureAccount,
       });
+      const prepared = await journal.read(recovery.registryAddress, selected, scope);
+      ensureAccount();
+      if (prepared) {
+        receipt.value = JSON.stringify(prepared);
+        await sendReview.ready(account, prepared, journal, scope, ensureAccount, status);
+      }
       return;
     }
     if (saving) {
@@ -368,60 +478,7 @@ async function runClaimAction(context: ClaimActionContext): Promise<void> {
       report('Use the original account and receipt to check this claim.');
       return;
     }
-    if (releasing) {
-      if (release.hidden) throw new Error('Check the failed original before release.');
-      // A failed recheck must not leave the previous failure observation actionable.
-      release.hidden = true;
-      if (release.dataset.reason === 'expired-unsent') {
-        await releaseExpiredUnsent(recovery, journal, original, account, scope, ensureAccount);
-        preparation?.clear();
-        sendReview.clear();
-        receipt.value = JSON.stringify(original);
-        report('Expired unsent original archived. Review a fresh claim quote to try again.');
-        return;
-      }
-      await releaseVerifiedFailure(
-        recovery,
-        journal,
-        original,
-        account,
-        selected,
-        scope,
-        ensureAccount,
-      );
-      preparation?.clear();
-      sendReview.clear();
-      release.hidden = true;
-      receipt.value = JSON.stringify(original);
-      report('Failed original retained in local history. Review a fresh claim quote to retry.');
-      return;
-    }
-    if (sending && recovery.dispatch) {
-      if (!(await sendReview.ready(account, original, journal, scope, ensureAccount, status)))
-        return;
-      // Journal read above is the acknowledgement. A transport failure leaves
-      // the same receipt available for reconciliation on this device.
-      try {
-        await recovery.dispatch(original);
-      } catch {
-        report('Send outcome unknown. Preserve this original receipt and check the claim.');
-        return;
-      }
-      ensureAccount();
-      report(messages.pending);
-      return;
-    }
-    await inspectOriginalClaim(
-      recovery,
-      journal,
-      original,
-      account,
-      selected,
-      scope,
-      release,
-      report,
-      ensureAccount,
-    );
+    await handleRetainedOriginal(context, journal, original, account, selected, scope);
   } finally {
     journal.close();
   }
@@ -439,15 +496,21 @@ export function showClaimRecovery(
   const retain = byId<HTMLButtonElement>('claim-recovery-retain');
   const send = byId<HTMLButtonElement>('claim-dispatch');
   const quoteSummary = byId('claim-quote-summary');
-  send.hidden = !recovery.dispatch;
+  send.hidden = !!recovery.preparation || !recovery.dispatch;
   const check = byId<HTMLButtonElement>('claim-recovery-check');
   const release = byId<HTMLButtonElement>('claim-release-failed');
   const status = byId('claim-recovery-status');
+  const details = byId<HTMLDetailsElement>('claim-recovery-details');
+  details.open = import.meta.env.VITE_MIDNAMES_CLAIM_PREPARATION !== '1';
   const report = claimReport(status, onSetupStatus);
   const preparation =
     recovery.preparation &&
     showClaimPreparation(recovery.preparation, recovery.registryAddress, status, name);
-  const sendReview = createClaimSendReview(send, quoteSummary);
+  const sendReview = createClaimSendReview(
+    send,
+    quoteSummary,
+    !!recovery.preparation || !recovery.dispatch,
+  );
   form.hidden = false;
   let busy = false;
   name.addEventListener('input', () => {
@@ -518,6 +581,15 @@ export function showClaimRecovery(
     release.hidden = true;
     const account = currentAccount();
     report(initialClaimStatus(recovery, account));
-    void restoreSelection(recovery, currentAccount, name, release, report);
+    void restoreSelection(
+      recovery,
+      currentAccount,
+      name,
+      release,
+      report,
+      sendReview,
+      status,
+      receipt,
+    );
   };
 }

@@ -27,7 +27,10 @@ Fresh chains need ACC creation, registry bootstrap and a confirmed name claim
 before the named control is enabled. The launcher never funds a sender merely
 by opening the page.
 
-The reference demo can use Midnames 2.1.0 for read-only lookup. Configure the
+The reference demo pins the published Midnames 2.1.0 reader for lookups. Its
+generated reader matches the pinned
+[`ledger-9-live` commit](https://github.com/midnames/ns-sdk/tree/f8f2edd425221b95c9158d74e7318d2fbb4f61b2),
+which the app checks in its tests. Configure the
 registry address, namespace, matching demo network, and public indexer URLs.
 Use paired Indexer API v4 HTTP and WebSocket endpoints. The demo refuses v3
 paths even though the upstream package still contains older defaults.
@@ -38,6 +41,10 @@ To create that registry on a healthy local stack after activating an ACC, use
 the [pinned local bootstrap recipe](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/README.md#bootstrap-the-registry-on-an-existing-local-stack).
 It records the deployment waves and keeps root naming authority private; the
 resulting `.night` root is separate from public `passport.night` issuance.
+The local preparation command fetches the branch's pinned `ns.compact` and
+recompiles it with ZKIR v3. The bootstrap command then deploys the separate registry.
+Midnames' paused writes to its older deployed registry do not block this
+local claim path.
 
 The shared local Ledger 9 profile discovers its existing node, v4 indexer and
 prover without starting a second stack. Its public genesis sponsor is funded

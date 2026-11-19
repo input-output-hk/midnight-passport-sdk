@@ -11,6 +11,7 @@ export const claimQuotePath = '/v1/midnames/claim/quote';
 export const claimPreparePath = '/v1/midnames/claim/prepare';
 export const claimPreparedPath = '/v1/midnames/claim/prepared';
 export const claimRetirePath = '/v1/midnames/claim/retire-expired-unsent';
+export const claimRetireUnpreparedPath = '/v1/midnames/claim/retire-expired-unprepared';
 export const claimStatusPath = '/v1/midnames/claim/dispatch-status';
 
 async function request(path: string, input: unknown): Promise<unknown> {
@@ -85,6 +86,16 @@ export function createLocalClaimPreparation(prove: ClaimPreparation['prove']): C
         result.status !== 'retired'
       )
         throw new Error('The local sponsor did not confirm retirement.');
+    },
+    async retireExpiredUnprepared(quote, ownerCommitment) {
+      const result = await request(claimRetireUnpreparedPath, { quote, ownerCommitment });
+      if (
+        !result ||
+        typeof result !== 'object' ||
+        !('status' in result) ||
+        result.status !== 'retired'
+      )
+        throw new Error('The local sponsor did not confirm unprepared retirement.');
     },
   };
 }

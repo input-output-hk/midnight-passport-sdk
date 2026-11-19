@@ -1071,10 +1071,17 @@ import that receipt. A known sponsor refusal before any balance intent releases
 the rejected quote for fresh review; an uncertain response retains it. Imported
 receipts without a matching saved quote are reconciliation-only. A send first
 shows the saved price, payee, fee ceiling and expiry without submitting, then
-requires confirmation. Checking the original reads the sponsor's dispatch fence
-as well as the indexer: an unfenced receipt is displayed as prepared but unsent.
-An expired unfenced preparation can be verified and archived by the local
-sponsor before reviewing a new quote.
+requires **Confirm payment and register**. The page checks the sponsor's
+dispatch fence and indexer after sending: an unfenced receipt is displayed as
+prepared but unsent. **Continue registration** reconciles and safely retires an
+expired unsent preparation before offering a new quote. Raw receipts and manual
+checks sit under **Receipt and recovery details**.
+The local sponsor balances the transaction to the displayed quote expiry, so
+the reviewed deadline also governs the prepared transaction. If confirmation
+returns an unknown outcome, the page checks the original and sponsor fence; an
+unfenced transaction remains retained until its first intent TTL passes with a
+safety margin or its quote expires, and the sponsor verifies safe retirement.
+Do not submit another claim while it is retained.
 The reference sponsor journal holds one original at a time. While an unresolved
 preparation occupies it, a different account's quote request returns a distinct
 busy result **before** naming proof or preparation. The page explains that no new
@@ -1140,10 +1147,10 @@ receipt has that quote's digest and one browser claim dispatch. Fresh signed
 not the full demo's sponsor HTTP quote or real-provider create/open ceremony.
 An exact indexed `FAILURE`, or an exact `PARTIAL_SUCCESS` whose only failed
 segment is the standalone registration claim while the sponsor's DUST fee
-succeeds, can enable **Release failed original for a new attempt** when the
-registry record is absent. The fee is not refunded. The action rechecks the same outcome,
-archives the original public receipt and IDs in IndexedDB, and requires fresh
-name and quote review before a new reservation. Other partial outcomes,
+succeeds, can be released from a separately managed browser journal when the
+registry record is absent. The fee is not refunded. The local sponsor still
+retains its private original, so this demo keeps the browser record and does
+not offer a fresh quote until the sponsor is reconciled. Other partial outcomes,
 uncertain results or an unavailable registry cannot release the original.
 The choice and public receipt live in this browser's IndexedDB, so a different
 device needs the original receipt and credential to recover it. This source
