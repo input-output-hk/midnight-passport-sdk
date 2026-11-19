@@ -542,6 +542,19 @@ export async function openClaimJournal(indexedDB: IDBFactory) {
         return undefined;
       });
     },
+    async releaseExpiredUnprepared(quote: ClaimQuote, credential: string, ownerCommitment: string) {
+      if (quote.expiresAt > Date.now()) throw new Error('The original quote has not expired.');
+      await access(quote.registryAddress, quote.name, credential, (previous) => {
+        if (
+          !previous ||
+          previous.receipt ||
+          previous.ownerCommitment !== ownerCommitment ||
+          JSON.stringify(previous.quote) !== JSON.stringify(quote)
+        )
+          throw new Error('The unprepared original differs from the retained quote.');
+        return undefined;
+      });
+    },
     async retain(receipt: ClaimReceipt, credential: string, quote?: ClaimQuote) {
       const saved = await access(receipt.registryAddress, receipt.name, credential);
       const expected = quote ?? saved?.quote;

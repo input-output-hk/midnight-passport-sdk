@@ -913,9 +913,13 @@ The quote also pins `sponsorPaymentAddress`, the NIGHT input and change wallet.
 The browser transport accepts the literal loopback origins `localhost` and
 `127.0.0.1`. Keep the handler and browser on the same origin. The sponsor
 retains the exact quote, checks its live terms before balancing, and records
-a durable intent before invoking the wallet. **Recover prepared receipt**
-reads that original journal after a lost response. An intent with no
-prepared receipt stays pending after restart. The dispatch handler rechecks
+a durable intent before invoking the wallet. **Check saved claim**
+reads that original journal after a lost response. An expired intent with no
+prepared receipt or dispatch fence can be archived after the local sponsor
+confirms the name remains free; active sponsor work excludes that retirement.
+If the prepare request never reached the sponsor, the same exclusive check
+records a durable refusal for the exact expired quote without moving the journal.
+The dispatch handler rechecks
 the approved quote and original transaction before opening the dispatch fence.
 If live terms change before any intent is recorded, the sponsor durably refuses
 that quote and the browser asks for fresh review. An uncertain response keeps

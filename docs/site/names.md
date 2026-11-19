@@ -399,9 +399,18 @@ that exact unsent original before a fresh quote; a fenced or uncertain send
 stays pending. A public receipt imported without the matching saved
 quote can be checked and reconciled, but cannot be sent from this browser.
 
-If the preparation response is lost, reopen with the original credential,
-review the saved quote, and select **Recover prepared receipt**. The host
-looks up that original preparation. You can also import the original public
+If the preparation response is lost, reopen with the original credential and
+select **Continue registration**, then **Check saved claim** when offered. The host looks up the original preparation.
+If its quote expired before a transaction was prepared, the local sponsor checks
+that it has no prepared transaction or dispatch fence, retains an exact
+retirement record, and checks that the name is still available. A recorded
+balance intent is archived; a quote that never reached the sponsor keeps its
+issued record and gains a durable refusal marker. The browser then releases
+only that matching quote and shows fresh terms. A sponsor still balancing the
+original refuses this recovery until the work has stopped; the browser keeps
+the original in that case. The local demo quotes expire after four minutes so
+the displayed review deadline matches the sponsor wallet's transaction TTL.
+You can also import the original public
 receipt when its quote digest and owner commitment match. Once the owner commitment is recorded,
 the browser can recover the receipt after expiry and leaves preparation
 unchanged. The optional adapter requires an owner-side prover and a sponsor

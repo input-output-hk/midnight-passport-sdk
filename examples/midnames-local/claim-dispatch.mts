@@ -115,6 +115,12 @@ export function openClaimDispatch(directory: string) {
       return new Uint8Array(prepared.bytes);
     },
     hasFence: (receipt: ClaimReceipt) => fenced(claimReceipt(receipt)),
+    hasAnyFence: () => {
+      const value = readClaimRecord(fencePath, claimReceiptLimit);
+      if (value === undefined) return false;
+      claimReceipt(value);
+      return true;
+    },
     retain(bytes: Uint8Array, original: ClaimReceipt): void {
       const receipt = claimReceipt(original);
       checkBytes(bytes, receipt);

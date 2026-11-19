@@ -14,6 +14,7 @@ import {
   claimPreparedPath,
   claimQuotePath,
   claimRetirePath,
+  claimRetireUnpreparedPath,
   claimStatusPath,
 } from '../../apps/passport-dapp/src/midnames/claim-preparation-transport.ts';
 import {
@@ -63,7 +64,8 @@ export function createClaimSponsorHandler(
       url === claimPreparePath ||
       url === claimPreparedPath ||
       url === claimStatusPath ||
-      url === claimRetirePath);
+      url === claimRetirePath ||
+      url === claimRetireUnpreparedPath);
   return async (request: IncomingMessage, response: ServerResponse): Promise<boolean> => {
     if (request.url !== claimDispatchPath && !isPreparation(request.url)) return false;
     response.setHeader('Cache-Control', 'no-store');
@@ -76,7 +78,7 @@ export function createClaimSponsorHandler(
       response.writeHead(403).end();
       return true;
     }
-    const retire = request.url === claimRetirePath;
+    const retire = request.url === claimRetirePath || request.url === claimRetireUnpreparedPath;
     if (retiring || (retire && active > 0)) {
       response.writeHead(409).end();
       return true;
@@ -103,6 +105,8 @@ export function createClaimSponsorHandler(
         sendJson(response, await prep.issue(input));
       } else if (prep && request.url === claimRetirePath) {
         sendJson(response, await prep.retireExpiredUnsent(input));
+      } else if (prep && request.url === claimRetireUnpreparedPath) {
+        sendJson(response, await prep.retireExpiredUnprepared(input));
       } else if (prep && request.url === claimStatusPath) {
         const receipt = claimReceipt(input);
         if (JSON.stringify(journal.preparedReceipt()) === JSON.stringify(receipt)) {

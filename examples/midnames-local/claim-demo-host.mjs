@@ -190,7 +190,7 @@ try {
           registryPayee: terms.payee,
           night: String(terms.night),
           maximumDust: String(maximumDust),
-          expiresAt: Date.now() + 600_000,
+          expiresAt: Date.now() + 240_000,
         };
       },
       async authorizeQuote(quote) {
@@ -212,6 +212,13 @@ try {
           !(await reader.isSupportedAccount(receipt.accountAddress, networkId))
         )
           throw new Error('The expired claim could not be proved unsent and unregistered.');
+      },
+      async retireExpiredUnprepared(quote) {
+        if (
+          (await reader.hasDomain(quote.name, profile)) ||
+          !(await reader.isSupportedAccount(quote.accountAddress, networkId))
+        )
+          throw new Error('The expired unprepared name is no longer available.');
       },
       async balance(bytes, ttl) {
         const tx = Transaction.deserialize('signature', 'proof', 'pre-binding', bytes);

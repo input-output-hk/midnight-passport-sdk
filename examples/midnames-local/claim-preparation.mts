@@ -42,6 +42,10 @@ export function claimRetiredArchivePath(directory: string, receipt: ClaimReceipt
   );
 }
 
+export function claimUnpreparedArchivePath(directory: string, quote: ClaimQuote): string {
+  return join(dirname(directory), `claim-journal-unprepared-${claimQuote(quote).id}`);
+}
+
 export interface ClaimSponsorPreparationPorts {
   issue(destination: ClaimDestination): Promise<ClaimQuote>;
   /** Recheck the approved price, payee, sponsor, target and availability before any balance. */
@@ -49,6 +53,8 @@ export interface ClaimSponsorPreparationPorts {
   balance(proof: Uint8Array, ttl: Date): Promise<Uint8Array>;
   /** Confirm the exact expired original was never indexed and its name remains free. */
   retireExpiredUnsent?: (receipt: ClaimReceipt) => Promise<void>;
+  /** Recheck the registry before archiving an expired intent with no transaction. */
+  retireExpiredUnprepared?: (quote: ClaimQuote) => Promise<void>;
 }
 
 function recordOnce(path: string, record: unknown): boolean {
@@ -82,6 +88,23 @@ export function createClaimPreparationJournal(
   const intentPath = join(directory, 'claim-prepare-intent.json');
   const quotePath = (id: string) => join(directory, 'quote-' + id + '.json');
   const decisionPath = (id: string) => join(directory, 'quote-decision-' + id + '.json');
+  const unpreparedRetiredPath = (id: string) =>
+    join(directory, 'quote-unprepared-retired-' + id + '.json');
+
+  function wasUnpreparedRetired(id: string, digest: string, ownerCommitment: string): boolean {
+    const marker = readClaimRecord(unpreparedRetiredPath(id), claimReceiptLimit);
+    if (marker === undefined) return false;
+    if (
+      !marker ||
+      typeof marker !== 'object' ||
+      !('digest' in marker) ||
+      marker.digest !== digest ||
+      !('ownerCommitment' in marker) ||
+      marker.ownerCommitment !== ownerCommitment
+    )
+      throw new Error('Retired quote differs from its original.');
+    return true;
+  }
 
   function wasRefused(id: string, digest: string): boolean {
     const marker = readClaimRecord(decisionPath(id), claimReceiptLimit);
@@ -177,6 +200,99 @@ export function createClaimPreparationJournal(
   }
 
   return {
+    async retireExpiredUnprepared(input: unknown) {
+      if (!ports.retireExpiredUnprepared)
+        throw new Error('Expired unprepared claim retirement is unavailable.');
+      const { quote, ownerCommitment } = requestFields(input);
+      const digest = await claimQuoteDigest(quote);
+      const archive = claimUnpreparedArchivePath(directory, quote);
+      if (existsSync(archive)) {
+        const archived = openClaimDispatch(archive);
+        const archivedQuote = readClaimRecord(
+          join(archive, `quote-${quote.id}.json`),
+          claimReceiptLimit,
+        );
+        const archivedIntent = readClaimRecord(
+          join(archive, 'claim-prepare-intent.json'),
+          claimReceiptLimit,
+        );
+        if (
+          JSON.stringify(archivedQuote) !== JSON.stringify(quote) ||
+          !archivedIntent ||
+          typeof archivedIntent !== 'object' ||
+          !('digest' in archivedIntent) ||
+          !('ownerCommitment' in archivedIntent) ||
+          archivedIntent.digest !== digest ||
+          archivedIntent.ownerCommitment !== ownerCommitment ||
+          archived.preparedReceipt() !== undefined ||
+          archived.hasAnyFence()
+        )
+          throw new Error('Archived unprepared claim differs from the original.');
+        return { status: 'retired' as const };
+      }
+      await approved(input);
+      if (wasUnpreparedRetired(quote.id, digest, ownerCommitment))
+        return { status: 'retired' as const };
+      const noIntent = () =>
+        quote.expiresAt <= Date.now() &&
+        readClaimRecord(intentPath, claimReceiptLimit) === undefined &&
+        readClaimRecord(decisionPath(quote.id), claimReceiptLimit) === undefined &&
+        dispatch.preparedReceipt() === undefined &&
+        !dispatch.hasAnyFence();
+      if (noIntent()) {
+        await ports.retireExpiredUnprepared(quote);
+        if (!noIntent()) throw new Error('The original quote changed during retirement.');
+        const marker = { digest, ownerCommitment };
+        if (
+          !recordOnce(unpreparedRetiredPath(quote.id), marker) &&
+          !wasUnpreparedRetired(quote.id, digest, ownerCommitment)
+        )
+          throw new Error('The retired quote differs from its original.');
+        return { status: 'retired' as const };
+      }
+      const isUnprepared = () => {
+        const intent = readClaimRecord(intentPath, claimReceiptLimit);
+        const decision = readClaimRecord(decisionPath(quote.id), claimReceiptLimit);
+        return (
+          quote.expiresAt <= Date.now() &&
+          !!intent &&
+          typeof intent === 'object' &&
+          'quoteId' in intent &&
+          intent.quoteId === quote.id &&
+          'digest' in intent &&
+          intent.digest === digest &&
+          'ownerCommitment' in intent &&
+          intent.ownerCommitment === ownerCommitment &&
+          'proofSha256' in intent &&
+          claimHex(intent.proofSha256) &&
+          !!decision &&
+          typeof decision === 'object' &&
+          'kind' in decision &&
+          decision.kind === 'intent' &&
+          'digest' in decision &&
+          decision.digest === digest &&
+          'ownerCommitment' in decision &&
+          decision.ownerCommitment === ownerCommitment &&
+          'proofSha256' in decision &&
+          decision.proofSha256 === intent.proofSha256 &&
+          dispatch.preparedReceipt() === undefined &&
+          !dispatch.hasAnyFence()
+        );
+      };
+      if (!isUnprepared())
+        throw new Error('The original claim is not an expired, unprepared intent.');
+      await ports.retireExpiredUnprepared(quote);
+      if (!isUnprepared()) throw new Error('The original claim changed during retirement.');
+      renameSync(directory, archive);
+      mkdirSync(directory, { mode: 0o700 });
+      const parent = openSync(dirname(directory), 'r');
+      try {
+        fsyncSync(parent);
+      } finally {
+        closeSync(parent);
+      }
+      return { status: 'retired' as const };
+    },
     async retireExpiredUnsent(input: unknown) {
       if (!ports.retireExpiredUnsent)
         throw new Error('Expired unsent claim retirement is unavailable.');
@@ -248,6 +364,10 @@ export function createClaimPreparationJournal(
     },
     async findPrepared(input: unknown) {
       const { quote, digest, ownerCommitment } = await approved(input);
+      if (wasUnpreparedRetired(quote.id, digest, ownerCommitment))
+        throw new ClaimPreIntentRefusal(
+          'The sponsor retired this quote before any balance intent.',
+        );
       refuseQuoteSupersededByOriginal(quote.id, digest);
       const result = find(quote.id, digest, ownerCommitment);
       if (!result && wasRefused(quote.id, digest))
@@ -282,6 +402,10 @@ export function createClaimPreparationJournal(
     },
     async prepare(input: unknown) {
       const { quote, digest, ownerCommitment } = await approved(input);
+      if (wasUnpreparedRetired(quote.id, digest, ownerCommitment))
+        throw new ClaimPreIntentRefusal(
+          'The sponsor retired this quote before any balance intent.',
+        );
       const proof = (input as { proof?: unknown }).proof;
       if (
         typeof proof !== 'string' ||

@@ -12,6 +12,7 @@ import {
   claimPreparePath,
   claimPreparedPath,
   claimQuotePath,
+  claimRetireUnpreparedPath,
 } from '../src/midnames/claim-preparation-transport.js';
 import { claimQuoteDigest } from '../src/midnames/claim-quote.js';
 import type { ClaimReceipt } from '../src/midnames/claim-receipt.js';
@@ -222,7 +223,7 @@ async function verifyPreparation(
       await route.abort('failed');
     });
     await prepare.click();
-    await status.filter({ hasText: 'Recover using the saved quote' }).waitFor();
+    await status.filter({ hasText: 'The sponsor response is unavailable' }).waitFor();
     assert.deepEqual(preparationRequests, ['quote', 'quote', 'prepare']);
     await restoreLegacyJournal(page);
     await context.close();
@@ -240,7 +241,7 @@ async function verifyPreparation(
     await resumed.goto(pageUrl + '?prepare');
     await resumed.locator('#claim-recovery-name').fill(receipt.name);
     await resumed.locator('#claim-review-quote').click();
-    await resumed.getByRole('button', { name: 'Recover prepared receipt' }).click();
+    await resumed.locator('#claim-prepare').click();
     await resumed
       .locator('#claim-recovery-status')
       .filter({ hasText: /^Claim check unavailable/ })
@@ -250,12 +251,12 @@ async function verifyPreparation(
       .locator('#claim-recovery-status')
       .filter({ hasText: /Save the original claim receipt/ })
       .waitFor();
-    await resumed.getByRole('button', { name: 'Recover prepared receipt' }).click();
+    await resumed.locator('#claim-prepare').click();
     await resumed
       .locator('#claim-recovery-status')
       .filter({ hasText: /^Claim check unavailable/ })
       .waitFor();
-    await resumed.getByRole('button', { name: 'Recover prepared receipt' }).click();
+    await resumed.locator('#claim-prepare').click();
     await resumed
       .locator('#claim-recovery-status')
       .filter({ hasText: 'No transaction has been sent' })
@@ -266,6 +267,91 @@ async function verifyPreparation(
       .locator('#claim-recovery-status')
       .filter({ hasText: /^Registered/ })
       .waitFor();
+  } finally {
+    await context.close();
+  }
+}
+
+async function verifyExpiredPreparedResponseLoss(origin: string, pageUrl: string) {
+  const context = await openBrowser('chrome-expired-prepared-profile');
+  try {
+    const page = await context.newPage();
+    let retirementRequests = 0;
+    page.on('request', (request) => {
+      if (request.url() === origin + claimRetireUnpreparedPath) retirementRequests++;
+    });
+    await page.goto(pageUrl + '?prepare');
+    await page.locator('#claim-recovery-name').fill(receipt.name);
+    await page.locator('#claim-review-quote').click();
+    await page.route(origin + claimPreparePath, async (route) => {
+      assert.equal((await route.fetch()).status(), 200);
+      await route.abort('failed');
+    });
+    await page.locator('#claim-prepare').click();
+    await page
+      .locator('#claim-recovery-status')
+      .filter({ hasText: 'The sponsor response is unavailable' })
+      .waitFor();
+    await page.evaluate(`Date.now = function () { return ${Date.now() + 600_000}; }`);
+    await page.locator('#claim-review-quote').click();
+    await page
+      .locator('#claim-recovery-status')
+      .filter({ hasText: 'The original quote expired. Check the receipt; do not send it.' })
+      .waitFor();
+    assert.deepEqual(
+      JSON.parse(await page.locator('#claim-recovery-receipt').inputValue()),
+      preparedReceipt,
+    );
+    assert.equal(retirementRequests, 0);
+  } finally {
+    await context.close();
+  }
+}
+
+async function verifyExpiredRequestNeverArrived(origin: string, pageUrl: string) {
+  const context = await openBrowser('chrome-expired-no-intent-profile');
+  try {
+    const page = await context.newPage();
+    await page.goto(pageUrl + '?prepare');
+    await page.locator('#claim-recovery-name').fill(receipt.name);
+    await page.locator('#claim-review-quote').click();
+    await page.route(origin + claimPreparePath, (route) => route.abort('failed'));
+    await page.locator('#claim-prepare').click();
+    await page
+      .locator('#claim-recovery-status')
+      .filter({ hasText: 'The sponsor response is unavailable' })
+      .waitFor();
+    const future = Date.now() + 600_000;
+    await page.evaluate(`Date.now = function () { return ${future}; }`);
+    const fresh = { ...quote, id: 'd1'.repeat(32), expiresAt: future + 300_000 };
+    let retired = 0;
+    await page.route(origin + claimPreparedPath, (route) => route.fulfill({ status: 404 }));
+    await page.route(origin + claimRetireUnpreparedPath, async (route) => {
+      assert.deepEqual(route.request().postDataJSON(), {
+        quote,
+        ownerCommitment: receipt.ownerCommitment,
+      });
+      retired++;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ status: 'retired' }),
+      });
+    });
+    await page.route(origin + claimQuotePath, (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fresh) }),
+    );
+    await page.locator('#claim-review-quote').click();
+    await page
+      .locator('#claim-recovery-status')
+      .filter({ hasText: 'Review the quote before preparing the claim' })
+      .waitFor();
+    assert.match(
+      await page.locator('#claim-quote-summary').innerText(),
+      new RegExp(new Date(fresh.expiresAt).toISOString()),
+    );
+    assert.equal(retired, 1);
+    assert.equal(await page.locator('#claim-prepare').innerText(), 'Approve with passkey');
   } finally {
     await context.close();
   }
@@ -291,7 +377,7 @@ async function verifyPreparedImport(
     await page.locator('#claim-prepare').click();
     await page
       .locator('#claim-recovery-status')
-      .filter({ hasText: 'Recover using the saved quote' })
+      .filter({ hasText: 'The sponsor response is unavailable' })
       .waitFor();
     await restoreLegacyJournal(page);
     await context.close();
@@ -468,6 +554,8 @@ try {
   assert.deepEqual(requests, []);
   console.log('PASS: imported quote-less receipt cannot send and remains available after restart');
   await verifyPreparation(origin, pageUrl, () => openBrowser('chrome-preparation-profile'));
+  await verifyExpiredPreparedResponseLoss(origin, pageUrl);
+  await verifyExpiredRequestNeverArrived(origin, pageUrl);
   browser = await openBrowser('chrome-preparation-profile');
   const prepared = await browser.newPage();
   await prepared.goto(pageUrl + '?prepare&resumePending&setup');
