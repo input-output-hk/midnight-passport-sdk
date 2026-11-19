@@ -6,7 +6,9 @@ import { join } from 'node:path';
 import {
   createFileFundingStore,
   inspectFileFundingStore,
+  releaseRejectedFundingReservation,
   verifyFundingCredit,
+  verifyFundingRejection,
 } from '../packages/service/dist/index.js';
 
 const color = 'cd'.repeat(32);
@@ -104,4 +106,71 @@ test('ambiguous, failed, and non-exact actions never produce completion evidence
   );
   assert.throws(verify([previous, deposit], { request }), /no durable deposit/);
   assert.throws(verify([previous, deposit], { ...pending, noSubmit: true }), /no durable deposit/);
+});
+
+test('four aged node gas rejections and an unchanged complete ACC history release only the legacy request', async () => {
+  const path = join(mkdtempSync(join(tmpdir(), 'passport-funding-rejected-')), 'store.json');
+  const night = { ...request, color: '00'.repeat(32) };
+  const store = createFileFundingStore(path);
+  await store.reserve(
+    night,
+    { color: night.color, maxPerRequest: 10n, maxPerUtcDay: 10n },
+    '2026-10-16',
+  );
+  await store.recordProgress(night.requestId, { stage: 'balance-observed', balanceBefore: '0' });
+  await store.recordProgress(night.requestId, { stage: 'prepared', preparationTxId: 'prepare-id' });
+  const pending = inspectFileFundingStore(path).entries[0];
+  assert.ok(pending);
+  const actions = [{ ...previous, txHash: 'aa'.repeat(32), balances: { [night.color]: '0' } }];
+  const log = [0, 10, 20, 30]
+    .map(
+      (seconds, index) =>
+        `2026-10-16 12:00:${String(seconds).padStart(2, '0')} 🚫 Rejected transaction ${String(index + 1).repeat(64)} from mempool: guaranteed execution would fail: ran out of gas budget`,
+    )
+    .join('\n');
+  const now = Date.parse('2026-10-16T12:20:00Z');
+  const evidence = verifyFundingRejection(pending, actions, log, now);
+  assert.equal(evidence.rejectedHashes.length, 4);
+  assert.equal(evidence.observedBalance, '0');
+  assert.throws(
+    () => verifyFundingRejection(pending, actions, log, Date.parse('2026-10-16T12:05:00Z')),
+    /aged/,
+  );
+  assert.throws(
+    () =>
+      verifyFundingRejection(pending, actions, log.replace('ran out of gas budget', 'other'), now),
+    /four aged/,
+  );
+  assert.throws(
+    () =>
+      verifyFundingRejection(
+        pending,
+        [...actions, { ...deposit, balances: { [night.color]: '10' } }],
+        log,
+        now,
+      ),
+    /deposit action/,
+  );
+  await assert.rejects(
+    releaseRejectedFundingReservation(path, night.requestId, 'operator', {
+      ...evidence,
+      observedBalance: '1',
+    }),
+    /differs/,
+  );
+  await releaseRejectedFundingReservation(path, night.requestId, 'operator', evidence);
+  const released = inspectFileFundingStore(path).entries[0]?.release;
+  assert.ok(released);
+  assert.equal(released.reason, 'node-rejected');
+  assert.deepEqual(released.evidence, evidence);
+  assert.equal(
+    (
+      await store.reserve(
+        night,
+        { color: night.color, maxPerRequest: 10n, maxPerUtcDay: 10n },
+        '2026-10-16',
+      )
+    ).state,
+    'released',
+  );
 });

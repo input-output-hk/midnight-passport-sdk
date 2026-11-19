@@ -354,6 +354,27 @@ test('installed Midnames v2.1 reads its generated registry over the Ledger 9 ind
   assert.equal(await reads.isSupportedAccount(target, 'undeployed'), false);
   assert.equal(await reads.readSupportedNightBalance(target, 'undeployed'), undefined);
   assert.equal(await reads.readSupportedNightBalance(target, 'other-network'), undefined);
+  const blockHash = 'aa'.repeat(32);
+  const offsets: Array<{ address: string; offset: unknown }> = [];
+  const pinnedProvider = {
+    async queryBlock() {
+      return { hash: blockHash, height: 100 };
+    },
+    async queryContractState(address: string, offset: unknown) {
+      offsets.push({ address, offset });
+      return address === profile.registryAddress
+        ? { contractState: { deserialize: () => result } }
+        : null;
+    },
+  } as unknown as Parameters<typeof createMidnamesLedgerReads>[0];
+  const atomic = createMidnamesLedgerReads(pinnedProvider, 'undeployed', 'acc-s3r1.1');
+  await assert.rejects(atomic.readSupportedTarget('alice.night', profile), {
+    code: 'InvalidRecord',
+  });
+  assert.deepEqual(offsets, [
+    { address: profile.registryAddress, offset: { type: 'blockHash', blockHash } },
+    { address: target, offset: { type: 'blockHash', blockHash } },
+  ]);
   // Keep the name-to-ID index but remove its record map.
   const malformed = ContractState.deserialize(result.serialize());
   const slots = malformed.data.state.asArray();

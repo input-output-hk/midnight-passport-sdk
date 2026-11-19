@@ -10,7 +10,9 @@
  * shielded deposit fixtures. ACC NIGHT funding needs its measured credit;
  * removing all of it exhausts that call's budget. A rebuilt call must be
  * proved and balanced again.
- * Recompiled Compact 0.36 artifacts need their own deployed verifier keys.
+ * A read-only Compact 0.36 rebuild of the pinned registry reproduced all 13
+ * verifier and prover key bytes. That does not qualify its write path or allow
+ * a runtime/profile swap without a separate proof and transaction check.
  */
 function rebuildWithCredit(
   result,

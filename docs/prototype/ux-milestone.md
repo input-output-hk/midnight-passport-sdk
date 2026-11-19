@@ -109,8 +109,10 @@ created source remains unfunded until the operator funds it.
 
 The Name service panel can use an explicitly configured Midnames registry.
 A partial configuration disables lookup and shows the setup requirement.
-Lookup displays a checked contract target for inspection without initiating an
-account or wallet action. An online profile requires a public known-name-to-ACC
+Lookup reads the registry and supported target ACC at one indexer block,
+then displays the checked contract target without initiating an account or
+wallet action. The indexer remains a trusted source of those bytes. An online
+profile requires a public known-name-to-ACC
 pin and two distinct-origin indexer paths. Each lookup rechecks the pin and
 requires both paths to agree; changed, divergent or unavailable observations
 refuse the lookup. See the [configuration and evidence scope](../site/names.md#source-preview-midnames-210).
@@ -139,12 +141,18 @@ by a newly reviewed retry. Native sponsor failure and real passkey consent
 remain open qualification.
 
 The opt-in **Register a .night name** panel on Passport account → Balances
-appears after creation or passkey-based opening of the target ACC. Reviewing a
+appears after creation or passkey-based opening of the target ACC. The claim
+profile requires the observed Indexer v4 transaction protocol
+pin (`2001100` on the shared Ledger 9 demo; `2001000` in the isolated fixture).
+This is separate from the `/api/v4/graphql` endpoint version. Reviewing a
 valid quote retains the selected local `.night` name per registry, ACC, and
 credential. It restores that selection after reopening and keeps the setup pending until the original
 transaction and current registry record match. It does not deploy another ACC
 or automatically send a claim. Availability and imported-receipt checks do not
 select a name; enter it again after a reload. The panel can save a standalone sponsor receipt.
+For a retained original, reopening also checks the sponsor's dispatch fence and
+shows **Prepared but never sent** when the sponsor confirms that state and the
+registry still shows the name available. It does not show registration success.
 An unavailable indexer leaves the original receipt intact and reports the
 check as unavailable. Without claim preparation or sponsor dispatch, the panel
 is labelled read-only receipt inspection and offers no claim action.
@@ -155,9 +163,10 @@ credential cannot inherit the first one's local receipt, and counts one stub
 `createAccount` invocation. It also checks the failed-original release and
 archived receipt across reload in an isolated browser profile. A conflicting
 status hides release; an unavailable recheck hides it until the user checks
-the original again. A third isolated profile confirms that full quote display
-precedes any synthetic owner proof or sponsor preparation and that explicit
-approval calls each once before reopening the retained receipt. Native
+the original again. A third isolated profile confirms that a same-origin HTTP
+sponsor quote is displayed before any synthetic owner proof or preparation,
+that approval calls each once, and that a pending original reports the
+synthetic prepared-but-unsent sponsor state after reopen. Native
 create/open, actual indexed failure, real passkey review and sponsored retry
 acceptance remain separate.
 An exact failed original with no registry record exposes **Release failed
@@ -169,14 +178,16 @@ selection atomically. A fresh quote review is required before another
 preparation. Other partial outcomes, outage, uncertainty and changed binding keep the
 original fenced. The archived receipt can be inspected after reload.
 **Check original
-claim** reconciles the stored transaction and the current registry owner and
+claim** reconciles the stored transaction, local sponsor dispatch fence, and current registry owner and
 target. **Check registry status** verifies the open ACC and checks whether the
 name is registered. When a receipt already exists, the button reconciles the
-original claim. The loopback fixture offers **Send prepared claim** for an
+original claim. The loopback fixture offers **Review terms before send** for an
 original receipt already saved to the open credential. A lost response keeps the original receipt available across
 browser reloads. Sending requires a saved matching quote and a second click
 after the exact payment terms are displayed. Older quote-less receipts remain
-available for reconciliation only. The native dispatch fixture injects its
+available for reconciliation only. A prepared, unfenced receipt is explicitly
+shown as unsent; after expiry, the sponsor can verify and archive it before a
+fresh quote. A fenced or uncertain original stays pending. The native dispatch fixture injects its
 quote after proof, so that run does not qualify pre-proof user review. See
 [the recovery flow](../site/names.md#recover-the-sponsors-original-claim-in-the-demo).
 The separate native `claim-preproof` fixture displays a fixture-issued quote

@@ -13,6 +13,7 @@
     "@input-output-hk/mn-passport-adapter-service": "workspace:*",
     "@input-output-hk/mn-passport-contract": "workspace:*",
     "@input-output-hk/mn-passport-service": "workspace:*",
+    "@midnightntwrk/ledger-v9": "1.0.0",
     "@midnightntwrk/wallet-sdk-address-format": "4.0.0-rc.0"
   },
   "devDependencies": {

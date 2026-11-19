@@ -1,4 +1,4 @@
-import type { IncomingMessage } from 'node:http';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { ServiceWire } from '@input-output-hk/mn-passport-protocol';
 import type { FundingCreditEvidence } from './funding-reconciliation.js';
 import { HttpError, json, readJson, type Route } from './http.js';
@@ -27,7 +27,11 @@ export interface FundingAssetPolicy {
 export type FundingReservation =
   | { readonly state: 'reserved' }
   | { readonly state: 'complete'; readonly result: ServiceWire.FundAccResponse }
-  | { readonly state: 'pending' | 'released' | 'conflict' | 'daily-limit' };
+  | {
+      readonly state: 'released';
+      readonly reason: 'preflight-failed' | 'acc-not-submitted' | 'node-rejected';
+    }
+  | { readonly state: 'pending' | 'conflict' | 'daily-limit' };
 
 /** Durable milestones for diagnosing an uncertain wallet outcome. */
 export type FundingProgress =
@@ -35,7 +39,9 @@ export type FundingProgress =
   | { readonly stage: 'prepared'; readonly preparationTxId: string }
   | { readonly stage: 'submitted'; readonly txId: string }
   /** Backend guarantees it has not entered a wallet operation capable of submitting value. */
-  | { readonly stage: 'no-submit' };
+  | { readonly stage: 'no-submit' }
+  /** Measured NIGHT proof/balance failed after wallet preparation but before the ACC send fence. */
+  | { readonly stage: 'acc-not-submitted' };
 
 /** Reserve the request ID and daily spend atomically, durably, before any wallet call. */
 export interface FundingStore {
@@ -50,6 +56,8 @@ export interface FundingStore {
   recordProgress(requestId: string, progress: FundingProgress): Promise<void>;
   /** Atomically tombstone a request proved to have stopped before any wallet submission. */
   releaseNoSubmit(requestId: string, actor: string): Promise<void>;
+  /** Release only a durable measured-NIGHT marker proving the ACC submitter was not entered. */
+  releaseAccNotSubmitted?(requestId: string, actor: string): Promise<void>;
   /** Atomically persist independently verified deposit evidence and the original result. */
   completeReconciled(
     requestId: string,
@@ -112,6 +120,57 @@ function requestOf(value: unknown): ServiceWire.FundAccRequest {
   };
 }
 
+async function respondToFundingFailure(
+  res: ServerResponse,
+  options: FundingRouteOptions,
+  requestId: string,
+  stage: FundingProgress['stage'] | 'admitted',
+  noSubmit: boolean,
+  accNotSubmitted: boolean,
+  error: unknown,
+): Promise<true> {
+  const log = options.log ?? ((message: string) => console.error(message));
+  if (accNotSubmitted && options.store.releaseAccNotSubmitted) {
+    try {
+      await options.store.releaseAccNotSubmitted(requestId, 'funding-pre-submit');
+      log(
+        JSON.stringify({
+          requestId,
+          stage,
+          code: 'FundingRequestReleased',
+          submission: 'reconciled-no-credit',
+        }),
+      );
+      json(res, 409, {
+        requestId,
+        code: 'FundingRequestReleased',
+        submission: 'reconciled-no-credit',
+      });
+      return true;
+    } catch {
+      // A failed durable release is uncertain. Keep the original ID pending.
+    }
+  }
+  const refusal = checkedPreflight(error, noSubmit);
+  if (refusal) {
+    try {
+      await options.store.releaseNoSubmit(requestId, 'funding-preflight');
+      log(JSON.stringify({ requestId, stage, code: refusal.code, submission: 'not-started' }));
+      json(res, PREFLIGHT_STATUS[refusal.code], {
+        requestId,
+        code: refusal.code,
+        error: refusal.message,
+        submission: 'not-started',
+      });
+      return true;
+    } catch {
+      // A failed durable release is uncertain. Never invite a replacement request.
+    }
+  }
+  log(JSON.stringify({ requestId, stage, code: 'FundingOutcomeUnknown' }));
+  throw new HttpError(502, 'funding outcome requires reconciliation');
+}
+
 /** The funding route never calls the fee-only sponsor path or trusts a directory address. */
 export function fundingRoute(options: FundingRouteOptions): Route {
   if (!ADDRESS.test(options.manifestSha256)) throw new Error('funding manifest pin is invalid');
@@ -126,7 +185,6 @@ export function fundingRoute(options: FundingRouteOptions): Route {
   const assets = new Map(options.assets.map((asset) => [asset.color, asset]));
   if (assets.size !== options.assets.length) throw new Error('duplicate funding asset policy');
   const now = options.now ?? (() => new Date());
-  const log = options.log ?? ((message: string) => console.error(message));
   return async (req, res, url) => {
     if (req.method !== 'POST' || url.pathname !== '/v1/faucet/fund') return false;
     let authorized = false;
@@ -165,18 +223,26 @@ export function fundingRoute(options: FundingRouteOptions): Route {
       return true;
     }
     if (reservation.state === 'pending') throw new HttpError(409, 'funding request is pending');
-    if (reservation.state === 'released')
-      throw new HttpError(409, 'funding request was released; use a new request ID');
+    if (reservation.state === 'released') {
+      json(res, 409, {
+        requestId: request.requestId,
+        code: 'FundingRequestReleased',
+        submission: 'reconciled-no-credit',
+      });
+      return true;
+    }
     if (reservation.state === 'conflict') throw new HttpError(409, 'funding request ID was reused');
     if (reservation.state === 'daily-limit')
       throw new HttpError(429, 'daily funding limit reached');
     let stage: FundingProgress['stage'] | 'admitted' = 'admitted';
     let noSubmit = false;
+    let accNotSubmitted = false;
     try {
       const result = await options.backend.fund(request, async (progress) => {
         await options.store.recordProgress(request.requestId, progress);
         stage = progress.stage;
         noSubmit = progress.stage === 'no-submit';
+        accNotSubmitted = progress.stage === 'acc-not-submitted';
       });
       if (
         result.requestId !== request.requestId ||
@@ -188,31 +254,15 @@ export function fundingRoute(options: FundingRouteOptions): Route {
       await options.store.complete(request.requestId, result);
       json(res, 200, result);
     } catch (error) {
-      const refusal = checkedPreflight(error, noSubmit);
-      if (refusal) {
-        try {
-          await options.store.releaseNoSubmit(request.requestId, 'funding-preflight');
-          log(
-            JSON.stringify({
-              requestId: request.requestId,
-              stage,
-              code: refusal.code,
-              submission: 'not-started',
-            }),
-          );
-          json(res, PREFLIGHT_STATUS[refusal.code], {
-            requestId: request.requestId,
-            code: refusal.code,
-            error: refusal.message,
-            submission: 'not-started',
-          });
-          return true;
-        } catch {
-          // A failed durable release is uncertain. Never invite a replacement request.
-        }
-      }
-      log(JSON.stringify({ requestId: request.requestId, stage, code: 'FundingOutcomeUnknown' }));
-      throw new HttpError(502, 'funding outcome requires reconciliation');
+      return respondToFundingFailure(
+        res,
+        options,
+        request.requestId,
+        stage,
+        noSubmit,
+        accNotSubmitted,
+        error,
+      );
     }
     return true;
   };

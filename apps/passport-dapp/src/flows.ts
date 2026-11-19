@@ -412,6 +412,8 @@ const HINTS: Readonly<Record<string, string>> = {
   FundingAssetUnavailable: 'The funding wallet needs more of this asset. No transfer was started.',
   FundingWalletUnavailable:
     'The funding wallet is not ready. No transfer was started. Try again after it synchronizes.',
+  FundingRequestReleased:
+    'The previous request was reconciled without ACC credit. Its ID is retired; click Fund Passport account again for a new deposit.',
   FundingRejected:
     'The funding service refused or could not confirm this deposit. Check the operation log; a pending request needs operator reconciliation before another attempt.',
   NetworkMismatch: 'The service is on a different network from this page.',

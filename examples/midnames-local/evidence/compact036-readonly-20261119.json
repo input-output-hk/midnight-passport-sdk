@@ -1,0 +1,141 @@
+{
+  "baseline": "examples/midnames-local/registry-manifest.json",
+  "compiler": {
+    "commit": "b5d9e4dfc532fe47011c4f6296e254f4853eb469",
+    "languageVersion": "0.28.0",
+    "mode": "--skip-zk followed by separate zkir-v3 compile-many",
+    "runtimeVersion": "0.21.0",
+    "version": "0.36.0"
+  },
+  "generated": {
+    "allZkirAndProverVerifierBytesMatchBaseline": true,
+    "circuitCount": 13,
+    "circuits": [
+      {
+        "circuit": "add_domain_field",
+        "proverSha256": "6a860ac721cdcd9b48d61c80516a197f4bf19cb8865e5737a20fffc92e8cb2da",
+        "verifierSha256": "3f3219c9abf0668ff2f56958cfc9348c66a56ddd694fcb9634da64c1f5420096",
+        "zkirSha256": "4433d90ba9366224eda28e634ef4c0022c4bf6ddfc63952f9cf08b25d9cb7394"
+      },
+      {
+        "circuit": "add_multiple_fields",
+        "proverSha256": "0ca2ccb4dca193dcae96932df9cb526bed83902f3606cae5e332e53d1e9714a6",
+        "verifierSha256": "9386dce1213dec2696da80a81a755d8ab77efe133bc9bda0528da5552a59de49",
+        "zkirSha256": "cc03d63e04f0a213c08bbaf46ed71d31bb71c08186888946b46a7ce8ed3a824a"
+      },
+      {
+        "circuit": "change_field_limit",
+        "proverSha256": "f94cd50faead3ff2ee999dbcb20ff2b1af3d2294deea9096cbbed2231d9d649d",
+        "verifierSha256": "a11b0d0425fc0453dbc12f845752845e408a878405314e5a761cd3c5ae8c6149",
+        "zkirSha256": "5f9accb16d3c73c5d3e155113abfebf75e0d6a847e790c2007eb7988c161883b"
+      },
+      {
+        "circuit": "change_root_enable_subdomains",
+        "proverSha256": "2f6c6b39647a5d655b62e36640d89d5ea95f8ba6e010d9ab2ef49de137d6d19e",
+        "verifierSha256": "a5abf5296f37e882b9480da753b3e6cc79be62889ca407f0c8abf993b78c1fbb",
+        "zkirSha256": "86027f7bf446d3b3e1cebd88fed5560272ca6d36f20fdfdb5baf3075b37a0518"
+      },
+      {
+        "circuit": "clear_domain_fields",
+        "proverSha256": "d79106d3f4d60530aa6cd1e52addc59b3f8fa8ccd97167e9eb0ceb1f1867409a",
+        "verifierSha256": "b68e1bbe96a1fcc2e546e791ace08e6aa81f53bd3f313700f874fbd31622da8d",
+        "zkirSha256": "7a58fbbb410ba9c84a905e998c1715521d0dedae919f94491a78c42f850dde2e"
+      },
+      {
+        "circuit": "create_domain",
+        "proverSha256": "ff0b9096f9771c002bceba8b085879663c1f885ddd274466843bcb76ca9c554e",
+        "verifierSha256": "141e6b004707ace4b508a02c4021fec05f9b0c664c9f91917f0adb8643b71191",
+        "zkirSha256": "93b846ed882b8e2d170e0707e0a983db88dd37f122cbfd3d8215853c9976b24c"
+      },
+      {
+        "circuit": "lock_payment_config",
+        "proverSha256": "9ec68e05da7c99705291588d9e8cc12f5184e8c94d138631d4b1314353df0dc8",
+        "verifierSha256": "8b9a463d536cf87d9bb466108057b031342f801b7d7524ef082c054d026a50d7",
+        "zkirSha256": "5125850da1627c1c0a4b99e852b66ce7b972994f78728724cd5a636290765d01"
+      },
+      {
+        "circuit": "lock_target",
+        "proverSha256": "2fe9d87fa190fb18cb0294e5ae7209d888ee6ecaea61f27a8a3ec9cba6051476",
+        "verifierSha256": "0222425b2e6dc411862c4a0bafc48d59e231befd46e86db6153b1a19f975e5bd",
+        "zkirSha256": "cdbd8417a58411de25dc41348250ea0af8143847df47be8ce99421ebe2f52fc1"
+      },
+      {
+        "circuit": "remove_domain_field",
+        "proverSha256": "6c22946a14a208034deb9de4ccbc140a6203b0d7d6653c3651811067142db87c",
+        "verifierSha256": "35528235b84ce8188677d05504bede5427e25e82f1f0b704031ddd1454ffcd38",
+        "zkirSha256": "86c342414d23669bc1a49a171562b3419b184cf0b8be634e121965829524250b"
+      },
+      {
+        "circuit": "transfer_domain",
+        "proverSha256": "0debe0d3a845c20e6e8b2d78c2f98e4d8309321600f993f0085821e2c212d215",
+        "verifierSha256": "8973463762740672eb742b55a12281108b3c467b6133c74d781ca8e74596e6d2",
+        "zkirSha256": "ad7c817da2e90067feac7d72ce92e45f6376484b54d235e4b82d3ddf8f4633c4"
+      },
+      {
+        "circuit": "update_domain_default_field",
+        "proverSha256": "585ab8881d1f416a31f46d736b24c85af4f0a884974ee5907ca8ad1e1fef563e",
+        "verifierSha256": "28b61d979ddcd27fbc011683bad70733be1e99a7705c98e447d0e1895d2f9435",
+        "zkirSha256": "d30e1d293f7200e8c33af9fb522d7d202c2a9b85c106ed81fb6017c0d8b0fcdd"
+      },
+      {
+        "circuit": "update_payment_config",
+        "proverSha256": "9182392348f2fad0c146f836ff530c61db52b674f8858a5dbdb1ff573276c4a3",
+        "verifierSha256": "72e29eef34ea2f7ecf3d11e938fd06456d3ec8a0391b91ceb639d4df1408797d",
+        "zkirSha256": "e12ccfa5b068e78cc66b0107621a6c5e39c56ca938bb801138d145ac72ca778b"
+      },
+      {
+        "circuit": "update_target",
+        "proverSha256": "e17d4f14d082ed5a4a5d4b7ff8217a6c26ae75b39fa1739f6c674c2dd61546ba",
+        "verifierSha256": "3b989ba97e6f44c59925ed6164e04284674a820146446c040f6be451aa8a1542",
+        "zkirSha256": "705bf14d47fb714798ab09edee1228f429deaa2eb7878018b9e51a9103c67741"
+      }
+    ],
+    "contractJsSha256": "bf7929ddc430df65870029a2ccbfe1250d7e5f2601fd18c09f586ec5cea63257",
+    "contractManifestSha256": "dc24f17bdc4ae9177644734547f14c899f8d96f1ffb92a49549c0d54d632d18f"
+  },
+  "kind": "midnames-compact-036-readonly-compatibility",
+  "limits": [
+    "No 0.36 proof or transaction was produced or submitted.",
+    "Key-byte equality does not establish the compatibility of every write path or fee calculation.",
+    "The local indexer supplied contract-state bytes; the node-finalized block hash was checked but no cryptographic state proof was verified.",
+    "No online registry, provider or public passport.night profile was qualified.",
+    "The deployed Compact 0.35 registry and ACC were not changed."
+  ],
+  "liveRead": {
+    "accountAddress": "efc52cee363c11201b4e9ae7854050f734987d54e01b576a17e3300f24e27f47",
+    "compilerRuntime": "0.36.0/0.21.0",
+    "finalizedBlock": {
+      "hash": "c33c265c900921f9ffb20d43740796cfa8ed970666392ba0a13aa21d0f938a50",
+      "height": 20862
+    },
+    "name": "paidfix.night",
+    "networkId": "undeployed",
+    "outcome": "PASS",
+    "registryAddress": "90e8734cc3ddc8aaf649b969ecfb61828f75d580725670a0718ed19a8f4a8fe0"
+  },
+  "observedAt": "2026-11-19T01:26:44.067684+00:00",
+  "schemaVersion": 1,
+  "source": {
+    "adaptation": "language pragma 0.22 to 0.28 only",
+    "adaptedSha256": "2ea29974202665d56d53e6503c3de3ab1c42779b3cf7fe57b8c9912a127a1967",
+    "repository": "https://github.com/midnames/ns-sdk",
+    "revision": "f8f2edd425221b95c9158d74e7318d2fbb4f61b2",
+    "sha256": "6958d01ee7873ffd7c502fa8a3e49d1a4f230ce137cc2f03433f8e4eae6eecea"
+  },
+  "syntheticReplay": {
+    "create_domain": {
+      "declaredDeleted": 1079,
+      "k": 15,
+      "measuredDeleted": 1136,
+      "rows": 20954,
+      "runTranscriptAccepted": true
+    },
+    "transfer_domain": {
+      "declaredDeleted": 623,
+      "k": 14,
+      "measuredDeleted": 656,
+      "rows": 8288,
+      "runTranscriptAccepted": true
+    }
+  }
+}

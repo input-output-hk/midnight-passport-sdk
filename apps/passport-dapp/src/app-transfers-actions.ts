@@ -54,6 +54,7 @@ export class TransferActions {
         storage: localStorage,
         keys: [key, legacyKey],
         onNotStarted: (details) => traceOperation('funding.notStarted', details),
+        onReconciled: (details) => traceOperation('funding.reconciled', details),
       });
     }
     if (

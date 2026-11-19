@@ -1,10 +1,17 @@
 import { isClaimSponsorOrigin } from './claim-dispatch.js';
-import { claimReceiptLimit } from './claim-receipt.js';
-import { ClaimPreIntentRefusal, claimOwnerProof, type ClaimPreparation } from './claim-quote.js';
+import { claimReceiptLimit, type ClaimReceipt } from './claim-receipt.js';
+import {
+  ClaimPreIntentRefusal,
+  ClaimSponsorBusy,
+  claimOwnerProof,
+  type ClaimPreparation,
+} from './claim-quote.js';
 
 export const claimQuotePath = '/v1/midnames/claim/quote';
 export const claimPreparePath = '/v1/midnames/claim/prepare';
 export const claimPreparedPath = '/v1/midnames/claim/prepared';
+export const claimRetirePath = '/v1/midnames/claim/retire-expired-unsent';
+export const claimStatusPath = '/v1/midnames/claim/dispatch-status';
 
 async function request(path: string, input: unknown): Promise<unknown> {
   const response = await fetch(path, {
@@ -16,6 +23,10 @@ async function request(path: string, input: unknown): Promise<unknown> {
     signal: AbortSignal.timeout(60_000),
   });
   if (response.status === 202 || response.status === 404) return undefined;
+  if (path === claimQuotePath && response.status === 423)
+    throw new ClaimSponsorBusy(
+      'The local sponsor has an unresolved original claim. This quote request did not prepare or send a new claim. Preserve any earlier receipt and reconcile it before requesting another quote.',
+    );
   if ((path === claimPreparePath || path === claimPreparedPath) && response.status === 412)
     throw new ClaimPreIntentRefusal('The sponsor refused this quote before preparation began.');
   if (!response.ok || !response.body)
@@ -52,5 +63,28 @@ export function createLocalClaimPreparation(prove: ClaimPreparation['prove']): C
     },
     findPrepared: (quote, ownerCommitment) =>
       request(claimPreparedPath, { quote, ownerCommitment }),
+    async dispatchStatus(receipt: ClaimReceipt) {
+      const result = await request(claimStatusPath, receipt);
+      if (
+        !result ||
+        typeof result !== 'object' ||
+        !('status' in result) ||
+        (result.status !== 'prepared' &&
+          result.status !== 'sent-or-unknown' &&
+          result.status !== 'retired')
+      )
+        throw new Error('The local sponsor did not confirm dispatch status.');
+      return result.status;
+    },
+    async retireExpiredUnsent(receipt: ClaimReceipt) {
+      const result = await request(claimRetirePath, receipt);
+      if (
+        !result ||
+        typeof result !== 'object' ||
+        !('status' in result) ||
+        result.status !== 'retired'
+      )
+        throw new Error('The local sponsor did not confirm retirement.');
+    },
   };
 }

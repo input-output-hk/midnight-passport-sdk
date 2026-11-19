@@ -247,3 +247,30 @@ records `no-submit` and the store releases/tombstones the request. Failed persis
 wallet exceptions retain unknown semantics. An old pending request is never executed again or
 retrospectively classified from today's balance. Logs include only request ID, last durable
 stage and a fixed code. The optional inventory contract is included in RC9 and absent from RC8.
+
+## Source preview: measured NIGHT funding recovery
+
+On the local `undeployed` network, the reference funding app submits an exact-value
+wallet self-transfer before building the ACC NIGHT deposit. A successful
+preparation transaction ID is durable. It then proves, balances and validates the
+single pinned `deposit_unshielded` call locally. The ACC transaction's final hash
+is recorded before handing it to the node.
+
+If that local proof or balance step fails, the backend can durably record
+`acc-not-submitted` before entering the ACC submitter. The file store accepts this
+marker only for a pending local NIGHT request with a preparation ID and no final
+deposit hash. The route then tombstones only that request and returns an exact
+`FundingRequestReleased` receipt. The marker says nothing about the preceding
+wallet self-transfer. If its write or release fails, or if the failure occurs
+after the final-hash fence, the original request remains pending for operator
+reconciliation. A missing hash on a legacy request is not equivalent to this
+marker. See the [funding operations guide](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/passport-funding-service/README.md)
+for inspection and recovery commands. This is a source preview, not an RC9 image
+or an online-network qualification.
+
+Version axis: the new `FundingProgress` stage and released `FundingReservation`
+reason are source additions for the proposed 0.2.0 line, not a change to RC9's
+published types. Hosts with exhaustive switches need to handle them when opting
+into that line. The `FundingStore.releaseAccNotSubmitted` port is optional so an
+existing store still type-checks; when absent, the route keeps the request pending
+and returns an unknown outcome. The reference file store implements the port.

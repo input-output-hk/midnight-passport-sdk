@@ -11,6 +11,7 @@ import {
   createMidnamesLedgerReads,
 } from '../../apps/passport-dapp/src/midnames/ledger-reader.ts';
 import { claimDestination } from '../../apps/passport-dapp/src/midnames/claim-quote.ts';
+import { readClaimFinality } from '../../apps/passport-dapp/src/midnames/claim-finality.ts';
 import { createClaimSponsorHandler } from './claim-sponsor-http.mts';
 import { startDemoOwnerBundle } from './claim-owner-browser-host.mjs';
 import { verifyPreparedRegistry } from './verify-prepared.mjs';
@@ -21,6 +22,8 @@ const indexerWsUrl = 'ws://127.0.0.1:8088/api/v4/graphql/ws';
 const nodeUrl = 'http://127.0.0.1:9944';
 const proverUrl = 'http://127.0.0.1:16320';
 const origin = 'http://localhost:5173';
+const claimProtocolVersion = Number(process.env.VITE_MIDNAMES_CLAIM_PROTOCOL_VERSION);
+assert.equal(claimProtocolVersion, 2001100, 'Pin the shared Ledger 9 claim protocol.');
 const maximumDust = 100_000_000_000_000_000n;
 const address = /^[0-9a-f]{64}$/;
 const safeRefusals = new Set([
@@ -29,6 +32,7 @@ const safeRefusals = new Set([
   'Claim target is not an activated Passport ACC.',
   'The dedicated claim sponsor needs NIGHT and two DUST inputs.',
   'The live registry or sponsor terms differ from the reviewed quote.',
+  'The sponsor has an unresolved original claim.',
 ]);
 const appPackage = pathToFileURL(
   new URL('../../apps/passport-dapp/package.json', import.meta.url).pathname,
@@ -201,6 +205,14 @@ try {
         )
           throw new Error('The live registry or sponsor terms differ from the reviewed quote.');
         await inventory(terms.night);
+      },
+      async retireExpiredUnsent(receipt) {
+        if (
+          (await readClaimFinality(indexerUrl, receipt, fetch, claimProtocolVersion)) !== false ||
+          (await reader.hasDomain(receipt.name, profile)) ||
+          !(await reader.isSupportedAccount(receipt.accountAddress, networkId))
+        )
+          throw new Error('The expired claim could not be proved unsent and unregistered.');
       },
       async balance(bytes) {
         const tx = Transaction.deserialize('signature', 'proof', 'pre-binding', bytes);

@@ -4,6 +4,7 @@ import { once } from 'node:events';
 import { createServer } from 'node:http';
 import {
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   realpathSync,
@@ -22,6 +23,8 @@ import {
   claimPreparePath,
   claimPreparedPath,
   claimQuotePath,
+  claimRetirePath,
+  claimStatusPath,
 } from '../src/midnames/claim-preparation-transport.js';
 import { claimDestination, claimQuote, claimQuoteDigest } from '../src/midnames/claim-quote.js';
 import { ClaimPreIntentRefusal } from '../src/midnames/claim-quote.js';
@@ -254,8 +257,10 @@ test('recovers a retained sponsor preparation over HTTP after reopening the jour
       assert.fail('This test must never broadcast.');
     },
   };
+  let quoteIssues = 0;
   const preparation = {
     async issue() {
+      quoteIssues++;
       return quote;
     },
     async authorizeQuote() {},
@@ -275,12 +280,30 @@ test('recovers a retained sponsor preparation over HTTP after reopening the jour
     });
   assert.equal((await post(claimQuotePath, destination, 'http://127.0.0.1:1')).status, 403);
   assert.deepEqual(await (await post(claimQuotePath, destination)).json(), quote);
+  const earlierQuotes = [
+    claimQuote({ ...quote, id: '94'.repeat(32) }),
+    claimQuote({ ...quote, id: '96'.repeat(32) }),
+    claimQuote({ ...quote, id: '98'.repeat(32) }),
+  ] as const;
+  for (const earlier of earlierQuotes)
+    createOnce(join(root, `quote-${earlier.id}.json`), JSON.stringify(earlier));
   const lookup = { quote, ownerCommitment: original.ownerCommitment };
   assert.equal((await post(claimPreparedPath, lookup)).status, 404);
   assert.equal((await post(claimPreparePath, { ...lookup, proof: 'invalid' })).status, 409);
   const intentPath = join(root, 'claim-prepare-intent.json');
   assert.equal(existsSync(intentPath), false);
   const digest = await claimQuoteDigest(quote);
+  const losingDecisionPath = join(root, `quote-decision-${earlierQuotes[2].id}.json`);
+  createOnce(
+    losingDecisionPath,
+    JSON.stringify({
+      kind: 'intent',
+      digest: await claimQuoteDigest(earlierQuotes[2]),
+      ownerCommitment: original.ownerCommitment,
+      proofSha256: createHash('sha256').update(bytes).digest('hex'),
+    }),
+  );
+  const losingDecision = readFileSync(losingDecisionPath);
   createOnce(
     intentPath,
     JSON.stringify({
@@ -291,12 +314,34 @@ test('recovers a retained sponsor preparation over HTTP after reopening the jour
     }),
   );
   reopen();
+  assert.equal((await post(claimQuotePath, destination)).status, 423);
+  assert.equal(quoteIssues, 1);
+  const originalIntent = readFileSync(intentPath);
+  const superseded = { quote: earlierQuotes[0], ownerCommitment: original.ownerCommitment };
+  assert.equal((await post(claimPreparedPath, superseded)).status, 412);
+  assert.equal((await post(claimPreparePath, { ...superseded, proof: '020305' })).status, 412);
+  const lostRace = { quote: earlierQuotes[2], ownerCommitment: original.ownerCommitment };
+  assert.equal((await post(claimPreparedPath, lostRace)).status, 412);
+  assert.equal((await post(claimPreparePath, { ...lostRace, proof: '020305' })).status, 412);
+  assert.deepEqual(readFileSync(losingDecisionPath), losingDecision);
+  assert.deepEqual(readFileSync(intentPath), originalIntent);
+  assert.equal(existsSync(join(root, 'claim-dispatch-fence.json')), false);
   assert.equal((await post(claimPreparedPath, lookup)).status, 202);
   assert.equal((await post(claimPreparePath, { ...lookup, proof: '020305' })).status, 202);
   assert.equal((await post(claimPreparePath, { ...lookup, proof: '020304' })).status, 409);
   const retained = { ...original, quoteSha256: digest };
   journal.retain(bytes, retained);
   reopen();
+  assert.equal((await post(claimQuotePath, destination)).status, 423);
+  assert.equal(quoteIssues, 1);
+  const supersededAfterReceipt = {
+    quote: earlierQuotes[1],
+    ownerCommitment: original.ownerCommitment,
+    proof: '020305',
+  };
+  assert.equal((await post(claimPreparePath, supersededAfterReceipt)).status, 412);
+  assert.deepEqual(readFileSync(intentPath), originalIntent);
+  assert.deepEqual(journal.preparedReceipt(), retained);
   assert.deepEqual(await (await post(claimPreparedPath, lookup)).json(), retained);
   assert.deepEqual(
     await (await post(claimPreparePath, { ...lookup, proof: '020305' })).json(),
@@ -310,4 +355,102 @@ test('recovers a retained sponsor preparation over HTTP after reopening the jour
   assert.equal((await post(claimDispatchPath, retained)).status, 409);
   assert.equal((await post(claimDispatchPath, original)).status, 409);
   assert.equal(existsSync(join(root, 'claim-dispatch-fence.json')), false);
+});
+
+test('retires only the exact expired, unsent preparation and preserves its original journal', async (t) => {
+  const parent = realpathSync(mkdtempSync(join(tmpdir(), 'midnames-retire-')));
+  t.after(() => rmSync(parent, { recursive: true, force: true }));
+  const root = join(parent, 'claim-journal');
+  mkdirSync(root, { mode: 0o700 });
+  const quote = claimQuote({
+    ...claimDestination(original),
+    id: '91'.repeat(32),
+    sponsorAddress: '92'.repeat(32),
+    sponsorPaymentAddress: '95'.repeat(32),
+    registryPayee: '93'.repeat(32),
+    night: '1',
+    maximumDust: '10000',
+    expiresAt: Date.now() - 1000,
+  });
+  const digest = await claimQuoteDigest(quote);
+  const retained = { ...original, quoteSha256: digest };
+  createOnce(join(root, `quote-${quote.id}.json`), JSON.stringify(quote));
+  createOnce(
+    join(root, 'claim-prepare-intent.json'),
+    JSON.stringify({
+      quoteId: quote.id,
+      digest,
+      ownerCommitment: original.ownerCommitment,
+      proofSha256: original.transaction.sha256,
+    }),
+  );
+  const dispatch = openClaimDispatch(root);
+  dispatch.retain(bytes, retained);
+  let handler: ReturnType<typeof createClaimSponsorHandler>;
+  const server = createServer((request, response) => {
+    void handler(request, response).then(
+      () => {},
+      () => response.destroy(),
+    );
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(async () => new Promise<void>((resolve) => server.close(() => resolve())));
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  const origin = `http://127.0.0.1:${address.port}`;
+  let confirmations = 0;
+  const ports = {
+    async issue() {
+      return quote;
+    },
+    async authorizeQuote() {},
+    async balance() {
+      assert.fail('Retirement cannot spend.');
+    },
+    async retireExpiredUnsent(receipt: ClaimReceipt) {
+      confirmations++;
+      assert.deepEqual(receipt, retained);
+      assert.equal(dispatch.hasFence(receipt), false);
+    },
+  };
+  const prep = createClaimPreparationJournal(root, dispatch, ports);
+  handler = createClaimSponsorHandler(
+    origin,
+    root,
+    {
+      async authorize() {},
+      async submit() {
+        assert.fail('Status and retirement must not submit.');
+      },
+    },
+    ports,
+  );
+  const status = (receipt: ClaimReceipt) =>
+    fetch(origin + claimStatusPath, {
+      method: 'POST',
+      headers: { Origin: origin, 'Content-Type': 'application/json' },
+      body: JSON.stringify(receipt),
+    });
+  assert.deepEqual(await (await status(retained)).json(), { status: 'prepared' });
+  assert.equal((await status({ ...retained, name: 'other.night' })).status, 409);
+  await assert.rejects(prep.retireExpiredUnsent({ ...retained, name: 'other.night' }));
+  assert.equal(confirmations, 0);
+  createOnce(join(root, 'claim-dispatch-fence.json'), JSON.stringify(retained));
+  assert.deepEqual(await (await status(retained)).json(), { status: 'sent-or-unknown' });
+  await assert.rejects(prep.retireExpiredUnsent(retained), /expired, unsent/);
+  rmSync(join(root, 'claim-dispatch-fence.json'));
+  assert.equal(confirmations, 0);
+  const retirement = await fetch(origin + claimRetirePath, {
+    method: 'POST',
+    headers: { Origin: origin, 'Content-Type': 'application/json' },
+    body: JSON.stringify(retained),
+  });
+  assert.deepEqual(await retirement.json(), { status: 'retired' });
+  const archive = join(parent, `claim-journal-retired-${retained.transaction.sha256}`);
+  assert.deepEqual(openClaimDispatch(archive).preparedReceipt(), retained);
+  assert.equal(openClaimDispatch(root).preparedReceipt(), undefined);
+  assert.deepEqual(await (await status(retained)).json(), { status: 'retired' });
+  assert.deepEqual(await prep.retireExpiredUnsent(retained), { status: 'retired' });
+  assert.equal(confirmations, 1);
 });

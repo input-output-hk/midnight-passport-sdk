@@ -49,11 +49,25 @@ can attach to the shared Ledger 9 node and API v4 indexer. After activating an
 ACC, you may return later to **Passport account → Balances → Register a .night
 name**. A dedicated local sponsor quotes the registry price and payee; the
 browser reviews them before asking the open ACC passkey for a naming proof.
-The user then inspects and sends the original prepared claim, keeping its
-receipt until the indexed transaction and registry binding agree. This opt-in
-path requires a separately funded name sponsor, pinned Compact 0.35 registry
+The first send click displays the saved payment terms without submitting; the
+second confirmation sends the original prepared claim. **Check original claim**
+shows whether this local sponsor has sent it and whether the name is registered.
+An expired preparation that the sponsor verifies was never sent can be archived
+before a fresh quote. Keep the original receipt until the indexed transaction
+and registry binding agree. The reference sponsor holds one original at a time:
+a different account receives a busy message at quote time, before the naming
+proof. Reconcile the existing original instead of clearing site data.
+An older proved but unprepared quote can use **Recover prepared receipt** while
+another original holds the sponsor; only that browser reservation is then released.
+The occupying original remains intact. This opt-in path requires a separately
+funded name sponsor, pinned Compact 0.35 registry
 artifacts, and the standalone local `.night` registry. It does not issue
 public `passport.night` names.
+
+An optional [Preprod indexer proxy](https://github.com/input-output-hk/midnight-passport-sdk/blob/b40e6eec307f9a83c6ba226f17fb647759fc9095/examples/midnames-online/README.md)
+keeps a Blockfrost token on the host for read-only online profiles. It does not
+provide the independent second reader or known name-to-ACC mapping required
+before this demo enables online naming.
 
 
 The signed-out screen provides **Sign up** and **Log in**. After account access, use Passport account → Balances / Deposit / Withdraw; the separate Midnight wallet, Audit, and Settings workspaces have their own navigation. The demo shows **Powered by Lace** attribution for its Lace-inspired wallet and passkey experience. Lace remains a separate wallet/host with its own provider policy; this demo does not claim full Lace compatibility.

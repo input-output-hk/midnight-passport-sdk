@@ -2,6 +2,8 @@ import type { PassportAccount } from '@input-output-hk/mn-passport-protocol';
 import { byId } from '../ui-dom.js';
 import { openClaimJournal, type ClaimJournal } from './claim-journal.js';
 import { showClaimPreparation } from './claim-preparation-ui.js';
+import { reviewedDispatchQuote } from './claim-quote.js';
+import { ClaimSponsorBusy } from './claim-quote.js';
 import { createClaimSendReview } from './claim-send-review.js';
 import {
   claimDigest,
@@ -32,6 +34,7 @@ const availabilityMessages = {
 
 function claimConflict(error: unknown): string | undefined {
   if (!(error instanceof Error)) return undefined;
+  if (error instanceof ClaimSponsorBusy) return error.message;
   if (error.message === 'This failed original was already released. Review a fresh claim.')
     return error.message;
   if (error.message === 'A different original claim is retained for this name.')
@@ -118,6 +121,86 @@ async function releaseVerifiedFailure(
   ensureAccount();
 }
 
+async function releaseExpiredUnsent(
+  recovery: ClaimRecovery,
+  journal: ClaimJournal,
+  original: ClaimReceipt,
+  account: PassportAccount,
+  scope: string,
+  ensureAccount: () => void,
+) {
+  const retire = recovery.preparation?.retireExpiredUnsent;
+  const saved = await journal.readPreparation(original.registryAddress, original.name, scope);
+  const quote = await reviewedDispatchQuote(original, saved);
+  if (!retire || !quote || quote.expiresAt > Date.now())
+    throw new Error('The original quote is not an expired, unsent preparation.');
+  if ((await recovery.check(original).catch(() => 'unavailable' as const)) !== 'pending')
+    throw new Error('The original claim changed. Preserve its receipt.');
+  if ((await recovery.availability(original.name, account.address)) !== 'available')
+    throw new Error('Registry availability is not confirmed. Preserve the original receipt.');
+  ensureAccount();
+  await retire(original);
+  ensureAccount();
+  await journal.releaseFailed(original, scope, 'EXPIRED_UNSENT');
+  ensureAccount();
+}
+
+async function inspectOriginalClaim(
+  recovery: ClaimRecovery,
+  journal: ClaimJournal,
+  original: ClaimReceipt,
+  account: PassportAccount,
+  selected: string,
+  scope: string,
+  release: HTMLButtonElement,
+  report: (message: string) => void,
+  ensureAccount: () => void,
+): Promise<void> {
+  const result = await recovery.check(original).catch(() => 'unavailable' as const);
+  ensureAccount();
+  const saved = await journal.readPreparation(original.registryAddress, original.name, scope);
+  const quote = await reviewedDispatchQuote(original, saved);
+  const sponsorStatus =
+    result === 'pending'
+      ? await recovery.preparation?.dispatchStatus?.(original).catch(() => undefined)
+      : undefined;
+  ensureAccount();
+  const registryAvailability =
+    result === 'pending' && (sponsorStatus === 'prepared' || sponsorStatus === 'retired')
+      ? await recovery.availability(selected, account.address).catch(() => undefined)
+      : undefined;
+  ensureAccount();
+  const expiredUnsent =
+    result === 'pending' &&
+    (sponsorStatus === 'prepared' || sponsorStatus === 'retired') &&
+    registryAvailability === 'available' &&
+    !!recovery.preparation?.retireExpiredUnsent &&
+    !!quote &&
+    quote.expiresAt <= Date.now();
+  release.hidden = !expiredUnsent && result !== 'failed' && result !== 'claim-failed';
+  release.dataset.reason = expiredUnsent ? 'expired-unsent' : 'failed';
+  release.textContent = expiredUnsent
+    ? 'Retire expired unsent original'
+    : 'Release failed original for a new attempt';
+  if (expiredUnsent) {
+    report(
+      sponsorStatus === 'retired'
+        ? 'The sponsor archived the expired, unsent original. Release its browser record to review a fresh quote.'
+        : 'Prepared but never sent. The quote expired and the name is unregistered. Retire this original before reviewing a fresh quote.',
+    );
+  } else if (result === 'pending' && sponsorStatus === 'prepared') {
+    report(
+      registryAvailability === 'taken'
+        ? 'Prepared but never sent. The name is now registered; inspect the registry before another attempt.'
+        : registryAvailability === 'available'
+          ? 'Prepared but never sent. The name is unregistered. Review the payment terms, then confirm the send before the quote expires.'
+          : messages.unavailable,
+    );
+  } else {
+    report(messages[result]);
+  }
+}
+
 async function restoreSelection(
   recovery: ClaimRecovery,
   currentAccount: () => PassportAccount | undefined,
@@ -128,6 +211,7 @@ async function restoreSelection(
   const account = currentAccount();
   const credentialId = account?.credentialId && Uint8Array.from(account.credentialId);
   if (!account || !credentialId?.length || account.networkId !== 'undeployed') return;
+  let restoredName: string | undefined;
   try {
     const scope = await claimDigest(credentialId);
     const journal = await openClaimJournal(indexedDB);
@@ -137,6 +221,7 @@ async function restoreSelection(
         account.address,
         scope,
       );
+      restoredName = selected;
       if (account !== currentAccount() || name.value !== '' || !selected) return;
       name.value = selected;
       const original = await journal.read(recovery.registryAddress, selected, scope);
@@ -153,15 +238,25 @@ async function restoreSelection(
         );
         return;
       }
-      const result = await recovery.check(original).catch(() => 'unavailable' as const);
-      if (account !== currentAccount() || name.value !== selected) return;
-      release.hidden = result !== 'failed' && result !== 'claim-failed';
-      report(messages[result]);
+      await inspectOriginalClaim(
+        recovery,
+        journal,
+        original,
+        account,
+        selected,
+        scope,
+        release,
+        report,
+        () => {
+          if (account !== currentAccount() || name.value !== selected)
+            throw new Error('Claim context changed.');
+        },
+      );
     } finally {
       journal.close();
     }
   } catch (error) {
-    if (account === currentAccount())
+    if (account === currentAccount() && (!restoredName || name.value === restoredName))
       report(
         claimConflict(error) ??
           'Claim state unavailable. Preserve this browser’s data and inspect the original claim.',
@@ -277,6 +372,14 @@ async function runClaimAction(context: ClaimActionContext): Promise<void> {
       if (release.hidden) throw new Error('Check the failed original before release.');
       // A failed recheck must not leave the previous failure observation actionable.
       release.hidden = true;
+      if (release.dataset.reason === 'expired-unsent') {
+        await releaseExpiredUnsent(recovery, journal, original, account, scope, ensureAccount);
+        preparation?.clear();
+        sendReview.clear();
+        receipt.value = JSON.stringify(original);
+        report('Expired unsent original archived. Review a fresh claim quote to try again.');
+        return;
+      }
       await releaseVerifiedFailure(
         recovery,
         journal,
@@ -298,15 +401,27 @@ async function runClaimAction(context: ClaimActionContext): Promise<void> {
         return;
       // Journal read above is the acknowledgement. A transport failure leaves
       // the same receipt available for reconciliation on this device.
-      await recovery.dispatch(original).catch(() => undefined);
+      try {
+        await recovery.dispatch(original);
+      } catch {
+        report('Send outcome unknown. Preserve this original receipt and check the claim.');
+        return;
+      }
       ensureAccount();
       report(messages.pending);
       return;
     }
-    const result = await recovery.check(original).catch(() => 'unavailable' as const);
-    ensureAccount();
-    release.hidden = result !== 'failed' && result !== 'claim-failed';
-    report(messages[result]);
+    await inspectOriginalClaim(
+      recovery,
+      journal,
+      original,
+      account,
+      selected,
+      scope,
+      release,
+      report,
+      ensureAccount,
+    );
   } finally {
     journal.close();
   }

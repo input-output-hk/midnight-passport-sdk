@@ -12,6 +12,27 @@ stops the owner's `midnight-network` project. It installs pinned workspace
 dependencies and builds the local SDK packages if needed before checking the
 live claim; this changes only rebuildable checkout outputs, not chain state.
 
+To inspect the shipped claim and ACC against **one node-finalized block** without
+starting the demo or sending a transaction, attach to the existing stack and
+run the read-only verifier from the dapp package directory:
+
+```sh
+cd apps/passport-dapp
+MN_NODE_URL=http://127.0.0.1:9944 \
+MN_INDEXER_URL=http://127.0.0.1:8088/api/v4/graphql \
+MN_INDEXER_WS_URL=ws://127.0.0.1:8088/api/v4/graphql/ws \
+nix develop -c node --import tsx \
+  ../../examples/midnames-local/check-live-profile.mjs \
+  ../../examples/midnames-local/evidence/shared-ledger9-paidfix-deposit-20261118.json
+```
+
+The verifier checks the recorded claim block against the node, makes up to
+20 indexer attempts one second apart for the exact node-finalized block, reads both
+contracts at that canonical block hash, and checks it again. An older indexer
+tip refuses rather than making a moved name look current. This is a local chain-state
+observation through one indexer, not an authenticated online provider or a
+guarantee that the binding will remain unchanged after the read.
+
 ```sh
 nix develop -c node scripts/midnames-local-demo.mjs check
 nix develop -c node scripts/midnames-local-demo.mjs up \
@@ -77,8 +98,16 @@ nix develop -c node scripts/midnames-local-demo.mjs up \
 Open the activated ACC with its passkey, go to **Passport account → Balances →
 Register a .night name**, enter an unregistered name such as `yurii.night`, and
 check registry status. Review the exact quote, approve owner-side proof, inspect
-the saved original receipt, then explicitly send the prepared claim. Recheck the
-original claim until it and the current registry binding agree. Registration is
+the saved original receipt, then click **Review terms before send**. This first
+click sends nothing; inspect the saved price and click **Confirm reviewed terms
+and send** before the quote expires. **Check original claim** distinguishes a
+prepared, unsent receipt from a claim whose send outcome needs reconciliation.
+If an unsent quote expires, use **Retire expired unsent original** after the
+local sponsor verifies that it has no dispatch fence, the original is absent
+from the indexer, and the name remains free. The old private journal is archived
+beside the new one; the browser retains the original in released history. Then
+review a fresh quote. A fenced or uncertain send stays pending for read-only
+reconciliation. Recheck the sent original until it and the registry binding agree. Registration is
 optional and can be done in a later session with the same account credential.
 The separate **Deposit** page offers the configured NIGHT amount. Each deposit
 requires the funding wallet's allowlisted asset and available balance.
@@ -279,6 +308,8 @@ with the operator, outside Git and any browser/service request.
 On `PASS`, read `registryAddress` from `bootstrap.json` and configure the demo's
 `VITE_MIDNAMES_REGISTRY_ADDRESS` with it, together with
 `VITE_MIDNAMES_REGISTRY_PROFILE=standalone-0.35`,
+`VITE_MIDNAMES_CLAIM_PROTOCOL_VERSION=2001100` for this observed shared
+Ledger 9 chain (the isolated fixture uses `2001000`),
 `VITE_MIDNAMES_NAMESPACE=night`, `VITE_MIDNAMES_NETWORK_ID=undeployed`, and
 `VITE_MIDNAMES_INDEXER_URL` / `VITE_MIDNAMES_INDEXER_WS_URL` matching the
 bootstrap pair. The deployed root is a transitional
@@ -384,6 +415,26 @@ before proof because the adjustment initially assumed a guaranteed transcript;
 read-only reconciliation verified both funding transactions and no submitted
 claim before releasing that attempt's lease. The successful run is a new,
 independently funded claim, not a replay of the earlier attempt.
+
+### Compact 0.36 registry compatibility probe
+
+A [read-only compatibility receipt](evidence/compact036-readonly-20261119.json)
+records a rebuild of the exact pinned Midnames source with only its language
+pragma changed from 0.22 to 0.28. Compact 0.36.0 generated runtime 0.21.0 code
+and all 13 ZKIR circuits. Regenerating all 13 key pairs produced byte-identical
+ZKIR, prover keys and verifier keys to the pinned Compact 0.35 standalone
+manifest. The `create_domain` and `transfer_domain` circuits measured
+`k=15`/20,954 rows and `k=14`/8,288 rows, respectively. A synthetic Ledger 9
+transcript replay accepted both operations, and the 0.36 generated reader
+decoded the existing `paidfix.night` contract target from the deployed registry
+at node-finalized block 20,862.
+
+This establishes compiler output and read compatibility for this exact source;
+it does not qualify 0.36 proof generation, the transaction composer, fee
+calculation, or a submitted write. The live 0.35 registry and ACC were not
+changed. Keep the current deletion-credit guard for all deployed fixture calls
+until an exact original 0.36 transaction passes its own native gate. Key-byte
+equality alone is not authorization to change the live profile.
 
 For an operator-controlled local registry, a separate root-assisted fixture
 can issue the name without a paid claim. It proves `create_domain` under the
@@ -910,7 +961,7 @@ the proof, credential continuity and sponsor balancing independently of
 the fixture's two-DUST admission test.
 
 Save the prepared public receipt while the matching ACC is open, then select
-**Send prepared claim**, review the saved terms, and confirm. **Check original claim** reads the original receipt
+**Review terms before send**, review the saved terms, and confirm. **Check original claim** reads the original receipt
 after a reload or lost response. This route is a local fixture. The live browser run used a fixture login for
 an already activated ACC and a Chromium virtual passkey to prove the fixed
 claim. It observed one assertion, one proof, one wallet balance, one dispatch

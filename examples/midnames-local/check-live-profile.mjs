@@ -6,6 +6,7 @@ import {
   createMidnamesIndexer,
   createMidnamesLedgerReads,
 } from '../../apps/passport-dapp/src/midnames/ledger-reader.ts';
+import { waitForFinalizedIndexerBlock } from './finalized-indexer.mjs';
 
 const [file] = process.argv.slice(2);
 assert.ok(file, 'Pass a local Midnames profile JSON file.');
@@ -62,27 +63,54 @@ assert.equal(
   `0x${profile.registry.claimBlock.hash}`,
   'The recorded name claim is not on this chain.',
 );
-const reader = createMidnamesLedgerReads(
-  createMidnamesIndexer('undeployed', indexerUrl, indexerWsUrl),
-  'undeployed',
-  profile.recipient.bindingId ?? 'acc-s3r1.1',
-  'standalone-0.35',
-);
-const scope = {
-  networkId: 'undeployed',
-  namespace: 'night',
-  registryAddress: profile.registry.address,
-};
-const claim = await reader.readClaim(profile.registry.name, scope);
-assert.equal(claim?.target.kind, 'contract', 'The name has no contract target.');
-assert.equal(claim.target.address, profile.recipient.address, 'The name target changed.');
-assert.ok(await reader.isSupportedAccount(profile.recipient.address, 'undeployed'));
-console.log(
-  JSON.stringify({
+const finalizedHash = await rpc('chain_getFinalizedHead', []);
+assert.match(finalizedHash, /^0x[a-f0-9]{64}$/);
+const finalizedHeader = await rpc('chain_getHeader', [finalizedHash]);
+assert.match(finalizedHeader?.number, /^0x[a-f0-9]+$/);
+const finalizedHeight = Number(BigInt(finalizedHeader.number));
+assert.ok(Number.isSafeInteger(finalizedHeight));
+const indexer = createMidnamesIndexer('undeployed', indexerUrl, indexerWsUrl);
+try {
+  assert.ok(finalizedHeight >= profile.registry.claimBlock.height);
+  const blockHash = finalizedHash.slice(2);
+  const block = await waitForFinalizedIndexerBlock(indexer, blockHash, finalizedHeight);
+  // Midnames and ACC must be read as of the same canonical finalized block. A
+  // fresh read of each contract at the indexer tip can straddle a name update.
+  const pinned = {
+    ...indexer,
+    queryContractState: (address) =>
+      indexer.queryContractState(address, { type: 'blockHash', blockHash }),
+  };
+  const reader = createMidnamesLedgerReads(
+    pinned,
+    'undeployed',
+    profile.recipient.bindingId ?? 'acc-s3r1.1',
+    'standalone-0.35',
+  );
+  const scope = {
     networkId: 'undeployed',
-    registryAddress: scope.registryAddress,
-    name: profile.registry.name,
-    accountAddress: profile.recipient.address,
-    claimBlock: profile.registry.claimBlock,
-  }),
-);
+    namespace: 'night',
+    registryAddress: profile.registry.address,
+  };
+  const claim = await reader.readClaim(profile.registry.name, scope);
+  assert.equal(claim?.target.kind, 'contract', 'The name has no contract target.');
+  assert.equal(claim.target.address, profile.recipient.address, 'The name target changed.');
+  assert.ok(await reader.isSupportedAccount(profile.recipient.address, 'undeployed'));
+  assert.equal(
+    await rpc('chain_getBlockHash', [finalizedHeight]),
+    finalizedHash,
+    'The anchored indexer block is not canonical on the node.',
+  );
+  console.log(
+    JSON.stringify({
+      networkId: 'undeployed',
+      registryAddress: scope.registryAddress,
+      name: profile.registry.name,
+      accountAddress: profile.recipient.address,
+      claimBlock: profile.registry.claimBlock,
+      finalizedRead: { hash: blockHash, height: block.height },
+    }),
+  );
+} finally {
+  await indexer.dispose?.();
+}

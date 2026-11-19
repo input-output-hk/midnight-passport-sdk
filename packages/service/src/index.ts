@@ -38,12 +38,15 @@ export {
 export {
   createFileFundingStore,
   inspectFileFundingStore,
+  releaseRejectedFundingReservation,
   type FundingInspection,
 } from './file-funding-store.js';
 export {
   verifyFundingCredit,
+  verifyFundingRejection,
   type FundingContractAction,
   type FundingCreditEvidence,
+  type FundingRejectionEvidence,
   type FundingPendingRecord,
 } from './funding-reconciliation.js';
 export {

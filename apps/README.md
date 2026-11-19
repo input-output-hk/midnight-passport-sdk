@@ -9,7 +9,11 @@ responsive Activity panel/sheet and a dedicated Audit workspace using portable
 action to its new location. **Passport account** now uses **Balances / Deposit /
 Withdraw** pages: refresh/shielded reads stay with balances, one transfer form is
 shown at a time, and the open ACC/network remains visible. Contract counters are
-expandable. Deposit uses the configured demo funding wallet; navigation never
+expandable. Deposit uses the configured demo funding wallet. A local NIGHT proof/balance
+failure before the ACC send fence can release the exact reserved request only
+after a durable no-ACC-submission marker; the wallet's preparation self-transfer
+remains separately inspectable. Later or unmarked failures keep the original ID
+pending for reconciliation. Navigation never
 starts a transfer or credential request. Form values survive same-page tab and
 workspace changes; Settings’ session-target shortcut opens Withdraw. The [optional React host example](../docs/site/react-example.md) uses synthetic
 public snapshots only; the optional Lace Wallet reader has separate real-provider
@@ -746,8 +750,10 @@ evidence. The demo remains one composition of these libraries.
 credentials, keeps its original ID for the wire and confirmation, and returns owned
 validated receipt fields. Only an explicit timeout bounds credentials through body
 observation; it never retries or invents an ID. See the library funding contract in
-`docs/site/service.md`. The demo's proxy, allowlist, wallet and reservation recovery
-policy are unchanged; an observation failure still needs original-ID reconciliation.
+`docs/site/service.md`. An observation failure still needs original-ID
+reconciliation. After an operator verifies an uncredited local request and
+tombstones it, the proxy forwards only the exact reconciliation receipt. The
+browser clears that old ID on the next click; another click starts a new deposit.
 
 Synthetic browser receipts now include monotonic setup, per-arm, checkpoint and
 cleanup timings, plus owned page/context counts. Checkpoint intervals include
@@ -900,10 +906,12 @@ See the [funding image and operator guide](passport-funding-service/README.md).
 
 The demo's optional Midnames reader uses the existing **Name service** panel.
 Set the base build inputs in the [naming adapter guide](../docs/site/names.md#source-preview-midnames-210).
-A configured lookup uses the registry's contract target and verifies the
-deployed ACC binding before displaying it. A non-`undeployed` network or
-non-loopback indexer also requires an independently observed, public known-name
-and ACC pin plus a second, distinct-origin indexer endpoint pair. Each lookup
+A configured lookup reads the registry's contract target and verifies the
+deployed ACC binding at the same indexer block before displaying it. The
+indexer is still trusted for the block and contract-state bytes. A
+non-`undeployed` network or non-loopback indexer also requires an independently
+observed, public known-name and ACC pin plus a second, distinct-origin indexer
+endpoint pair. Each lookup
 rechecks the known pair through both paths and refuses an absent, changed or
 divergent binding. Configure `VITE_MIDNAMES_VERIFICATION_INDEXER_URL` and
 `VITE_MIDNAMES_VERIFICATION_INDEXER_WS_URL` together. Distinct origins do not
@@ -1046,6 +1054,15 @@ synthetic connector and registry; it does not perform a payment.
 
 ### Standalone Midnames claim recovery
 
+Standalone claim reconciliation requires an explicit
+`VITE_MIDNAMES_CLAIM_PROTOCOL_VERSION` alongside the Indexer API v4 URLs.
+The shared Ledger 9 demo launcher pins the observed transaction protocol
+`2001100`; the isolated fixture uses `2001000`. The values identify transaction
+formats, not GraphQL API revisions. A missing or unsupported pin disables the
+claim profile instead of misclassifying a finalized original as unavailable.
+Resolver-only standalone configurations can omit the pin; they keep name
+lookup and named sends but expose no claim recovery panel.
+
 An opt-in host can supply the demo's preparation adapter. The user reviews the
 exact sponsor quote and explicitly approves preparation. The form saves the
 quote and owner commitment before the sponsor request and accepts only a receipt
@@ -1053,7 +1070,26 @@ bound to both. After a lost response the original credential can recover or
 import that receipt. A known sponsor refusal before any balance intent releases
 the rejected quote for fresh review; an uncertain response retains it. Imported
 receipts without a matching saved quote are reconciliation-only. A send first
-shows the saved price, payee, fee ceiling and expiry, then requires confirmation.
+shows the saved price, payee, fee ceiling and expiry without submitting, then
+requires confirmation. Checking the original reads the sponsor's dispatch fence
+as well as the indexer: an unfenced receipt is displayed as prepared but unsent.
+An expired unfenced preparation can be verified and archived by the local
+sponsor before reviewing a new quote.
+The reference sponsor journal holds one original at a time. While an unresolved
+preparation occupies it, a different account's quote request returns a distinct
+busy result **before** naming proof or preparation. The page explains that no new
+claim was started by that request; reconcile or retire the original through its
+own browser flow before another account asks for a quote. A busy refusal does not
+authorize clearing the sponsor journal or the other browser's site data.
+
+For online Preprod reads, the optional
+[host-controlled indexer proxy](../examples/midnames-online/README.md) keeps a
+Blockfrost project ID out of the browser's `VITE_` inputs. The online profile
+still requires an independently known name-to-ACC mapping and a second,
+independent indexer; the proxy alone does not enable online naming.
+If an older quote was proved while another original held the sponsor,
+**Recover prepared receipt** obtains an exact pre-intent refusal and releases
+only that browser's unprepared reservation. The occupying original remains.
 The quote pins the sponsor payment wallet; NIGHT inputs and change must use
 that wallet. It also pins the registered domain's future subdomain payment
 address. The sponsor HTTP route requires a prepared, quote-bound receipt.
@@ -1070,6 +1106,9 @@ credential. It restores that choice after reopening with the same credential
 and reconciles a retained original receipt. Availability and imported-receipt
 checks leave the name unselected; enter it again after a reload. A pending claim stays visibly
 pending until the original transaction and current registry binding agree.
+On reopen, a retained original also checks the sponsor's dispatch fence: if it is
+still prepared and unsent while the registry shows the name available, the panel
+says so instead of implying a transaction was sent.
 An unavailable indexer stays an unavailable check rather than a pending claim;
 the original receipt remains available for reconciliation. If neither preparation nor
 sponsor dispatch is configured, the panel labels itself as read-only receipt
@@ -1082,10 +1121,12 @@ synthetic connector and naming reader. It verifies the panel, receipt scope,
 one stub `createAccount` invocation, and failed-original release with archived
 history after reload. A conflicting status never shows the release action;
 an unavailable recheck hides it until the user checks the original again.
-An isolated profile checks that reviewing the full synthetic quote calls neither
-owner proving nor sponsor preparation; one explicit approval then calls each
-once and retains the receipt after reopening. The fixture does not deploy an
-ACC, use a real passkey or sponsor, send a claim, or qualify a chain/provider.
+An isolated profile checks that the full app obtains a quote through the actual
+same-origin HTTP sponsor handler before any owner proving or preparation; one
+explicit approval then calls each once. Reopening a pending original shows the
+synthetic sponsor's prepared-but-unsent status before a later registered check.
+The fixture does not deploy an ACC, use a real passkey or funded sponsor, send
+a claim, or qualify a chain/provider.
 Another isolated profile refuses an unavailable or wrong-ACC quote before proof,
 clears review after the name changes, and checks that a synthetic pre-intent
 sponsor refusal needs a fresh quote. A successful retry keeps the same ACC and
@@ -1110,7 +1151,8 @@ preview does not establish name-owner recovery after total credential loss.
 It also checks availability against the configured registry and verifies the
 open ACC's binding. A retained receipt takes precedence over availability.
 The sponsor prepares the claim separately. The opt-in loopback fixture lets
-the user acknowledge a saved receipt with **Send prepared claim**. See the
+the user acknowledge a saved receipt with **Review terms before send**, then
+**Confirm reviewed terms and send**. See the
 [receipt and recovery flow](../docs/site/names.md#recover-the-sponsors-original-claim-in-the-demo).
 
 ### Standalone shielded deposit by name

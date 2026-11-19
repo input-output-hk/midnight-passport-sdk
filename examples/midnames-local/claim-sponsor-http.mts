@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { existsSync } from 'node:fs';
 import {
   claimReceipt,
   claimReceiptLimit,
@@ -12,13 +13,19 @@ import {
   claimPreparePath,
   claimPreparedPath,
   claimQuotePath,
+  claimRetirePath,
+  claimStatusPath,
 } from '../../apps/passport-dapp/src/midnames/claim-preparation-transport.ts';
 import {
+  claimRetiredArchivePath,
   claimPrepareLimit,
   createClaimPreparationJournal,
   type ClaimSponsorPreparationPorts,
 } from './claim-preparation.mts';
-import { ClaimPreIntentRefusal } from '../../apps/passport-dapp/src/midnames/claim-quote.ts';
+import {
+  ClaimPreIntentRefusal,
+  ClaimSponsorBusy,
+} from '../../apps/passport-dapp/src/midnames/claim-quote.ts';
 
 async function readJson(request: IncomingMessage, limit: number): Promise<unknown> {
   const chunks: Buffer[] = [];
@@ -48,8 +55,15 @@ export function createClaimSponsorHandler(
   const host = new URL(origin).host;
   const journal = openClaimDispatch(directory);
   const prep = preparation && createClaimPreparationJournal(directory, journal, preparation);
+  let active = 0;
+  let retiring = false;
   const isPreparation = (url: string | undefined) =>
-    prep && (url === claimQuotePath || url === claimPreparePath || url === claimPreparedPath);
+    prep &&
+    (url === claimQuotePath ||
+      url === claimPreparePath ||
+      url === claimPreparedPath ||
+      url === claimStatusPath ||
+      url === claimRetirePath);
   return async (request: IncomingMessage, response: ServerResponse): Promise<boolean> => {
     if (request.url !== claimDispatchPath && !isPreparation(request.url)) return false;
     response.setHeader('Cache-Control', 'no-store');
@@ -62,6 +76,13 @@ export function createClaimSponsorHandler(
       response.writeHead(403).end();
       return true;
     }
+    const retire = request.url === claimRetirePath;
+    if (retiring || (retire && active > 0)) {
+      response.writeHead(409).end();
+      return true;
+    }
+    if (retire) retiring = true;
+    else active++;
     try {
       const input = await readJson(
         request,
@@ -80,6 +101,24 @@ export function createClaimSponsorHandler(
         response.writeHead(202).end();
       } else if (prep && request.url === claimQuotePath) {
         sendJson(response, await prep.issue(input));
+      } else if (prep && request.url === claimRetirePath) {
+        sendJson(response, await prep.retireExpiredUnsent(input));
+      } else if (prep && request.url === claimStatusPath) {
+        const receipt = claimReceipt(input);
+        if (JSON.stringify(journal.preparedReceipt()) === JSON.stringify(receipt)) {
+          sendJson(response, {
+            status: journal.hasFence(receipt) ? 'sent-or-unknown' : 'prepared',
+          });
+        } else if (existsSync(claimRetiredArchivePath(directory, receipt))) {
+          const archived = openClaimDispatch(
+            claimRetiredArchivePath(directory, receipt),
+          ).preparedReceipt();
+          if (JSON.stringify(archived) !== JSON.stringify(receipt))
+            throw new Error('The retired local original differs.');
+          sendJson(response, { status: 'retired' });
+        } else {
+          throw new Error('The local sponsor has no matching prepared original.');
+        }
       } else if (prep) {
         const result = await (request.url === claimPreparePath
           ? prep.prepare(input)
@@ -89,7 +128,18 @@ export function createClaimSponsorHandler(
       }
     } catch (error) {
       onError?.(error);
-      response.writeHead(error instanceof ClaimPreIntentRefusal ? 412 : 409).end();
+      response
+        .writeHead(
+          error instanceof ClaimSponsorBusy
+            ? 423
+            : error instanceof ClaimPreIntentRefusal
+              ? 412
+              : 409,
+        )
+        .end();
+    } finally {
+      if (retire) retiring = false;
+      else active--;
     }
     return true;
   };

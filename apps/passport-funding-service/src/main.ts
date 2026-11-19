@@ -3,16 +3,24 @@ import type { AddressInfo } from 'node:net';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import {
+  Contract,
+  ledger,
+  pureCircuits,
+} from '@input-output-hk/mn-passport-contract/bindings/acc-s3r1.1';
+import { remoteV1Prover } from '@input-output-hk/mn-passport-adapter-service';
+import {
   createFileFundingStore,
   createServer,
   createWalletFundingBackend,
   fundingRoute,
   json,
   verifyArtefacts,
+  type FundingProgress,
 } from '@input-output-hk/mn-passport-service';
 import { loadFundingConfig } from './config.ts';
 import { deployedAddresses } from './deployments.ts';
 import { prepareLocalnetNight, type NightWallet } from './night-preparation.ts';
+import { submitMeasuredNightDeposit } from './measured-night-deposit.ts';
 import { valueCallRoute } from './value-call.ts';
 import { inventoryRoute, walletInventory, type InventoryWallet } from './inventory.ts';
 import type { createMidnightWalletPorts } from '@input-output-hk/mn-passport-adapter-midnight-js';
@@ -74,6 +82,45 @@ const backend = createWalletFundingBackend({
   inventory: () => walletInventory(wallet.walletCtx.wallet),
   deployed: (address) => deployedAddresses(config.deploymentsFile, config.networkId).has(address),
   connect: (address) => setup.connectAccount(wallet, address),
+  ...(config.networkId === 'undeployed'
+    ? {
+        async depositNight(
+          address: string,
+          amount: bigint,
+          recordProgress: (progress: FundingProgress) => Promise<void>,
+        ) {
+          const service = process.env.PASSPORT_SERVICE_URL ?? 'http://127.0.0.1:8787';
+          const coin = await wallet.providers.walletProvider.getCoinPublicKey();
+          const encryption = await wallet.providers.walletProvider.getEncryptionPublicKey();
+          const asHex = (value: string | Uint8Array) =>
+            typeof value === 'string' ? value : Buffer.from(value).toString('hex');
+          return submitMeasuredNightDeposit(
+            {
+              network: {
+                networkId: config.networkId,
+                bindingId: config.bindingId,
+                manifestSha256: config.manifestSha256,
+                indexerUrl: config.indexerUri,
+                indexerWsUrl: config.indexerWsUri,
+                nodeUrl: config.nodeUri,
+                artefactUrl: `${service}/v1/zk/${config.bindingId}`,
+              },
+              binding: { Contract, ledger, pureCircuits },
+              target: address,
+              amount,
+              walletKeys: {
+                coinPublicKey: asHex(coin),
+                encryptionPublicKey: asHex(encryption),
+              },
+              prover: remoteV1Prover(service),
+            },
+            wallet.providers.walletProvider,
+            wallet.providers.midnightProvider,
+            recordProgress,
+          );
+        },
+      }
+    : {}),
   ...(config.networkId === 'undeployed'
     ? {
         prepareDeposit: (color: Uint8Array, amount: bigint): Promise<string | undefined> =>

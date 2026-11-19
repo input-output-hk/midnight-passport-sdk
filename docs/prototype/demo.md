@@ -74,16 +74,27 @@ nix develop -c node scripts/demo.mjs up --funding
 
 After creating or opening an ACC in the page, use **Fund Passport account** in Actions. The button
 deposits up to 10 smallest units of the selected allowlisted asset from the separate localnet funding
-wallet. A NIGHT deposit first splits an exact-value UTXO in the funding wallet, then calls the ACC's
-`deposit_unshielded` circuit; this transaction shape passed the pinned localnet's cost check and a
-live 10-unit deposit increased the ACC NIGHT balance from 0 to 10. It appears only when the demo was
-started with `--funding` and is enabled only while an ACC
+wallet. A NIGHT deposit first splits an exact-value UTXO in the funding wallet,
+then calls the ACC's `deposit_unshielded` circuit with measured Ledger 9
+deletion credit. The finalized transaction hash is journaled before node
+submission. The legacy reference call was rejected with gas error 104 on the
+shared stack. A fresh native measured funding-service call confirmed 10 units
+of ACC NIGHT credit on that stack on 2026-11-18. It appears only when the demo
+was started with `--funding` and is enabled only while an ACC
 is open. The account card reads the ACC's unshielded NIGHT and test-token balances separately, and
 shows the confirmed transaction. For NIGHT, the response and copied operation log also include
 the wallet self-transfer transaction ID. The browser never receives
 the funding wallet seed or bearer token. The browser keeps the same request ID for each asset after
-an uncertain result. A completed request replays its recorded result; a pending request returns 409
-and needs operator reconciliation before any new attempt. The button is localnet-only and does not fund the read-only built-in HD
+an uncertain result. If local NIGHT proof or balancing fails before the ACC send
+fence, the service durably records that no ACC deposit was submitted, then returns
+an exact `FundingRequestReleased` receipt. Its preparation self-transfer may
+already have happened in the funding wallet. A failed marker/release write or a
+failure after the final hash fence retains the original request for operator
+reconciliation. A completed request replays its recorded result; a pending request returns 409
+and needs operator reconciliation before any new attempt. After an operator
+releases a verified uncredited original, the next click receives an exact
+reconciliation receipt and clears that old browser ID; a further click starts a
+new request. The button is localnet-only and does not fund the read-only built-in HD
 wallet.
 
 The operator CLI remains available. Use the account address from the evidence panel and the color
@@ -185,6 +196,25 @@ the target. An absent or ambiguous target, a missing grant opening, or an unveri
 stops the operation. It spans multiple transactions: if it is interrupted after key rotation,
 inspect the live roster and inbox before attempting another removal. The removed passkey should
 no longer open the ACC; confirm the owner can still open it.
+
+## Local `.night` name claim
+
+For the opt-in local `.night` demo, create or reopen the ACC first, then choose a
+name on its Balances page. Review the sponsor quote before approving the naming
+proof; a second click reviews the saved terms before sending. **Prepared but never
+sent** is not a registered name. Check the original claim until its transaction
+and registry binding agree. The reference sponsor holds one original at a time:
+if another account asks for a quote while that original is unresolved, it reports
+busy before requesting a naming proof. Reconcile the original in its own browser
+instead of clearing either browser's site data or starting a replacement claim.
+For an older proved but unprepared quote, **Recover prepared receipt** can
+confirm that another original holds the sponsor and release only that browser's
+unprepared reservation. A missing or uncertain sponsor response retains it.
+
+For a separate Preprod read-only profile, the optional
+[Blockfrost indexer proxy](../../examples/midnames-online/README.md) keeps the
+project ID on the host. It does not replace the required known mapping and
+independent second indexer, and it does not enable a Preprod claim or payment.
 
 ## Scoped grant demonstration
 

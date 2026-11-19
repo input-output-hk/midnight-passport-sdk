@@ -107,6 +107,7 @@ network as the Passport demo.
 | `VITE_MIDNAMES_NETWORK_ID` | Exact Passport demo network, such as `undeployed` |
 | `VITE_MIDNAMES_NAMESPACE` | `night` or an explicitly configured canonical namespace |
 | `VITE_MIDNAMES_REGISTRY_ADDRESS` | 64 lowercase hex characters for the pinned registry |
+| `VITE_MIDNAMES_CLAIM_PROTOCOL_VERSION` | Required for standalone claim reconciliation: exact Indexer v4 transaction `protocolVersion` observed on this chain (`2001000` for the isolated fixture, `2001100` for shared Ledger 9); this is distinct from the `/api/v4/graphql` API version |
 | `VITE_MIDNAMES_INDEXER_URL` | Public HTTPS GraphQL endpoint, or HTTP on loopback |
 | `VITE_MIDNAMES_INDEXER_WS_URL` | Public WSS endpoint, or WS on loopback |
 | `VITE_MIDNAMES_VERIFICATION_INDEXER_URL` | Second HTTPS GraphQL endpoint on a distinct origin; required for a non-`undeployed` network or non-loopback primary indexer |
@@ -115,13 +116,14 @@ network as the Passport demo.
 | `VITE_MIDNAMES_KNOWN_ACC` | Its independently observed 64-hex deployed ACC address; required on non-`undeployed` networks or with a non-loopback indexer |
 
 The panel rejects partial configuration. It accepts exact canonical lowercase
-names within the chosen namespace. Each lookup checks the registry verifier
-roster and resolves the name from that observed state using the Midnames
-`/core` subpath. Only its contract target proceeds. The adapter then checks
-that the address is an activated ACC with the complete verifier roster for the
-pinned binding. Missing names, wrong target types and unavailable reads have
-separate outcomes. An indexer is a trusted read input, and a lookup reflects
-its observed state. The demo presents the result for inspection.
+names within the chosen namespace. Each lookup captures one indexer block,
+checks the registry verifier roster and resolves the name from that block using
+the Midnames `/core` subpath. Only its contract target proceeds. The adapter
+checks the activated ACC and complete verifier roster at **the same block**.
+Missing names, wrong target types and unavailable reads have separate outcomes.
+An indexer is a trusted read input: a stale or dishonest indexer can still
+serve a stale block. The demo presents the result for inspection and value
+routes re-resolve before submission.
 
 For any non-`undeployed` network or non-loopback indexer, the two known-mapping
 inputs and a complete second indexer path are fail-closed readiness gates.
@@ -132,9 +134,10 @@ malformed, or unavailable known record stops the requested lookup and any
 remote standalone claim availability or receipt check; it never falls back to
 a different destination. The operator must obtain and record the
 known pair from an independent source with its observation date before setting
-these public inputs. The two paths use the same pinned network, registry and
-ACC verifier checks; a missing record on only one path, a changed target, or
-an unavailable path refuses the lookup. Different origins alone do not prove
+these public inputs. Each path uses one internally consistent indexer block
+with the same pinned network, registry and ACC verifier checks; a missing
+record on only one path, a changed target, or an unavailable path refuses the
+lookup. Different origins alone do not prove
 independent backends, matching chain height, or independently verified live
 mapping. The operator must establish those properties separately before
 claiming online qualification. Claim availability and finality still read the
@@ -156,17 +159,41 @@ A read-only check against the existing demo indexer also returned the expected
 missing-contract response for an absent address. An online profile requires
 evidence for its deployed registry, a known name, and the corresponding chain
 before it is enabled.
+The local [finalized-state verifier](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local#open-the-local-passport-and-midnames-demo)
+uses the node's canonical finalized block as a single Indexer API v4 offset
+for the registry and target ACC. This avoids reading those two contracts on
+different indexer tips in that operator check. The interactive resolver still
+reads current indexer state when each lookup runs; the check does not turn an
+indexer response into a cryptographic state proof or qualify online providers.
 
-As checked on 14 November 2026, the pinned SDK's historical Midnight-hosted
-preprod indexer endpoints return HTTP 410. The [current network endpoint
-guide](https://docs.midnight.network/relnotes/network) uses Blockfrost project
-authentication for preprod. The same guide records a 6 November Preview reset;
+As checked on 19 November 2026, the pinned SDK's historical Midnight-hosted
+preprod indexer endpoint returns HTTP 410. The [current network endpoint
+guide](https://docs.midnight.network/guides/networks-and-environments) uses Blockfrost project
+authentication for preprod. The guide records a 7 November Preview reset;
 a read of the SDK's pinned Preview registry address through the current v4
 indexer returned no contract on 14 November. No independently known online name-to-ACC contract
 mapping has been qualified, so this demo does not enable an online Midnames
 profile. Keep a project token in a host-controlled indexer proxy or provider,
-never in `VITE_` browser inputs; this reference browser does not provide that
+never in `VITE_` browser inputs. The reference browser does not host an
 authenticated proxy itself.
+
+For a local host using Midnight Preprod, the optional
+[Blockfrost indexer proxy](../../examples/midnames-online/README.md) exposes the
+v4 HTTP/WebSocket paths to the browser and adds the project ID only upstream.
+It is a transport example, not an online naming qualification. The Preprod
+registry, independently known name-to-ACC mapping, and a genuinely separate
+second indexer must still be verified before enabling the online profile.
+The optional [known-mapping host check](../../examples/midnames-online/README.md#check-one-known-mapping-at-a-finalized-block)
+accepts a dated, independently observed name-to-ACC pin and two tokenless
+Indexer API v4 readers. It waits for both readers to expose the same
+node-finalized block, reads the registry and activated ACC at that block, and
+refuses a changed target or a noncanonical block. It sends a Blockfrost project
+ID only to the exact official node RPC origin. The browser proxy above rejects
+this host CLI because it requires a browser Origin; operator-controlled CLI
+endpoints need their own access policy. This source-only check has synthetic
+tests, not a live public provider receipt. It cannot establish that the
+operator's known pair was independently observed or that two origins have
+separate backends, so it does not enable the online demo profile.
 
 | Passport naming constraint | Implemented local subset | Deviation or remaining gate |
 | --- | --- | --- |
@@ -193,7 +220,13 @@ activation, registry bootstrap and a finalized name claim first.
 
 For a disposable `undeployed` network, set
 `VITE_MIDNAMES_REGISTRY_PROFILE=standalone-0.35` alongside the five settings
-above. This selects the independently pinned standalone verifier roster.
+above, and pin `VITE_MIDNAMES_CLAIM_PROTOCOL_VERSION` from a known indexed
+transaction. This selects the independently pinned standalone verifier roster
+and the transaction format used to reconcile an original claim. A missing or
+unsupported protocol pin refuses the claim profile rather than reporting a
+finalized transaction as unavailable.
+Resolver-only standalone profiles can omit the claim pin; they provide name
+lookup without claim recovery or dispatch.
 The default profile remains `midnames-2.1.0`. A registry with a different
 roster is refused. See the [standalone preparation recipe](../../examples/midnames-local/README.md).
 The same recipe now includes a dedicated bootstrap command for an already
@@ -226,6 +259,15 @@ absent claim were reconciled before the fresh run. These scoped fixtures do not
 qualify browser onboarding, passkey recovery, public `passport.night` issuance
 or online sponsor funding. No live `alice.night` mapping was established by
 the earlier failed receipts.
+A later [read-only Compact 0.36 evaluation](../../examples/midnames-local/evidence/compact036-readonly-20261119.json)
+recompiled the same pinned registry source for runtime 0.21.0. All 13 ZKIR
+circuits and all 13 prover/verifier key pairs matched the 0.35 standalone
+manifest byte for byte. Its generated reader decoded `paidfix.night` and the
+same ACC at a node-finalized block. This narrows the migration question but
+does not qualify 0.36 proof, transaction gas, submission, browser registration,
+or a change to the deployed profile. The local 0.35 deletion-credit guard stays
+in place.
+
 For an online deployment, the host must configure its actual registry address
 and a funded sponsor wallet through `PASSPORT_SPONSOR_SEED` in the service
 environment; the local genesis seed does not fund Preview or Preprod. The wallet
@@ -343,9 +385,13 @@ registry, payee, future subdomain payment address, sponsor payment wallet, NIGHT
 DUST ceiling and expiry. **Approve and
 prepare claim** records that quote before owner-side proving. The form records
 the public owner commitment before asking the sponsor to balance the proved
-transaction. It then saves the matching receipt automatically. **Send prepared
-claim** shows the saved payment terms again and requires a second confirmation
-click before dispatch. A public receipt imported without the matching saved
+transaction. It then saves the matching receipt automatically. **Review terms
+before send** shows the saved payment terms; only the second **Confirm reviewed
+terms and send** click dispatches the claim. **Check original claim** reads both
+the indexer and the local sponsor's dispatch fence, so an unsent preparation is
+identified as such. If its quote expires, the sponsor can verify and archive
+that exact unsent original before a fresh quote; a fenced or uncertain send
+stays pending. A public receipt imported without the matching saved
 quote can be checked and reconciled, but cannot be sent from this browser.
 
 If the preparation response is lost, reopen with the original credential,
@@ -383,7 +429,7 @@ transaction stays pending; an unavailable read is distinct. Partial success, mal
 or changed transaction bytes, and a mismatched owner or target are conflicts.
 
 The isolated fixture prepares the proof in a separate owner process. The
-sponsor balances it and accepts an explicit **Send prepared claim** action
+sponsor balances it and accepts an explicit reviewed send action
 for a quote-bound receipt already saved to the open credential. The sponsor
 checks the exact registry payment and permits NIGHT inputs and change only at
 the quoted sponsor payment wallet. It also checks that the registered domain's
