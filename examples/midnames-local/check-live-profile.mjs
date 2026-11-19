@@ -62,27 +62,53 @@ assert.equal(
   `0x${profile.registry.claimBlock.hash}`,
   'The recorded name claim is not on this chain.',
 );
-const reader = createMidnamesLedgerReads(
-  createMidnamesIndexer('undeployed', indexerUrl, indexerWsUrl),
-  'undeployed',
-  profile.recipient.bindingId ?? 'acc-s3r1.1',
-  'standalone-0.35',
-);
-const scope = {
-  networkId: 'undeployed',
-  namespace: 'night',
-  registryAddress: profile.registry.address,
-};
-const claim = await reader.readClaim(profile.registry.name, scope);
-assert.equal(claim?.target.kind, 'contract', 'The name has no contract target.');
-assert.equal(claim.target.address, profile.recipient.address, 'The name target changed.');
-assert.ok(await reader.isSupportedAccount(profile.recipient.address, 'undeployed'));
-console.log(
-  JSON.stringify({
+const finalizedHash = await rpc('chain_getFinalizedHead', []);
+assert.match(finalizedHash, /^0x[a-f0-9]{64}$/);
+const blockHash = finalizedHash.slice(2);
+const indexer = createMidnamesIndexer('undeployed', indexerUrl, indexerWsUrl);
+try {
+  const block = await indexer.queryBlock({ type: 'blockHash', blockHash });
+  assert.equal(block?.hash, blockHash, 'Indexer has not indexed the node-finalized block.');
+  assert.ok(
+    Number.isSafeInteger(block.height) && block.height >= profile.registry.claimBlock.height,
+  );
+  // Midnames and ACC must be read as of the same canonical finalized block. A
+  // fresh read of each contract at the indexer tip can straddle a name update.
+  const pinned = {
+    ...indexer,
+    queryContractState: (address) =>
+      indexer.queryContractState(address, { type: 'blockHash', blockHash }),
+  };
+  const reader = createMidnamesLedgerReads(
+    pinned,
+    'undeployed',
+    profile.recipient.bindingId ?? 'acc-s3r1.1',
+    'standalone-0.35',
+  );
+  const scope = {
     networkId: 'undeployed',
-    registryAddress: scope.registryAddress,
-    name: profile.registry.name,
-    accountAddress: profile.recipient.address,
-    claimBlock: profile.registry.claimBlock,
-  }),
-);
+    namespace: 'night',
+    registryAddress: profile.registry.address,
+  };
+  const claim = await reader.readClaim(profile.registry.name, scope);
+  assert.equal(claim?.target.kind, 'contract', 'The name has no contract target.');
+  assert.equal(claim.target.address, profile.recipient.address, 'The name target changed.');
+  assert.ok(await reader.isSupportedAccount(profile.recipient.address, 'undeployed'));
+  assert.equal(
+    await rpc('chain_getBlockHash', [block.height]),
+    finalizedHash,
+    'The anchored indexer block is not canonical on the node.',
+  );
+  console.log(
+    JSON.stringify({
+      networkId: 'undeployed',
+      registryAddress: scope.registryAddress,
+      name: profile.registry.name,
+      accountAddress: profile.recipient.address,
+      claimBlock: profile.registry.claimBlock,
+      finalizedRead: { hash: blockHash, height: block.height },
+    }),
+  );
+} finally {
+  await indexer.dispose?.();
+}

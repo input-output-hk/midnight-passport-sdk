@@ -12,6 +12,26 @@ stops the owner's `midnight-network` project. It installs pinned workspace
 dependencies and builds the local SDK packages if needed before checking the
 live claim; this changes only rebuildable checkout outputs, not chain state.
 
+To inspect the shipped claim and ACC against **one node-finalized block** without
+starting the demo or sending a transaction, attach to the existing stack and
+run the read-only verifier from the dapp package directory:
+
+```sh
+cd apps/passport-dapp
+MN_NODE_URL=http://127.0.0.1:9944 \
+MN_INDEXER_URL=http://127.0.0.1:8088/api/v4/graphql \
+MN_INDEXER_WS_URL=ws://127.0.0.1:8088/api/v4/graphql/ws \
+nix develop -c node --import tsx \
+  ../../examples/midnames-local/check-live-profile.mjs \
+  ../../examples/midnames-local/evidence/shared-ledger9-paidfix-deposit-20261118.json
+```
+
+The verifier checks the recorded claim block against the node, obtains its
+current finalized hash, reads both contracts at that same indexer offset, and
+checks the offset's canonical block hash again. This is a local chain-state
+observation through one indexer, not an authenticated online provider or a
+guarantee that the binding will remain unchanged after the read.
+
 ```sh
 nix develop -c node scripts/midnames-local-demo.mjs check
 nix develop -c node scripts/midnames-local-demo.mjs up \

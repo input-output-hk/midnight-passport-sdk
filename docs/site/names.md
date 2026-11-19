@@ -156,6 +156,12 @@ A read-only check against the existing demo indexer also returned the expected
 missing-contract response for an absent address. An online profile requires
 evidence for its deployed registry, a known name, and the corresponding chain
 before it is enabled.
+The local [finalized-state verifier](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local#open-the-local-passport-and-midnames-demo)
+uses the node's canonical finalized block as a single Indexer API v4 offset
+for the registry and target ACC. This avoids reading those two contracts on
+different indexer tips in that operator check. The interactive resolver still
+reads current indexer state when each lookup runs; the check does not turn an
+indexer response into a cryptographic state proof or qualify online providers.
 
 As checked on 14 November 2026, the pinned SDK's historical Midnight-hosted
 preprod indexer endpoints return HTTP 410. The [current network endpoint
