@@ -1161,6 +1161,16 @@ The sponsor prepares the claim separately. The opt-in loopback fixture lets
 the user acknowledge a saved receipt with **Review terms before send**, then
 **Confirm reviewed terms and send**. See the
 [receipt and recovery flow](../docs/site/names.md#recover-the-sponsors-original-claim-in-the-demo).
+The shared Ledger 9 claim host pins a higher DUST fee margin for its
+provisioned local wallet. Its tested claim selected two fee inputs where the
+ordinary margin selected one. The quote caps the charge at
+`2_000_000_000_000_000_000` DUST units; native admission checks the exact two
+spends and charged amount. Other sponsor coin profiles still need qualification;
+this is a local demo policy, not an SDK default.
+The [headless acceptance check](../docs/agent-runbook.md#headless-midnames-claim-acceptance)
+uses a virtual passkey and stops after preparation. Restart the dedicated
+claim sponsor after its unsent test original is retired so the wallet releases
+its locally pending DUST inputs.
 
 ### Standalone shielded deposit by name
 

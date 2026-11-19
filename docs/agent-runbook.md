@@ -96,6 +96,29 @@ key server on port 8788 is for a proof server or other backend consumer.
    A `200` from the page alone does not establish readiness: wait for checked config and any
    requested funding service while their wallets synchronise.
 
+### Headless Midnames claim acceptance
+
+When the opt-in local claim host is already serving the demo and its sponsor
+journal is free, exercise the actual quote, virtual PRF passkey, owner proof and
+sponsor preparation without borrowing the owner's browser:
+
+```sh
+nix develop -c node examples/midnames-local/claim-headless-acceptance.mjs \
+  <deployed-registry-address> <activated-acc-address>
+```
+
+The script uses a fresh synthetic `.night` name and browser context. It never
+dispatches a transaction. It queries the exact original after preparation,
+waits for the reviewed quote to expire, and asks the sponsor to archive that
+original through its guarded retirement endpoint. The run can occupy the
+dedicated sponsor for roughly five minutes. Preserve any retained intent or receipt if
+retirement fails; inspect its exact journal and chain state before another
+attempt. A headless pass checks the local browser/prover/sponsor path, not a
+human keychain provider, the Passport page's IndexedDB, or a sent name
+registration. Run `e2e/midnames-handoff.e2e.ts` and
+`e2e/midnames-dispatch.e2e.ts` for the separate synthetic Continue registration,
+reload and lost-response UI checks.
+
 ### Enable localnet NIGHT funding
 
 Prepare the token and NIGHT asset policy once using the

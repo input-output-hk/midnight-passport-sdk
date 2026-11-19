@@ -24,7 +24,13 @@ const proverUrl = 'http://127.0.0.1:16320';
 const origin = 'http://localhost:5173';
 const claimProtocolVersion = Number(process.env.VITE_MIDNAMES_CLAIM_PROTOCOL_VERSION);
 assert.equal(claimProtocolVersion, 2001100, 'Pin the shared Ledger 9 claim protocol.');
-const maximumDust = 100_000_000_000_000_000n;
+// Ledger 9 can reject a fee paid with one DUST spend. The local sponsor's
+// smaller DUST coin eventually grows large enough to cover the ordinary fee
+// alone, so this isolated demo budgets a higher fee margin to select two.
+// The quote and native admission both bound the resulting DUST charge.
+const maximumDust = 2_000_000_000_000_000_000n;
+const feeBlocksMargin = 150;
+process.env.FEE_BLOCKS_MARGIN = String(feeBlocksMargin);
 const address = /^[0-9a-f]{64}$/;
 const safeRefusals = new Set([
   'Invalid claim quote.',
