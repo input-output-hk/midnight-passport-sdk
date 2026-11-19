@@ -363,12 +363,13 @@ try {
           });
       } else if (mode === 'claim-retry') {
         const { qualifyClaimRetry } = await import('./claim-retry-fixture.mjs');
-        dispatch = (quote, original, fixtureQuote) =>
+        dispatch = (quote, original, fixtureQuote, ownerProofSha256) =>
           qualifyClaimRetry({
             output,
             quote,
             receipt: original,
             fixtureQuote,
+            ownerProofSha256,
             registryAddress,
             accountAddress,
             rootId,

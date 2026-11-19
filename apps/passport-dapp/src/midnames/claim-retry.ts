@@ -25,6 +25,18 @@ export async function releaseVerifiedFailure(
   if ((await recovery.check(original).catch(() => 'unavailable' as const)) !== result)
     throw new Error('The original failure changed. Preserve its receipt.');
   ensureAccount();
+  if (recovery.preparation) {
+    const retire = recovery.preparation.retireIndexedFailure;
+    if (!retire || (await retire(original)) !== result)
+      throw new Error('The sponsor did not archive this exact failed original.');
+    ensureAccount();
+  }
+  if (
+    (await recovery.check(original).catch(() => 'unavailable' as const)) !== result ||
+    (await recovery.availability(selected, account.address).catch(() => undefined)) !== 'available'
+  )
+    throw new Error('The failed original changed after sponsor retirement. Preserve its receipt.');
+  ensureAccount();
   await journal.releaseFailed(
     original,
     scope,

@@ -557,7 +557,13 @@ is not a pass. The mode preserves its original bytes, identifiers and chain
 volumes; it does not release the browser journal or submit a replacement claim.
 
 `midnames-claim-retry-<fresh-name>` extends this isolated lane. After the
-indexed failure, a fresh persistent Chromium profile opens the reference app,
+owner proof, it creates a separate sponsor journal with the exact prepared
+bytes, reviewed quote, owner commitment and balance intent. That journal fences
+the one original before dispatch. After the indexed failure, the sponsor
+checks its raw transaction, identifiers, claim and fee segments, canonical
+finalized block, free name and activated ACC twice. It archives its whole
+private journal with the fee outcome before offering a distinct new quote.
+A fresh persistent Chromium profile opens the reference app,
 retains the original receipt, checks the live indexed segment result and registry,
 and explicitly releases it. After a browser restart, the fixture checks that the
 same original is archived with `CLAIM_SEGMENT_FAILURE` and no active claim remains.
@@ -565,9 +571,12 @@ Only then does the host restore the root's registration policy, prepare a new
 owner-proved claim and sponsor quote for the same ACC and name, submit that new
 original once, and check indexed success and the live binding. Its private
 `indexed-claim-retry.json` retains both public receipts, the browser release
-receipt and dispatch counts. The new quote and retry dispatch still run in the
-host fixture; this lane does not qualify pre-proof browser quote review or a
-real provider.
+receipt and dispatch counts; `native-sponsor-failure-archive.json` records the
+separate sponsor retirement. The browser in this isolated lane still uses its
+direct live-indexer recovery port; the sponsor retirement and fresh quote are
+qualified separately within the same native run. The new retry dispatch still
+runs in the host fixture. This lane does not qualify the full demo's combined
+browser-to-sponsor HTTP recovery, pre-proof browser quote review or a real provider.
 
 ## Run the shielded deposit by name
 
@@ -919,6 +928,17 @@ prepared receipt or dispatch fence can be archived after the local sponsor
 confirms the name remains free; active sponsor work excludes that retirement.
 If the prepare request never reached the sponsor, the same exclusive check
 records a durable refusal for the exact expired quote without moving the journal.
+If an indexed original is definitively `FAILURE`, or the sole claim segment
+failed while the sponsor fee succeeded, **Release failed original for a new
+attempt** first asks this sponsor to verify the exact prepared bytes and
+dispatch fence. It checks the transaction's identifiers, hash, raw bytes,
+canonical finalized block, free name and activated ACC twice before archiving
+the whole journal. The archive retains the exact receipt and fee outcome. Only
+then does the browser archive its own record and offer a fresh quote. Provider
+outage, changed binding, another partial result and uncertain finality keep the
+original fenced. Other quotes that moved with an archived journal remain
+recoverable by exact bounded lookup; a quote without a balance intent receives
+only its own durable refusal, never the occupying original's receipt.
 The dispatch handler rechecks
 the approved quote and original transaction before opening the dispatch fence.
 If live terms change before any intent is recorded, the sponsor durably refuses

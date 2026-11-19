@@ -23,6 +23,16 @@ name at a node-finalized block. It does not qualify a 0.36 proof or submitted
 claim, so the deployed 0.35 profile and its gas guard remain the demonstrated
 write path.
 
+**Local recovery source preview, 19 November 2026:** The sponsor can now
+recognize its exact quote in a bounded private archive, refuse a superseded
+sibling quote with an owner-bound marker, and archive a dispatched original
+only after its indexed failure is checked against a canonical finalized block.
+The browser retains its original until that sponsor archive succeeds, then
+checks the claim and registry again before offering a fresh quote. Unit and
+headless Chromium tests pass; the combined native sponsor/browser retry lane
+still needs an isolated qualification run. These checks do not establish an
+independent provider or prove a pending original was never submitted.
+
 | Architecture surface | SDK status and evidence | Difference or limit against the target |
 | --- | --- | --- |
 | ACC custody and account lifecycle · C1, C4, P1 | **Implemented subset.** The pinned [`acc-s3r1.1` binding](https://github.com/input-output-hk/midnight-passport-sdk/blob/8117a10f9938093d21d656f8c504398957c58ac9/packages/contract/src/capabilities.generated.ts), [account flows](/guides/account-lifecycle), and [asset guide](/guides/assets) cover deployment, activation, reads, deposits, and supported withdrawals. | This is one binding and supported circuit set, not all future ACC versions. Deployment, credential access, proof, sponsorship, and settlement still require host ports. [Upstream reference limits](https://github.com/midnightntwrk/passport/blob/99062671d939641cb9ed9274d3d18fce764d539a/contract/README.md) are separate from this SDK's qualification. |

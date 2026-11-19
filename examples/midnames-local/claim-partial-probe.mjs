@@ -28,11 +28,12 @@ export async function qualifyPartialClaim({
   profile,
   step,
   readLive,
+  dispatchJournalDir = output,
 }) {
   assert.equal(receipt.quoteSha256, await claimQuoteDigest(fixtureQuote));
   const evidence = { original: receipt, attempts: 0, result: 'pending' };
   const save = () => saveIsolationReceipt(join(output, 'indexed-partial-claim.json'), evidence);
-  const journal = openClaimDispatch(output);
+  const journal = openClaimDispatch(dispatchJournalDir);
   let originalBytes;
   let admissionAt;
   const pending = await journal.dispatch(receipt, {

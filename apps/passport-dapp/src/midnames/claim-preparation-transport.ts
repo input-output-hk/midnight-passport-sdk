@@ -12,6 +12,7 @@ export const claimPreparePath = '/v1/midnames/claim/prepare';
 export const claimPreparedPath = '/v1/midnames/claim/prepared';
 export const claimRetirePath = '/v1/midnames/claim/retire-expired-unsent';
 export const claimRetireUnpreparedPath = '/v1/midnames/claim/retire-expired-unprepared';
+export const claimRetireFailurePath = '/v1/midnames/claim/retire-indexed-failure';
 export const claimStatusPath = '/v1/midnames/claim/dispatch-status';
 
 async function request(path: string, input: unknown): Promise<unknown> {
@@ -96,6 +97,19 @@ export function createLocalClaimPreparation(prove: ClaimPreparation['prove']): C
         result.status !== 'retired'
       )
         throw new Error('The local sponsor did not confirm unprepared retirement.');
+    },
+    async retireIndexedFailure(receipt: ClaimReceipt) {
+      const result = await request(claimRetireFailurePath, receipt);
+      if (
+        !result ||
+        typeof result !== 'object' ||
+        !('status' in result) ||
+        result.status !== 'retired' ||
+        !('reason' in result) ||
+        (result.reason !== 'failed' && result.reason !== 'claim-failed')
+      )
+        throw new Error('The local sponsor did not confirm indexed failure retirement.');
+      return result.reason;
     },
   };
 }

@@ -35,9 +35,9 @@ const messages = {
 
 function claimResultMessage(result: keyof typeof messages, localSponsor: boolean): string {
   if (localSponsor && result === 'failed')
-    return 'The exact original transaction failed. The local sponsor must reconcile its retained original before another quote can be issued.';
+    return 'The exact original transaction failed and the name is unregistered. Release this attempt to archive the sponsor original before reviewing a fresh quote.';
   if (localSponsor && result === 'claim-failed')
-    return 'The registration claim failed while the sponsor fee succeeded. The fee is not returned. The local sponsor must reconcile its retained original before another quote can be issued.';
+    return 'Registration failed while the sponsor fee succeeded. The fee is not returned. Release this attempt to archive the original before reviewing a fresh quote.';
   return messages[result];
 }
 
@@ -140,7 +140,8 @@ async function inspectOriginalClaim(
     quote.expiresAt <= Date.now();
   release.hidden =
     !expiredUnsent &&
-    (!!recovery.preparation || (result !== 'failed' && result !== 'claim-failed'));
+    ((result !== 'failed' && result !== 'claim-failed') ||
+      (!!recovery.preparation && !recovery.preparation.retireIndexedFailure));
   release.dataset.reason = expiredUnsent ? 'expired-unsent' : 'failed';
   release.textContent = expiredUnsent
     ? 'Retire expired unsent original'

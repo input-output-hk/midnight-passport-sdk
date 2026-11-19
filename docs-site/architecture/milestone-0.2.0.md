@@ -27,6 +27,12 @@ All 13 Compact 0.36 ZKIR/prover/verifier key hashes match the pinned Compact 0.3
 
 [#363](https://github.com/input-output-hk/midnight-passport-sdk/issues/363) still tracks isolated reproduction of the recorded Compact 0.35 rejection and a fresh, separately pinned 0.36 native proof/write path if needed. [#334](https://github.com/input-output-hk/midnight-passport-sdk/issues/334) still tracks the complete failed-claim and browser-owned retry matrix. Legacy funding reservations remain pending under [#369](https://github.com/input-output-hk/midnight-passport-sdk/issues/369); missing ACC transaction IDs alone cannot prove non-submission. PR #370 adds a future pre-submit marker and exact-request release, but its real failure/recovery and those older records remain separate work. None of these open gates justifies replaying an uncertain original, clearing browser data, or resetting the shared chain.
 
+A local source preview adds bounded sponsor archive lookup for the exact
+quote, owner-bound refusal of a sibling quote, and indexed-failure archival
+before browser-owned retry release. Its unit tests and a headless Chromium
+outage/retry path pass. The combined native sponsor/browser failure and fresh
+paid claim are still unqualified, so #334 remains open.
+
 ## Other open 0.2.0 work
 
 | Workstream | Issues | Current boundary |

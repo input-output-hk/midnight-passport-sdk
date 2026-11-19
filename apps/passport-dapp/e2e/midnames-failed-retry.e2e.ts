@@ -20,7 +20,7 @@ const html = `<!doctype html><html><body>
     <button id="claim-review-quote" type="submit" hidden>Review</button>
     <button id="claim-prepare" type="submit" hidden>Prepare</button>
     <pre id="claim-quote-summary" hidden></pre>
-    <textarea id="claim-recovery-receipt"></textarea>
+    <details id="claim-recovery-details" open><textarea id="claim-recovery-receipt"></textarea></details>
     <button id="claim-recovery-retain" type="submit">Save</button>
     <button id="claim-dispatch" type="submit" hidden>Send</button>
     <button id="claim-recovery-check" type="submit">Check</button>
@@ -127,6 +127,91 @@ try {
     .locator('#claim-recovery-status')
     .getByText(/already released/)
     .waitFor();
+  const sponsored = await browser.newPage();
+  await sponsored.route(`${origin}/__failed_claim_fixture`, (route) =>
+    route.fulfill({ status: 200, contentType: 'text/html', body: html }),
+  );
+  await sponsored.goto(`${origin}/__failed_claim_fixture`);
+  await sponsored.addScriptTag({
+    type: 'module',
+    content: `
+      try {
+        const { showClaimRecovery } = await import('/src/midnames/claim-recovery-ui.ts');
+        const opened = {
+          networkId: 'undeployed', address: ${JSON.stringify(account)},
+          credentialId: new Uint8Array(32).fill(2),
+        };
+        window.fixtureOutcome = 'claim-failed';
+        window.fixtureSponsorAvailable = false;
+        window.fixtureSponsorArchived = false;
+        window.fixtureQuoteCalls = 0;
+        const reset = showClaimRecovery({
+          registryAddress: ${JSON.stringify(registry)},
+          availability: async () => 'available',
+          check: async () => window.fixtureOutcome,
+          preparation: {
+            quote: async (destination) => {
+              if (!window.fixtureSponsorArchived) throw new Error('Sponsor still busy.');
+              window.fixtureQuoteCalls++;
+              return {
+                ...destination, id: 'ab'.repeat(32), sponsorAddress: 'ac'.repeat(32),
+                sponsorPaymentAddress: 'ad'.repeat(32), registryPayee: 'ae'.repeat(32),
+                night: '1', maximumDust: '10000', expiresAt: Date.now() + 240000,
+              };
+            },
+            prove: async () => { throw new Error('No proof in recovery test.'); },
+            prepare: async () => { throw new Error('No preparation in recovery test.'); },
+            findPrepared: async () => { throw new Error('No preparation in recovery test.'); },
+            retireIndexedFailure: async () => {
+              if (!window.fixtureSponsorAvailable) throw new Error('Sponsor unavailable.');
+              window.fixtureSponsorArchived = true;
+              return 'claim-failed';
+            },
+          },
+        }, () => opened);
+        reset();
+        window.fixtureError = '';
+      } catch (error) {
+        window.fixtureError = String(error);
+      }
+      window.fixtureReady = true;
+    `,
+  });
+  await sponsored.waitForFunction('window.fixtureReady === true');
+  assert.equal(await sponsored.evaluate('window.fixtureError'), '');
+  await sponsored.locator('#claim-recovery-name').fill(original.name);
+  await sponsored.locator('#claim-recovery-receipt').fill(JSON.stringify(original));
+  await sponsored.locator('#claim-recovery-retain').click();
+  await sponsored
+    .locator('#claim-recovery-status')
+    .getByText(/Original receipt saved/)
+    .waitFor();
+  await sponsored.locator('#claim-recovery-check').click();
+  await sponsored
+    .locator('#claim-recovery-status')
+    .getByText(/Registration failed while/)
+    .waitFor();
+  assert.equal(await sponsored.locator('#claim-release-failed').isVisible(), true);
+  await sponsored.locator('#claim-release-failed').click();
+  await sponsored
+    .locator('#claim-recovery-status')
+    .getByText(/Claim check unavailable/)
+    .waitFor();
+  assert.equal(await sponsored.evaluate('window.fixtureSponsorArchived'), false);
+  await sponsored.evaluate('window.fixtureSponsorAvailable = true');
+  await sponsored.locator('#claim-recovery-check').click();
+  await sponsored.locator('#claim-release-failed').click();
+  await sponsored
+    .locator('#claim-recovery-status')
+    .getByText(/Failed original retained in local history/)
+    .waitFor();
+  assert.equal(await sponsored.evaluate('window.fixtureSponsorArchived'), true);
+  await sponsored.locator('#claim-review-quote').click();
+  await sponsored
+    .locator('#claim-quote-summary')
+    .getByText(/Register alice.night/)
+    .waitFor();
+  assert.equal(await sponsored.evaluate('window.fixtureQuoteCalls'), 1);
   console.log('Midnames failed-claim-segment browser recovery: PASS');
 } finally {
   await browser.close();

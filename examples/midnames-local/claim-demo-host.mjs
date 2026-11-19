@@ -12,6 +12,7 @@ import {
 } from '../../apps/passport-dapp/src/midnames/ledger-reader.ts';
 import { claimDestination } from '../../apps/passport-dapp/src/midnames/claim-quote.ts';
 import { readClaimFinality } from '../../apps/passport-dapp/src/midnames/claim-finality.ts';
+import { verifyIndexedClaimFailure } from './claim-indexed-failure.mjs';
 import { createClaimSponsorHandler } from './claim-sponsor-http.mts';
 import { startDemoOwnerBundle } from './claim-owner-browser-host.mjs';
 import { verifyPreparedRegistry } from './verify-prepared.mjs';
@@ -218,6 +219,16 @@ try {
           !(await reader.isSupportedAccount(receipt.accountAddress, networkId))
         )
           throw new Error('The expired claim could not be proved unsent and unregistered.');
+      },
+      async retireIndexedFailure(receipt) {
+        return verifyIndexedClaimFailure({
+          receipt,
+          nodeUrl,
+          indexerUrl,
+          protocolVersion: claimProtocolVersion,
+          reader,
+          profile,
+        });
       },
       async retireExpiredUnprepared(quote) {
         if (

@@ -351,9 +351,12 @@ when the indexed segments show only the sponsor's DUST fee succeeded and the
 sole claim intent failed. This requires the pinned standalone transaction shape;
 any missing, extra, duplicated or different segment remains a conflict. The fee
 is not refunded. **Release failed original for a new attempt** checks the same
-failure outcome again, checks that the name is still unregistered and the ACC is supported, then
-archives the original receipt and clears the selection in one durable browser
-transaction. The receipt and its original identifiers remain available in local
+failure outcome again and checks that the name is still unregistered and the ACC is supported.
+With the local sponsor, it first verifies the exact prepared bytes and dispatch
+fence, the indexed transaction and its canonical finalized block, then archives
+the sponsor's entire private journal with a durable failure and fee-outcome marker.
+Only after the sponsor confirms that archive does the browser clear its selection
+in one durable transaction. The receipt and its original identifiers remain available in local
 history after reload; importing the same failed transaction again is refused.
 Review a fresh quote before preparing another claim. Other `PARTIAL_SUCCESS`
 outcomes, malformed or mismatched transactions, provider outages, and missing
@@ -398,6 +401,14 @@ identified as such. If its quote expires, the sponsor can verify and archive
 that exact unsent original before a fresh quote; a fenced or uncertain send
 stays pending. A public receipt imported without the matching saved
 quote can be checked and reconciled, but cannot be sent from this browser.
+
+The sponsor also searches a bounded set of its private retired journals for an
+exact issued quote. A quote moved with another original cannot be mistaken for
+that original: its terms and digest must match, and the occupying balance intent
+must belong to a different quote. The sponsor records an exact pre-intent
+refusal beside the archived quote, allowing only that browser's unprepared
+reservation to be released. Missing, malformed or conflicting archive data
+keeps the reservation pending for investigation.
 
 If the preparation response is lost, reopen with the original credential and
 select **Continue registration**, then **Check saved claim** when offered. The host looks up the original preparation.
