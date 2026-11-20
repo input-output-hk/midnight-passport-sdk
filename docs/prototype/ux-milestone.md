@@ -223,9 +223,14 @@ binding. The ACC login connector supplied an already activated test account.
 The failed original used another browser profile; real providers, combined ACC
 creation and online Midnames remain separate gates. See the
 [redacted receipt](../../examples/midnames-local/evidence/release-ledger9-page-claim-retry-20261120.json).
-The current source candidate moves the indexed-failure release into the retry
-page profile and reuses the archived sponsor journal. It has not yet passed a
-fresh native run; the first original is still prepared outside that profile.
+Signed source `e3ec3608` passed a fresh isolated Ledger 9 run that imported the
+indexed failed original into the retry page profile, released it through the
+same sponsor's archived journal, retained it after reload, then prepared and
+sent a distinct claim once. After a lost sponsor response, that profile
+recovered indexed `SUCCESS` and the live binding to the same ACC. The first
+original was prepared outside the page; combined ACC creation, real-provider
+consent and online Midnames remain separate gates. See the
+[redacted same-profile receipt](../../examples/midnames-local/evidence/release-ledger9-page-same-profile-20261120.json).
 
 ### Standalone shielded deposit by name
 

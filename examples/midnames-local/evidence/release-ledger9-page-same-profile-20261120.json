@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-11-20",
+  "source": {
+    "signedHead": "e3ec3608bbf69ac508cd8435ce78ea985e1d3b71",
+    "dirty": false,
+    "contractProfile": "standalone-0.35",
+    "ledgerV9": "1.0.2",
+    "indexerApi": "v4"
+  },
+  "isolatedStack": {
+    "networkId": "undeployed",
+    "images": {
+      "node": "sha256:0c1ad548d523c1109aa1f16daab1bf72dcb78c7e17b8a8c6d97424ad0eba7b8a",
+      "indexer": "sha256:119f35db548ba1c390845f215bb1e928e73038bef7c315825aee0461bd54499d",
+      "proof-server": "sha256:787ef99db4b4706eb14d94ad389ca45f1c09bcdf740afecb01899bfbda63dc64"
+    }
+  },
+  "journey": {
+    "name": "charlie.night",
+    "original": {
+      "transactionIdentifiers": [
+        "00de4d5ff21649679b8a23c13707954f76c49a3dc4f649e353cc29550485c51d64",
+        "00c88c2c07096ea3c308fa759e0dd36a711cb44b9c4d93044be82f17b9bc9b5db7"
+      ],
+      "indexedStatus": "PARTIAL_SUCCESS",
+      "claimSegmentSucceeded": false,
+      "feeSegmentSucceeded": true,
+      "dispatches": 1,
+      "sponsorArchive": "exact indexed claim failure",
+      "browserReleaseReason": "CLAIM_SEGMENT_FAILURE",
+      "archivedAfterBrowserReload": true
+    },
+    "retry": {
+      "transactionIdentifiers": [
+        "0063366b43ae860f94353a1e51fd5fdf6aa5ca1da2a685c3104a2a73ec3e58bb4a",
+        "002753038e6637bcf517dc6a573c11b56831b7ca786942a2967cd03bfc02c4774a"
+      ],
+      "indexedStatus": "SUCCESS",
+      "dispatches": 1,
+      "sameAccountTarget": true,
+      "pageQuoteRequests": 1,
+      "pageProofRequests": 1,
+      "pagePrepareRequests": 1,
+      "pageDispatchRequests": 1,
+      "lostSponsorResponse": true,
+      "recoveredInSameBrowserProfile": true,
+      "liveIndexerRequests": 29
+    },
+    "releaseAndRetryInSameBrowserProfile": true,
+    "originalPreparedOutsideBrowser": true
+  },
+  "cleanup": {
+    "ownedContainersStopped": 3,
+    "volumesRetained": true,
+    "unrelatedResourcesControlled": 0,
+    "leaseReleased": true,
+    "inputsUnchanged": true
+  },
+  "result": "PASS",
+  "limits": [
+    "The first failed original was prepared by the isolated owner fixture and imported into the Passport page after finality.",
+    "The ACC login connector supplied an already activated test account.",
+    "The browser credential was virtual, not a real provider.",
+    "This isolated chain does not qualify an online registry, Compact 0.36 write, or released package."
+  ]
+}

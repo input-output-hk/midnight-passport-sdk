@@ -636,13 +636,18 @@ browser profiles. This does not qualify the full demo's combined ACC create/open
 ceremony, one profile across both attempts, a real passkey provider or an online
 registry.
 
-The next source candidate imports that exact indexed failed original into the
-Passport page's virtual-credential profile, uses the original sponsor's
-archived journal to release it, then prepares and sends the retry in that same
-profile. The prior native receipt does not qualify this change; it needs a fresh
-isolated Ledger 9 run. The first original is still prepared outside the page,
-so a passing run would qualify release-to-retry continuity, not same-profile
-preparation of both originals.
+Signed source `e3ec3608` passed a fresh isolated Ledger 9 run in which the
+Passport page imported the exact indexed failed original into its
+virtual-credential profile, used the original sponsor's archived journal to
+release it, and retained the failed receipt after reload. The same profile
+then obtained one quote, proved, prepared and dispatched a distinct retry once,
+lost the sponsor response, and recovered indexed `SUCCESS` and the live binding
+to the same ACC. The [redacted same-profile receipt](evidence/release-ledger9-page-same-profile-20261120.json)
+records the two originals and exact-owned cleanup. The first original was still
+prepared outside the page, and the ACC login connector supplied an already
+activated account. This qualifies local release-to-retry continuity, not
+same-profile preparation of both originals, combined ACC creation, a real
+passkey provider, an online registry or a released package.
 
 ## Run the shielded deposit by name
 

@@ -389,6 +389,17 @@ already activated test account, and the credential was virtual. This qualifies
 that bounded local page-to-chain retry, not a combined ACC creation ceremony,
 one browser profile across both attempts, a real passkey provider or an online
 registry. See the [redacted page-owned receipt](../../examples/midnames-local/evidence/release-ledger9-page-claim-retry-20261120.json).
+On signed source `e3ec3608`, a new isolated run moved the indexed failure
+release into the actual Passport page's retry profile. That profile imported
+the exact original, confirmed the failed claim and archived sponsor journal,
+released it, retained it across reload, then obtained one quote, proved,
+prepared and sent the new claim once. It recovered indexed `SUCCESS` and the
+live same-ACC binding after a lost sponsor response. The
+[redacted same-profile receipt](../../examples/midnames-local/evidence/release-ledger9-page-same-profile-20261120.json)
+qualifies local release-to-retry continuity with a virtual credential. The
+first original was still prepared outside the page, and ACC login still used
+an already activated fixture account. This does not establish full onboarding,
+real-provider custody, public `passport.night` issuance or online substitution.
 Issue #334 remains open for the broader failure matrix and combined
 onboarding/provider paths.
 If legacy storage contains multiple original claims,
@@ -404,7 +415,8 @@ transaction, a real sponsor quote, or a passkey ceremony. The separate native
 run above proves the indexed failure, browser release, and a later browser-sent
 prepared retry. The newer isolated run at signed `46add31e` also proves one
 sponsor-issued pre-proof quote, owner proof and browser send through the
-Passport name form. The combined ACC create/open ceremony and real-provider
+Passport name form; `e3ec3608` connects release and retry in one browser
+profile. The combined ACC create/open ceremony and real-provider
 custody remain unqualified.
 **Check registry status** reads the pinned registry and verifies the open ACC
 before reporting an unregistered name. Availability is an observation at the
