@@ -243,6 +243,7 @@ try {
     assert.ok(releaseReads >= 3, 'Failure release must check live chain state.');
     await open(page);
     await page.locator('#claim-recovery-name').fill(input.name);
+    await reveal(page, '#claim-recovery-check');
     await page.locator('#claim-recovery-check').click();
     await page
       .locator('#claim-recovery-status')
