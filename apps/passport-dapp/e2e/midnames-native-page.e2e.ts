@@ -117,7 +117,7 @@ async function open(page: Page, create = false) {
   await page
     .locator('#status')
     .filter({ hasText: /^Ready\./ })
-    .waitFor();
+    .waitFor({ state: 'attached' });
   await page.locator(create ? '#create' : '#open').click();
   await page.locator('#workspace-account').waitFor();
   await reveal(page, '#claim-recovery');
