@@ -427,7 +427,7 @@ export async function qualifyNightSend({
     };
   }
   assert.ok(failure instanceof Error);
-  assert.equal(failure.cause, interrupted);
+  assert.equal(failure.cause, interrupted, `Unexpected withdrawal failure: ${String(failure)}`);
   const intermediate = {
     source: String(await balance(source)),
     target: String(await balance(target)),
