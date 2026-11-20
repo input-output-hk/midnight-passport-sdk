@@ -151,13 +151,18 @@ try {
     },
   });
   await page.goto(origin);
-  await page.evaluate(async () => {
-    const random = () => crypto.getRandomValues(new Uint8Array(32));
+  // Playwright serializes this browser expression. Keep it as source text so
+  // tsx cannot add a Node-side __name helper to a nested browser callback.
+  await page.evaluate(`(async () => {
     const credential = await navigator.credentials.create({
       publicKey: {
-        challenge: random(),
+        challenge: crypto.getRandomValues(new Uint8Array(32)),
         rp: { name: 'Isolated Passport naming' },
-        user: { id: random(), name: 'native-page', displayName: 'Native page' },
+        user: {
+          id: crypto.getRandomValues(new Uint8Array(32)),
+          name: 'native-page',
+          displayName: 'Native page',
+        },
         pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
         authenticatorSelection: { residentKey: 'required', userVerification: 'required' },
         extensions: { prf: {} },
@@ -165,13 +170,11 @@ try {
     });
     if (!(credential instanceof PublicKeyCredential))
       throw Error('Virtual naming credential was not created');
-    localStorage.setItem(
-      'native-naming-credential',
-      Array.from(new Uint8Array(credential.rawId), (byte) =>
-        byte.toString(16).padStart(2, '0'),
-      ).join(''),
-    );
-  });
+    let id = '';
+    for (const byte of new Uint8Array(credential.rawId))
+      id += byte.toString(16).padStart(2, '0');
+    localStorage.setItem('native-naming-credential', id);
+  })()`);
   await open(page, true);
   await page.locator('#claim-recovery-name').fill(input.name);
   await page.locator('#claim-review-quote').click();
