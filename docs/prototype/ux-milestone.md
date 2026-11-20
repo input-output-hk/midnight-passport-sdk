@@ -200,7 +200,7 @@ browser reloads. Sending requires a saved matching quote and a second click
 after the exact payment terms are displayed. Older quote-less receipts remain
 available for reconciliation only. A prepared, unfenced receipt is explicitly
 shown as unsent; after expiry, the sponsor can verify and archive it before a
-fresh quote. A fenced or uncertain original stays pending. The native dispatch fixture injects its
+fresh quote. A fenced or uncertain original stays pending. The older native dispatch fixture injects its
 quote after proof, so that run does not qualify pre-proof user review. See
 [the recovery flow](../site/names.md#recover-the-sponsors-original-claim-in-the-demo).
 The separate native `claim-preproof` fixture displays a fixture-issued quote
@@ -209,6 +209,16 @@ and proof. Its signed `e456638` fresh run passed with one sponsored claim and
 recovery after restart. Virtual credential enrollment happened before quote
 display; sponsor HTTP quote issuance, the full demo create/open panel, and
 human or real-provider approval remain separate gates.
+
+Signed source `46add31e` passed a later isolated Ledger 9 claim retry through
+the actual Passport name form. After a separately archived indexed failure,
+the form obtained one fresh sponsor quote, proved with a virtual PRF credential,
+prepared and sent one reviewed original, then reopened the same browser profile
+after a lost sponsor response and confirmed its indexed success and live name
+binding. The ACC login connector supplied an already activated test account.
+The failed original used another browser profile; real providers, combined ACC
+creation and online Midnames remain separate gates. See the
+[redacted receipt](../../examples/midnames-local/evidence/release-ledger9-page-claim-retry-20261120.json).
 
 ### Standalone shielded deposit by name
 

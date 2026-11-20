@@ -616,19 +616,25 @@ A fresh persistent Chromium profile opens the reference app,
 retains the original receipt, checks the live indexed segment result and registry,
 and explicitly releases it. After a browser restart, the fixture checks that the
 same original is archived with `CLAIM_SEGMENT_FAILURE` and no active claim remains.
-Only then does the host restore the root's registration policy and prepare a new
-owner-proved claim and sponsor quote for the same ACC and name. A separate
-headless browser profile reviews the saved terms and sends that original once
-through the sponsor HTTP fence; after the deliberately lost response, it
-reopens and checks the original. The host then checks indexed success and the
-live binding. Its private
+Only then does the host restore the root's registration policy. A separate
+headless browser profile opens the actual Passport name form with an already
+activated ACC, obtains a fresh sponsor quote, uses a virtual PRF credential to
+prove and prepare the new claim, reviews the displayed terms, and sends that
+original once through the sponsor HTTP fence. After the deliberately lost
+response, the same persistent browser profile reopens and checks the original.
+The host then checks indexed success and the live binding. Its private
 `indexed-claim-retry.json` retains both public receipts, the browser release
 receipt and dispatch counts; `native-sponsor-failure-archive.json` records the
-separate sponsor retirement. The browser in this isolated lane still uses its
-direct live-indexer recovery port; the sponsor retirement and fresh quote are
-qualified separately within the same native run. This lane does not qualify the
-full demo's combined ACC create/open and sponsor-issued pre-proof quote ceremony,
-a single browser profile across both attempts, or a real provider.
+separate sponsor retirement. Signed source `46add31e` passed this complete
+isolated Ledger 9 lane on 2026-11-20. The [redacted page-owned receipt](evidence/release-ledger9-page-claim-retry-20261120.json)
+records one quote, proof, preparation and dispatch; the first original's indexed
+claim failure, browser release and sponsor archive; the new original's indexed
+success and recovery after a lost response. The browser in this isolated lane
+still uses its direct live-indexer recovery port. Its ACC login connector is a
+fixture for an already activated account, and the two attempts use separate
+browser profiles. This does not qualify the full demo's combined ACC create/open
+ceremony, one profile across both attempts, a real passkey provider or an online
+registry.
 
 ## Run the shielded deposit by name
 

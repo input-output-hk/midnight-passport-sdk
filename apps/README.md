@@ -37,6 +37,12 @@ The launcher verifies a finalized `.night` claim and activated ACC before
 enabling the external resolver and named NIGHT control. A fresh chain needs
 ACC creation, registry bootstrap, and name claim first; opening the page does
 not fund a new sender or submit a payment.
+An isolated Ledger 9 acceptance run at signed `46add31e` exercised the actual
+Passport name form with a virtual credential, sponsor quote, owner proof,
+reviewed send, lost response and same-profile recovery. Its ACC login connector
+supplied an already activated test account; it does not qualify a real passkey
+provider or the combined ACC creation ceremony. See the
+[redacted native receipt](../examples/midnames-local/evidence/release-ledger9-page-claim-retry-20261120.json).
 
 A prototype of the Midnight Passport DApp Connector API and the web app that carries its heavy
 lifting. Design: [`docs/superpowers/specs/2026-10-06-passport-dapp-design.md`](../docs/superpowers/specs/2026-10-06-passport-dapp-design.md).

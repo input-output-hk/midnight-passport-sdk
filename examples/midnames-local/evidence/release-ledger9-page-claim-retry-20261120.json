@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-11-20",
+  "source": {
+    "signedHead": "46add31eb86df2bd507b2dcb89ba178adef83629",
+    "dirty": false,
+    "contractProfile": "standalone-0.35",
+    "ledgerV9": "1.0.2",
+    "indexerApi": "v4"
+  },
+  "isolatedStack": {
+    "networkId": "undeployed",
+    "nodeImageSha256": "0c1ad548d523c1109aa1f16daab1bf72dcb78c7e17b8a8c6d97424ad0eba7b8a",
+    "indexerImageSha256": "119f35db548ba1c390845f215bb1e928e73038bef7c315825aee0461bd54499d",
+    "proverImageSha256": "787ef99db4b4706eb14d94ad389ca45f1c09bcdf740afecb01899bfbda63dc64"
+  },
+  "journey": {
+    "name": "charlie.night",
+    "original": {
+      "transactionId": "004b7ff0e60146d1aa8acfb6fb05a5a46b29c8ff565894b2ea1926f77995f47db4",
+      "indexedStatus": "PARTIAL_SUCCESS",
+      "claimSegmentSucceeded": false,
+      "feeSegmentSucceeded": true,
+      "dispatches": 1,
+      "sponsorArchive": "exact indexed claim failure",
+      "browserReleaseReason": "CLAIM_SEGMENT_FAILURE"
+    },
+    "retry": {
+      "transactionId": "00b777c6a478591cfab96bd063060f10c3b58616e24be705f5334bdefb79803eb6",
+      "indexedStatus": "SUCCESS",
+      "dispatches": 1,
+      "sameAccountTarget": true,
+      "pageQuoteRequests": 1,
+      "pageProofRequests": 1,
+      "pagePrepareRequests": 1,
+      "pageDispatchRequests": 1,
+      "lostSponsorResponse": true,
+      "recoveredInSameBrowserProfile": true,
+      "liveIndexerRequests": 16
+    }
+  },
+  "cleanup": {
+    "ownedContainersStopped": 3,
+    "volumesRetained": true,
+    "unrelatedResourcesControlled": 0,
+    "leaseReleased": true,
+    "inputsUnchanged": true
+  },
+  "result": "PASS",
+  "limits": [
+    "The ACC login connector supplied an already activated test account.",
+    "The failed original and fresh retry used separate browser profiles.",
+    "The browser credential was virtual, not a real provider.",
+    "This isolated chain does not qualify an online registry or released package."
+  ]
+}
