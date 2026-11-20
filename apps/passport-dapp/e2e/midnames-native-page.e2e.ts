@@ -213,15 +213,24 @@ try {
   browser = await newBrowser();
   const resumed = await browser.newPage();
   await open(resumed);
+  await resumed.locator('#claim-recovery-name').fill(input.name);
+  await reveal(resumed, '#claim-recovery-check');
+  const result = resumed.locator('#claim-recovery-status');
   const deadline = Date.now() + 120_000;
   while (Date.now() < deadline) {
+    if (((await result.textContent()) ?? '').startsWith('Registered.')) break;
     await resumed.locator('#claim-recovery-check').click();
-    const status = (await resumed.locator('#claim-recovery-status').textContent()) ?? '';
+    await result
+      .filter({
+        hasText:
+          /^(Registered\.|The original claim is pending|Claim check unavailable|Name service unavailable)/,
+      })
+      .waitFor({ state: 'attached', timeout: 30_000 });
+    const status = (await result.textContent()) ?? '';
     if (status.startsWith('Registered.')) break;
-    assert.match(status, /pending|unavailable|Registered|Claim check/i);
     await delay(1500);
   }
-  assert.match(await resumed.locator('#claim-recovery-status').innerText(), /^Registered\./);
+  assert.match(await result.innerText(), /^Registered\./);
   assert.ok(lostResponse && indexerRequests > 0);
   assert.equal(dispatchRequests, 1);
   writeFileSync(
