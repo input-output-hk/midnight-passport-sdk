@@ -636,6 +636,14 @@ browser profiles. This does not qualify the full demo's combined ACC create/open
 ceremony, one profile across both attempts, a real passkey provider or an online
 registry.
 
+The next source candidate imports that exact indexed failed original into the
+Passport page's virtual-credential profile, uses the original sponsor's
+archived journal to release it, then prepares and sends the retry in that same
+profile. The prior native receipt does not qualify this change; it needs a fresh
+isolated Ledger 9 run. The first original is still prepared outside the page,
+so a passing run would qualify release-to-retry continuity, not same-profile
+preparation of both originals.
+
 ## Run the shielded deposit by name
 
 Use a clean, GPG-signed SDK checkout with workspace dependencies installed and

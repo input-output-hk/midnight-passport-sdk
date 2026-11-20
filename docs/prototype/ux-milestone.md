@@ -166,7 +166,9 @@ instead of a generic provider outage. A synthetic full-app browser check now
 opens the panel after creation and reopening, verifies that the second
 credential cannot inherit the first one's local receipt, and counts one stub
 `createAccount` invocation. It also checks the failed-original release and
-archived receipt across reload in an isolated browser profile. A conflicting
+archived receipt across reload in an isolated browser profile. The same profile
+can then prepare a distinct synthetic original while retaining the failed one
+in history, without creating another ACC or dispatching a claim. A conflicting
 status hides release; an unavailable recheck hides it until the user checks
 the original again. A third isolated profile confirms that a same-origin HTTP
 sponsor quote is displayed before any synthetic owner proof or preparation,
@@ -221,6 +223,9 @@ binding. The ACC login connector supplied an already activated test account.
 The failed original used another browser profile; real providers, combined ACC
 creation and online Midnames remain separate gates. See the
 [redacted receipt](../../examples/midnames-local/evidence/release-ledger9-page-claim-retry-20261120.json).
+The current source candidate moves the indexed-failure release into the retry
+page profile and reuses the archived sponsor journal. It has not yet passed a
+fresh native run; the first original is still prepared outside that profile.
 
 ### Standalone shielded deposit by name
 

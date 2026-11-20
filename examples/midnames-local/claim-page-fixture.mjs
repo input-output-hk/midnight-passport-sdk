@@ -13,6 +13,7 @@ import { runBrowser } from './claim-browser-fixture.mjs';
 import { startDemoOwnerBundle } from './claim-owner-browser-host.mjs';
 import { createClaimSponsorHandler } from './claim-sponsor-http.mts';
 import { openClaimDispatch } from './claim-dispatch.mts';
+import { verifyIndexedClaimFailure } from './claim-indexed-failure.mjs';
 
 /** Fresh isolated claim: the Passport page requests the quote, proves with its
  * virtual PRF credential, prepares through the sponsor and sends once. The
@@ -25,6 +26,8 @@ export async function qualifyPageOwnedClaim({
   registryAddress,
   accountAddress,
   name,
+  failedOriginal,
+  sponsorJournalDir = output,
   parentDomain,
   sponsorPaymentAddress,
   walletProvider,
@@ -40,6 +43,7 @@ export async function qualifyPageOwnedClaim({
     registryAddress,
     accountAddress,
     name,
+    ...(failedOriginal ? { failedOriginal } : {}),
   });
   const hex = (value) => (typeof value === 'string' ? value : Buffer.from(value).toString('hex'));
   const walletKeys = {
@@ -65,7 +69,7 @@ export async function qualifyPageOwnedClaim({
   try {
     const handler = createClaimSponsorHandler(
       'http://localhost:5173',
-      output,
+      sponsorJournalDir,
       {
         async authorize(bytes, receipt) {
           assert.ok(issued);
@@ -140,6 +144,18 @@ export async function qualifyPageOwnedClaim({
           assert.equal(result.version, 'v9');
           return result.tx.serialize();
         },
+        async retireIndexedFailure(original) {
+          assert.ok(failedOriginal);
+          assert.deepEqual(original, failedOriginal);
+          return verifyIndexedClaimFailure({
+            receipt: original,
+            nodeUrl: process.env.MN_NODE_URL,
+            indexerUrl: process.env.MN_INDEXER_URL,
+            protocolVersion: 2001100,
+            reader: reads,
+            profile,
+          });
+        },
       },
       (error) =>
         console.error('Page claim sponsor:', error instanceof Error ? error.message : error),
@@ -161,7 +177,7 @@ export async function qualifyPageOwnedClaim({
       PASSPORT_MIDNAMES_OWNER_PORT: new URL(owner.origin).port,
     });
     const page = JSON.parse(readFileSync(join(output, 'page-owned-claim.json'), 'utf8'));
-    const receipt = openClaimDispatch(output).preparedReceipt();
+    const receipt = openClaimDispatch(sponsorJournalDir).preparedReceipt();
     assert.deepEqual(page.original, receipt);
     assert.equal(dispatches, 1);
     assert.ok(admitted);

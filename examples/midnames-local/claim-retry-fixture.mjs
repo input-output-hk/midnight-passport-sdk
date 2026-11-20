@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdirSync, readFileSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { readClaimFinality } from '../../apps/passport-dapp/src/midnames/claim-finality.ts';
@@ -10,7 +10,6 @@ import { claimFailedArchivePath, createClaimPreparationJournal } from './claim-p
 import { verifyIndexedClaimFailure } from './claim-indexed-failure.mjs';
 import { createOnce } from './create-once.mts';
 import { qualifyPartialClaim } from './claim-partial-probe.mjs';
-import { runBrowser } from './claim-browser-fixture.mjs';
 import { qualifyPageOwnedClaim } from './claim-page-fixture.mjs';
 
 /** After exact indexed failure, the browser releases the original and the
@@ -119,15 +118,6 @@ export async function qualifyClaimRetry(input) {
     sponsorChecks,
     archive,
   });
-  step('release-indexed-claim-failure-in-browser');
-  saveIsolationReceipt(join(output, 'original-claim.json'), receipt);
-  await runBrowser(output, undefined, 270_000, 'e2e/midnames-claim-failed.e2e.ts');
-  const browserRelease = JSON.parse(
-    readFileSync(join(output, 'browser-claim-failed-release.json'), 'utf8'),
-  );
-  assert.equal(browserRelease.originalDigest, receipt.transaction.sha256);
-  assert.equal(browserRelease.releaseReason, 'CLAIM_SEGMENT_FAILURE');
-  assert.equal(browserRelease.liveIndexerRequests > 0, true);
   step('restore-parent-registration-for-fresh-claim');
   await contracts.submitCallTx(regProviders, {
     compiledContract: compiled,
@@ -169,6 +159,8 @@ export async function qualifyClaimRetry(input) {
       registryAddress,
       accountAddress,
       name: quote.name,
+      failedOriginal: receipt,
+      sponsorJournalDir: sponsorDir,
       sponsorPaymentAddress,
       walletProvider: freshProviders.walletProvider,
       submit: (tx) => providers.midnightProvider.submitTx(tx),
@@ -181,6 +173,11 @@ export async function qualifyClaimRetry(input) {
     });
     retryReceipt = second.receipt;
     retryDispatches = second.dispatches;
+    const browserRelease = second.page.browserRelease;
+    assert.equal(browserRelease.originalDigest, receipt.transaction.sha256);
+    assert.equal(browserRelease.releaseReason, 'CLAIM_SEGMENT_FAILURE');
+    assert.equal(browserRelease.liveIndexerRequests > 0, true);
+    saveIsolationReceipt(join(output, 'browser-claim-failed-release.json'), browserRelease);
     assert.notEqual(retryReceipt.transaction.sha256, receipt.transaction.sha256);
     assert.equal(second.page.recoveredInSameProfile, true);
   } finally {
@@ -188,6 +185,7 @@ export async function qualifyClaimRetry(input) {
   }
   assert.equal(retryDispatches, 1);
   assert.ok(retryReceipt);
+  const browserRelease = second.page.browserRelease;
   assert.equal(
     await readClaimFinality(process.env.MN_INDEXER_URL, receipt, fetch, 2001100),
     'claim-failed',

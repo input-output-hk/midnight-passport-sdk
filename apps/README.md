@@ -43,6 +43,9 @@ reviewed send, lost response and same-profile recovery. Its ACC login connector
 supplied an already activated test account; it does not qualify a real passkey
 provider or the combined ACC creation ceremony. See the
 [redacted native receipt](../examples/midnames-local/evidence/release-ledger9-page-claim-retry-20261120.json).
+The next isolated source fixture keeps the failed-original release and fresh
+claim in one virtual-credential browser profile; a new native run is required
+before treating that continuity as qualified.
 
 A prototype of the Midnight Passport DApp Connector API and the web app that carries its heavy
 lifting. Design: [`docs/superpowers/specs/2026-10-06-passport-dapp-design.md`](../docs/superpowers/specs/2026-10-06-passport-dapp-design.md).

@@ -17,6 +17,7 @@ const input = JSON.parse(readFileSync(resolve(output, 'page-claim-input.json'), 
   registryAddress: string;
   accountAddress: string;
   name: string;
+  failedOriginal?: unknown;
 };
 assert.match(input.registryAddress, /^[0-9a-f]{64}$/);
 assert.match(input.accountAddress, /^[0-9a-f]{64}$/);
@@ -112,7 +113,6 @@ function observe(page: Page) {
   page.on('pageerror', (error) => console.error('Passport page:', error.message));
 }
 async function open(page: Page, create = false) {
-  observe(page);
   await page.goto(origin);
   await page
     .locator('#status')
@@ -131,13 +131,47 @@ async function newBrowser() {
   });
 }
 
+async function retainedClaims(page: Page) {
+  return page.evaluate(
+    async ({ registry, name, account }) => {
+      const journalUrl = '/src/midnames/claim-journal.ts';
+      const receiptUrl = '/src/midnames/claim-receipt.ts';
+      const { openClaimJournal } = (await import(
+        journalUrl
+      )) as typeof import('../src/midnames/claim-journal.js');
+      const { claimDigest } = (await import(
+        receiptUrl
+      )) as typeof import('../src/midnames/claim-receipt.js');
+      const id = localStorage.getItem('native-naming-credential');
+      if (!id || !/^(?:[0-9a-f]{2})+$/.test(id)) throw Error('Missing naming credential');
+      const scope = await claimDigest(
+        Uint8Array.from(id.match(/../g)!, (byte) => parseInt(byte, 16)),
+      );
+      const journal = await openClaimJournal(indexedDB);
+      try {
+        const active = await journal.read(registry, name, scope);
+        const history = await journal.readReleased(registry, name, account, scope);
+        return {
+          active: active?.transaction.sha256,
+          history: history.map((item) => item.transaction.sha256),
+        };
+      } finally {
+        journal.close();
+      }
+    },
+    { registry: input.registryAddress, name: input.name, account: input.accountAddress },
+  );
+}
+
 let original;
 let lostResponse = false;
+let browserRelease;
 try {
   await vite.listen();
   assert.equal(new URL(vite.resolvedUrls?.local[0] ?? '').origin, origin);
   browser = await newBrowser();
   const page = await browser.newPage();
+  observe(page);
   const cdp = await browser.newCDPSession(page);
   await cdp.send('WebAuthn.enable');
   await cdp.send('WebAuthn.addVirtualAuthenticator', {
@@ -176,6 +210,57 @@ try {
     localStorage.setItem('native-naming-credential', id);
   })()`);
   await open(page, true);
+  if (input.failedOriginal) {
+    const failed = claimReceipt(input.failedOriginal);
+    assert.equal(failed.registryAddress, input.registryAddress);
+    assert.equal(failed.accountAddress, input.accountAddress);
+    assert.equal(failed.name, input.name);
+    await reveal(page, '#claim-recovery-receipt');
+    await page.locator('#claim-recovery-name').fill(input.name);
+    await page.locator('#claim-recovery-receipt').fill(JSON.stringify(failed));
+    await page.locator('#claim-recovery-retain').click();
+    await page
+      .locator('#claim-recovery-status')
+      .filter({ hasText: /^Original receipt saved/ })
+      .waitFor();
+    await page.locator('#claim-recovery-check').click();
+    await page
+      .locator('#claim-recovery-status')
+      .filter({ hasText: /^The registration claim failed while the sponsor fee succeeded/ })
+      .waitFor({ timeout: 120_000 });
+    await page.locator('#claim-release-failed').click();
+    await page
+      .locator('#claim-recovery-status')
+      .filter({ hasText: /^Failed original retained in local history/ })
+      .waitFor({ timeout: 120_000 });
+    const releaseReads = indexerRequests;
+    assert.ok(releaseReads >= 3, 'Failure release must check live chain state.');
+    await open(page);
+    await page.locator('#claim-recovery-name').fill(input.name);
+    await page.locator('#claim-recovery-check').click();
+    await page
+      .locator('#claim-recovery-status')
+      .filter({ hasText: /^A failed original is retained in local history/ })
+      .waitFor();
+    assert.deepEqual(await retainedClaims(page), {
+      active: undefined,
+      history: [failed.transaction.sha256],
+    });
+    browserRelease = {
+      originalDigest: failed.transaction.sha256,
+      releaseReason: 'CLAIM_SEGMENT_FAILURE',
+      archivedAfterBrowserReload: true,
+      liveIndexerRequests: releaseReads,
+    };
+    writeFileSync(
+      resolve(output, 'page-browser-release.json'),
+      JSON.stringify(browserRelease) + '\n',
+      {
+        flag: 'wx',
+        mode: 0o600,
+      },
+    );
+  }
   await page.locator('#claim-recovery-name').fill(input.name);
   await page.locator('#claim-review-quote').click();
   await page.locator('#claim-quote-summary').getByText(`Register ${input.name}`).waitFor();
@@ -193,6 +278,13 @@ try {
   assert.equal(proofRequests, 1);
   assert.equal(prepareRequests, 1);
   assert.equal(dispatchRequests, 0);
+  if (input.failedOriginal) {
+    const failed = claimReceipt(input.failedOriginal);
+    assert.deepEqual(await retainedClaims(page), {
+      active: original.transaction.sha256,
+      history: [failed.transaction.sha256],
+    });
+  }
   const reviewedTerms = await page.locator('#claim-quote-summary').innerText();
   assert.ok(reviewedTerms.includes(`Register ${input.name}`));
   assert.ok(reviewedTerms.includes(`Passport account ${input.accountAddress}`));
@@ -212,6 +304,7 @@ try {
   await browser.close();
   browser = await newBrowser();
   const resumed = await browser.newPage();
+  observe(resumed);
   await open(resumed);
   await resumed.locator('#claim-recovery-name').fill(input.name);
   await reveal(resumed, '#claim-recovery-check');
@@ -245,6 +338,7 @@ try {
       lostResponse,
       recoveredInSameProfile: true,
       connectorWasFixture: true,
+      ...(browserRelease ? { browserRelease } : {}),
     }) + '\n',
     { flag: 'wx', mode: 0o600 },
   );
