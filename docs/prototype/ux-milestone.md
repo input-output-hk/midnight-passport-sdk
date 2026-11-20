@@ -188,8 +188,10 @@ preparation. Other partial outcomes, outage, uncertainty and changed binding kee
 original fenced. The archived receipt can be inspected after reload. A second
 browser's quote moved with the archive is recovered by exact quote lookup and
 an explicit no-intent refusal; corrupt or missing archives fail closed. Unit,
-HTTP and synthetic Chromium checks cover these paths. Native sponsor-side
-failure retirement remains to be qualified.
+HTTP and synthetic Chromium checks cover these paths. An isolated Ledger 9 run
+at signed `46add31e` also verified exact sponsor retirement after a fee-only
+indexed claim failure, before the browser released that original. This does not
+qualify every failure shape or an online sponsor.
 **Check original
 claim** reconciles the stored transaction, local sponsor dispatch fence, and current registry owner and
 target. **Check registry status** verifies the open ACC and checks whether the

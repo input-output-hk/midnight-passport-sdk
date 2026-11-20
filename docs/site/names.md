@@ -374,6 +374,16 @@ reload. The retry indexed `SUCCESS` to the same ACC. The new quote, proof, and
 balance were still host-driven; this does not qualify browser review before
 proving or a real passkey provider. Issue #334 remains open for those broader
 paths.
+On later signed source `46add31e`, a fresh isolated run used the actual
+Passport name form for the retry. It obtained one sponsor-issued quote before
+the owner proof, prepared and sent the reviewed claim once, then recovered its
+indexed `SUCCESS` and live binding in the same persistent browser profile after
+the sponsor response was lost. The failed original had already been archived
+and released in a separate browser profile. The ACC login connector supplied an
+already activated test account, and the credential was virtual. This qualifies
+that bounded local page-to-chain retry, not a combined ACC creation ceremony,
+one browser profile across both attempts, a real passkey provider or an online
+registry. See the [redacted page-owned receipt](../../examples/midnames-local/evidence/release-ledger9-page-claim-retry-20261120.json).
 The [release-stack retry receipt](../../examples/midnames-local/README.md#release-ledger-9-native-claim-retry)
 repeated this failure-and-retry path on node 2.1.101, indexer 4.4.101, and
 prover 9.0.2. It retained the Compact 0.35 artifacts and used Ledger 9
@@ -392,9 +402,10 @@ first owner-proof or sponsor-preparation call, and that explicit approval calls
 each once. This synthetic fixture alone does not prove an actual failed
 transaction, a real sponsor quote, or a passkey ceremony. The separate native
 run above proves the indexed failure, browser release, and a later browser-sent
-prepared retry;
-the full demo's native sponsor-issued pre-proof quote and real-provider custody
-remain unqualified.
+prepared retry. The newer isolated run at signed `46add31e` also proves one
+sponsor-issued pre-proof quote, owner proof and browser send through the
+Passport name form. The combined ACC create/open ceremony and real-provider
+custody remain unqualified.
 **Check registry status** reads the pinned registry and verifies the open ACC
 before reporting an unregistered name. Availability is an observation at the
 time of the read. A retained receipt takes precedence and is reconciled
