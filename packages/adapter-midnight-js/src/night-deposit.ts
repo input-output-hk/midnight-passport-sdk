@@ -61,12 +61,21 @@ export function measuredAccNightDeletionCredit(
 
 type UnsubmittedDeposit = Awaited<ReturnType<typeof createUnprovenCallTx>>;
 
+function matchesCallPartition(existing: unknown, guaranteed: unknown, fallible: unknown): boolean {
+  return (
+    existing instanceof ContractCall &&
+    Boolean(existing.guaranteedTranscript) === Boolean(guaranteed) &&
+    Boolean(existing.fallibleTranscript) === Boolean(fallible)
+  );
+}
+
 function pinnedDepositCall(callData: UnsubmittedDeposit, target: string) {
   const original = callData.private.unprovenTx;
   const intents = [...(original.intents?.values() ?? [])];
   const oldIntent = intents[0];
   const [call] = callData.calls;
   const [guaranteed, fallible] = call?.public.partitionedTranscript ?? [];
+  const transcript = guaranteed ?? fallible;
   const [existing] = oldIntent?.actions ?? [];
   const entry =
     existing instanceof ContractCall && typeof existing.entryPoint === 'string'
@@ -85,14 +94,15 @@ function pinnedDepositCall(callData: UnsubmittedDeposit, target: string) {
     !(existing instanceof ContractCall) ||
     existing.address !== target ||
     entry !== 'deposit_unshielded' ||
-    !guaranteed ||
-    fallible ||
-    guaranteed.gas.bytesDeleted <= 0n ||
+    !transcript ||
+    Boolean(guaranteed) === Boolean(fallible) ||
+    transcript.gas.bytesDeleted <= 0n ||
+    !matchesCallPartition(existing, guaranteed, fallible) ||
     original.guaranteedOffer ||
     original.fallibleOffer?.size
   )
-    throw new Error('The pinned NIGHT deposit is not one supported guaranteed call.');
-  return { oldIntent, call, guaranteed };
+    throw new Error('The pinned NIGHT deposit is not one supported call.');
+  return { oldIntent, call, guaranteed, fallible, transcript };
 }
 
 function rebuildMeasuredDeposit(
@@ -102,7 +112,7 @@ function rebuildMeasuredDeposit(
   target: string,
   networkId: string,
 ): ReturnType<typeof Transaction.fromPartsRandomized> {
-  const { oldIntent, call, guaranteed } = pinnedDepositCall(callData, target);
+  const { oldIntent, call, guaranteed, fallible, transcript } = pinnedDepositCall(callData, target);
   const operation = ContractState.deserialize(state.serialize()).operation('deposit_unshielded');
   if (!operation) throw new Error('The named NIGHT recipient lacks the pinned deposit operation.');
   const keyLocation = encodeContractKeyLocation({
@@ -110,14 +120,14 @@ function rebuildMeasuredDeposit(
     circuitId: 'deposit_unshielded',
     verifierKeyHash: hashVerifierKey(operation.verifierKey),
   });
-  const credit = measuredAccNightDeletionCredit(guaranteed, state, parameters, target);
-  const safe = { ...guaranteed, gas: { ...guaranteed.gas, bytesDeleted: credit } };
+  const credit = measuredAccNightDeletionCredit(transcript, state, parameters, target);
+  const safe = { ...transcript, gas: { ...transcript.gas, bytesDeleted: credit } };
   const prototype = new ContractCallPrototype(
     target,
     'deposit_unshielded',
     operation,
-    safe,
-    undefined,
+    guaranteed ? safe : undefined,
+    fallible ? safe : undefined,
     call.private.privateTranscriptOutputs,
     call.private.input,
     call.private.output,
@@ -131,8 +141,12 @@ function rebuildMeasuredDeposit(
   const [action] = [...(adjusted.intents?.values() ?? [])].flatMap((part) => part.actions);
   if (
     !(action instanceof ContractCall) ||
-    action.guaranteedTranscript?.gas.bytesDeleted !== credit ||
-    action.guaranteedTranscript.program.length !== guaranteed.program.length
+    (guaranteed ? action.guaranteedTranscript : action.fallibleTranscript)?.gas.bytesDeleted !==
+      credit ||
+    (guaranteed ? action.guaranteedTranscript : action.fallibleTranscript)?.program.length !==
+      transcript.program.length ||
+    Boolean(action.guaranteedTranscript) !== Boolean(guaranteed) ||
+    Boolean(action.fallibleTranscript) !== Boolean(fallible)
   )
     throw new Error('The pinned NIGHT deposit gas correction changed the call.');
   return adjusted;
