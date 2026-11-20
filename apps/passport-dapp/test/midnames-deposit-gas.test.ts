@@ -286,5 +286,43 @@ test('ACC NIGHT funding keeps its exact call and earned deletion credit', async 
     assert.deepEqual(safe.program, overclaimed.program);
     assert.deepEqual(safe.effects, overclaimed.effects);
     assert.doesNotThrow(() => query().runTranscript(safe, model));
+
+    const short = { ...overclaimed, gas: { ...overclaimed.gas, bytesDeleted: 0n } };
+    const shortPair =
+      segment === 'guaranteed' ? ([short, undefined] as const) : ([undefined, short] as const);
+    const shortCall = new ledger.ContractCallPrototype(
+      address,
+      'deposit_unshielded',
+      operation,
+      shortPair[0],
+      shortPair[1],
+      proof.privateTranscriptOutputs,
+      proof.input,
+      proof.output,
+      ledger.communicationCommitmentRandomness(),
+      'fixture',
+    );
+    const shortOriginal = ledger.Transaction.fromPartsRandomized(
+      'undeployed',
+      undefined,
+      undefined,
+      ledger.Intent.new(new Date(Date.now() + 3_600_000)).addCall(shortCall),
+    );
+    const corrected = adjust({
+      ...result,
+      private: { unprovenTx: shortOriginal },
+      calls: [{ ...result.calls[0], public: { partitionedTranscript: shortPair } }],
+    });
+    const [shortCorrected] = [...(corrected.intents?.values() ?? [])].flatMap(
+      (intent) => intent.actions,
+    );
+    assert.ok(shortCorrected instanceof ledger.ContractCall);
+    assert.equal(
+      (segment === 'guaranteed'
+        ? shortCorrected.guaranteedTranscript
+        : shortCorrected.fallibleTranscript
+      )?.gas.bytesDeleted,
+      measured.bytesDeleted,
+    );
   }
 });

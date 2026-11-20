@@ -40,7 +40,7 @@ function rebuildWithCredit(
   const [guaranteed, fallible] = call.public.partitionedTranscript;
   if (!!guaranteed === !!fallible) throw new Error('Unexpected call transcript partition.');
   const transcript = guaranteed ?? fallible;
-  if (transcript.gas.bytesDeleted <= 0n)
+  if (transcript.gas.bytesDeleted <= 0n && !allowed.includes('deposit_unshielded'))
     throw new Error('The call transcript has no deletion credit to remove.');
   const existing = intents[0].actions[0];
   const entry =
@@ -131,8 +131,6 @@ export function withMeasuredDeletionCredit(
     typeof part === 'object' && 'popeq' in part ? { popeq: { ...part.popeq, result: null } } : part,
   );
   const credit = context().query(gather, model).gasCost.bytesDeleted;
-  if (credit <= 0n || credit > transcript.gas.bytesDeleted)
-    throw new Error('The measured ACC deletion credit is outside the declared budget.');
   context().runTranscript(
     { ...transcript, gas: { ...transcript.gas, bytesDeleted: credit } },
     model,
