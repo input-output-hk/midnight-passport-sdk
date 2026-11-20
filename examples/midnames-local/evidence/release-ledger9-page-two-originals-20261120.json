@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-11-20",
+  "source": {
+    "signedHead": "4a6c7642cfc956a6ca4274f1ff5bdb678fd03ec5",
+    "dirty": false,
+    "contractProfile": "standalone-0.35",
+    "ledgerV9": "1.0.2",
+    "indexerApi": "v4"
+  },
+  "isolatedStack": {
+    "networkId": "undeployed",
+    "runId": "e34815808a113d05",
+    "images": {
+      "node": "sha256:0c1ad548d523c1109aa1f16daab1bf72dcb78c7e17b8a8c6d97424ad0eba7b8a",
+      "indexer": "sha256:119f35db548ba1c390845f215bb1e928e73038bef7c315825aee0461bd54499d",
+      "proof-server": "sha256:787ef99db4b4706eb14d94ad389ca45f1c09bcdf740afecb01899bfbda63dc64"
+    }
+  },
+  "journey": {
+    "name": "charlie.night",
+    "sameActivatedAcc": true,
+    "sameOwnerCommitment": true,
+    "pageQuoteRequests": 2,
+    "pageProofRequests": 2,
+    "pagePrepareRequests": 2,
+    "pageDispatchRequests": 2,
+    "accountCreationConnectorCalls": 1,
+    "firstOriginal": {
+      "transactionSha256": "0cb53f086a464cc0d5567d2c41a23a8d063266250417c337d7366ca6b5f3f32d",
+      "transactionIdentifiers": [
+        "007a439dac6a87626148a715aa9c4671e3fc8296e43467224bf3d5e643a996a117",
+        "0057b311f0a0f4fec4dfe3d114bf7c3a0fef75431d0ac71016d0704d9eb3407516"
+      ],
+      "browserDispatchTransport": "unknown",
+      "indexedStatus": "PARTIAL_SUCCESS",
+      "claimSegmentSucceeded": false,
+      "feeSegmentSucceeded": true,
+      "canonicalFinalizedHash": "8f8de18f2e00b72dbc6d15aea2c8bef9a9d8d122b4fc9ca1e70ef60f759ea328",
+      "dispatches": 1,
+      "sponsorArchive": "exact indexed claim failure",
+      "browserReleaseReason": "CLAIM_SEGMENT_FAILURE",
+      "archivedAfterBrowserReload": true
+    },
+    "retry": {
+      "transactionSha256": "04fbf4c776cd0ba50cccdd0e1b7635bfaeee498a167e9a6680770b63b0de9162",
+      "transactionIdentifiers": [
+        "00533e45ee1ccbbcb3c4911ef21dd91d9bb67fa31ae5da8e68da08c445746936a0",
+        "0016d79b098bcb10395b6056a8206ed234e2197f859093c1124e8f3a6757746fb1"
+      ],
+      "indexedStatus": "SUCCESS",
+      "dispatches": 1,
+      "lostSponsorResponse": true,
+      "recoveredInSameBrowserProfile": true,
+      "canonicalFinalizedBlock": {
+        "hash": "ed68cda268354240022d0ded3fa9e7f5f8a1823f2aca82995c32170a8394ccbb",
+        "height": 94
+      },
+      "registryBoundToSameAcc": true
+    },
+    "bothOriginalsPreparedInPassportPage": true
+  },
+  "cleanup": {
+    "ownedContainersStopped": 3,
+    "volumesRetained": true,
+    "unrelatedResourcesControlled": 0,
+    "leaseReleased": true,
+    "inputsUnchanged": true
+  },
+  "result": "PASS",
+  "limits": [
+    "The ACC login connector supplied an already activated test account; this did not prove combined account creation and name claim in the page.",
+    "The browser naming credential was virtual, not a real passkey provider.",
+    "The isolated transitional .night registry does not qualify online provider agreement, passport.night, total-loss name continuity, Compact 0.36, or a released package."
+  ]
+}

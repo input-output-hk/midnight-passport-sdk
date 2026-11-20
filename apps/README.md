@@ -48,6 +48,13 @@ release and successful retry in one virtual-credential browser profile. Its
 first original was prepared outside the page; the ACC login connector still
 used an already activated account. See the
 [redacted same-profile receipt](../examples/midnames-local/evidence/release-ledger9-page-same-profile-20261120.json).
+A further fresh isolated run at signed `4a6c7642` passed both original
+preparations, the indexed failure and archive, and the successful retry through
+the same persistent Passport page profile. Its
+[redacted two-original receipt](../examples/midnames-local/evidence/release-ledger9-page-two-originals-20261120.json)
+still uses a virtual naming credential and an already activated ACC supplied by
+the fixture connector; combined account creation and real-provider custody
+remain unqualified.
 
 A prototype of the Midnight Passport DApp Connector API and the web app that carries its heavy
 lifting. Design: [`docs/superpowers/specs/2026-10-06-passport-dapp-design.md`](../docs/superpowers/specs/2026-10-06-passport-dapp-design.md).
