@@ -111,6 +111,7 @@ export async function qualifyPageRetry(input) {
     assert.equal(result.page.proofRequests, 2);
     assert.equal(result.page.prepareRequests, 2);
     assert.equal(result.page.dispatchRequests, 2);
+    assert.ok(['acknowledged', 'unknown'].includes(result.page.firstDispatchTransport));
     assert.equal(result.page.browserRelease.originalDigest, firstReceipt.transaction.sha256);
     assert.equal(firstReceipt.ownerCommitment, result.receipt.ownerCommitment);
     assert.equal(result.page.recoveredInSameProfile, true);

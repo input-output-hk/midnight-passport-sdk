@@ -5,7 +5,13 @@ import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { chromium, type BrowserContext, type Page } from 'playwright-core';
+import {
+  chromium,
+  type BrowserContext,
+  type Page,
+  type Request,
+  type Response,
+} from 'playwright-core';
 import { createServer } from 'vite';
 import { claimDispatchPath } from '../src/midnames/claim-dispatch.js';
 import { claimReceipt } from '../src/midnames/claim-receipt.js';
@@ -128,6 +134,36 @@ function observe(page: Page) {
   });
   page.on('pageerror', (error) => console.error('Passport page:', error.message));
 }
+
+/** A native policy update can outlast the browser's 15-second send timeout.
+ * Capture either transport outcome, then establish claim finality from the
+ * saved original. A missing HTTP acknowledgement never authorizes a resend. */
+function dispatchOutcome(page: Page): Promise<'acknowledged' | 'unknown'> {
+  return new Promise((resolve, reject) => {
+    const cleanup = () => {
+      clearTimeout(timer);
+      page.off('response', onResponse);
+      page.off('requestfailed', onFailed);
+    };
+    const onResponse = (response: Response) => {
+      if (!response.url().endsWith(claimDispatchPath)) return;
+      cleanup();
+      if (response.status() === 202) resolve('acknowledged');
+      else reject(new Error(`Claim sponsor returned HTTP ${response.status()}.`));
+    };
+    const onFailed = (request: Request) => {
+      if (!request.url().endsWith(claimDispatchPath)) return;
+      cleanup();
+      resolve('unknown');
+    };
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error('The first claim transport gave no outcome within 45 seconds.'));
+    }, 45_000);
+    page.on('response', onResponse);
+    page.on('requestfailed', onFailed);
+  });
+}
 async function open(page: Page, create = false) {
   await page.goto(origin);
   await page
@@ -213,6 +249,7 @@ async function assertReviewedQuote(page: Page): Promise<string> {
 
 let original;
 let firstOriginal;
+let firstDispatchTransport: 'acknowledged' | 'unknown' | undefined;
 let lostResponse = false;
 let browserRelease;
 try {
@@ -280,12 +317,9 @@ try {
     assert.equal(quoteRequests, 1);
     assert.equal(proofRequests, 1);
     assert.equal(prepareRequests, 1);
-    const firstResponse = page.waitForResponse(
-      (response) => response.url().endsWith(claimDispatchPath) && response.status() === 202,
-      { timeout: 120_000 },
-    );
+    const firstTransport = dispatchOutcome(page);
     await page.locator('#claim-dispatch').click();
-    await firstResponse;
+    firstDispatchTransport = await firstTransport;
     assert.equal(dispatchRequests, 1);
     const until = Date.now() + 120_000;
     while (Date.now() < until) {
@@ -437,6 +471,7 @@ try {
     JSON.stringify({
       original,
       ...(firstOriginal ? { firstOriginal } : {}),
+      ...(firstDispatchTransport ? { firstDispatchTransport } : {}),
       quoteRequests,
       proofRequests,
       prepareRequests,
