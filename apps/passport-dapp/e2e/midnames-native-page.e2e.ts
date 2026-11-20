@@ -224,10 +224,16 @@ try {
       .filter({ hasText: /^Original receipt saved/ })
       .waitFor();
     await page.locator('#claim-recovery-check').click();
-    await page
-      .locator('#claim-recovery-status')
-      .filter({ hasText: /^The registration claim failed while the sponsor fee succeeded/ })
-      .waitFor({ timeout: 120_000 });
+    const failureStatus = page.locator('#claim-recovery-status');
+    try {
+      await failureStatus
+        .filter({ hasText: /^Registration failed while the sponsor fee succeeded/ })
+        .waitFor({ timeout: 30_000 });
+    } catch (error) {
+      throw new Error(`Indexed failure status: ${await failureStatus.textContent()}`, {
+        cause: error,
+      });
+    }
     await page.locator('#claim-release-failed').click();
     await page
       .locator('#claim-recovery-status')
