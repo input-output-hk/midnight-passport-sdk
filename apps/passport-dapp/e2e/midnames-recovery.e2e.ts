@@ -102,9 +102,11 @@ const messages = {
   available: /^Unregistered at the last registry read/,
   saved: /^Original receipt saved/,
   pending: /^Claim pending/,
+  prepared: /^Prepared but never sent\. The name is unregistered/,
   confirmed: /^Registered\./,
   refused: /^A different original claim is retained for this name\./,
 };
+const beforeSend = sponsorPort ? messages.prepared : messages.pending;
 let indexerRequests = 0;
 let submissionRequests = 0;
 async function openPage(page: Page, origin: string, alternate = false) {
@@ -136,8 +138,17 @@ async function openPage(page: Page, origin: string, alternate = false) {
   await page.locator('#claim-recovery-name').fill(original.name);
 }
 
-const status = (page: Page, message: RegExp) =>
-  page.locator('#claim-recovery-status').filter({ hasText: message }).waitFor({ timeout: 120_000 });
+async function status(page: Page, message: RegExp) {
+  try {
+    await page
+      .locator('#claim-recovery-status')
+      .filter({ hasText: message })
+      .waitFor({ timeout: 120_000 });
+  } catch (error) {
+    const observed = await page.locator('#claim-recovery-status').textContent();
+    throw new Error(`Claim status did not match ${message}: ${observed}`, { cause: error });
+  }
+}
 const openBrowser = () =>
   chromium.launchPersistentContext(file('chrome-profile'), {
     executablePath:
@@ -148,6 +159,13 @@ const openBrowser = () =>
 
 async function submitWithLostSponsorResponse(page: Page) {
   if (sponsorPort) {
+    await page.locator('#claim-review-quote').click();
+    await status(page, /^No transaction has been sent\. Review the payment terms above/);
+    assert.ok(
+      (await page.locator('#claim-quote-summary').textContent())?.includes(
+        `Register ${original.name}`,
+      ),
+    );
     let responseStatus: number | undefined;
     const lost = page.waitForEvent('requestfailed', {
       predicate: (request) => request.url().endsWith(claimDispatchPath),
@@ -162,8 +180,6 @@ async function submitWithLostSponsorResponse(page: Page) {
         await route.abort('failed');
       }
     });
-    await page.locator('#claim-dispatch').click();
-    await status(page, /Review the saved payment terms above/);
     await page.locator('#claim-dispatch').click();
     await lost;
     assert.equal(responseStatus, 202, 'The sponsor must accept the original before response loss.');
@@ -264,10 +280,10 @@ try {
   } finally {
     releaseRead();
   }
-  await status(checking, messages.pending);
+  await status(checking, beforeSend);
   await checking.close();
   await first.locator('#claim-check-availability').click();
-  await status(first, messages.pending);
+  await status(first, beforeSend);
 
   await submitWithLostSponsorResponse(first);
   await browser.close();
