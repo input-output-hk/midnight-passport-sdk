@@ -20,6 +20,7 @@ import {
 import {
   isolatedImages,
   isolatedStack,
+  MIDNAMES_RELEASE_IMAGES,
 } from '../../scripts/qualification/native-isolated-stack.mjs';
 import { isolatedInputs } from '../../scripts/qualification/native-isolation-inputs.mjs';
 import { isolatedFreePort } from '../../scripts/qualification/live-isolated-job-lifecycle.mjs';
@@ -94,7 +95,11 @@ if (interactive)
   );
 const info = JSON.parse(docker(['info', '--format', '{{json .}}']));
 assert.ok(info.MemTotal >= 24 * 1024 ** 3);
-const images = isolatedImages(docker, info.Architecture === 'aarch64' ? 'arm64' : 'amd64');
+const images = isolatedImages(
+  docker,
+  info.Architecture === 'aarch64' ? 'arm64' : 'amd64',
+  fixtureMode === 'claim-retry' ? MIDNAMES_RELEASE_IMAGES : undefined,
+);
 const review = join(root, 'review');
 mkdirSync(review, { recursive: true, mode: 0o700 });
 assert.equal(realpathSync(review), review);

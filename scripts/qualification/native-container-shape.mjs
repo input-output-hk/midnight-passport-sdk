@@ -36,7 +36,7 @@ export function assertNativeContainer(input, expected) {
           {
             Type: 'volume',
             Name: `${expected.project}-${expected.service}-data`,
-            Destination: '/data',
+            Destination: expected.service === 'node' ? '/node/chain' : '/data',
           },
         ];
   assert.ok(Array.isArray(c.Mounts));

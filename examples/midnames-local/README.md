@@ -319,8 +319,8 @@ with the operator, outside Git and any browser/service request.
 On `PASS`, read `registryAddress` from `bootstrap.json` and configure the demo's
 `VITE_MIDNAMES_REGISTRY_ADDRESS` with it, together with
 `VITE_MIDNAMES_REGISTRY_PROFILE=standalone-0.35`,
-`VITE_MIDNAMES_CLAIM_PROTOCOL_VERSION=2001100` for this observed shared
-Ledger 9 chain (the isolated fixture uses `2001000`),
+`VITE_MIDNAMES_CLAIM_PROTOCOL_VERSION=2001100` for this observed Ledger 9
+generation (the isolated fixture pins the same protocol on a separate chain),
 `VITE_MIDNAMES_NAMESPACE=night`, `VITE_MIDNAMES_NETWORK_ID=undeployed`, and
 `VITE_MIDNAMES_INDEXER_URL` / `VITE_MIDNAMES_INDEXER_WS_URL` matching the
 bootstrap pair. The deployed root is a transitional
@@ -426,6 +426,55 @@ before proof because the adjustment initially assumed a guaranteed transcript;
 read-only reconciliation verified both funding transactions and no submitted
 claim before releasing that attempt's lease. The successful run is a new,
 independently funded claim, not a replay of the earlier attempt.
+
+### Release Ledger 9 native claim retry
+
+An isolated node 2.1.101, indexer 4.4.101, and prover 9.0.2 run at signed
+`3dda8ec` passed the complete failed-claim retry fixture using the unchanged
+Compact 0.35 ACC and registry artifacts. Its first sponsored transaction
+finalized `PARTIAL_SUCCESS`: the DUST fee succeeded and the registration
+claim failed. The sponsor archived that exact original after canonical finality
+and an absent-name check. Headless Chromium released the browser record after
+a reload. A new quote, owner proof, and sponsor dispatch then finalized
+`SUCCESS` to the same ACC and the registry reader confirmed the binding.
+Both originals were dispatched once. The private receipt is
+`review/midnames-claim-retry-20261120-ledger102`; its supervisor stopped the
+three exact owned containers, preserved volumes, and released the native lease.
+The [redacted summary](evidence/release-ledger9-claim-retry-20261120.json)
+records the image pins, transaction IDs, outcome, and remaining limits.
+
+A later isolated release-stack run at signed `b58668e8` repeated the exact
+indexed failure and browser release, then sent the fresh prepared claim from
+the reference app through the same-origin sponsor HTTP fence. Headless
+Chromium reviewed the saved quote, made one submission request, lost the
+sponsor's 202 response, reopened with the same virtual credential, and
+confirmed the original. The retry indexed `SUCCESS` to the same ACC; each
+original was dispatched once. Its [redacted browser retry receipt](evidence/release-ledger9-browser-retry-20261120.json)
+records the separate transaction identifiers, browser checks, and exact-owned
+cleanup. The new quote, owner proof, and sponsor balance remained host-driven;
+the failed-original release and fresh send used separate browser profiles.
+
+The release node rejected an earlier activation with error 104 when the
+reference client used Ledger 9 `1.0.0-rc.5`. A full Midnight.js 5.0.1 client
+cannot load this contract's Compact runtime 0.20 artifacts. The passing run
+kept the artifact-compatible Midnight.js and Compact.js versions while
+pinning every reference-client `@midnightntwrk/ledger-v9` dependency to
+`1.0.2`. This isolates a working local configuration; it does not establish
+the exact internal cause of either earlier gas rejection or online
+compatibility. Prepare an **idle** exported reference tree inside the Nix
+shell before a release-stack run:
+
+```sh
+nix develop -c node experiments/acc-0.35/prepare-ledger9-client.mjs \
+  /absolute/path/to/compiled/contract
+```
+
+The command verifies the pinned ACC manifest, updates only that generated
+tree's client package and lockfile, installs its dependencies, and refuses
+mixed Ledger 9 versions. The shared-stack demo launcher invokes it for its
+selected contract tree; an isolated native fixture must receive a separately
+prepared tree. Do not use this pin as a substitute for the separate Compact
+0.36 migration gate in [#363](https://github.com/input-output-hk/midnight-passport-sdk/issues/363).
 
 ### Compact 0.36 registry compatibility probe
 
@@ -557,17 +606,48 @@ is not a pass. The mode preserves its original bytes, identifiers and chain
 volumes; it does not release the browser journal or submit a replacement claim.
 
 `midnames-claim-retry-<fresh-name>` extends this isolated lane. After the
-indexed failure, a fresh persistent Chromium profile opens the reference app,
+owner proof, it creates a separate sponsor journal with the exact prepared
+bytes, reviewed quote, owner commitment and balance intent. That journal fences
+the one original before dispatch. After the indexed failure, the sponsor
+checks its raw transaction, identifiers, claim and fee segments, canonical
+finalized block, free name and activated ACC twice. It archives its whole
+private journal with the fee outcome before offering a distinct new quote.
+A fresh persistent Chromium profile opens the reference app,
 retains the original receipt, checks the live indexed segment result and registry,
 and explicitly releases it. After a browser restart, the fixture checks that the
 same original is archived with `CLAIM_SEGMENT_FAILURE` and no active claim remains.
-Only then does the host restore the root's registration policy, prepare a new
-owner-proved claim and sponsor quote for the same ACC and name, submit that new
-original once, and check indexed success and the live binding. Its private
+Only then does the host restore the root's registration policy. A separate
+headless browser profile opens the actual Passport name form with an already
+activated ACC, obtains a fresh sponsor quote, uses a virtual PRF credential to
+prove and prepare the new claim, reviews the displayed terms, and sends that
+original once through the sponsor HTTP fence. After the deliberately lost
+response, the same persistent browser profile reopens and checks the original.
+The host then checks indexed success and the live binding. Its private
 `indexed-claim-retry.json` retains both public receipts, the browser release
-receipt and dispatch counts. The new quote and retry dispatch still run in the
-host fixture; this lane does not qualify pre-proof browser quote review or a
-real provider.
+receipt and dispatch counts; `native-sponsor-failure-archive.json` records the
+separate sponsor retirement. Signed source `46add31e` passed this complete
+isolated Ledger 9 lane on 2026-11-20. The [redacted page-owned receipt](evidence/release-ledger9-page-claim-retry-20261120.json)
+records one quote, proof, preparation and dispatch; the first original's indexed
+claim failure, browser release and sponsor archive; the new original's indexed
+success and recovery after a lost response. The browser in this isolated lane
+still uses its direct live-indexer recovery port. Its ACC login connector is a
+fixture for an already activated account, and the two attempts use separate
+browser profiles. This does not qualify the full demo's combined ACC create/open
+ceremony, one profile across both attempts, a real passkey provider or an online
+registry.
+
+Signed source `e3ec3608` passed a fresh isolated Ledger 9 run in which the
+Passport page imported the exact indexed failed original into its
+virtual-credential profile, used the original sponsor's archived journal to
+release it, and retained the failed receipt after reload. The same profile
+then obtained one quote, proved, prepared and dispatched a distinct retry once,
+lost the sponsor response, and recovered indexed `SUCCESS` and the live binding
+to the same ACC. The [redacted same-profile receipt](evidence/release-ledger9-page-same-profile-20261120.json)
+records the two originals and exact-owned cleanup. The first original was still
+prepared outside the page, and the ACC login connector supplied an already
+activated account. This qualifies local release-to-retry continuity, not
+same-profile preparation of both originals, combined ACC creation, a real
+passkey provider, an online registry or a released package.
 
 ## Run the shielded deposit by name
 
@@ -919,6 +999,17 @@ prepared receipt or dispatch fence can be archived after the local sponsor
 confirms the name remains free; active sponsor work excludes that retirement.
 If the prepare request never reached the sponsor, the same exclusive check
 records a durable refusal for the exact expired quote without moving the journal.
+If an indexed original is definitively `FAILURE`, or the sole claim segment
+failed while the sponsor fee succeeded, **Release failed original for a new
+attempt** first asks this sponsor to verify the exact prepared bytes and
+dispatch fence. It checks the transaction's identifiers, hash, raw bytes,
+canonical finalized block, free name and activated ACC twice before archiving
+the whole journal. The archive retains the exact receipt and fee outcome. Only
+then does the browser archive its own record and offer a fresh quote. Provider
+outage, changed binding, another partial result and uncertain finality keep the
+original fenced. Other quotes that moved with an archived journal remain
+recoverable by exact bounded lookup; a quote without a balance intent receives
+only its own durable refusal, never the occupying original's receipt.
 The dispatch handler rechecks
 the approved quote and original transaction before opening the dispatch fence.
 If live terms change before any intent is recorded, the sponsor durably refuses

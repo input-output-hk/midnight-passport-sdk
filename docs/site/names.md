@@ -107,7 +107,7 @@ network as the Passport demo.
 | `VITE_MIDNAMES_NETWORK_ID` | Exact Passport demo network, such as `undeployed` |
 | `VITE_MIDNAMES_NAMESPACE` | `night` or an explicitly configured canonical namespace |
 | `VITE_MIDNAMES_REGISTRY_ADDRESS` | 64 lowercase hex characters for the pinned registry |
-| `VITE_MIDNAMES_CLAIM_PROTOCOL_VERSION` | Required for standalone claim reconciliation: exact Indexer v4 transaction `protocolVersion` observed on this chain (`2001000` for the isolated fixture, `2001100` for shared Ledger 9); this is distinct from the `/api/v4/graphql` API version |
+| `VITE_MIDNAMES_CLAIM_PROTOCOL_VERSION` | Required for standalone claim reconciliation: exact Indexer v4 transaction `protocolVersion` observed on this chain (`2001100` for the shared stack and release-image isolated fixture); this is distinct from the `/api/v4/graphql` API version |
 | `VITE_MIDNAMES_INDEXER_URL` | Public HTTPS GraphQL endpoint, or HTTP on loopback |
 | `VITE_MIDNAMES_INDEXER_WS_URL` | Public WSS endpoint, or WS on loopback |
 | `VITE_MIDNAMES_VERIFICATION_INDEXER_URL` | Second HTTPS GraphQL endpoint on a distinct origin; required for a non-`undeployed` network or non-loopback primary indexer |
@@ -351,9 +351,12 @@ when the indexed segments show only the sponsor's DUST fee succeeded and the
 sole claim intent failed. This requires the pinned standalone transaction shape;
 any missing, extra, duplicated or different segment remains a conflict. The fee
 is not refunded. **Release failed original for a new attempt** checks the same
-failure outcome again, checks that the name is still unregistered and the ACC is supported, then
-archives the original receipt and clears the selection in one durable browser
-transaction. The receipt and its original identifiers remain available in local
+failure outcome again and checks that the name is still unregistered and the ACC is supported.
+With the local sponsor, it first verifies the exact prepared bytes and dispatch
+fence, the indexed transaction and its canonical finalized block, then archives
+the sponsor's entire private journal with a durable failure and fee-outcome marker.
+Only after the sponsor confirms that archive does the browser clear its selection
+in one durable transaction. The receipt and its original identifiers remain available in local
 history after reload; importing the same failed transaction again is refused.
 Review a fresh quote before preparing another claim. Other `PARTIAL_SUCCESS`
 outcomes, malformed or mismatched transactions, provider outages, and missing
@@ -364,8 +367,41 @@ after browser restart, and one distinct host-sponsored retry that finalized to
 the same ACC. The original and retry each dispatched once. The runner verified
 unchanged inputs, stopped its three owned containers, retained volumes, and
 released its native lease. The retry's new quote, proof, and dispatch remained
-host-driven; this does not qualify browser review before proving or a real
-passkey provider. Issue #334 remains open for those broader paths.
+host-driven in that run. A later signed `b58668e8` isolated run used the
+reference browser to review saved terms, send the fresh claim once through
+the sponsor HTTP fence, and reconcile its original after a lost response and
+reload. The retry indexed `SUCCESS` to the same ACC. The new quote, proof, and
+balance were still host-driven; this does not qualify browser review before
+proving or a real passkey provider.
+The [older release-stack retry receipt](../../examples/midnames-local/README.md#release-ledger-9-native-claim-retry)
+repeated the host-driven failure-and-retry path on node 2.1.101, indexer
+4.4.101, and prover 9.0.2. It retained the Compact 0.35 artifacts and used
+Ledger 9 `1.0.2` throughout the reference client. The first claim's fee-only
+`PARTIAL_SUCCESS` was archived and released after a browser reload; a different
+original then finalized `SUCCESS` for the same ACC.
+On later signed source `46add31e`, a fresh isolated run used the actual
+Passport name form for the retry. It obtained one sponsor-issued quote before
+the owner proof, prepared and sent the reviewed claim once, then recovered its
+indexed `SUCCESS` and live binding in the same persistent browser profile after
+the sponsor response was lost. The failed original had already been archived
+and released in a separate browser profile. The ACC login connector supplied an
+already activated test account, and the credential was virtual. This qualifies
+that bounded local page-to-chain retry, not a combined ACC creation ceremony,
+one browser profile across both attempts, a real passkey provider or an online
+registry. See the [redacted page-owned receipt](../../examples/midnames-local/evidence/release-ledger9-page-claim-retry-20261120.json).
+On signed source `e3ec3608`, a new isolated run moved the indexed failure
+release into the actual Passport page's retry profile. That profile imported
+the exact original, confirmed the failed claim and archived sponsor journal,
+released it, retained it across reload, then obtained one quote, proved,
+prepared and sent the new claim once. It recovered indexed `SUCCESS` and the
+live same-ACC binding after a lost sponsor response. The
+[redacted same-profile receipt](../../examples/midnames-local/evidence/release-ledger9-page-same-profile-20261120.json)
+qualifies local release-to-retry continuity with a virtual credential. The
+first original was still prepared outside the page, and ACC login still used
+an already activated fixture account. This does not establish full onboarding,
+real-provider custody, public `passport.night` issuance or online substitution.
+Issue #334 remains open for the broader failure matrix and combined
+onboarding/provider paths.
 If legacy storage contains multiple original claims,
 enter an original name to inspect it before preparing another.
 The synthetic full-app Chromium fixture now follows create/open into this form:
@@ -376,9 +412,12 @@ also checks that displaying an exact synthetic claim quote happens before the
 first owner-proof or sponsor-preparation call, and that explicit approval calls
 each once. This synthetic fixture alone does not prove an actual failed
 transaction, a real sponsor quote, or a passkey ceremony. The separate native
-run above proves the indexed failure, browser release, and host-driven retry;
-the full demo's native sponsor-issued pre-proof quote and real-provider custody
-remain unqualified.
+run above proves the indexed failure, browser release, and a later browser-sent
+prepared retry. The newer isolated run at signed `46add31e` also proves one
+sponsor-issued pre-proof quote, owner proof and browser send through the
+Passport name form; `e3ec3608` connects release and retry in one browser
+profile. The combined ACC create/open ceremony and real-provider
+custody remain unqualified.
 **Check registry status** reads the pinned registry and verifies the open ACC
 before reporting an unregistered name. Availability is an observation at the
 time of the read. A retained receipt takes precedence and is reconciled
@@ -398,6 +437,14 @@ identified as such. If its quote expires, the sponsor can verify and archive
 that exact unsent original before a fresh quote; a fenced or uncertain send
 stays pending. A public receipt imported without the matching saved
 quote can be checked and reconciled, but cannot be sent from this browser.
+
+The sponsor also searches a bounded set of its private retired journals for an
+exact issued quote. A quote moved with another original cannot be mistaken for
+that original: its terms and digest must match, and the occupying balance intent
+must belong to a different quote. The sponsor records an exact pre-intent
+refusal beside the archived quote, allowing only that browser's unprepared
+reservation to be released. Missing, malformed or conflicting archive data
+keeps the reservation pending for investigation.
 
 If the preparation response is lost, reopen with the original credential and
 select **Continue registration**, then **Check saved claim** when offered. The host looks up the original preparation.

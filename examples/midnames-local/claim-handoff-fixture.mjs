@@ -26,6 +26,7 @@ export async function qualifyClaimHandoff({
   dispatch,
   browserOwner = false,
   preproofReview = false,
+  sponsorIssuedQuote,
   label = 'charlie',
   ownerSecretFile,
   childPrice,
@@ -34,6 +35,22 @@ export async function qualifyClaimHandoff({
   assert.ok(price.buy_enabled);
   assert.ok(price.coin_color.every((byte) => byte === 0));
   assert.ok(!preproofReview || browserOwner);
+  if (sponsorIssuedQuote) {
+    const issued = claimQuote(sponsorIssuedQuote);
+    assert.equal(issued.networkId, 'undeployed');
+    assert.equal(issued.registryAddress, registryAddress);
+    assert.equal(issued.accountAddress, accountAddress);
+    assert.equal(issued.name, label + '.night');
+    assert.equal(issued.sponsorAddress, '33'.repeat(32));
+    assert.equal(
+      issued.registryPayee,
+      Buffer.from(parentDomain.owner_address.bytes).toString('hex'),
+    );
+    assert.equal(issued.sponsorPaymentAddress, sponsorPaymentAddress);
+    assert.equal(issued.night, String(price.cost_long));
+    assert.equal(issued.maximumDust, '100000000000000000');
+    assert.ok(Date.now() < issued.expiresAt);
+  }
 
   const reviewedQuote = preproofReview
     ? claimQuote({
@@ -116,6 +133,7 @@ export async function qualifyClaimHandoff({
   const fixtureQuote =
     dispatch &&
     (reviewedQuote ??
+      sponsorIssuedQuote ??
       claimQuote({
         ...quote,
         id: prepared.receipt.transaction.sha256,

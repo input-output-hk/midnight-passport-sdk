@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "../../experiments/acc-0.35/guard.sh && vite",
     "build": "../../experiments/acc-0.35/guard.sh && vite build",
-    "test": "node --import tsx --test test/*.test.ts ../../examples/midnames-online/*.test.mjs ../../examples/midnames-local/upstream-source.test.mjs && node --import tsx e2e/seed-policy.e2e.ts && node --import tsx e2e/network-pin.e2e.ts && node --import tsx e2e/mock-passkey.e2e.ts && node --import tsx e2e/runtime-identity.e2e.ts",
+    "test": "node --import tsx --test test/*.test.ts ../../examples/midnames-online/*.test.mjs ../../examples/midnames-local/upstream-source.test.mjs ../../examples/midnames-local/claim-indexed-failure.test.mjs && node --import tsx e2e/seed-policy.e2e.ts && node --import tsx e2e/network-pin.e2e.ts && node --import tsx e2e/mock-passkey.e2e.ts && node --import tsx e2e/runtime-identity.e2e.ts",
     "e2e": "../../experiments/acc-0.35/guard.sh && node --import tsx e2e/mvp.e2e.ts",
     "virtual-authenticator": "../../experiments/acc-0.35/guard.sh && node --import tsx e2e/virtual-authenticator.e2e.ts",
     "test:browser": "node --import tsx e2e/demo-journeys.e2e.ts",

@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { IDBFactory } from 'fake-indexeddb';
 import { openClaimJournal } from '../src/midnames/claim-journal.js';
+import { releaseVerifiedFailure } from '../src/midnames/claim-retry.js';
+import type { ClaimRecovery } from '../src/midnames/claim-receipt.js';
 
 const registry = '12'.repeat(32);
 const account = '34'.repeat(32);
@@ -96,6 +98,74 @@ test('a retained original quote prevents silently selecting another name', async
     /Recover the original claim/,
   );
   assert.equal(await journal.readSelection(registry, account, credential), 'alice.night');
+  journal.close();
+});
+
+test('a failed browser original remains retained until the sponsor archives the exact indexed failure', async () => {
+  const factory = new IDBFactory();
+  const journal = await openClaimJournal(factory);
+  const original = receiptFor('alice.night');
+  await journal.selectName(registry, account, credential, original.name);
+  await journal.retain(original, credential);
+  let sponsorReason: 'failed' | 'claim-failed' = 'claim-failed';
+  let sponsorAvailable = false;
+  let status: 'failed' | 'claim-failed' | 'unavailable' = 'claim-failed';
+  let availability: 'available' | 'taken' = 'available';
+  const recovery = {
+    registryAddress: registry,
+    async check() {
+      return status;
+    },
+    async availability() {
+      return availability;
+    },
+    preparation: {
+      async quote() {
+        throw new Error('No quote in this recovery test.');
+      },
+      async prove() {
+        throw new Error('No owner proof in this recovery test.');
+      },
+      async prepare() {
+        throw new Error('No preparation in this recovery test.');
+      },
+      async findPrepared() {
+        throw new Error('No preparation in this recovery test.');
+      },
+      async retireIndexedFailure() {
+        if (!sponsorAvailable) throw new Error('Sponsor unavailable.');
+        return sponsorReason;
+      },
+    },
+  } as ClaimRecovery;
+  const opened = { address: account } as Parameters<typeof releaseVerifiedFailure>[3];
+  const release = () =>
+    releaseVerifiedFailure(
+      recovery,
+      journal,
+      original,
+      opened,
+      original.name,
+      credential,
+      () => {},
+    );
+  await assert.rejects(release(), /Sponsor unavailable/);
+  assert.deepEqual(await journal.read(registry, original.name, credential), original);
+  sponsorAvailable = true;
+  sponsorReason = 'failed';
+  await assert.rejects(release(), /did not archive/);
+  availability = 'taken';
+  await assert.rejects(release(), /Registry availability/);
+  availability = 'available';
+  status = 'unavailable';
+  await assert.rejects(release(), /no longer confirmed/);
+  status = 'claim-failed';
+  sponsorReason = 'claim-failed';
+  await release();
+  assert.equal(await journal.read(registry, original.name, credential), undefined);
+  assert.deepEqual(await journal.readReleased(registry, original.name, account, credential), [
+    original,
+  ]);
   journal.close();
 });
 

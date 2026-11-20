@@ -1,5 +1,6 @@
-// Native chain and real demo recovery UI. Only account login and loss of the sponsor's
-// HTTP response are fixtures. The isolated native runner owns the one chain submission.
+// Native chain and real demo recovery UI. Account login, the browser's saved
+// host-prepared quote/receipt, and loss of the sponsor's HTTP response are fixtures.
+// The isolated native runner owns the one chain submission.
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -35,6 +36,8 @@ if (sponsorPort !== undefined) {
 const fixtureQuote = sponsorPort
   ? claimQuote(JSON.parse(readFileSync(file('original-quote.json'), 'utf8')))
   : undefined;
+if (process.env.VITE_MIDNAMES_CLAIM_PROTOCOL_VERSION !== undefined)
+  assert.equal(process.env.VITE_MIDNAMES_CLAIM_PROTOCOL_VERSION, '2001100');
 Object.assign(process.env, {
   PASSPORT_MANIFEST_SHA256: '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f',
   PASSPORT_NETWORK_ID: 'undeployed',
@@ -44,6 +47,7 @@ Object.assign(process.env, {
   VITE_MIDNAMES_NETWORK_ID: 'undeployed',
   VITE_MIDNAMES_INDEXER_URL: indexer,
   VITE_MIDNAMES_INDEXER_WS_URL: process.env.MN_INDEXER_WS_URL,
+  VITE_MIDNAMES_CLAIM_PROTOCOL_VERSION: '2001100',
 });
 if (sponsorPort) process.env.VITE_MIDNAMES_CLAIM_SPONSOR = '1';
 const manifest = process.env.PASSPORT_MANIFEST_SHA256;
@@ -98,7 +102,7 @@ const vite = await createServer({
 const messages = {
   available: /^Unregistered at the last registry read/,
   saved: /^Original receipt saved/,
-  pending: /^Claim pending/,
+  pending: /^The original claim is pending/,
   confirmed: /^Registered\./,
   refused: /^A different original claim is retained for this name\./,
 };
@@ -133,8 +137,33 @@ async function openPage(page: Page, origin: string, alternate = false) {
   await page.locator('#claim-recovery-name').fill(original.name);
 }
 
-const status = (page: Page, message: RegExp) =>
-  page.locator('#claim-recovery-status').filter({ hasText: message }).waitFor({ timeout: 120_000 });
+async function status(page: Page, message: RegExp) {
+  try {
+    await page
+      .locator('#claim-recovery-status')
+      .filter({ hasText: message })
+      .waitFor({ timeout: 120_000 });
+  } catch (error) {
+    const observed = await page.locator('#claim-recovery-status').textContent();
+    throw new Error(`Claim status did not match ${message}: ${observed}`, { cause: error });
+  }
+}
+async function pendingOriginal(page: Page) {
+  const field = page.locator('#claim-recovery-status');
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await field
+      .filter({
+        hasText:
+          /^(The original claim is pending|Name service unavailable|Claim check unavailable)/,
+      })
+      .waitFor({ timeout: 30_000 });
+    const observed = (await field.textContent()) ?? '';
+    if (messages.pending.test(observed)) return;
+    if (!/^(Name service unavailable|Claim check unavailable)/.test(observed)) break;
+    await page.locator('#claim-recovery-check').click();
+  }
+  throw new Error(`The exact original was not pending before send: ${await field.textContent()}`);
+}
 const openBrowser = () =>
   chromium.launchPersistentContext(file('chrome-profile'), {
     executablePath:
@@ -160,11 +189,19 @@ async function submitWithLostSponsorResponse(page: Page) {
       }
     });
     await page.locator('#claim-dispatch').click();
-    await status(page, /Review the saved payment terms above/);
+    await status(page, /^No transaction has been sent\. Review the payment terms above/);
+    assert.ok(
+      (await page.locator('#claim-quote-summary').textContent())?.includes(
+        `Register ${original.name}`,
+      ),
+    );
     await page.locator('#claim-dispatch').click();
     await lost;
     assert.equal(responseStatus, 202, 'The sponsor must accept the original before response loss.');
-    await status(page, /^Send outcome unknown/);
+    await status(
+      page,
+      /^(The original claim is pending|Registered\.|Claim check unavailable|Name service unavailable)/,
+    );
     return;
   }
   await page.route('**/__drop-claim-response', async (route) => {
@@ -261,10 +298,10 @@ try {
   } finally {
     releaseRead();
   }
-  await status(checking, messages.pending);
+  await pendingOriginal(checking);
   await checking.close();
   await first.locator('#claim-check-availability').click();
-  await status(first, messages.pending);
+  await pendingOriginal(first);
 
   await submitWithLostSponsorResponse(first);
   await browser.close();
@@ -282,7 +319,10 @@ try {
     await recovered.locator('#claim-recovery-check').click();
     const result = recovered.locator('#claim-recovery-status');
     await result
-      .filter({ hasText: /^(Registered\.|Claim pending|Claim check unavailable)/ })
+      .filter({
+        hasText:
+          /^(Registered\.|The original claim is pending|Claim check unavailable|Name service unavailable)/,
+      })
       .waitFor();
     if (messages.confirmed.test(await result.innerText())) break;
     assert.ok(Date.now() < deadline, await result.innerText());

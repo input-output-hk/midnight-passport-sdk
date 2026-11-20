@@ -34,6 +34,8 @@ export interface ClaimPreparation {
   retireExpiredUnsent?(receipt: ClaimReceipt): Promise<void>;
   /** Sponsor archives only an expired balance intent with no prepared or sent transaction. */
   retireExpiredUnprepared?(quote: ClaimQuote, ownerCommitment: string): Promise<void>;
+  /** Sponsor archives an exact indexed failed original before browser release. */
+  retireIndexedFailure?(receipt: ClaimReceipt): Promise<'failed' | 'claim-failed'>;
 }
 
 export interface OwnerProvedClaim {

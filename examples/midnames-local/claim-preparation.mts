@@ -1,4 +1,12 @@
-import { closeSync, existsSync, fsyncSync, mkdirSync, openSync, renameSync } from 'node:fs';
+import {
+  closeSync,
+  existsSync,
+  fsyncSync,
+  mkdirSync,
+  openSync,
+  readdirSync,
+  renameSync,
+} from 'node:fs';
 import { dirname, join } from 'node:path';
 import {
   claimDestination,
@@ -27,6 +35,7 @@ import { createOnce } from './create-once.mts';
 
 export const claimPrepareLimit = 2 * 1024 * 1024 + claimReceiptLimit;
 const minimumQuoteRemaining = 2 * 60_000;
+const archiveLimit = 256;
 
 /** Balance with enough time for deliberate browser review, within the reviewed quote. */
 export function claimBalanceTtl(quoteExpiresAt: number, now = Date.now()): Date {
@@ -46,6 +55,13 @@ export function claimUnpreparedArchivePath(directory: string, quote: ClaimQuote)
   return join(dirname(directory), `claim-journal-unprepared-${claimQuote(quote).id}`);
 }
 
+export function claimFailedArchivePath(directory: string, receipt: ClaimReceipt): string {
+  return join(
+    dirname(directory),
+    `claim-journal-failed-${claimReceipt(receipt).transaction.sha256}`,
+  );
+}
+
 export interface ClaimSponsorPreparationPorts {
   issue(destination: ClaimDestination): Promise<ClaimQuote>;
   /** Recheck the approved price, payee, sponsor, target and availability before any balance. */
@@ -55,6 +71,10 @@ export interface ClaimSponsorPreparationPorts {
   retireExpiredUnsent?: (receipt: ClaimReceipt) => Promise<void>;
   /** Recheck the registry before archiving an expired intent with no transaction. */
   retireExpiredUnprepared?: (quote: ClaimQuote) => Promise<void>;
+  /** Recheck exact indexed finality and registry absence on the pinned chain. */
+  retireIndexedFailure?: (
+    receipt: ClaimReceipt,
+  ) => Promise<{ reason: 'failed' | 'claim-failed'; finalizedHash: string }>;
 }
 
 function recordOnce(path: string, record: unknown): boolean {
@@ -91,8 +111,39 @@ export function createClaimPreparationJournal(
   const unpreparedRetiredPath = (id: string) =>
     join(directory, 'quote-unprepared-retired-' + id + '.json');
 
-  function wasUnpreparedRetired(id: string, digest: string, ownerCommitment: string): boolean {
-    const marker = readClaimRecord(unpreparedRetiredPath(id), claimReceiptLimit);
+  function issuedQuote(quote: ClaimQuote, includeArchives: boolean) {
+    const parent = dirname(directory);
+    const archived = includeArchives
+      ? readdirSync(parent, { withFileTypes: true }).filter((entry) =>
+          /^claim-journal-(?:retired|unprepared|failed)-[a-f0-9]{64}$/.test(entry.name),
+        )
+      : [];
+    if (archived.length > archiveLimit)
+      throw new Error('Too many archived claim journals to verify this quote.');
+    let found: string | undefined;
+    for (const path of [directory, ...archived.map((entry) => join(parent, entry.name))]) {
+      const raw = readClaimRecord(join(path, `quote-${quote.id}.json`), claimReceiptLimit);
+      if (raw === undefined) continue;
+      // A symlink, changed permissions or an ambiguous duplicate must not attest a quote.
+      openClaimDispatch(path);
+      if (JSON.stringify(claimQuote(raw)) !== JSON.stringify(quote) || found)
+        throw new Error('Archived claim quote differs from the reviewed original.');
+      found = path;
+    }
+    if (!found) throw new Error('Claim quote was not issued by this sponsor.');
+    return found;
+  }
+
+  function wasUnpreparedRetired(
+    id: string,
+    digest: string,
+    ownerCommitment: string,
+    source = directory,
+  ): boolean {
+    const marker = readClaimRecord(
+      join(source, `quote-unprepared-retired-${id}.json`),
+      claimReceiptLimit,
+    );
     if (marker === undefined) return false;
     if (
       !marker ||
@@ -106,8 +157,13 @@ export function createClaimPreparationJournal(
     return true;
   }
 
-  function wasRefused(id: string, digest: string): boolean {
-    const marker = readClaimRecord(decisionPath(id), claimReceiptLimit);
+  function wasRefused(
+    id: string,
+    digest: string,
+    source = directory,
+    ownerCommitment?: string,
+  ): boolean {
+    const marker = readClaimRecord(join(source, `quote-decision-${id}.json`), claimReceiptLimit);
     if (marker === undefined) return false;
     if (
       !marker ||
@@ -115,10 +171,14 @@ export function createClaimPreparationJournal(
       !('kind' in marker) ||
       !('digest' in marker) ||
       marker.digest !== digest ||
-      !['refused', 'intent'].includes(String(marker.kind))
+      !['refused', 'intent', 'archive-refused'].includes(String(marker.kind)) ||
+      (marker.kind === 'archive-refused' &&
+        (!ownerCommitment ||
+          !('ownerCommitment' in marker) ||
+          marker.ownerCommitment !== ownerCommitment))
     )
       throw new Error('Claim decision differs from the original quote.');
-    return marker.kind === 'refused';
+    return marker.kind === 'refused' || marker.kind === 'archive-refused';
   }
 
   function refuseBeforeIntent(id: string, digest: string): never {
@@ -129,8 +189,14 @@ export function createClaimPreparationJournal(
     throw new ClaimPreIntentRefusal('The sponsor refused before any balance intent.');
   }
 
-  function refuseQuoteSupersededByOriginal(id: string, digest: string): void {
-    const intent = readClaimRecord(intentPath, claimReceiptLimit);
+  function refuseQuoteSupersededByOriginal(
+    id: string,
+    digest: string,
+    ownerCommitment: string,
+    source = directory,
+    sourceDispatch = dispatch,
+  ): void {
+    const intent = readClaimRecord(join(source, 'claim-prepare-intent.json'), claimReceiptLimit);
     if (intent === undefined) return;
     if (
       !intent ||
@@ -143,10 +209,12 @@ export function createClaimPreparationJournal(
     // An older quote cannot have entered this sponsor's one balance intent.
     // Refuse that exact quote durably so its browser can release only its own
     // unprepared reservation; never alter the occupying original or its fence.
-    if (dispatch.preparedReceipt()?.quoteSha256 === digest)
+    if (sourceDispatch.preparedReceipt()?.quoteSha256 === digest)
       throw new Error('The original prepared receipt differs from its intent.');
-    if (!recordOnce(decisionPath(id), { kind: 'refused', digest }) && !wasRefused(id, digest)) {
-      const decision = readClaimRecord(decisionPath(id), claimReceiptLimit);
+    const sourceDecision = join(source, `quote-decision-${id}.json`);
+    const refusal = { kind: 'archive-refused', digest, ownerCommitment };
+    if (!recordOnce(sourceDecision, refusal) && !wasRefused(id, digest, source, ownerCommitment)) {
+      const decision = readClaimRecord(sourceDecision, claimReceiptLimit);
       if (
         !decision ||
         typeof decision !== 'object' ||
@@ -156,7 +224,7 @@ export function createClaimPreparationJournal(
         !('proofSha256' in decision) ||
         decision.kind !== 'intent' ||
         decision.digest !== digest ||
-        !claimHex(decision.ownerCommitment) ||
+        decision.ownerCommitment !== ownerCommitment ||
         !claimHex(decision.proofSha256)
       )
         throw new Error('The quote decision differs from its original.');
@@ -167,17 +235,22 @@ export function createClaimPreparationJournal(
     throw new ClaimPreIntentRefusal('The sponsor refused before any balance intent.');
   }
 
-  async function approved(input: unknown) {
+  async function approved(input: unknown, includeArchives = false) {
     const { quote, ownerCommitment } = requestFields(input);
-    const issued = claimQuote(readClaimRecord(quotePath(quote.id), claimReceiptLimit));
-    if (JSON.stringify(issued) !== JSON.stringify(quote))
-      throw new Error('Claim quote was not issued by this sponsor.');
+    const source = issuedQuote(quote, includeArchives);
     const digest = await claimQuoteDigest(quote);
-    return { quote, ownerCommitment, digest };
+    return { quote, ownerCommitment, digest, source };
   }
 
-  function find(quoteId: string, digest: string, ownerCommitment: string, proofSha256?: string) {
-    const value = readClaimRecord(intentPath, claimReceiptLimit);
+  function find(
+    quoteId: string,
+    digest: string,
+    ownerCommitment: string,
+    proofSha256?: string,
+    source = directory,
+    sourceDispatch = dispatch,
+  ) {
+    const value = readClaimRecord(join(source, 'claim-prepare-intent.json'), claimReceiptLimit);
     if (value === undefined) return undefined;
     if (
       !value ||
@@ -193,13 +266,123 @@ export function createClaimPreparationJournal(
       (proofSha256 && value.proofSha256 !== proofSha256)
     )
       throw new Error('A different original preparation is recorded.');
-    const receipt = dispatch.preparedReceipt();
+    const receipt = sourceDispatch.preparedReceipt();
     if (receipt && (receipt.quoteSha256 !== digest || receipt.ownerCommitment !== ownerCommitment))
       throw new Error('The original prepared receipt differs from its intent.');
     return { receipt };
   }
 
   return {
+    async retireIndexedFailure(input: unknown) {
+      if (!ports.retireIndexedFailure)
+        throw new Error('Indexed failure retirement is unavailable.');
+      const receipt = claimReceipt(input);
+      const archive = claimFailedArchivePath(directory, receipt);
+      const markerPath = (path: string) => join(path, 'claim-indexed-failure.json');
+      const archived = existsSync(archive);
+      const source = archived ? archive : directory;
+      const sourceDispatch = archived ? openClaimDispatch(archive) : dispatch;
+      const intent = readClaimRecord(join(source, 'claim-prepare-intent.json'), claimReceiptLimit);
+      if (
+        !intent ||
+        typeof intent !== 'object' ||
+        !('quoteId' in intent) ||
+        !claimHex(intent.quoteId)
+      )
+        throw new Error('The failed original preparation is unavailable.');
+      const quote = claimQuote(
+        readClaimRecord(join(source, `quote-${intent.quoteId}.json`), claimReceiptLimit),
+      );
+      const digest = await claimQuoteDigest(quote);
+      const decision = readClaimRecord(
+        join(source, `quote-decision-${quote.id}.json`),
+        claimReceiptLimit,
+      );
+      if (
+        !decision ||
+        typeof decision !== 'object' ||
+        !('kind' in decision) ||
+        decision.kind !== 'intent' ||
+        !('digest' in decision) ||
+        decision.digest !== digest ||
+        !('ownerCommitment' in decision) ||
+        decision.ownerCommitment !== receipt.ownerCommitment ||
+        !('proofSha256' in decision) ||
+        !claimHex(decision.proofSha256) ||
+        !('proofSha256' in intent) ||
+        decision.proofSha256 !== intent.proofSha256 ||
+        !sourceDispatch.preparedBytes(receipt) ||
+        !sourceDispatch.hasFence(receipt) ||
+        receipt.quoteSha256 !== digest ||
+        !matchesDestination(receipt, quote) ||
+        !find(quote.id, digest, receipt.ownerCommitment, undefined, source, sourceDispatch)?.receipt
+      )
+        throw new Error('The indexed failure differs from the retained original.');
+      const prior = readClaimRecord(markerPath(source), claimReceiptLimit);
+      if (archived) {
+        if (
+          !prior ||
+          typeof prior !== 'object' ||
+          !('receipt' in prior) ||
+          JSON.stringify(claimReceipt(prior.receipt)) !== JSON.stringify(receipt) ||
+          !('reason' in prior) ||
+          (prior.reason !== 'failed' && prior.reason !== 'claim-failed') ||
+          !('finalizedHash' in prior) ||
+          !claimHex(prior.finalizedHash)
+        )
+          throw new Error('The archived failure differs from its original.');
+        return { status: 'retired' as const, reason: prior.reason };
+      }
+      const verify = async () => {
+        const result = await ports.retireIndexedFailure!(receipt);
+        if (
+          (result.reason !== 'failed' && result.reason !== 'claim-failed') ||
+          !claimHex(result.finalizedHash)
+        )
+          throw new Error('The original indexed failure was not confirmed.');
+        return result;
+      };
+      const first = await verify();
+      const second = await verify();
+      if (
+        first.reason !== second.reason ||
+        !sourceDispatch.preparedBytes(receipt) ||
+        !sourceDispatch.hasFence(receipt) ||
+        existsSync(archive)
+      )
+        throw new Error('The indexed failure changed during retirement.');
+      if (
+        prior !== undefined &&
+        (!prior ||
+          typeof prior !== 'object' ||
+          !('receipt' in prior) ||
+          JSON.stringify(claimReceipt(prior.receipt)) !== JSON.stringify(receipt) ||
+          !('reason' in prior) ||
+          prior.reason !== second.reason ||
+          !('finalizedHash' in prior) ||
+          !claimHex(prior.finalizedHash))
+      )
+        throw new Error('The indexed failure marker differs from its original.');
+      const marker = prior ?? {
+        receipt,
+        reason: second.reason,
+        finalizedHash: second.finalizedHash,
+      };
+      if (!recordOnce(markerPath(directory), marker)) {
+        const existing = readClaimRecord(markerPath(directory), claimReceiptLimit);
+        if (JSON.stringify(existing) !== JSON.stringify(marker))
+          throw new Error('The indexed failure marker differs from its original.');
+      }
+      renameSync(directory, archive);
+      mkdirSync(directory, { mode: 0o700 });
+      const parent = openSync(dirname(directory), 'r');
+      try {
+        fsyncSync(parent);
+      } finally {
+        closeSync(parent);
+      }
+      return { status: 'retired' as const, reason: second.reason };
+    },
     async retireExpiredUnprepared(input: unknown) {
       if (!ports.retireExpiredUnprepared)
         throw new Error('Expired unprepared claim retirement is unavailable.');
@@ -363,14 +546,15 @@ export function createClaimPreparationJournal(
       return quote;
     },
     async findPrepared(input: unknown) {
-      const { quote, digest, ownerCommitment } = await approved(input);
-      if (wasUnpreparedRetired(quote.id, digest, ownerCommitment))
+      const { quote, digest, ownerCommitment, source } = await approved(input, true);
+      const sourceDispatch = source === directory ? dispatch : openClaimDispatch(source);
+      if (wasUnpreparedRetired(quote.id, digest, ownerCommitment, source))
         throw new ClaimPreIntentRefusal(
           'The sponsor retired this quote before any balance intent.',
         );
-      refuseQuoteSupersededByOriginal(quote.id, digest);
-      const result = find(quote.id, digest, ownerCommitment);
-      if (!result && wasRefused(quote.id, digest))
+      refuseQuoteSupersededByOriginal(quote.id, digest, ownerCommitment, source, sourceDispatch);
+      const result = find(quote.id, digest, ownerCommitment, undefined, source, sourceDispatch);
+      if (!result && wasRefused(quote.id, digest, source, ownerCommitment))
         throw new ClaimPreIntentRefusal('The sponsor refused before any balance intent.');
       return result;
     },
@@ -417,7 +601,7 @@ export function createClaimPreparationJournal(
         throw new Error('Invalid proved transaction bytes.');
       const bytes = Buffer.from(proof, 'hex');
       const proofSha256 = await claimDigest(bytes);
-      refuseQuoteSupersededByOriginal(quote.id, digest);
+      refuseQuoteSupersededByOriginal(quote.id, digest, ownerCommitment);
       const previous = find(quote.id, digest, ownerCommitment, proofSha256);
       if (previous) return previous;
       if (wasRefused(quote.id, digest))

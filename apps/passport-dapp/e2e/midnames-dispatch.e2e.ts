@@ -589,10 +589,18 @@ try {
   await prepared.locator('#claim-review-quote').click();
   assert.equal(await prepared.locator('#claim-dispatch').isVisible(), false);
   await prepared.goto(pageUrl + '?prepare&setup&failed');
-  await prepared
-    .locator('#claim-recovery-status')
-    .filter({ hasText: /local sponsor must reconcile its retained original/ })
-    .waitFor();
+  const failedStatus = prepared.locator('#claim-recovery-status');
+  await failedStatus
+    .filter({ hasText: /^The exact original transaction failed and the name is unregistered/ })
+    .waitFor()
+    .catch(async (error: unknown) => {
+      throw new Error(`Failed-original status: ${await failedStatus.textContent()}`, {
+        cause: error,
+      });
+    });
+  assert.equal(await prepared.locator('#claim-release-failed').isVisible(), true);
+  await prepared.locator('#claim-release-failed').click();
+  await failedStatus.filter({ hasText: /^Claim check unavailable/ }).waitFor();
   assert.equal(await prepared.locator('#claim-release-failed').isVisible(), false);
   const requestsBefore = preparationRequests.length;
   await prepared.locator('#claim-review-quote').click();

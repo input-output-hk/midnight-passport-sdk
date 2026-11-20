@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-11-20",
+  "source": {
+    "signedHead": "3dda8ec",
+    "contractProfile": "standalone-0.35",
+    "compactRuntime": "0.20.0",
+    "midnightJs": "5.0.0-rc.2",
+    "ledgerV9": "1.0.2",
+    "referenceDependencyOverride": "all @midnightntwrk/ledger-v9 entries"
+  },
+  "isolatedStack": {
+    "networkId": "undeployed",
+    "protocolVersion": 2001100,
+    "node": "ghcr.io/midnight-ntwrk/midnight-node@sha256:0c1ad548d523c1109aa1f16daab1bf72dcb78c7e17b8a8c6d97424ad0eba7b8a",
+    "indexer": "ghcr.io/midnight-ntwrk/indexer-standalone@sha256:119f35db548ba1c390845f215bb1e928e73038bef7c315825aee0461bd54499d",
+    "prover": "ghcr.io/midnight-ntwrk/proof-server@sha256:787ef99db4b4706eb14d94ad389ca45f1c09bcdf740afecb01899bfbda63dc64"
+  },
+  "journey": {
+    "name": "charlie.night",
+    "original": {
+      "transactionId": "00d04187e741d8ad144356f80b16326bf7967be9bfda0c9352075905b7326083df",
+      "status": "PARTIAL_SUCCESS",
+      "feeSegmentSucceeded": true,
+      "claimSegmentSucceeded": false,
+      "dispatches": 1,
+      "sponsorArchive": "exact indexed claim failure"
+    },
+    "browser": {
+      "virtualCredential": true,
+      "originalReleasedAfterReload": true,
+      "releaseReason": "CLAIM_SEGMENT_FAILURE",
+      "liveIndexerRequests": 12
+    },
+    "retry": {
+      "transactionId": "00d9d0611d3aa3c1064ce6af7f14ef6a377e6d7d2b358bb30ec8fb4cbecfc63ec1",
+      "status": "SUCCESS",
+      "dispatches": 1,
+      "sameAccountTarget": true,
+      "freshSponsorWalletView": true,
+      "proofAndDispatch": "host fixture"
+    }
+  },
+  "cleanup": {
+    "ownedContainersStopped": 3,
+    "volumesRetained": true,
+    "unrelatedResourcesControlled": 0,
+    "leaseReleased": true,
+    "inputsUnchanged": true
+  },
+  "result": "PASS",
+  "limits": [
+    "This is an isolated chain and virtual browser credential, not an online or real-provider result.",
+    "The new quote, proof, and dispatch were host-driven after browser release.",
+    "Compact 0.36 proof and write compatibility remain a separate gate."
+  ]
+}

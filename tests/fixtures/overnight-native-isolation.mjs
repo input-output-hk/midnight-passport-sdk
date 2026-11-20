@@ -42,7 +42,7 @@ export function containerFixture(profile, owned, running) {
             {
               Type: 'volume',
               Name: `${profile.project}-${owned.service}-data`,
-              Destination: '/data',
+              Destination: owned.service === 'node' ? '/node/chain' : '/data',
               RW: true,
             },
           ],

@@ -118,6 +118,14 @@ In a bounded retry, pinning the released `@midnightntwrk/ledger-v9` 1.0.0
 client and resuming the **same** pending ACC produced indexed activation on
 this chain. This observation does not isolate the cause of the earlier rejection
 or qualify other environments.
+A later isolated run on node 2.1.101, indexer 4.4.101, and prover 9.0.2
+activated a fresh pinned ACC and completed a failed Midnames claim followed
+by a distinct successful retry when every reference-client Ledger 9
+dependency was pinned to `1.0.2`. The guarded
+[preparation command](../../experiments/acc-0.35/prepare-ledger9-client.mjs)
+applies that pin to an idle generated export for the shared-stack demo.
+It retains the Compact 0.35 artifacts; it is a local compatibility result,
+not a supported Compact 0.36 migration or an online network qualification.
 [Compact.js 3.0.0](https://docs.midnight.network/relnotes/compact-js/compact-js-3-0-0)
 fixes gas-budget checks for calls that overwrite ledger state, but requires
 Compact 0.36 artifacts. This is a compatibility lead, not a diagnosis of

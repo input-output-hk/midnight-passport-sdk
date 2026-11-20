@@ -27,6 +27,7 @@ import {
   claimPreparedPath,
   claimQuotePath,
   claimRetirePath,
+  claimRetireFailurePath,
   claimStatusPath,
 } from '../src/midnames/claim-preparation-transport.js';
 import { claimDestination, claimQuote, claimQuoteDigest } from '../src/midnames/claim-quote.js';
@@ -58,6 +59,7 @@ test('archives only an expired unprepared intent and releases the sponsor for a 
     expiresAt: Date.now() - 1000,
   });
   const digest = await claimQuoteDigest(quote);
+  const sibling = claimQuote({ ...quote, id: 'a5'.repeat(32), name: 'sibling.night' });
   const intent = {
     quoteId: quote.id,
     digest,
@@ -65,6 +67,7 @@ test('archives only an expired unprepared intent and releases the sponsor for a 
     proofSha256: original.transaction.sha256,
   };
   createOnce(join(root, `quote-${quote.id}.json`), JSON.stringify(quote));
+  createOnce(join(root, `quote-${sibling.id}.json`), JSON.stringify(sibling));
   createOnce(
     join(root, `quote-decision-${quote.id}.json`),
     JSON.stringify({
@@ -112,6 +115,24 @@ test('archives only an expired unprepared intent and releases the sponsor for a 
   assert.equal(existsSync(join(root, 'claim-prepare-intent.json')), false);
   assert.equal((await prep.issue(claimDestination(original))).id, 'b1'.repeat(32));
   assert.equal(dispatch.hasAnyFence(), false);
+  const reopened = createClaimPreparationJournal(root, openClaimDispatch(root), ports);
+  const siblingRequest = { quote: sibling, ownerCommitment: 'ee'.repeat(32) };
+  await assert.rejects(reopened.findPrepared(siblingRequest), ClaimPreIntentRefusal);
+  await assert.rejects(
+    reopened.findPrepared({ ...siblingRequest, ownerCommitment: 'ff'.repeat(32) }),
+    /decision differs/,
+  );
+  assert.equal(
+    existsSync(join(archive, `quote-decision-${sibling.id}.json`)),
+    true,
+    'the no-intent decision stays beside the original issued quote',
+  );
+  await assert.rejects(reopened.findPrepared(siblingRequest), ClaimPreIntentRefusal);
+  await assert.rejects(
+    reopened.findPrepared({ ...siblingRequest, quote: { ...sibling, night: '2' } }),
+  );
+  writeFileSync(join(archive, `quote-${sibling.id}.json`), '{broken');
+  await assert.rejects(reopened.findPrepared(siblingRequest));
 });
 
 test('retires an expired issued quote whose prepare request never reached the sponsor', async (t) => {
@@ -545,7 +566,9 @@ test('retires only the exact expired, unsent preparation and preserves its origi
   });
   const digest = await claimQuoteDigest(quote);
   const retained = { ...original, quoteSha256: digest };
+  const sibling = claimQuote({ ...quote, id: '99'.repeat(32), name: 'sibling.night' });
   createOnce(join(root, `quote-${quote.id}.json`), JSON.stringify(quote));
+  createOnce(join(root, `quote-${sibling.id}.json`), JSON.stringify(sibling));
   createOnce(
     join(root, 'claim-prepare-intent.json'),
     JSON.stringify({
@@ -623,5 +646,175 @@ test('retires only the exact expired, unsent preparation and preserves its origi
   assert.equal(openClaimDispatch(root).preparedReceipt(), undefined);
   assert.deepEqual(await (await status(retained)).json(), { status: 'retired' });
   assert.deepEqual(await prep.retireExpiredUnsent(retained), { status: 'retired' });
+  const reopened = createClaimPreparationJournal(root, openClaimDispatch(root), ports);
+  assert.deepEqual(
+    (await reopened.findPrepared({ quote, ownerCommitment: original.ownerCommitment }))?.receipt,
+    retained,
+  );
+  await assert.rejects(
+    reopened.findPrepared({ quote: sibling, ownerCommitment: 'ee'.repeat(32) }),
+    ClaimPreIntentRefusal,
+  );
+  await assert.rejects(
+    reopened.findPrepared({ quote: sibling, ownerCommitment: 'ff'.repeat(32) }),
+    /decision differs/,
+  );
   assert.equal(confirmations, 1);
+});
+
+test('archives an exact indexed sponsor failure before a fresh quote or browser release', async (t) => {
+  const parent = realpathSync(mkdtempSync(join(tmpdir(), 'midnames-failed-')));
+  t.after(() => rmSync(parent, { recursive: true, force: true }));
+  const root = join(parent, 'claim-journal');
+  mkdirSync(root, { mode: 0o700 });
+  const quote = claimQuote({
+    ...claimDestination(original),
+    id: 'a1'.repeat(32),
+    sponsorAddress: 'a2'.repeat(32),
+    sponsorPaymentAddress: 'a3'.repeat(32),
+    registryPayee: 'a4'.repeat(32),
+    night: '1',
+    maximumDust: '10000',
+    expiresAt: Date.now() + 240_000,
+  });
+  const sibling = claimQuote({ ...quote, id: 'a5'.repeat(32), name: 'sibling.night' });
+  const digest = await claimQuoteDigest(quote);
+  const retained = { ...original, quoteSha256: digest };
+  createOnce(join(root, `quote-${quote.id}.json`), JSON.stringify(quote));
+  createOnce(join(root, `quote-${sibling.id}.json`), JSON.stringify(sibling));
+  createOnce(
+    join(root, 'claim-prepare-intent.json'),
+    JSON.stringify({
+      quoteId: quote.id,
+      digest,
+      ownerCommitment: original.ownerCommitment,
+      proofSha256: original.transaction.sha256,
+    }),
+  );
+  createOnce(
+    join(root, `quote-decision-${quote.id}.json`),
+    JSON.stringify({
+      kind: 'intent',
+      digest,
+      ownerCommitment: original.ownerCommitment,
+      proofSha256: original.transaction.sha256,
+    }),
+  );
+  const journal = openClaimDispatch(root);
+  journal.retain(bytes, retained);
+  const next = claimQuote({ ...quote, id: 'b1'.repeat(32) });
+  let reason: 'failed' | 'claim-failed' = 'claim-failed';
+  let checks = 0;
+  let wait: Promise<void> | undefined;
+  let resume = () => {};
+  const preparation = {
+    async issue() {
+      return next;
+    },
+    async authorizeQuote() {},
+    async balance() {
+      assert.fail('Indexed failure recovery never balances.');
+    },
+    async retireIndexedFailure() {
+      checks++;
+      await wait;
+      return { reason, finalizedHash: 'c1'.repeat(32) };
+    },
+  };
+  let handler = createClaimSponsorHandler(
+    'http://127.0.0.1:1',
+    root,
+    {
+      async authorize() {},
+      async submit() {
+        assert.fail('Indexed failure recovery never sends.');
+      },
+    },
+    preparation,
+  );
+  const server = createServer((request, response) => {
+    void handler(request, response).then(
+      (handled) => {
+        if (!handled) response.writeHead(404).end();
+      },
+      () => response.destroy(),
+    );
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(async () => new Promise<void>((resolve) => server.close(() => resolve())));
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  const origin = `http://127.0.0.1:${address.port}`;
+  const dispatchPorts = {
+    async authorize() {},
+    async submit() {
+      assert.fail('Indexed failure recovery never sends.');
+    },
+  };
+  handler = createClaimSponsorHandler(origin, root, dispatchPorts, preparation);
+  const post = (path: string, input: unknown) =>
+    fetch(origin + path, {
+      method: 'POST',
+      headers: { Origin: origin, 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    });
+  assert.equal((await post(claimRetireFailurePath, retained)).status, 409);
+  createOnce(join(root, 'claim-dispatch-fence.json'), JSON.stringify(retained));
+  reason = 'failed';
+  preparation.retireIndexedFailure = async () => {
+    throw new Error('Indexer unavailable.');
+  };
+  assert.equal((await post(claimRetireFailurePath, retained)).status, 409);
+  assert.equal(
+    existsSync(join(parent, `claim-journal-failed-${retained.transaction.sha256}`)),
+    false,
+  );
+  let changed = 0;
+  preparation.retireIndexedFailure = async () => ({
+    reason: changed++ === 0 ? 'failed' : 'claim-failed',
+    finalizedHash: 'c1'.repeat(32),
+  });
+  assert.equal((await post(claimRetireFailurePath, retained)).status, 409);
+  assert.equal(
+    existsSync(join(parent, `claim-journal-failed-${retained.transaction.sha256}`)),
+    false,
+  );
+  preparation.retireIndexedFailure = async () => {
+    checks++;
+    await wait;
+    return { reason, finalizedHash: 'c1'.repeat(32) };
+  };
+  wait = new Promise<void>((resolve) => {
+    resume = resolve;
+  });
+  const retiring = post(claimRetireFailurePath, retained);
+  for (let attempt = 0; attempt < 100 && checks === 0; attempt++)
+    await new Promise((resolve) => setTimeout(resolve, 1));
+  assert.ok(checks > 0, 'Retirement reached the indexed failure recheck.');
+  assert.equal((await post(claimQuotePath, claimDestination(original))).status, 409);
+  assert.equal((await post(claimRetireFailurePath, retained)).status, 409);
+  resume();
+  assert.deepEqual(await (await retiring).json(), { status: 'retired', reason: 'failed' });
+  const archive = join(parent, `claim-journal-failed-${retained.transaction.sha256}`);
+  assert.deepEqual(openClaimDispatch(archive).preparedReceipt(), retained);
+  assert.deepEqual(JSON.parse(readFileSync(join(archive, 'claim-indexed-failure.json'), 'utf8')), {
+    receipt: retained,
+    reason: 'failed',
+    finalizedHash: 'c1'.repeat(32),
+  });
+  assert.equal((await post(claimQuotePath, claimDestination(original))).status, 200);
+  handler = createClaimSponsorHandler(origin, root, dispatchPorts, preparation);
+  assert.deepEqual(await (await post(claimRetireFailurePath, retained)).json(), {
+    status: 'retired',
+    reason: 'failed',
+  });
+  assert.equal(
+    (await post(claimRetireFailurePath, { ...retained, name: 'other.night' })).status,
+    409,
+  );
+  assert.equal(
+    (await post(claimPreparedPath, { quote: sibling, ownerCommitment: 'ee'.repeat(32) })).status,
+    412,
+  );
 });

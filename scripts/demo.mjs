@@ -165,7 +165,10 @@ function prepare(options) {
     '--output',
     join(artefactDir, 'keys'),
   ]);
-  if (!existsSync(join(contractDir, 'node_modules'))) {
+  if (process.env.MIDNIGHT_STACK === 'shared-ledger9') {
+    console.log('demo: preparing the reference client for the shared release ledger');
+    run('node', [join(root, 'experiments/acc-0.35/prepare-ledger9-client.mjs'), contractDir]);
+  } else if (!existsSync(join(contractDir, 'node_modules'))) {
     console.log('demo: installing the reference client dependencies');
     run('npm', ['ci', '--ignore-scripts', '--no-audit', '--no-fund'], { cwd: contractDir });
   }

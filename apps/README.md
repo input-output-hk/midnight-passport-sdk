@@ -37,6 +37,17 @@ The launcher verifies a finalized `.night` claim and activated ACC before
 enabling the external resolver and named NIGHT control. A fresh chain needs
 ACC creation, registry bootstrap, and name claim first; opening the page does
 not fund a new sender or submit a payment.
+An isolated Ledger 9 acceptance run at signed `46add31e` exercised the actual
+Passport name form with a virtual credential, sponsor quote, owner proof,
+reviewed send, lost response and same-profile recovery. Its ACC login connector
+supplied an already activated test account; it does not qualify a real passkey
+provider or the combined ACC creation ceremony. See the
+[redacted native receipt](../examples/midnames-local/evidence/release-ledger9-page-claim-retry-20261120.json).
+A later isolated run on signed `e3ec3608` also passed indexed failed-original
+release and successful retry in one virtual-credential browser profile. Its
+first original was prepared outside the page; the ACC login connector still
+used an already activated account. See the
+[redacted same-profile receipt](../examples/midnames-local/evidence/release-ledger9-page-same-profile-20261120.json).
 
 A prototype of the Midnight Passport DApp Connector API and the web app that carries its heavy
 lifting. Design: [`docs/superpowers/specs/2026-10-06-passport-dapp-design.md`](../docs/superpowers/specs/2026-10-06-passport-dapp-design.md).
@@ -1147,11 +1158,17 @@ receipt has that quote's digest and one browser claim dispatch. Fresh signed
 not the full demo's sponsor HTTP quote or real-provider create/open ceremony.
 An exact indexed `FAILURE`, or an exact `PARTIAL_SUCCESS` whose only failed
 segment is the standalone registration claim while the sponsor's DUST fee
-succeeds, can be released from a separately managed browser journal when the
-registry record is absent. The fee is not refunded. The local sponsor still
-retains its private original, so this demo keeps the browser record and does
-not offer a fresh quote until the sponsor is reconciled. Other partial outcomes,
-uncertain results or an unavailable registry cannot release the original.
+succeeds, can be released when the registry record is absent. The fee is not
+refunded. The local sponsor now checks the exact indexed failure, prepared
+bytes, dispatch fence, canonical finalized block, free registry name and
+supported ACC before archiving its entire private journal. The browser releases
+its own record only after that confirmation, then requires a new quote and
+operation ID. Other partial outcomes, uncertain results or an unavailable
+registry cannot release the original. Quotes issued before an earlier journal
+was archived remain recoverable through an exact bounded archive lookup; an
+unrelated occupying original never becomes their prepared receipt. Unit, HTTP
+and synthetic Chromium checks cover this path; a fresh native sponsor-side
+failed-original retirement is still a separate gate.
 The choice and public receipt live in this browser's IndexedDB, so a different
 device needs the original receipt and credential to recover it. This source
 preview does not establish name-owner recovery after total credential loss.

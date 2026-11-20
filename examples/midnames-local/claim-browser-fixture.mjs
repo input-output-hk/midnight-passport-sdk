@@ -22,6 +22,7 @@ export async function runBrowser(
   port,
   timeoutMs = 270_000,
   entry = 'e2e/midnames-recovery.e2e.ts',
+  extraEnv = {},
 ) {
   // Playwright's SIGINT handler closes the Chrome process it launched
   // in its own group and exits the driver before the owner escalates.
@@ -39,6 +40,7 @@ export async function runBrowser(
       env: {
         ...process.env,
         ...(port === undefined ? {} : { PASSPORT_MIDNAMES_SPONSOR_PORT: String(port) }),
+        ...extraEnv,
       },
       detached: true,
       stdio: 'inherit',

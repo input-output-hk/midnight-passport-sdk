@@ -148,7 +148,7 @@ remain open qualification.
 The opt-in **Register a .night name** panel on Passport account → Balances
 appears after creation or passkey-based opening of the target ACC. The claim
 profile requires the observed Indexer v4 transaction protocol
-pin (`2001100` on the shared Ledger 9 demo; `2001000` in the isolated fixture).
+pin (`2001100` on both the shared Ledger 9 demo and the release-image isolated fixture).
 This is separate from the `/api/v4/graphql` endpoint version. Reviewing a
 valid quote retains the selected local `.night` name per registry, ACC, and
 credential. It restores that selection after reopening and keeps the setup pending until the original
@@ -166,7 +166,9 @@ instead of a generic provider outage. A synthetic full-app browser check now
 opens the panel after creation and reopening, verifies that the second
 credential cannot inherit the first one's local receipt, and counts one stub
 `createAccount` invocation. It also checks the failed-original release and
-archived receipt across reload in an isolated browser profile. A conflicting
+archived receipt across reload in an isolated browser profile. The same profile
+can then prepare a distinct synthetic original while retaining the failed one
+in history, without creating another ACC or dispatching a claim. A conflicting
 status hides release; an unavailable recheck hides it until the user checks
 the original again. A third isolated profile confirms that a same-origin HTTP
 sponsor quote is displayed before any synthetic owner proof or preparation,
@@ -174,17 +176,24 @@ that approval calls each once, and that a pending original reports the
 synthetic prepared-but-unsent sponsor state after reopen. Native
 create/open, actual indexed failure, real passkey review and sponsored retry
 acceptance remain separate.
-For the local sponsor, an exact indexed failure remains retained until the
-sponsor's private journal can be reconciled; the browser does not offer a new
-quote by releasing only its own record. In a separately managed host, an exact
-failed original with no registry record can expose **Release failed original
-for a new attempt**. The indexed result can be `FAILURE`, or a
+For the local sponsor, an exact indexed failure remains retained until its
+private journal is archived. **Release failed original for a new attempt** now
+requires the sponsor to verify the prepared bytes, dispatch fence, exact indexed
+transaction, canonical finalized block, free name and supported ACC, then archive
+the entire private journal before the browser releases its record. The indexed
+result can be `FAILURE`, or a
 `PARTIAL_SUCCESS` with a verified failed registration claim and only a successful
 sponsor DUST fee. The fee is not refunded. The action rechecks the same outcome and availability,
 archives the public receipt and original transaction IDs, and clears the prior
 selection atomically. A fresh quote review is required before another
 preparation. Other partial outcomes, outage, uncertainty and changed binding keep the
-original fenced. The archived receipt can be inspected after reload.
+original fenced. The archived receipt can be inspected after reload. A second
+browser's quote moved with the archive is recovered by exact quote lookup and
+an explicit no-intent refusal; corrupt or missing archives fail closed. Unit,
+HTTP and synthetic Chromium checks cover these paths. An isolated Ledger 9 run
+at signed `46add31e` also verified exact sponsor retirement after a fee-only
+indexed claim failure, before the browser released that original. This does not
+qualify every failure shape or an online sponsor.
 **Check original
 claim** reconciles the stored transaction, local sponsor dispatch fence, and current registry owner and
 target. **Check registry status** verifies the open ACC and checks whether the
@@ -195,7 +204,7 @@ browser reloads. Sending requires a saved matching quote and a second click
 after the exact payment terms are displayed. Older quote-less receipts remain
 available for reconciliation only. A prepared, unfenced receipt is explicitly
 shown as unsent; after expiry, the sponsor can verify and archive it before a
-fresh quote. A fenced or uncertain original stays pending. The native dispatch fixture injects its
+fresh quote. A fenced or uncertain original stays pending. The older native dispatch fixture injects its
 quote after proof, so that run does not qualify pre-proof user review. See
 [the recovery flow](../site/names.md#recover-the-sponsors-original-claim-in-the-demo).
 The separate native `claim-preproof` fixture displays a fixture-issued quote
@@ -204,6 +213,24 @@ and proof. Its signed `e456638` fresh run passed with one sponsored claim and
 recovery after restart. Virtual credential enrollment happened before quote
 display; sponsor HTTP quote issuance, the full demo create/open panel, and
 human or real-provider approval remain separate gates.
+
+Signed source `46add31e` passed a later isolated Ledger 9 claim retry through
+the actual Passport name form. After a separately archived indexed failure,
+the form obtained one fresh sponsor quote, proved with a virtual PRF credential,
+prepared and sent one reviewed original, then reopened the same browser profile
+after a lost sponsor response and confirmed its indexed success and live name
+binding. The ACC login connector supplied an already activated test account.
+The failed original used another browser profile; real providers, combined ACC
+creation and online Midnames remain separate gates. See the
+[redacted receipt](../../examples/midnames-local/evidence/release-ledger9-page-claim-retry-20261120.json).
+Signed source `e3ec3608` passed a fresh isolated Ledger 9 run that imported the
+indexed failed original into the retry page profile, released it through the
+same sponsor's archived journal, retained it after reload, then prepared and
+sent a distinct claim once. After a lost sponsor response, that profile
+recovered indexed `SUCCESS` and the live binding to the same ACC. The first
+original was prepared outside the page; combined ACC creation, real-provider
+consent and online Midnames remain separate gates. See the
+[redacted same-profile receipt](../../examples/midnames-local/evidence/release-ledger9-page-same-profile-20261120.json).
 
 ### Standalone shielded deposit by name
 

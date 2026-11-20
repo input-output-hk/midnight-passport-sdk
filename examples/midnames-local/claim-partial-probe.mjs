@@ -28,11 +28,12 @@ export async function qualifyPartialClaim({
   profile,
   step,
   readLive,
+  dispatchJournalDir = output,
 }) {
   assert.equal(receipt.quoteSha256, await claimQuoteDigest(fixtureQuote));
   const evidence = { original: receipt, attempts: 0, result: 'pending' };
   const save = () => saveIsolationReceipt(join(output, 'indexed-partial-claim.json'), evidence);
-  const journal = openClaimDispatch(output);
+  const journal = openClaimDispatch(dispatchJournalDir);
   let originalBytes;
   let admissionAt;
   const pending = await journal.dispatch(receipt, {
@@ -105,7 +106,7 @@ export async function qualifyPartialClaim({
       assert.equal(rows.length, 1);
       const row = rows[0];
       assert.equal(row.__typename, 'RegularTransaction');
-      assert.equal(row.protocolVersion, 2001000);
+      assert.equal(row.protocolVersion, 2001100);
       assert.ok(typeof row.raw === 'string' && /^[0-9a-f]+$/.test(row.raw));
       const raw = Buffer.from(row.raw, 'hex');
       assert.ok(originalBytes && raw.equals(Buffer.from(originalBytes)));
@@ -125,7 +126,10 @@ export async function qualifyPartialClaim({
       evidence.indexerSegments = row.transactionResult?.segments;
       save();
       assert.equal(evidence.indexerStatus, 'PARTIAL_SUCCESS');
-      assert.equal(await readClaimFinality(process.env.MN_INDEXER_URL, receipt), 'claim-failed');
+      assert.equal(
+        await readClaimFinality(process.env.MN_INDEXER_URL, receipt, fetch, 2001100),
+        'claim-failed',
+      );
       assert.equal(await reads.readClaim(quote.name, profile), undefined);
       assert.equal(evidence.attempts, 1);
       evidence.result = 'claim-segment-failed';

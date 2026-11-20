@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-11-20",
+  "source": {
+    "signedHead": "b58668e8918062eefcb7786b89331bb7e7a3bf82",
+    "contractProfile": "standalone-0.35",
+    "compactRuntime": "0.20.0",
+    "midnightJs": "5.0.0-rc.2",
+    "ledgerV9": "1.0.2"
+  },
+  "isolatedStack": {
+    "protocolVersion": 2001100,
+    "images": "release image digests as pinned in release-ledger9-claim-retry-20261120.json"
+  },
+  "journey": {
+    "name": "charlie.night",
+    "original": {
+      "transactionIdentifiers": [
+        "0009952e214225beaa4f41b4f6b89b3af25e131a929e6cb33590dc79b0408677dc",
+        "0020bea2cf4a3c3bca38216e054a64fcc8f7c60df3fae28ee267a99d73f902bf1e"
+      ],
+      "status": "PARTIAL_SUCCESS",
+      "feeSegmentSucceeded": true,
+      "claimSegmentSucceeded": false,
+      "dispatches": 1,
+      "sponsorArchive": "exact indexed failure"
+    },
+    "browserRelease": {
+      "virtualCredential": true,
+      "originalReleasedAfterReload": true,
+      "releaseReason": "CLAIM_SEGMENT_FAILURE"
+    },
+    "retry": {
+      "transactionIdentifiers": [
+        "00706e385e60fa5ee9000af491aa4d7e321fe7b6cb59808c1b008605ab0bac7493",
+        "006984410d27a2cd6d5863a8e74995cc424e4afef143e7075de937650ce0288abc"
+      ],
+      "status": "SUCCESS",
+      "dispatches": 1,
+      "sameAccountTarget": true,
+      "quoteAndOwnerProof": "host fixture",
+      "browserSubmissionRequests": 1,
+      "lostSponsorResponse": true,
+      "recoveredAfterBrowserRestart": true,
+      "alternateCredentialRefused": true,
+      "liveIndexerRequests": 24
+    }
+  },
+  "cleanup": {
+    "ownedContainersStopped": 3,
+    "volumesRetained": true,
+    "unrelatedResourcesControlled": 0,
+    "leaseReleased": true,
+    "inputsUnchanged": true
+  },
+  "result": "PASS",
+  "limits": [
+    "Isolated chain and virtual browser credential; no online or real-provider result.",
+    "The fresh quote, owner proof and sponsor balancing were host-driven before browser review and dispatch.",
+    "The failed-original release and fresh retry use separate headless browser profiles.",
+    "The full demo ACC create/open and sponsor-issued pre-proof quote ceremony were not qualified end to end.",
+    "Compact 0.36 proof/write compatibility remains a separate gate."
+  ]
+}

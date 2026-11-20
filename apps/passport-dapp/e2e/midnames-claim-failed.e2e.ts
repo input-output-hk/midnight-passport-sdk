@@ -27,6 +27,7 @@ Object.assign(process.env, {
   VITE_MIDNAMES_NETWORK_ID: 'undeployed',
   VITE_MIDNAMES_INDEXER_URL: indexer,
   VITE_MIDNAMES_INDEXER_WS_URL: process.env.MN_INDEXER_WS_URL,
+  VITE_MIDNAMES_CLAIM_PROTOCOL_VERSION: '2001100',
 });
 const connector = `
   export const ARM = 'p256', SIGNING_MODE = 'passkey', NETWORK_ID = 'undeployed';
@@ -75,13 +76,23 @@ async function openClaim(page: Page, origin: string) {
   await page.locator('#open').click();
   await page.locator('#workspace-account').waitFor();
   await reveal(page, '#claim-recovery');
+  await page.locator('#claim-recovery').waitFor({ state: 'visible' });
   await page.locator('#claim-recovery-name').fill(original.name);
+  // The prepared-claim profile keeps recovery details collapsed. Open the
+  // actual disclosure before using its receipt and check controls.
+  await reveal(page, '#claim-recovery-receipt');
 }
-const status = (page: Page, expected: RegExp) =>
-  page
-    .locator('#claim-recovery-status')
-    .filter({ hasText: expected })
-    .waitFor({ timeout: 120_000 });
+async function status(page: Page, expected: RegExp) {
+  try {
+    await page
+      .locator('#claim-recovery-status')
+      .filter({ hasText: expected })
+      .waitFor({ timeout: 120_000 });
+  } catch (error) {
+    const observed = await page.locator('#claim-recovery-status').textContent();
+    throw new Error(`Claim status did not match ${expected}: ${observed}`, { cause: error });
+  }
+}
 
 let browser: Awaited<ReturnType<typeof openBrowser>> | undefined;
 let liveIndexerRequests = 0;
@@ -102,7 +113,7 @@ try {
   await page.locator('#claim-recovery-retain').click();
   await status(page, /^Original receipt saved/);
   await page.locator('#claim-recovery-check').click();
-  await status(page, /^The exact registration claim failed while the sponsor fee succeeded/);
+  await status(page, /^The registration claim failed while the sponsor fee succeeded/);
   assert.equal(await page.locator('#claim-release-failed').isVisible(), true);
   await page.locator('#claim-release-failed').click();
   await status(page, /^Failed original retained in local history/);
