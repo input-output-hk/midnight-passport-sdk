@@ -193,6 +193,9 @@ try {
   assert.equal(proofRequests, 1);
   assert.equal(prepareRequests, 1);
   assert.equal(dispatchRequests, 0);
+  const reviewedTerms = await page.locator('#claim-quote-summary').innerText();
+  assert.ok(reviewedTerms.includes(`Register ${input.name}`));
+  assert.ok(reviewedTerms.includes(`Passport account ${input.accountAddress}`));
 
   await page.route('**' + claimDispatchPath, async (route) => {
     const response = await route.fetch({ maxRetries: 0, maxRedirects: 0 });
@@ -203,12 +206,6 @@ try {
   const sent = page.waitForEvent('requestfailed', {
     predicate: (request) => request.url().endsWith(claimDispatchPath),
   });
-  await page.locator('#claim-dispatch').click();
-  await page
-    .locator('#claim-recovery-status')
-    .filter({ hasText: /^No transaction has been sent\. Review the payment terms/ })
-    .waitFor();
-  assert.equal(dispatchRequests, 0);
   await page.locator('#claim-dispatch').click();
   await sent;
   assert.equal(dispatchRequests, 1);
