@@ -121,7 +121,9 @@ export function withMeasuredDeletionCredit(
     !guaranteed ||
     fallible
   )
-    throw new Error('Measured deletion credit requires one guaranteed ACC NIGHT deposit.');
+    throw new Error(
+      `Measured deletion credit requires one guaranteed ACC NIGHT deposit: calls=${result.calls.length}, circuit=${String(call?.circuitId)}, guaranteed=${Boolean(guaranteed)}, fallible=${Boolean(fallible)}.`,
+    );
   const data = ledger.ContractState.deserialize(state.serialize()).data;
   const model = parameters.transactionCostModel.runtimeCostModel;
   const context = () => new ledger.QueryContext(data, contractAddress);
