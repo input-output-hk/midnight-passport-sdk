@@ -100,9 +100,7 @@ assert.ok(info.MemTotal >= 24 * 1024 ** 3);
 const images = isolatedImages(
   docker,
   info.Architecture === 'aarch64' ? 'arm64' : 'amd64',
-  fixtureMode === 'claim-retry' || fixtureMode === 'claim-page-retry'
-    ? MIDNAMES_RELEASE_IMAGES
-    : undefined,
+  MIDNAMES_RELEASE_IMAGES,
 );
 const review = join(root, 'review');
 mkdirSync(review, { recursive: true, mode: 0o700 });
