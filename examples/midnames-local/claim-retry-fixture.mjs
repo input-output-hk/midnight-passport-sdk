@@ -1,25 +1,20 @@
 import assert from 'node:assert/strict';
-import { randomBytes } from 'node:crypto';
 import { mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { readClaimFinality } from '../../apps/passport-dapp/src/midnames/claim-finality.ts';
-import {
-  claimDestination,
-  claimQuoteDigest,
-} from '../../apps/passport-dapp/src/midnames/claim-quote.ts';
+import { claimQuoteDigest } from '../../apps/passport-dapp/src/midnames/claim-quote.ts';
 import { saveIsolationReceipt } from '../../scripts/qualification/native-isolation-files.mjs';
 import { openClaimDispatch } from './claim-dispatch.mts';
 import { claimFailedArchivePath, createClaimPreparationJournal } from './claim-preparation.mts';
 import { verifyIndexedClaimFailure } from './claim-indexed-failure.mjs';
 import { createOnce } from './create-once.mts';
-import { qualifyClaimHandoff } from './claim-handoff-fixture.mjs';
 import { qualifyPartialClaim } from './claim-partial-probe.mjs';
-import { qualifyBrowserClaim, runBrowser } from './claim-browser-fixture.mjs';
+import { runBrowser } from './claim-browser-fixture.mjs';
+import { qualifyPageOwnedClaim } from './claim-page-fixture.mjs';
 
-/** A separate, freshly prepared sponsored original follows the indexed failure.
- * The browser releases the first original, dispatches the fresh one and recovers
- * after a lost sponsor response. New quote issuance and proof remain host-driven. */
+/** After exact indexed failure, the browser releases the original and the
+ * Passport page owns a fresh quote, owner proof, preparation, send and recovery. */
 export async function qualifyClaimRetry(input) {
   const {
     output,
@@ -45,7 +40,6 @@ export async function qualifyClaimRetry(input) {
     ref,
     assets,
     modulePath,
-    registryManifestHash,
     sponsorPaymentAddress,
   } = input;
   const sponsorDir = join(output, 'sponsor-journal');
@@ -82,14 +76,8 @@ export async function qualifyClaimRetry(input) {
   assert.ok(sponsor.hasFence(receipt));
   let sponsorChecks = 0;
   const sponsorPorts = {
-    async issue(destination) {
-      assert.deepEqual(destination, claimDestination(fixtureQuote));
-      await readLive(quote);
-      return {
-        ...fixtureQuote,
-        id: randomBytes(32).toString('hex'),
-        expiresAt: Date.now() + 240_000,
-      };
+    async issue() {
+      assert.fail('The failed-original journal must not issue a retry quote.');
     },
     async authorizeQuote() {},
     async balance() {
@@ -152,9 +140,6 @@ export async function qualifyClaimRetry(input) {
   const parent = registry.ledger(current.data).id_to_data.lookup(rootId);
   assert.equal(parent.payment_config.buy_enabled, true);
   assert.equal(await reads.readClaim(quote.name, profile), undefined);
-  const freshSponsorQuote = await sponsorJournal.issue(fixtureQuote);
-  assert.notEqual(freshSponsorQuote.id, fixtureQuote.id);
-  assert.equal(freshSponsorQuote.accountAddress, accountAddress);
   // Rebuild the sponsor's coin view after the first transaction's partial result.
   step('refresh-sponsor-wallet-after-partial-result');
   const freshSponsor = await walletModule.createWallet('0'.repeat(63) + '1');
@@ -176,71 +161,31 @@ export async function qualifyClaimRetry(input) {
   let second;
   try {
     mkdirSync(retryDir, { mode: 0o700 });
-    second = await qualifyClaimHandoff({
+    second = await qualifyPageOwnedClaim({
       output: retryDir,
       ref,
       assets,
       modulePath,
-      registryManifestHash,
       registryAddress,
       accountAddress,
+      name: quote.name,
       sponsorPaymentAddress,
       walletProvider: freshProviders.walletProvider,
+      submit: (tx) => providers.midnightProvider.submitTx(tx),
       ledger,
-      rootId,
       parentDomain: parent,
-      sponsorIssuedQuote: freshSponsorQuote,
+      readLive,
+      reads,
+      profile,
       step,
-      async dispatch(nextQuote, nextReceipt, nextFixtureQuote, ownerProofSha256) {
-        await readLive(nextQuote);
-        assert.equal(nextQuote.name, quote.name);
-        assert.notEqual(nextReceipt.transaction.sha256, receipt.transaction.sha256);
-        assert.equal(nextFixtureQuote.id, freshSponsorQuote.id);
-        assert.ok(Date.now() < freshSponsorQuote.expiresAt);
-        retryReceipt = nextReceipt;
-        const browserRetry = await qualifyBrowserClaim({
-          output: retryDir,
-          quote: nextQuote,
-          receipt: nextReceipt,
-          fixtureQuote: nextFixtureQuote,
-          ownerProofSha256,
-          ledger,
-          readLive: async (current) => {
-            assert.ok(Date.now() < freshSponsorQuote.expiresAt, 'Fresh sponsor quote expired.');
-            await readLive(current);
-          },
-          submit: async ({ tx }) => providers.midnightProvider.submitTx({ version: 'v9', tx }),
-        });
-        retryDispatches = browserRetry.dispatches;
-        assert.equal(retryDispatches, 1);
-        assert.equal(browserRetry.browser.recoveredAfterBrowserRestart, true);
-        const deadline = Date.now() + 120_000;
-        while (Date.now() < deadline) {
-          const status = await readClaimFinality(
-            process.env.MN_INDEXER_URL,
-            nextReceipt,
-            fetch,
-            2001100,
-          );
-          if (status === true) break;
-          assert.ok(status === false || status === undefined, `Fresh retry status: ${status}`);
-          await delay(1500);
-        }
-        assert.equal(
-          await readClaimFinality(process.env.MN_INDEXER_URL, nextReceipt, fetch, 2001100),
-          true,
-        );
-        assert.deepEqual(await reads.readClaim(nextQuote.name, profile), {
-          ownerCommitment: nextQuote.ownerCommitment,
-          target: { kind: 'contract', address: accountAddress },
-        });
-        return { indexedRetrySuccess: true, retryDispatches };
-      },
     });
+    retryReceipt = second.receipt;
+    retryDispatches = second.dispatches;
+    assert.notEqual(retryReceipt.transaction.sha256, receipt.transaction.sha256);
+    assert.equal(second.page.recoveredInSameProfile, true);
   } finally {
     await freshSponsor.wallet.stop();
   }
-  assert.equal(second.indexedRetrySuccess, true);
   assert.equal(retryDispatches, 1);
   assert.ok(retryReceipt);
   assert.equal(
