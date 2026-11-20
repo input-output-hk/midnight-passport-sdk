@@ -35,6 +35,8 @@ if (sponsorPort !== undefined) {
 const fixtureQuote = sponsorPort
   ? claimQuote(JSON.parse(readFileSync(file('original-quote.json'), 'utf8')))
   : undefined;
+if (process.env.VITE_MIDNAMES_CLAIM_PROTOCOL_VERSION !== undefined)
+  assert.equal(process.env.VITE_MIDNAMES_CLAIM_PROTOCOL_VERSION, '2001100');
 Object.assign(process.env, {
   PASSPORT_MANIFEST_SHA256: '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f',
   PASSPORT_NETWORK_ID: 'undeployed',
@@ -44,6 +46,7 @@ Object.assign(process.env, {
   VITE_MIDNAMES_NETWORK_ID: 'undeployed',
   VITE_MIDNAMES_INDEXER_URL: indexer,
   VITE_MIDNAMES_INDEXER_WS_URL: process.env.MN_INDEXER_WS_URL,
+  VITE_MIDNAMES_CLAIM_PROTOCOL_VERSION: '2001100',
 });
 if (sponsorPort) process.env.VITE_MIDNAMES_CLAIM_SPONSOR = '1';
 const manifest = process.env.PASSPORT_MANIFEST_SHA256;
