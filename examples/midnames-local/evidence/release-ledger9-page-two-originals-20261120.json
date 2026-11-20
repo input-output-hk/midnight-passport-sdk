@@ -3,6 +3,8 @@
   "observedAt": "2026-11-20",
   "source": {
     "signedHead": "4a6c7642cfc956a6ca4274f1ff5bdb678fd03ec5",
+    "sourceTree": "d09ede3e0948981f0343cb8dba9997740e72045f",
+    "publishedEquivalentSignedHead": "8c56395fd62320153209b3128851ad1b42dfaa15",
     "dirty": false,
     "contractProfile": "standalone-0.35",
     "ledgerV9": "1.0.2",
