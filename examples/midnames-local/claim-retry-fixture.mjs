@@ -3,7 +3,6 @@ import { randomBytes } from 'node:crypto';
 import { mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { admitNativeClaim } from '../../apps/passport-dapp/src/midnames/claim-native-admission.ts';
 import { readClaimFinality } from '../../apps/passport-dapp/src/midnames/claim-finality.ts';
 import {
   claimDestination,
@@ -16,11 +15,11 @@ import { verifyIndexedClaimFailure } from './claim-indexed-failure.mjs';
 import { createOnce } from './create-once.mts';
 import { qualifyClaimHandoff } from './claim-handoff-fixture.mjs';
 import { qualifyPartialClaim } from './claim-partial-probe.mjs';
-import { runBrowser } from './claim-browser-fixture.mjs';
+import { qualifyBrowserClaim, runBrowser } from './claim-browser-fixture.mjs';
 
 /** A separate, freshly prepared sponsored original follows the indexed failure.
- * The browser releases the first original on this chain; the new quote and
- * dispatch still run in the host fixture, so pre-proof browser review is separate. */
+ * The browser releases the first original, dispatches the fresh one and recovers
+ * after a lost sponsor response. New quote issuance and proof remain host-driven. */
 export async function qualifyClaimRetry(input) {
   const {
     output,
@@ -192,28 +191,29 @@ export async function qualifyClaimRetry(input) {
       parentDomain: parent,
       sponsorIssuedQuote: freshSponsorQuote,
       step,
-      async dispatch(nextQuote, nextReceipt, nextFixtureQuote) {
+      async dispatch(nextQuote, nextReceipt, nextFixtureQuote, ownerProofSha256) {
         await readLive(nextQuote);
         assert.equal(nextQuote.name, quote.name);
         assert.notEqual(nextReceipt.transaction.sha256, receipt.transaction.sha256);
         assert.equal(nextFixtureQuote.id, freshSponsorQuote.id);
         assert.ok(Date.now() < freshSponsorQuote.expiresAt);
         retryReceipt = nextReceipt;
-        const journal = openClaimDispatch(retryDir);
-        const pending = await journal.dispatch(nextReceipt, {
-          async authorize(bytes, acknowledged) {
-            await readLive(nextQuote);
+        const browserRetry = await qualifyBrowserClaim({
+          output: retryDir,
+          quote: nextQuote,
+          receipt: nextReceipt,
+          fixtureQuote: nextFixtureQuote,
+          ownerProofSha256,
+          ledger,
+          readLive: async (current) => {
             assert.ok(Date.now() < freshSponsorQuote.expiresAt, 'Fresh sponsor quote expired.');
-            admitNativeClaim(bytes, acknowledged, nextQuote, 100_000_000_000_000_000n);
+            await readLive(current);
           },
-          async submit(bytes) {
-            retryDispatches++;
-            const tx = ledger.Transaction.deserialize('signature', 'proof', 'binding', bytes);
-            await providers.midnightProvider.submitTx({ version: 'v9', tx });
-          },
+          submit: async ({ tx }) => providers.midnightProvider.submitTx({ version: 'v9', tx }),
         });
-        assert.equal(pending.status, 'pending');
+        retryDispatches = browserRetry.dispatches;
         assert.equal(retryDispatches, 1);
+        assert.equal(browserRetry.browser.recoveredAfterBrowserRestart, true);
         const deadline = Date.now() + 120_000;
         while (Date.now() < deadline) {
           const status = await readClaimFinality(
