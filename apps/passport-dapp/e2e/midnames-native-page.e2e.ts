@@ -399,7 +399,17 @@ try {
   }
   await page.locator('#claim-recovery-name').fill(input.name);
   await page.locator('#claim-review-quote').click();
-  await page.locator('#claim-quote-summary').getByText(`Register ${input.name}`).waitFor();
+  try {
+    await page
+      .locator('#claim-quote-summary')
+      .getByText(`Register ${input.name}`)
+      .waitFor({ timeout: 90_000 });
+  } catch (error) {
+    throw new Error(
+      `The reviewed quote did not appear: ${await page.locator('#claim-recovery-status').textContent()}`,
+      { cause: error },
+    );
+  }
   await assertReviewedQuote(page);
   const expectedAttempts = firstOriginal ? 2 : 1;
   assert.equal(quoteRequests, expectedAttempts);
