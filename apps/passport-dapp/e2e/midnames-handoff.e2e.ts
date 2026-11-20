@@ -21,6 +21,10 @@ const original = {
   ownerCommitment: '56'.repeat(32),
   transaction: { identifiers: ['00' + '78'.repeat(32)], sha256: '90'.repeat(32) },
 };
+const retryOriginal = {
+  ...original,
+  transaction: { identifiers: ['00' + '79'.repeat(32)], sha256: '91'.repeat(32) },
+};
 const quote = {
   networkId: original.networkId,
   registryAddress: registry,
@@ -65,6 +69,7 @@ const naming = `
   import { createLocalClaimPreparation } from './claim-preparation-transport.js';
   const quote = ${JSON.stringify(quote)};
   const original = ${JSON.stringify(original)};
+  const retryOriginal = ${JSON.stringify(retryOriginal)};
   const count = (key) => localStorage.setItem(key,
     String(Number(localStorage.getItem(key) || '0') + 1));
   export function configureMidnames() {
@@ -105,7 +110,9 @@ const naming = `
                 proved.ownerCommitment !== original.ownerCommitment) throw Error('Unreviewed preparation');
             const mode = localStorage.getItem('handoff-preparation-mode');
             if (mode === 'refused') throw new ClaimPreIntentRefusal('Policy refused before intent');
-            return { ...original, quoteSha256: await claimQuoteDigest(quote) };
+            const prepared = localStorage.getItem('handoff-claim-retry') === '1'
+              ? retryOriginal : original;
+            return { ...prepared, quoteSha256: await claimQuoteDigest(quote) };
           },
           async findPrepared() { throw Error('Recovery is outside this handoff fixture'); },
           async dispatchStatus() {
@@ -346,6 +353,62 @@ try {
       await retryPage.evaluate(() => localStorage.getItem('handoff-fixture-creates')),
       '1',
     );
+
+    // Keep this browser profile and its archived failed original while a
+    // different, reviewed claim is prepared. The fixture never dispatches it.
+    await retryPage.evaluate(() => localStorage.setItem('handoff-claim-retry', '1'));
+    await retryPage.goto(`${origin}/?preproof`);
+    await retryPage
+      .locator('#status')
+      .filter({ hasText: /^Ready\./ })
+      .waitFor({ state: 'attached' });
+    await retryPage.locator('#open').click();
+    await retryPage.locator('#passport-name-setup').waitFor({ state: 'visible' });
+    await retryPage.locator('#claim-recovery-name').fill(original.name);
+    await retryPage.locator('#claim-review-quote').click();
+    await retryPage.locator('#claim-quote-summary').getByText(original.name).waitFor();
+    await retryPage.locator('#claim-prepare').click();
+    await retryPage
+      .locator('#claim-recovery-status')
+      .getByText(/No transaction has been sent\. Review the payment terms/)
+      .waitFor();
+    assert.deepEqual(JSON.parse(await retryPage.locator('#claim-recovery-receipt').inputValue()), {
+      ...retryOriginal,
+      quoteSha256: await claimQuoteDigest(claimQuote(quote)),
+    });
+    assert.equal(
+      await retryPage.evaluate(() => localStorage.getItem('handoff-fixture-creates')),
+      '1',
+    );
+    const retained = await retryPage.evaluate(
+      async ({ registry, name, account }) => {
+        const journalUrl = '/src/midnames/claim-journal.ts';
+        const receiptUrl = '/src/midnames/claim-receipt.ts';
+        const { openClaimJournal } = (await import(
+          journalUrl
+        )) as typeof import('../src/midnames/claim-journal.js');
+        const { claimDigest } = (await import(
+          receiptUrl
+        )) as typeof import('../src/midnames/claim-receipt.js');
+        const journal = await openClaimJournal(indexedDB);
+        try {
+          const scope = await claimDigest(new Uint8Array(32).fill(1));
+          const current = await journal.read(registry, name, scope);
+          const history = await journal.readReleased(registry, name, account, scope);
+          return {
+            current: current?.transaction.sha256,
+            history: history.map((item) => item.transaction.sha256),
+          };
+        } finally {
+          journal.close();
+        }
+      },
+      { registry, name: original.name, account },
+    );
+    assert.deepEqual(retained, {
+      current: retryOriginal.transaction.sha256,
+      history: [original.transaction.sha256],
+    });
   } finally {
     await retryContext.close();
   }
