@@ -34,8 +34,13 @@ outage/retry path pass. A later isolated release-stack run using a pinned
 Ledger 9 `1.0.2` reference client finalized the original fee-only claim
 failure, archived the exact sponsor journal, released the browser record after
 reload, and finalized a fresh paid claim to the same ACC. The fresh proof and
-dispatch were host-driven. #334 remains open for the complete demo-owned
-retry, real-provider, and negative native matrix; #363 still needs its
+dispatch were host-driven in that run. A later signed `b58668e8` isolated run
+sent the fresh prepared claim once from the reference browser through the
+sponsor HTTP fence, recovered after a lost response and browser restart, and
+confirmed indexed success to the same ACC. Quote issuance, owner proof, and
+balancing remained host-driven, with separate browser profiles for release and
+retry. #334 remains open for the complete demo-owned pre-proof ceremony,
+real-provider, and negative native matrix; #363 still needs its
 separately pinned Compact 0.36 proof/write evaluation.
 
 ## Other open 0.2.0 work

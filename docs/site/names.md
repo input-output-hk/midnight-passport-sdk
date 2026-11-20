@@ -367,8 +367,13 @@ after browser restart, and one distinct host-sponsored retry that finalized to
 the same ACC. The original and retry each dispatched once. The runner verified
 unchanged inputs, stopped its three owned containers, retained volumes, and
 released its native lease. The retry's new quote, proof, and dispatch remained
-host-driven; this does not qualify browser review before proving or a real
-passkey provider. Issue #334 remains open for those broader paths.
+host-driven in that run. A later signed `b58668e8` isolated run used the
+reference browser to review saved terms, send the fresh claim once through
+the sponsor HTTP fence, and reconcile its original after a lost response and
+reload. The retry indexed `SUCCESS` to the same ACC. The new quote, proof, and
+balance were still host-driven; this does not qualify browser review before
+proving or a real passkey provider. Issue #334 remains open for those broader
+paths.
 The [release-stack retry receipt](../../examples/midnames-local/README.md#release-ledger-9-native-claim-retry)
 repeated this failure-and-retry path on node 2.1.101, indexer 4.4.101, and
 prover 9.0.2. It retained the Compact 0.35 artifacts and used Ledger 9
@@ -386,7 +391,8 @@ also checks that displaying an exact synthetic claim quote happens before the
 first owner-proof or sponsor-preparation call, and that explicit approval calls
 each once. This synthetic fixture alone does not prove an actual failed
 transaction, a real sponsor quote, or a passkey ceremony. The separate native
-run above proves the indexed failure, browser release, and host-driven retry;
+run above proves the indexed failure, browser release, and a later browser-sent
+prepared retry;
 the full demo's native sponsor-issued pre-proof quote and real-provider custody
 remain unqualified.
 **Check registry status** reads the pinned registry and verifies the open ACC

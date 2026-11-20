@@ -443,6 +443,17 @@ three exact owned containers, preserved volumes, and released the native lease.
 The [redacted summary](evidence/release-ledger9-claim-retry-20261120.json)
 records the image pins, transaction IDs, outcome, and remaining limits.
 
+A later isolated release-stack run at signed `b58668e8` repeated the exact
+indexed failure and browser release, then sent the fresh prepared claim from
+the reference app through the same-origin sponsor HTTP fence. Headless
+Chromium reviewed the saved quote, made one submission request, lost the
+sponsor's 202 response, reopened with the same virtual credential, and
+confirmed the original. The retry indexed `SUCCESS` to the same ACC; each
+original was dispatched once. Its [redacted browser retry receipt](evidence/release-ledger9-browser-retry-20261120.json)
+records the separate transaction identifiers, browser checks, and exact-owned
+cleanup. The new quote, owner proof, and sponsor balance remained host-driven;
+the failed-original release and fresh send used separate browser profiles.
+
 The release node rejected an earlier activation with error 104 when the
 reference client used Ledger 9 `1.0.0-rc.5`. A full Midnight.js 5.0.1 client
 cannot load this contract's Compact runtime 0.20 artifacts. The passing run
@@ -605,16 +616,19 @@ A fresh persistent Chromium profile opens the reference app,
 retains the original receipt, checks the live indexed segment result and registry,
 and explicitly releases it. After a browser restart, the fixture checks that the
 same original is archived with `CLAIM_SEGMENT_FAILURE` and no active claim remains.
-Only then does the host restore the root's registration policy, prepare a new
-owner-proved claim and sponsor quote for the same ACC and name, submit that new
-original once, and check indexed success and the live binding. Its private
+Only then does the host restore the root's registration policy and prepare a new
+owner-proved claim and sponsor quote for the same ACC and name. A separate
+headless browser profile reviews the saved terms and sends that original once
+through the sponsor HTTP fence; after the deliberately lost response, it
+reopens and checks the original. The host then checks indexed success and the
+live binding. Its private
 `indexed-claim-retry.json` retains both public receipts, the browser release
 receipt and dispatch counts; `native-sponsor-failure-archive.json` records the
 separate sponsor retirement. The browser in this isolated lane still uses its
 direct live-indexer recovery port; the sponsor retirement and fresh quote are
-qualified separately within the same native run. The new retry dispatch still
-runs in the host fixture. This lane does not qualify the full demo's combined
-browser-to-sponsor HTTP recovery, pre-proof browser quote review or a real provider.
+qualified separately within the same native run. This lane does not qualify the
+full demo's combined ACC create/open and sponsor-issued pre-proof quote ceremony,
+a single browser profile across both attempts, or a real provider.
 
 ## Run the shielded deposit by name
 

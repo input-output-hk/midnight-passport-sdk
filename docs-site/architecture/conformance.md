@@ -23,7 +23,7 @@ name at a node-finalized block. It does not qualify a 0.36 proof or submitted
 claim, so the deployed 0.35 profile and its gas guard remain the demonstrated
 write path.
 
-**Local recovery source preview, 19 November 2026:** The sponsor can now
+**Local recovery source preview, 20 November 2026:** The sponsor can now
 recognize its exact quote in a bounded private archive, refuse a superseded
 sibling quote with an owner-bound marker, and archive a dispatched original
 only after its indexed failure is checked against a canonical finalized block.
@@ -33,9 +33,13 @@ headless Chromium tests pass. A separate isolated release-stack run with the
 Compact 0.35 artifacts and a pinned Ledger 9 `1.0.2` reference client
 finalized a fee-only claim failure, archived the exact sponsor original,
 released the browser record after reload, and finalized a different claim
-to the same ACC. Its proof and retry dispatch remained host-driven. These
-checks do not establish an independent provider, online naming, or real
-passkey consent.
+to the same ACC. A later signed `b58668e8` isolated run sent that fresh
+prepared claim from the reference browser through the sponsor HTTP fence,
+recovered its original after a lost response and browser restart, and verified
+one indexed success to the same ACC. Quote issuance, owner proof, and sponsor
+balancing remained host-driven. These checks do not establish an independent
+provider, online naming, full page-owned pre-proof ceremony, or real passkey
+consent.
 
 | Architecture surface | SDK status and evidence | Difference or limit against the target |
 | --- | --- | --- |
