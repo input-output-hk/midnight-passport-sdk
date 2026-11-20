@@ -649,6 +649,22 @@ activated account. This qualifies local release-to-retry continuity, not
 same-profile preparation of both originals, combined ACC creation, a real
 passkey provider, an online registry or a released package.
 
+Signed source `4a6c7642` passed the stronger fresh isolated Ledger 9 lane:
+the Passport page itself obtained both sponsor quotes, proved and prepared both
+originals with one persistent virtual naming credential, and dispatched each
+exact original once. Its first HTTP send outcome was unknown, but the saved
+transaction finalized with only the claim segment failed. The sponsor archived
+that exact fee-only failure before the page released it; the page kept the
+failed receipt across reload. A fresh reviewed retry then finalized with
+`SUCCESS`, and the same page profile recovered its live binding to the same
+activated ACC after a deliberately lost sponsor response. The
+[redacted two-original receipt](evidence/release-ledger9-page-two-originals-20261120.json)
+records both transaction identifiers, canonical finality, page request counts
+and exact-owned cleanup. The ACC login connector still supplies an already
+activated test account, and the naming credential is virtual. This does not
+qualify combined ACC create/open and claim, a real passkey provider, online
+registry agreement, `passport.night`, or Compact 0.36.
+
 ## Run the shielded deposit by name
 
 Use a clean, GPG-signed SDK checkout with workspace dependencies installed and

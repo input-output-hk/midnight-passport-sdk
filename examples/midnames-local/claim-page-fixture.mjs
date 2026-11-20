@@ -13,6 +13,7 @@ import { runBrowser } from './claim-browser-fixture.mjs';
 import { startDemoOwnerBundle } from './claim-owner-browser-host.mjs';
 import { createClaimSponsorHandler } from './claim-sponsor-http.mts';
 import { openClaimDispatch } from './claim-dispatch.mts';
+import { claimFailedArchivePath } from './claim-preparation.mts';
 import { verifyIndexedClaimFailure } from './claim-indexed-failure.mjs';
 
 /** Fresh isolated claim: the Passport page requests the quote, proves with its
@@ -27,6 +28,7 @@ export async function qualifyPageOwnedClaim({
   accountAddress,
   name,
   failedOriginal,
+  firstAttemptFailure,
   sponsorJournalDir = output,
   parentDomain,
   sponsorPaymentAddress,
@@ -43,7 +45,12 @@ export async function qualifyPageOwnedClaim({
     registryAddress,
     accountAddress,
     name,
+    registryPayee: Buffer.from(parentDomain.owner_address.bytes).toString('hex'),
+    sponsorPaymentAddress,
+    night: String(parentDomain.payment_config.cost_long),
+    maximumDust: '100000000000000000',
     ...(failedOriginal ? { failedOriginal } : {}),
+    ...(firstAttemptFailure ? { prepareFailedInPage: true } : {}),
   });
   const hex = (value) => (typeof value === 'string' ? value : Buffer.from(value).toString('hex'));
   const walletKeys = {
@@ -62,58 +69,82 @@ export async function qualifyPageOwnedClaim({
     },
   );
   let server;
-  let submission;
+  const submissions = [];
   let dispatches = 0;
-  let issued;
-  let admitted;
+  const issued = [];
+  const admitted = [];
+  let activeWalletProvider = walletProvider;
+  let restorationAttempted = false;
   try {
     const handler = createClaimSponsorHandler(
       'http://localhost:5173',
       sponsorJournalDir,
       {
         async authorize(bytes, receipt) {
-          assert.ok(issued);
+          const currentQuote = issued.at(-1);
+          assert.ok(currentQuote);
           assert.equal(receipt.name, name);
           assert.equal(receipt.accountAddress, accountAddress);
           await readLive({
             ...receipt,
-            night: BigInt(issued.night),
-            registryPayee: issued.registryPayee,
+            night: BigInt(currentQuote.night),
+            registryPayee: currentQuote.registryPayee,
           });
-          admitted = admitNativeClaim(
-            bytes,
-            receipt,
-            { ...receipt, ...issued, night: BigInt(issued.night) },
-            100_000_000_000_000_000n,
+          admitted.push(
+            admitNativeClaim(
+              bytes,
+              receipt,
+              { ...receipt, ...currentQuote, night: BigInt(currentQuote.night) },
+              100_000_000_000_000_000n,
+            ),
           );
         },
         async submit(bytes) {
-          assert.equal(dispatches++, 0, 'Only one page-owned dispatch is permitted.');
+          const attempt = dispatches++;
+          assert.ok(
+            attempt === 0 || (attempt === 1 && firstAttemptFailure),
+            'Only the reviewed page-owned originals may dispatch.',
+          );
+          if (attempt === 0 && firstAttemptFailure) await firstAttemptFailure.disableParent();
           const tx = ledger.Transaction.deserialize('signature', 'proof', 'binding', bytes);
-          submission = Promise.resolve()
+          const submission = Promise.resolve()
             .then(() => submit({ version: 'v9', tx }))
             .then(
               (value) => ({ outcome: 'reported', id: String(value) }),
               () => ({ outcome: 'unknown' }),
             );
+          submissions.push(submission);
         },
       },
       {
         async issue(destination) {
-          assert.equal(issued, undefined, 'The browser must request one fresh quote.');
           assert.deepEqual(destination, {
             networkId: 'undeployed',
             registryAddress,
             accountAddress,
             name,
           });
+          assert.ok(
+            issued.length === 0 || (issued.length === 1 && firstAttemptFailure),
+            'The browser may request only the reviewed number of quotes.',
+          );
+          if (issued.length === 1) {
+            assert.ok(firstAttemptFailure);
+            assert.equal(
+              restorationAttempted,
+              false,
+              'The first restoration attempt must be reconciled before another quote.',
+            );
+            restorationAttempted = true;
+            activeWalletProvider = await firstAttemptFailure.restoreAndRefresh();
+          }
           const live = {
             ...destination,
             night: parentDomain.payment_config.cost_long,
             registryPayee: Buffer.from(parentDomain.owner_address.bytes).toString('hex'),
           };
           await readLive(live);
-          issued = claimQuote({
+          const next = claimQuote({
             ...destination,
             id: randomBytes(32).toString('hex'),
             sponsorAddress: sponsorPaymentAddress,
@@ -123,10 +154,11 @@ export async function qualifyPageOwnedClaim({
             maximumDust: '100000000000000000',
             expiresAt: Date.now() + 240_000,
           });
-          return issued;
+          issued.push(next);
+          return next;
         },
         async authorizeQuote(candidate) {
-          assert.deepEqual(candidate, issued);
+          assert.deepEqual(candidate, issued.at(-1));
           assert.deepEqual(claimDestination(candidate), {
             networkId: 'undeployed',
             registryAddress,
@@ -140,13 +172,16 @@ export async function qualifyPageOwnedClaim({
         },
         async balance(bytes, ttl) {
           const tx = ledger.Transaction.deserialize('signature', 'proof', 'pre-binding', bytes);
-          const result = await walletProvider.balanceTx({ version: 'v9', tx }, ttl);
+          const result = await activeWalletProvider.balanceTx({ version: 'v9', tx }, ttl);
           assert.equal(result.version, 'v9');
           return result.tx.serialize();
         },
         async retireIndexedFailure(original) {
-          assert.ok(failedOriginal);
-          assert.deepEqual(original, failedOriginal);
+          const expected = firstAttemptFailure
+            ? openClaimDispatch(sponsorJournalDir).preparedReceipt()
+            : failedOriginal;
+          assert.ok(expected);
+          assert.deepEqual(original, expected);
           return verifyIndexedClaimFailure({
             receipt: original,
             nodeUrl: process.env.MN_NODE_URL,
@@ -173,14 +208,35 @@ export async function qualifyPageOwnedClaim({
     const address = server.address();
     assert.ok(address && typeof address !== 'string');
     step('page-owned-quote-proof-prepare-send-and-recover');
-    await runBrowser(output, address.port, 450_000, 'e2e/midnames-native-page.e2e.ts', {
-      PASSPORT_MIDNAMES_OWNER_PORT: new URL(owner.origin).port,
-    });
+    await runBrowser(
+      output,
+      address.port,
+      firstAttemptFailure ? 800_000 : 450_000,
+      'e2e/midnames-native-page.e2e.ts',
+      {
+        PASSPORT_MIDNAMES_OWNER_PORT: new URL(owner.origin).port,
+      },
+    );
     const page = JSON.parse(readFileSync(join(output, 'page-owned-claim.json'), 'utf8'));
     const receipt = openClaimDispatch(sponsorJournalDir).preparedReceipt();
     assert.deepEqual(page.original, receipt);
-    assert.equal(dispatches, 1);
-    assert.ok(admitted);
+    assert.equal(dispatches, firstAttemptFailure ? 2 : 1);
+    assert.equal(admitted.length, firstAttemptFailure ? 2 : 1);
+    const firstReceipt = firstAttemptFailure ? page.firstOriginal : undefined;
+    if (firstAttemptFailure) {
+      assert.ok(firstReceipt);
+      assert.notEqual(firstReceipt.transaction.sha256, receipt.transaction.sha256);
+      assert.equal(
+        await readClaimFinality(process.env.MN_INDEXER_URL, firstReceipt, fetch, 2001100),
+        'claim-failed',
+      );
+      assert.deepEqual(
+        openClaimDispatch(
+          claimFailedArchivePath(sponsorJournalDir, firstReceipt),
+        ).preparedReceipt(),
+        firstReceipt,
+      );
+    }
     const deadline = Date.now() + 120_000;
     while (Date.now() < deadline) {
       const finality = await readClaimFinality(process.env.MN_INDEXER_URL, receipt, fetch, 2001100);
@@ -196,16 +252,20 @@ export async function qualifyPageOwnedClaim({
       ownerCommitment: receipt.ownerCommitment,
       target: { kind: 'contract', address: accountAddress },
     });
-    return { receipt, quote: issued, page, admitted, dispatches };
+    return { receipt, firstReceipt, quotes: issued, page, admitted, dispatches };
   } finally {
     if (server?.listening) {
       server.close();
       server.closeAllConnections();
       await once(server, 'close');
     }
-    if (submission) {
-      const result = await Promise.race([submission, delay(30_000).then(() => undefined)]);
-      if (result) saveIsolationReceipt(join(output, 'page-submit-result.json'), result);
+    if (submissions.length) {
+      const results = await Promise.all(
+        submissions.map((submission) =>
+          Promise.race([submission, delay(30_000).then(() => undefined)]),
+        ),
+      );
+      saveIsolationReceipt(join(output, 'page-submit-result.json'), results);
     }
     await owner.close();
   }
