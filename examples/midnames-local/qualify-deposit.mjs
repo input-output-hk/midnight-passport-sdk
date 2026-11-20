@@ -58,7 +58,7 @@ const docker = (args) =>
   ).trim();
 assert.match(
   out ?? '',
-  /^midnames-(?:deposit|deposit-browser|night-send|night-browser|claim-handoff|claim-browser|claim-preproof|claim-owner-browser|claim-partial-probe|claim-retry)-[a-z0-9-]{1,48}$/,
+  /^midnames-(?:deposit|deposit-browser|night-send|night-browser|claim-handoff|claim-browser|claim-preproof|claim-owner-browser|claim-partial-probe|claim-retry|claim-page-retry)-[a-z0-9-]{1,48}$/,
 );
 const browserReview =
   out.startsWith('midnames-deposit-browser-') || out.startsWith('midnames-night-browser-');
@@ -80,13 +80,15 @@ const fixtureMode = out.startsWith('midnames-claim-browser-')
       ? 'claim-owner-browser'
       : out.startsWith('midnames-claim-partial-probe-')
         ? 'claim-partial-probe'
-        : out.startsWith('midnames-claim-retry-')
-          ? 'claim-retry'
-          : out.startsWith('midnames-claim-handoff-')
-            ? 'claim-handoff'
-            : out.startsWith('midnames-night-send-') || out.startsWith('midnames-night-browser-')
-              ? 'named-night-send'
-              : 'named-shielded-deposit';
+        : out.startsWith('midnames-claim-page-retry-')
+          ? 'claim-page-retry'
+          : out.startsWith('midnames-claim-retry-')
+            ? 'claim-retry'
+            : out.startsWith('midnames-claim-handoff-')
+              ? 'claim-handoff'
+              : out.startsWith('midnames-night-send-') || out.startsWith('midnames-night-browser-')
+                ? 'named-night-send'
+                : 'named-shielded-deposit';
 if (interactive)
   assert.ok(
     !browserReview &&
@@ -98,7 +100,9 @@ assert.ok(info.MemTotal >= 24 * 1024 ** 3);
 const images = isolatedImages(
   docker,
   info.Architecture === 'aarch64' ? 'arm64' : 'amd64',
-  fixtureMode === 'claim-retry' ? MIDNAMES_RELEASE_IMAGES : undefined,
+  fixtureMode === 'claim-retry' || fixtureMode === 'claim-page-retry'
+    ? MIDNAMES_RELEASE_IMAGES
+    : undefined,
 );
 const review = join(root, 'review');
 mkdirSync(review, { recursive: true, mode: 0o700 });

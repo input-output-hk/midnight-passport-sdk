@@ -17,11 +17,20 @@ const input = JSON.parse(readFileSync(resolve(output, 'page-claim-input.json'), 
   registryAddress: string;
   accountAddress: string;
   name: string;
+  registryPayee: string;
+  sponsorPaymentAddress: string;
+  night: string;
+  maximumDust: string;
   failedOriginal?: unknown;
+  prepareFailedInPage?: boolean;
 };
 assert.match(input.registryAddress, /^[0-9a-f]{64}$/);
 assert.match(input.accountAddress, /^[0-9a-f]{64}$/);
 assert.match(input.name, /^[a-z0-9]+\.night$/);
+assert.match(input.registryPayee, /^[0-9a-f]{64}$/);
+assert.match(input.sponsorPaymentAddress, /^[0-9a-f]{64}$/);
+assert.match(input.night, /^[0-9]+$/);
+assert.match(input.maximumDust, /^[0-9]+$/);
 const sponsorPort = process.env.PASSPORT_MIDNAMES_SPONSOR_PORT;
 const ownerPort = process.env.PASSPORT_MIDNAMES_OWNER_PORT;
 assert.match(sponsorPort ?? '', /^[1-9][0-9]{0,4}$/);
@@ -61,7 +70,14 @@ const connector = `
       },
     };
   };
-  export const connect = async () => ({ createAccount: account, openAccount: account });
+  export const connect = async () => ({
+    async createAccount() {
+      localStorage.setItem('native-page-create-calls',
+        String(Number(localStorage.getItem('native-page-create-calls') || '0') + 1));
+      return account();
+    },
+    openAccount: account,
+  });
   export function installShim() { window.midnight = { passport: { connect } }; }
 `;
 const origin = 'http://localhost:5173';
@@ -163,7 +179,40 @@ async function retainedClaims(page: Page) {
   );
 }
 
+async function settledClaimStatus(page: Page): Promise<string> {
+  await page.waitForFunction(
+    `() => {
+      const check = document.querySelector('#claim-recovery-check');
+      const status = document.querySelector('#claim-recovery-status')?.textContent?.trim();
+      return check && !check.disabled && status && status !== 'Checking claim details…';
+    }`,
+    undefined,
+    { timeout: 60_000 },
+  );
+  return (await page.locator('#claim-recovery-status').textContent())?.trim() ?? '';
+}
+
+async function assertReviewedQuote(page: Page): Promise<string> {
+  const summary = await page.locator('#claim-quote-summary').innerText();
+  for (const expected of [
+    `Register ${input.name}`,
+    `Network undeployed`,
+    `Passport account ${input.accountAddress}`,
+    `Registry ${input.registryAddress}`,
+    `Registry payee ${input.registryPayee}`,
+    `Registry price ${input.night} smallest NIGHT units`,
+    `Maximum sponsor fee ${input.maximumDust} SPECKs`,
+    `Future subdomain payment address ${input.sponsorPaymentAddress}`,
+    `Sponsor payment wallet ${input.sponsorPaymentAddress}`,
+  ])
+    assert.ok(summary.includes(expected), `Reviewed quote omits ${expected}`);
+  const expiry = /^Quote expires (\S+)$/m.exec(summary)?.[1];
+  assert.ok(expiry && Date.parse(expiry) > Date.now(), 'Reviewed quote must remain live.');
+  return summary;
+}
+
 let original;
+let firstOriginal;
 let lostResponse = false;
 let browserRelease;
 try {
@@ -210,19 +259,63 @@ try {
     localStorage.setItem('native-naming-credential', id);
   })()`);
   await open(page, true);
-  if (input.failedOriginal) {
-    const failed = claimReceipt(input.failedOriginal);
+  if (input.prepareFailedInPage) {
+    assert.equal(input.failedOriginal, undefined);
+    await page.locator('#claim-recovery-name').fill(input.name);
+    await page.locator('#claim-review-quote').click();
+    await page.locator('#claim-quote-summary').getByText(`Register ${input.name}`).waitFor();
+    await assertReviewedQuote(page);
+    assert.equal(quoteRequests, 1);
+    assert.equal(proofRequests, 0);
+    await page.locator('#claim-prepare').click();
+    await page
+      .locator('#claim-recovery-status')
+      .filter({ hasText: /No transaction has been sent|Original receipt saved/ })
+      .waitFor({ timeout: 180_000 });
+    firstOriginal = claimReceipt(
+      JSON.parse(await page.locator('#claim-recovery-receipt').inputValue()),
+    );
+    assert.equal(firstOriginal.name, input.name);
+    assert.equal(firstOriginal.accountAddress, input.accountAddress);
+    assert.equal(quoteRequests, 1);
+    assert.equal(proofRequests, 1);
+    assert.equal(prepareRequests, 1);
+    const firstResponse = page.waitForResponse(
+      (response) => response.url().endsWith(claimDispatchPath) && response.status() === 202,
+      { timeout: 120_000 },
+    );
+    await page.locator('#claim-dispatch').click();
+    await firstResponse;
+    assert.equal(dispatchRequests, 1);
+    const until = Date.now() + 120_000;
+    while (Date.now() < until) {
+      await reveal(page, '#claim-recovery-check');
+      await page.locator('#claim-recovery-check').click();
+      const status = await settledClaimStatus(page);
+      if (status.startsWith('Registration failed while the sponsor fee succeeded')) break;
+      assert.match(
+        status,
+        /Original claim is pending|original claim is pending|Claim check unavailable|Registration failed while the sponsor fee succeeded|Sponsor response is unavailable|Send outcome unknown/,
+      );
+      await delay(1500);
+    }
+  }
+  if (input.failedOriginal || firstOriginal) {
+    const failed = claimReceipt(input.failedOriginal ?? firstOriginal);
     assert.equal(failed.registryAddress, input.registryAddress);
     assert.equal(failed.accountAddress, input.accountAddress);
     assert.equal(failed.name, input.name);
-    await reveal(page, '#claim-recovery-receipt');
-    await page.locator('#claim-recovery-name').fill(input.name);
-    await page.locator('#claim-recovery-receipt').fill(JSON.stringify(failed));
-    await page.locator('#claim-recovery-retain').click();
-    await page
-      .locator('#claim-recovery-status')
-      .filter({ hasText: /^Original receipt saved/ })
-      .waitFor();
+    if (!firstOriginal) {
+      await reveal(page, '#claim-recovery-receipt');
+      await page.locator('#claim-recovery-name').fill(input.name);
+      await page.locator('#claim-recovery-receipt').fill(JSON.stringify(failed));
+      await page.locator('#claim-recovery-retain').click();
+      await page
+        .locator('#claim-recovery-status')
+        .filter({ hasText: /^Original receipt saved/ })
+        .waitFor();
+    }
+    await reveal(page, '#claim-recovery-check');
     await page.locator('#claim-recovery-check').click();
     const failureStatus = page.locator('#claim-recovery-status');
     try {
@@ -271,8 +364,10 @@ try {
   await page.locator('#claim-recovery-name').fill(input.name);
   await page.locator('#claim-review-quote').click();
   await page.locator('#claim-quote-summary').getByText(`Register ${input.name}`).waitFor();
-  assert.equal(quoteRequests, 1);
-  assert.equal(proofRequests, 0);
+  await assertReviewedQuote(page);
+  const expectedAttempts = firstOriginal ? 2 : 1;
+  assert.equal(quoteRequests, expectedAttempts);
+  assert.equal(proofRequests, expectedAttempts - 1);
   await page.locator('#claim-prepare').click();
   await page
     .locator('#claim-recovery-status')
@@ -281,12 +376,12 @@ try {
   original = claimReceipt(JSON.parse(await page.locator('#claim-recovery-receipt').inputValue()));
   assert.equal(original.name, input.name);
   assert.equal(original.accountAddress, input.accountAddress);
-  assert.equal(quoteRequests, 1);
-  assert.equal(proofRequests, 1);
-  assert.equal(prepareRequests, 1);
-  assert.equal(dispatchRequests, 0);
-  if (input.failedOriginal) {
-    const failed = claimReceipt(input.failedOriginal);
+  assert.equal(quoteRequests, expectedAttempts);
+  assert.equal(proofRequests, expectedAttempts);
+  assert.equal(prepareRequests, expectedAttempts);
+  assert.equal(dispatchRequests, expectedAttempts - 1);
+  if (input.failedOriginal || firstOriginal) {
+    const failed = claimReceipt(input.failedOriginal ?? firstOriginal);
     assert.deepEqual(await retainedClaims(page), {
       active: original.transaction.sha256,
       history: [failed.transaction.sha256],
@@ -307,7 +402,7 @@ try {
   });
   await page.locator('#claim-dispatch').click();
   await sent;
-  assert.equal(dispatchRequests, 1);
+  assert.equal(dispatchRequests, expectedAttempts);
   await browser.close();
   browser = await newBrowser();
   const resumed = await browser.newPage();
@@ -332,11 +427,16 @@ try {
   }
   assert.match(await result.innerText(), /^Registered\./);
   assert.ok(lostResponse && indexerRequests > 0);
-  assert.equal(dispatchRequests, 1);
+  assert.equal(dispatchRequests, expectedAttempts);
+  const accountCreationCalls = await resumed.evaluate(() =>
+    Number(localStorage.getItem('native-page-create-calls') || '0'),
+  );
+  assert.equal(accountCreationCalls, 1);
   writeFileSync(
     resolve(output, 'page-owned-claim.json'),
     JSON.stringify({
       original,
+      ...(firstOriginal ? { firstOriginal } : {}),
       quoteRequests,
       proofRequests,
       prepareRequests,
@@ -345,6 +445,7 @@ try {
       lostResponse,
       recoveredInSameProfile: true,
       connectorWasFixture: true,
+      accountCreationCalls,
       ...(browserRelease ? { browserRelease } : {}),
     }) + '\n',
     { flag: 'wx', mode: 0o600 },
