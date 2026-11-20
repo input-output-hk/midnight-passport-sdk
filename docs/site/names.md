@@ -372,8 +372,13 @@ reference browser to review saved terms, send the fresh claim once through
 the sponsor HTTP fence, and reconcile its original after a lost response and
 reload. The retry indexed `SUCCESS` to the same ACC. The new quote, proof, and
 balance were still host-driven; this does not qualify browser review before
-proving or a real passkey provider. Issue #334 remains open for those broader
-paths.
+proving or a real passkey provider.
+The [older release-stack retry receipt](../../examples/midnames-local/README.md#release-ledger-9-native-claim-retry)
+repeated the host-driven failure-and-retry path on node 2.1.101, indexer
+4.4.101, and prover 9.0.2. It retained the Compact 0.35 artifacts and used
+Ledger 9 `1.0.2` throughout the reference client. The first claim's fee-only
+`PARTIAL_SUCCESS` was archived and released after a browser reload; a different
+original then finalized `SUCCESS` for the same ACC.
 On later signed source `46add31e`, a fresh isolated run used the actual
 Passport name form for the retry. It obtained one sponsor-issued quote before
 the owner proof, prepared and sent the reviewed claim once, then recovered its
@@ -384,13 +389,8 @@ already activated test account, and the credential was virtual. This qualifies
 that bounded local page-to-chain retry, not a combined ACC creation ceremony,
 one browser profile across both attempts, a real passkey provider or an online
 registry. See the [redacted page-owned receipt](../../examples/midnames-local/evidence/release-ledger9-page-claim-retry-20261120.json).
-The [release-stack retry receipt](../../examples/midnames-local/README.md#release-ledger-9-native-claim-retry)
-repeated this failure-and-retry path on node 2.1.101, indexer 4.4.101, and
-prover 9.0.2. It retained the Compact 0.35 artifacts and used Ledger 9
-`1.0.2` throughout the reference client. The first claim's fee-only
-`PARTIAL_SUCCESS` was archived and released after a browser reload; a
-different original then finalized `SUCCESS` for the same ACC. This is
-isolated local evidence, not an online or real-passkey qualification.
+Issue #334 remains open for the broader failure matrix and combined
+onboarding/provider paths.
 If legacy storage contains multiple original claims,
 enter an original name to inspect it before preparing another.
 The synthetic full-app Chromium fixture now follows create/open into this form:
