@@ -50,7 +50,7 @@ one freshly proved claim. Indexed success and the same ACC binding were
 recovered after a lost response. The first original was prepared by the
 isolated fixture, and the page used a virtual credential and an activated-ACC
 login fixture.
-Signed `4a6c7642` then passed a fresh [two-original page-owned claim run](https://github.com/input-output-hk/midnight-passport-sdk/blob/861b149deaa680b7a803e3bcca7e677eebb7f2f3/examples/midnames-local/evidence/release-ledger9-page-two-originals-20261120.json):
+Signed `4a6c7642` then passed a fresh [two-original page-owned claim run](https://github.com/input-output-hk/midnight-passport-sdk/blob/7c9acc2bf9b6a9a996ff7a95b0b40954376689c8/examples/midnames-local/evidence/release-ledger9-page-two-originals-20261120.json):
 one persistent page profile obtained both quotes, proved and prepared both
 originals, retained and archived the exact failed claim after its sponsor fee
 succeeded, and recovered a distinct successful claim to the same ACC after a
