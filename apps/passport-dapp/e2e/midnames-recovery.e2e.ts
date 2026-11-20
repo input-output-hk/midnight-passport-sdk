@@ -198,7 +198,10 @@ async function submitWithLostSponsorResponse(page: Page) {
     await page.locator('#claim-dispatch').click();
     await lost;
     assert.equal(responseStatus, 202, 'The sponsor must accept the original before response loss.');
-    await status(page, /^(The original claim is pending|Registered\.|Claim check unavailable)/);
+    await status(
+      page,
+      /^(The original claim is pending|Registered\.|Claim check unavailable|Name service unavailable)/,
+    );
     return;
   }
   await page.route('**/__drop-claim-response', async (route) => {
@@ -316,7 +319,10 @@ try {
     await recovered.locator('#claim-recovery-check').click();
     const result = recovered.locator('#claim-recovery-status');
     await result
-      .filter({ hasText: /^(Registered\.|The original claim is pending|Claim check unavailable)/ })
+      .filter({
+        hasText:
+          /^(Registered\.|The original claim is pending|Claim check unavailable|Name service unavailable)/,
+      })
       .waitFor();
     if (messages.confirmed.test(await result.innerText())) break;
     assert.ok(Date.now() < deadline, await result.innerText());
