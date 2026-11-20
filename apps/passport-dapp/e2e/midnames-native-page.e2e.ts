@@ -216,16 +216,18 @@ async function retainedClaims(page: Page) {
 }
 
 async function settledClaimStatus(page: Page): Promise<string> {
-  await page.waitForFunction(
-    `() => {
-      const check = document.querySelector('#claim-recovery-check');
-      const status = document.querySelector('#claim-recovery-status')?.textContent?.trim();
-      return check && !check.disabled && status && status !== 'Checking claim details…';
-    }`,
-    undefined,
-    { timeout: 60_000 },
-  );
-  return (await page.locator('#claim-recovery-status').textContent())?.trim() ?? '';
+  const settled =
+    /^(Original claim is pending|The original claim is pending|Claim check unavailable|Registration failed while the sponsor fee succeeded|Sponsor response is unavailable|Send outcome unknown|Registered\.)/;
+  const check = page.locator('#claim-recovery-check');
+  const status = page.locator('#claim-recovery-status');
+  const deadline = Date.now() + 60_000;
+  let last = '';
+  while (Date.now() < deadline) {
+    last = (await status.textContent())?.trim() ?? '';
+    if (settled.test(last) && (await check.isEnabled())) return last;
+    await delay(150);
+  }
+  throw new Error(`The claim check did not settle: ${last}`);
 }
 
 async function assertReviewedQuote(page: Page): Promise<string> {
