@@ -7,6 +7,15 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { chromium, type Page } from 'playwright-core';
 import { createServer } from 'vite';
 import { claimDispatchPath } from '../src/midnames/claim-dispatch.js';
+import {
+  claimPreparePath,
+  claimPreparedPath,
+  claimQuotePath,
+  claimRetireFailurePath,
+  claimRetirePath,
+  claimRetireUnpreparedPath,
+  claimStatusPath,
+} from '../src/midnames/claim-preparation-transport.js';
 import { claimReceipt } from '../src/midnames/claim-receipt.js';
 import { claimQuote } from '../src/midnames/claim-quote.js';
 import { reveal } from './journeys/ui.js';
@@ -35,6 +44,16 @@ if (sponsorPort !== undefined) {
 const fixtureQuote = sponsorPort
   ? claimQuote(JSON.parse(readFileSync(file('original-quote.json'), 'utf8')))
   : undefined;
+const sponsorPaths = [
+  claimDispatchPath,
+  claimQuotePath,
+  claimPreparePath,
+  claimPreparedPath,
+  claimStatusPath,
+  claimRetirePath,
+  claimRetireUnpreparedPath,
+  claimRetireFailurePath,
+];
 if (process.env.VITE_MIDNAMES_CLAIM_PROTOCOL_VERSION !== undefined)
   assert.equal(process.env.VITE_MIDNAMES_CLAIM_PROTOCOL_VERSION, '2001100');
 Object.assign(process.env, {
@@ -83,7 +102,12 @@ const vite = await createServer({
     hmr: false,
     ...(sponsorPort && {
       proxy: {
-        [claimDispatchPath]: { target: 'http://127.0.0.1:' + sponsorPort, changeOrigin: false },
+        ...Object.fromEntries(
+          sponsorPaths.map((path) => [
+            path,
+            { target: 'http://127.0.0.1:' + sponsorPort, changeOrigin: false },
+          ]),
+        ),
       },
     }),
   },
