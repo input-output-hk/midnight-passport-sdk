@@ -32,6 +32,11 @@ export const MIDNAMES_RELEASE_IMAGES = Object.freeze([
     tag: 'ghcr.io/midnight-ntwrk/proof-server@sha256:787ef99db4b4706eb14d94ad389ca45f1c09bcdf740afecb01899bfbda63dc64',
   },
 ]);
+// Comparison lane: keep the release chain fixed and vary only its prover.
+export const MIDNAMES_RC_PROVER_IMAGES = Object.freeze([
+  ...MIDNAMES_RELEASE_IMAGES.filter(({ service }) => service !== 'proof-server'),
+  ISOLATED_IMAGES.find(({ service }) => service === 'proof-server'),
+]);
 /** @param {string} encoded */
 function inspected(encoded) {
   const result = JSON.parse(encoded);
@@ -41,7 +46,11 @@ function inspected(encoded) {
 /** @param {DockerCommand} docker @param {string} arch @param {typeof ISOLATED_IMAGES} [pins] */
 export function isolatedImages(docker, arch, pins = ISOLATED_IMAGES) {
   assert.ok(['arm64', 'amd64'].includes(arch));
-  assert.ok(pins === ISOLATED_IMAGES || pins === MIDNAMES_RELEASE_IMAGES);
+  assert.ok(
+    pins === ISOLATED_IMAGES ||
+      pins === MIDNAMES_RELEASE_IMAGES ||
+      pins === MIDNAMES_RC_PROVER_IMAGES,
+  );
   return pins.map(({ service, tag }) => {
     const image = inspected(docker(['image', 'inspect', tag]));
     assert.match(String(image.Id), /^sha256:[a-f0-9]{64}$/);

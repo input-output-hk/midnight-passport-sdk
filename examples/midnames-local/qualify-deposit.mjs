@@ -20,7 +20,7 @@ import {
 import {
   isolatedImages,
   isolatedStack,
-  ISOLATED_IMAGES,
+  MIDNAMES_RC_PROVER_IMAGES,
   MIDNAMES_RELEASE_IMAGES,
 } from '../../scripts/qualification/native-isolated-stack.mjs';
 import { isolatedInputs } from '../../scripts/qualification/native-isolation-inputs.mjs';
@@ -98,13 +98,13 @@ if (interactive)
   );
 const info = JSON.parse(docker(['info', '--format', '{{json .}}']));
 assert.ok(info.MemTotal >= 24 * 1024 ** 3);
-const compareRc = process.env.PASSPORT_MIDNAMES_DIAG_RC === '1';
-assert.ok(!process.env.PASSPORT_MIDNAMES_DIAG_RC || compareRc);
-assert.ok(!compareRc || fixtureMode === 'named-night-send');
+const compareRcProver = process.env.PASSPORT_MIDNAMES_DIAG_RC_PROVER === '1';
+assert.ok(!process.env.PASSPORT_MIDNAMES_DIAG_RC_PROVER || compareRcProver);
+assert.ok(!compareRcProver || fixtureMode === 'named-night-send');
 const images = isolatedImages(
   docker,
   info.Architecture === 'aarch64' ? 'arm64' : 'amd64',
-  compareRc ? ISOLATED_IMAGES : MIDNAMES_RELEASE_IMAGES,
+  compareRcProver ? MIDNAMES_RC_PROVER_IMAGES : MIDNAMES_RELEASE_IMAGES,
 );
 const review = join(root, 'review');
 mkdirSync(review, { recursive: true, mode: 0o700 });
