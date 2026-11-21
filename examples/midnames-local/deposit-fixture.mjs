@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
 import { appendFileSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import {
@@ -21,18 +22,29 @@ const expectedEnvironment = isolationEnvironment(
 );
 for (const [key, value] of Object.entries(expectedEnvironment))
   assert.equal(process.env[key], value, `Unexpected fixture setting ${key}`);
-const nativeFetch = globalThis.fetch;
-globalThis.fetch = async (...args) => {
-  const response = await nativeFetch(...args);
-  if (!response.ok && String(args[0]).startsWith(process.env.MN_PROOF_SERVER_URL + '/prove')) {
-    const body = await response.clone().text();
-    appendFileSync(
-      join(output, 'proof-http-error.private.txt'),
-      `${response.status} ${body.slice(0, 4096)}\n`,
-      { mode: 0o600 },
-    );
+const http = createRequire(import.meta.url)('node:http');
+const nativeRequest = http.request;
+http.request = function (...args) {
+  const request = nativeRequest.apply(this, args);
+  if (request.path === '/prove') {
+    request.on('response', (response) => {
+      if (response.statusCode < 400) return;
+      let body = '';
+      response.on('data', (chunk) => {
+        body = (body + chunk.toString('utf8')).slice(0, 4096);
+      });
+      response.on('end', () => {
+        appendFileSync(
+          join(output, 'proof-http-error.private.txt'),
+          `${response.statusCode} ${body}\n`,
+          {
+            mode: 0o600,
+          },
+        );
+      });
+    });
   }
-  return response;
+  return request;
 };
 const sha = (b) => createHash('sha256').update(b).digest('hex');
 const pins = await verifyPreparedRegistry(prepared);
