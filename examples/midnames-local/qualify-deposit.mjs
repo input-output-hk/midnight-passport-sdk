@@ -20,6 +20,8 @@ import {
 import {
   isolatedImages,
   isolatedStack,
+  MIDNAMES_900_PROVER_IMAGES,
+  MIDNAMES_901_PROVER_IMAGES,
   MIDNAMES_RC_PROVER_IMAGES,
   MIDNAMES_RELEASE_IMAGES,
 } from '../../scripts/qualification/native-isolated-stack.mjs';
@@ -98,13 +100,23 @@ if (interactive)
   );
 const info = JSON.parse(docker(['info', '--format', '{{json .}}']));
 assert.ok(info.MemTotal >= 24 * 1024 ** 3);
-const compareRcProver = process.env.PASSPORT_MIDNAMES_DIAG_RC_PROVER === '1';
-assert.ok(!process.env.PASSPORT_MIDNAMES_DIAG_RC_PROVER || compareRcProver);
-assert.ok(!compareRcProver || fixtureMode === 'named-night-send');
+const legacyRcSelection = process.env.PASSPORT_MIDNAMES_DIAG_RC_PROVER;
+assert.ok(legacyRcSelection === undefined || legacyRcSelection === '1');
+const selectedProver =
+  process.env.PASSPORT_MIDNAMES_DIAG_PROVER ?? (legacyRcSelection === '1' ? 'rc.8' : 'release');
+assert.ok(['release', 'rc.8', '9.0.0', '9.0.1'].includes(selectedProver));
+assert.ok(legacyRcSelection === undefined || selectedProver === 'rc.8');
+assert.ok(selectedProver === 'release' || fixtureMode === 'named-night-send');
+const proverImages = {
+  release: MIDNAMES_RELEASE_IMAGES,
+  'rc.8': MIDNAMES_RC_PROVER_IMAGES,
+  '9.0.0': MIDNAMES_900_PROVER_IMAGES,
+  '9.0.1': MIDNAMES_901_PROVER_IMAGES,
+};
 const images = isolatedImages(
   docker,
   info.Architecture === 'aarch64' ? 'arm64' : 'amd64',
-  compareRcProver ? MIDNAMES_RC_PROVER_IMAGES : MIDNAMES_RELEASE_IMAGES,
+  proverImages[selectedProver],
 );
 const review = join(root, 'review');
 mkdirSync(review, { recursive: true, mode: 0o700 });
