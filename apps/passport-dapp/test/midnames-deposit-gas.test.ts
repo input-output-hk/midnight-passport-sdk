@@ -3,7 +3,10 @@ import { test } from 'node:test';
 import { createCircuitContext, createConstructorContext } from '@midnight-ntwrk/compact-runtime';
 import * as ledger from '@midnightntwrk/ledger-v9';
 import * as acc from '#acc';
-import { measuredAccNightDeletionCredit } from '../../../packages/adapter-midnight-js/src/night-deposit.js';
+import {
+  measuredAccNightDeletionCredit,
+  rebuildMeasuredDeposit,
+} from '../../../packages/adapter-midnight-js/src/night-deposit.js';
 
 const address = '11'.repeat(32);
 const zero = '00'.repeat(32);
@@ -324,5 +327,30 @@ test('ACC NIGHT funding keeps its exact call and earned deletion credit', async 
       )?.gas.bytesDeleted,
       measured.bytesDeleted,
     );
+    const adapterCorrected = rebuildMeasuredDeposit(
+      {
+        ...result,
+        private: { unprovenTx: shortOriginal },
+        calls: [{ ...result.calls[0], public: { partitionedTranscript: shortPair } }],
+      } as unknown as Parameters<typeof rebuildMeasuredDeposit>[0],
+      state,
+      parameters,
+      address,
+      'undeployed',
+      'fixture',
+    );
+    const [adapterCall] = [...(adapterCorrected.intents?.values() ?? [])].flatMap(
+      (intent) => intent.actions,
+    );
+    assert.ok(adapterCall instanceof ledger.ContractCall);
+    assert.equal(Boolean(adapterCall.guaranteedTranscript), segment === 'guaranteed');
+    assert.equal(Boolean(adapterCall.fallibleTranscript), segment === 'fallible');
+    const adapterTranscript =
+      segment === 'guaranteed' ? adapterCall.guaranteedTranscript : adapterCall.fallibleTranscript;
+    assert.ok(adapterTranscript);
+    assert.equal(adapterTranscript.gas.bytesDeleted, measured.bytesDeleted);
+    assert.deepEqual(adapterTranscript.program, short.program);
+    assert.deepEqual(adapterTranscript.effects, short.effects);
+    assert.doesNotThrow(() => query().runTranscript(adapterTranscript, model));
   }
 });

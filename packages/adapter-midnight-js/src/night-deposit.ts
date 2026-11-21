@@ -96,7 +96,6 @@ function pinnedDepositCall(callData: UnsubmittedDeposit, target: string) {
     entry !== 'deposit_unshielded' ||
     !transcript ||
     Boolean(guaranteed) === Boolean(fallible) ||
-    transcript.gas.bytesDeleted <= 0n ||
     !matchesCallPartition(existing, guaranteed, fallible) ||
     original.guaranteedOffer ||
     original.fallibleOffer?.size
@@ -105,21 +104,17 @@ function pinnedDepositCall(callData: UnsubmittedDeposit, target: string) {
   return { oldIntent, call, guaranteed, fallible, transcript };
 }
 
-function rebuildMeasuredDeposit(
+export function rebuildMeasuredDeposit(
   callData: UnsubmittedDeposit,
   state: ContractState,
   parameters: LedgerParameters,
   target: string,
   networkId: string,
+  keyLocation: string,
 ): ReturnType<typeof Transaction.fromPartsRandomized> {
   const { oldIntent, call, guaranteed, fallible, transcript } = pinnedDepositCall(callData, target);
   const operation = ContractState.deserialize(state.serialize()).operation('deposit_unshielded');
   if (!operation) throw new Error('The named NIGHT recipient lacks the pinned deposit operation.');
-  const keyLocation = encodeContractKeyLocation({
-    contractAddress: target,
-    circuitId: 'deposit_unshielded',
-    verifierKeyHash: hashVerifierKey(operation.verifierKey),
-  });
   const credit = measuredAccNightDeletionCredit(transcript, state, parameters, target);
   const safe = { ...transcript, gas: { ...transcript.gas, bytesDeleted: credit } };
   const prototype = new ContractCallPrototype(
@@ -213,10 +208,24 @@ export async function proveUnboundNightDeposit(
   );
   if (!captured.snapshot) throw new Error('The named NIGHT recipient ACC is absent.');
   const [, state, parameters] = captured.snapshot;
+  const operation = ContractState.deserialize(state.serialize()).operation('deposit_unshielded');
+  if (!operation) throw new Error('The named NIGHT recipient lacks the pinned deposit operation.');
+  const keyLocation = encodeContractKeyLocation({
+    contractAddress: target,
+    circuitId: 'deposit_unshielded',
+    verifierKeyHash: hashVerifierKey(operation.verifierKey),
+  });
   // Compact 0.35 can pad or understate deleted bytes on this Ledger 9 profile.
   // The ACC NIGHT deposit needs its earned credit, so measure it against the same indexed
   // state and cost model before proving the exact call.
-  const unprovenTx = rebuildMeasuredDeposit(callData, state, parameters, target, network.networkId);
+  const unprovenTx = rebuildMeasuredDeposit(
+    callData,
+    state,
+    parameters,
+    target,
+    network.networkId,
+    keyLocation,
+  );
   const proven = await prover.proveTx(unprovenTx.serialize(), {
     networkId: network.networkId,
     bindingId: network.bindingId,
