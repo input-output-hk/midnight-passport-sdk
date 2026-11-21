@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
-import { mkdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import {
@@ -21,6 +21,19 @@ const expectedEnvironment = isolationEnvironment(
 );
 for (const [key, value] of Object.entries(expectedEnvironment))
   assert.equal(process.env[key], value, `Unexpected fixture setting ${key}`);
+const nativeFetch = globalThis.fetch;
+globalThis.fetch = async (...args) => {
+  const response = await nativeFetch(...args);
+  if (!response.ok && String(args[0]).startsWith(process.env.MN_PROOF_SERVER_URL + '/prove')) {
+    const body = await response.clone().text();
+    appendFileSync(
+      join(output, 'proof-http-error.private.txt'),
+      `${response.status} ${body.slice(0, 4096)}\n`,
+      { mode: 0o600 },
+    );
+  }
+  return response;
+};
 const sha = (b) => createHash('sha256').update(b).digest('hex');
 const pins = await verifyPreparedRegistry(prepared);
 const assets = join(prepared, 'managed');
