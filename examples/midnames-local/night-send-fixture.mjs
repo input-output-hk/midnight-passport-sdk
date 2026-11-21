@@ -120,6 +120,7 @@ export async function qualifyNightSend({
   const color = new Uint8Array(32);
   const bridgeBytes = walletModule.userAddressBytes(wallet);
   const bridge = Buffer.from(bridgeBytes).toString('hex');
+  const encodedBridge = wallet.unshieldedKeystore.getBech32Address().asString();
   const fund = 10n,
     amount = 4n;
   const state = async (address) =>
@@ -306,7 +307,11 @@ export async function qualifyNightSend({
         readFileSync(join(directory, 'withdraw-' + withdrawal.hash + '.private.bin')),
       );
       const expected = exactNightBridgeOutput(intent, withdrawal, original);
-      assert.ok(await until(async () => hasExactNightBridgeCoin(await availableNight(), expected)));
+      assert.ok(
+        await until(async () =>
+          hasExactNightBridgeCoin(await availableNight(), expected, encodedBridge),
+        ),
+      );
       const balanced = await makeCall(target, intent.operations[1], [color, BigInt(intent.amount)]);
       assertExactNightBridgeSpend(balanced.tx, expected, ledger.addressFromKey);
       return prepared('deposit', balanced);
