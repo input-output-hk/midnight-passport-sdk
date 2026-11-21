@@ -400,6 +400,17 @@ qualifies local release-to-retry continuity with a virtual credential. The
 first original was still prepared outside the page, and ACC login still used
 an already activated fixture account. This does not establish full onboarding,
 real-provider custody, public `passport.night` issuance or online substitution.
+On signed source `4a6c7642`, a further fresh isolated Ledger 9 run moved both
+original preparations into the same persistent Passport page profile. The
+first original finalized with a failed claim segment and a paid sponsor fee;
+the sponsor archived it before the page released its local reservation. The
+page then proved and prepared a new reviewed original, sent it once, and
+recovered indexed `SUCCESS` and the same-ACC binding after a lost response.
+The [redacted two-original receipt](../../examples/midnames-local/evidence/release-ledger9-page-two-originals-20261120.json)
+records the exact transactions and canonical blocks. The ACC connector still
+supplies an already activated test account, and the naming credential is
+virtual. This does not prove combined ACC creation, real-provider custody,
+online registry agreement or total-loss name continuity.
 Issue #334 remains open for the broader failure matrix and combined
 onboarding/provider paths.
 If legacy storage contains multiple original claims,

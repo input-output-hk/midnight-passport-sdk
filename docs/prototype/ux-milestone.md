@@ -231,6 +231,16 @@ recovered indexed `SUCCESS` and the live binding to the same ACC. The first
 original was prepared outside the page; combined ACC creation, real-provider
 consent and online Midnames remain separate gates. See the
 [redacted same-profile receipt](../../examples/midnames-local/evidence/release-ledger9-page-same-profile-20261120.json).
+Signed source `4a6c7642` then passed a fresh isolated run with both originals
+prepared inside the same persistent Passport page profile. The first send lost
+its HTTP acknowledgement but finalized as a fee-only claim failure; the
+sponsor archived it and the page retained the released original across reload.
+The second reviewed claim finalized successfully and the page recovered the
+same-ACC binding after a lost response. See the
+[redacted two-original receipt](../../examples/midnames-local/evidence/release-ledger9-page-two-originals-20261120.json).
+The ACC login connector still supplies an already activated account, and the
+naming credential is virtual. Combined account creation and real-provider
+consent remain open.
 
 ### Standalone shielded deposit by name
 

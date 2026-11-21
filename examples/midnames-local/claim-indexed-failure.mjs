@@ -29,24 +29,11 @@ export function indexedClaimBlock(row, receipt, protocolVersion) {
   return block;
 }
 
-/** Require the exact indexed claim to be in a canonical node-finalized block. */
-export async function verifyIndexedClaimFailure({
-  receipt,
-  nodeUrl,
-  indexerUrl,
-  protocolVersion,
-  reader,
-  profile,
-}) {
+async function verifiedClaimBlock({ receipt, nodeUrl, indexerUrl, protocolVersion }) {
   const finalized = await dedicatedIndexerReadiness({ nodeUrl, indexerUrl });
   const reason = await readClaimFinality(indexerUrl, receipt, fetch, protocolVersion);
-  if (
-    !finalized.ready ||
-    (reason !== 'failed' && reason !== 'claim-failed') ||
-    (await reader.hasDomain(receipt.name, profile)) ||
-    !(await reader.isSupportedAccount(receipt.accountAddress, receipt.networkId))
-  )
-    throw new Error('The exact indexed claim failure and free name are not confirmed.');
+  if (!finalized.ready || (reason !== 'failed' && reason !== 'claim-failed' && reason !== true))
+    throw new Error('The exact indexed claim result is not confirmed.');
   const response = await fetch(indexerUrl, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -93,5 +80,39 @@ export async function verifyIndexedClaimFailure({
   }).then((value) => value.json());
   if (node.result !== `0x${block.hash}`)
     throw new Error('The indexed claim block is not canonical on the local node.');
+  return { reason, block, finalized };
+}
+
+/** Require the exact failed claim to be in a canonical node-finalized block. */
+export async function verifyIndexedClaimFailure(input) {
+  const { receipt, reader, profile } = input;
+  const { reason, finalized } = await verifiedClaimBlock(input);
+  if (
+    (reason !== 'failed' && reason !== 'claim-failed') ||
+    (await reader.hasDomain(receipt.name, profile)) ||
+    !(await reader.isSupportedAccount(receipt.accountAddress, receipt.networkId))
+  )
+    throw new Error('The exact indexed claim failure and free name are not confirmed.');
   return { reason, finalizedHash: finalized.finalizedHash };
+}
+
+/** Tie an exact successful original and its current name/ACC binding to one
+ * canonical node-finalized indexer block. `readBindingAt` must pin both
+ * contract reads to the supplied block hash. */
+export async function verifyIndexedClaimSuccess(input) {
+  const { receipt, readBindingAt } = input;
+  const { reason, block, finalized } = await verifiedClaimBlock(input);
+  if (reason !== true) throw new Error('The exact indexed claim did not succeed.');
+  const binding = await readBindingAt(finalized.finalizedHash);
+  if (
+    binding?.ownerCommitment !== receipt.ownerCommitment ||
+    binding?.target?.kind !== 'contract' ||
+    binding.target.address !== receipt.accountAddress ||
+    binding.supportedAccount !== true
+  )
+    throw new Error('The finalized name and activated ACC binding differ from the claim.');
+  return {
+    claimBlock: block,
+    finalizedRead: { hash: finalized.finalizedHash, height: finalized.finalizedHeight },
+  };
 }

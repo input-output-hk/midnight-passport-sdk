@@ -72,6 +72,7 @@ assert.ok(
     'claim-owner-browser',
     'claim-partial-probe',
     'claim-retry',
+    'claim-page-retry',
   ].includes(mode),
 );
 const browserOwner =
@@ -80,7 +81,8 @@ const claimFixture =
   mode === 'claim-handoff' ||
   browserOwner ||
   mode === 'claim-partial-probe' ||
-  mode === 'claim-retry';
+  mode === 'claim-retry' ||
+  mode === 'claim-page-retry';
 const receipt = { transactions: [], steps: [], passed: false, mode };
 const save = () => saveIsolationReceipt(join(output, 'worker.json'), receipt);
 const step = (label) => {
@@ -313,11 +315,13 @@ try {
   if (claimFixture) {
     const { qualifyClaimHandoff } = await import('./claim-handoff-fixture.mjs');
     let dispatch;
+    let readLive;
     if (
       mode === 'claim-browser' ||
       mode === 'claim-preproof' ||
       mode === 'claim-partial-probe' ||
-      mode === 'claim-retry'
+      mode === 'claim-retry' ||
+      mode === 'claim-page-retry'
     ) {
       const { delegateClaimDust } = await import('./claim-dust-fixture.mjs');
       receipt.availableDust = await delegateClaimDust({
@@ -333,7 +337,7 @@ try {
           save();
         },
       });
-      const readLive = async (quote) => {
+      readLive = async (quote) => {
         const current = registry.ledger(
           (await providers.publicDataProvider.queryContractState(registryAddress)).data,
         );
@@ -391,7 +395,7 @@ try {
             registryManifestHash: pins.compiled['compiler/contract-manifest.json'],
             sponsorPaymentAddress: Buffer.from(owner.bytes).toString('hex'),
           });
-      } else {
+      } else if (mode === 'claim-partial-probe') {
         const { qualifyPartialClaim } = await import('./claim-partial-probe.mjs');
         dispatch = (quote, original, fixtureQuote) =>
           qualifyPartialClaim({
@@ -415,36 +419,66 @@ try {
           });
       }
     }
-    const handoff = await qualifyClaimHandoff({
-      output,
-      ref,
-      assets,
-      modulePath,
-      registryManifestHash: pins.compiled['compiler/contract-manifest.json'],
-      registryAddress,
-      accountAddress,
-      sponsorPaymentAddress: Buffer.from(owner.bytes).toString('hex'),
-      walletProvider: regProviders.walletProvider,
-      ledger,
-      rootId,
-      parentDomain: observed.id_to_data.lookup(rootId),
-      step,
-      dispatch,
-      browserOwner,
-      preproofReview: mode === 'claim-preproof',
-    });
-    Object.assign(receipt, { ...handoff, passed: true });
-    step(
-      mode === 'claim-preproof'
-        ? 'verified-browser-preproof-claim'
-        : mode === 'claim-browser'
-          ? 'verified-browser-claim'
-          : mode === 'claim-partial-probe'
-            ? 'verified-indexed-claim-segment-failure'
-            : mode === 'claim-retry'
-              ? 'verified-indexed-claim-failure-and-fresh-native-retry'
-              : 'verified-prepared-claim-handoff',
-    );
+    if (mode === 'claim-page-retry') {
+      assert.ok(readLive);
+      const { qualifyPageRetry } = await import('./claim-page-retry-fixture.mjs');
+      const result = await qualifyPageRetry({
+        output,
+        quoteName: 'charlie.night',
+        ref,
+        assets,
+        modulePath,
+        registryAddress,
+        accountAddress,
+        rootId,
+        price,
+        compiled: compiled(rootSecret),
+        registry,
+        regProviders,
+        walletModule,
+        contracts,
+        providers,
+        ledger,
+        reads,
+        profile,
+        step,
+        readLive,
+        sponsorPaymentAddress: Buffer.from(owner.bytes).toString('hex'),
+      });
+      Object.assign(receipt, { ...result, passed: true });
+      step('verified-two-page-owned-claim-originals');
+    } else {
+      const handoff = await qualifyClaimHandoff({
+        output,
+        ref,
+        assets,
+        modulePath,
+        registryManifestHash: pins.compiled['compiler/contract-manifest.json'],
+        registryAddress,
+        accountAddress,
+        sponsorPaymentAddress: Buffer.from(owner.bytes).toString('hex'),
+        walletProvider: regProviders.walletProvider,
+        ledger,
+        rootId,
+        parentDomain: observed.id_to_data.lookup(rootId),
+        step,
+        dispatch,
+        browserOwner,
+        preproofReview: mode === 'claim-preproof',
+      });
+      Object.assign(receipt, { ...handoff, passed: true });
+      step(
+        mode === 'claim-preproof'
+          ? 'verified-browser-preproof-claim'
+          : mode === 'claim-browser'
+            ? 'verified-browser-claim'
+            : mode === 'claim-partial-probe'
+              ? 'verified-indexed-claim-segment-failure'
+              : mode === 'claim-retry'
+                ? 'verified-indexed-claim-failure-and-fresh-native-retry'
+                : 'verified-prepared-claim-handoff',
+      );
+    }
   } else if (mode === 'named-night-send') {
     const { qualifyNightSend } = await import('./night-send-fixture.mjs');
     const { JubjubDevice, jubjubChallenges } = await getReferenceSigner();
