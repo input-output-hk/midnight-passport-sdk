@@ -896,6 +896,22 @@ released the lease. This is a synthetic local owner and automated click; it
 does not qualify passkey consent, a Passport demo send page, public
 `passport.night`, online providers or MIP-0007 delegated routing.
 
+The [22 November Ledger 9 comparison](evidence/ledger9-night-by-name-prover-comparison-20261122.json)
+retested this route on a fresh release node and Indexer API v4. The release
+prover `9.0.2` refused the Compact 0.35 JubJub withdrawal proof with HTTP 400
+(`The constraint system is not satisfied`) before a withdrawal original was
+created. Holding the node, indexer, reference client and contract artifacts
+fixed while selecting the pinned `9.0.0-rc.8` prover, signed `3ae84d13`
+completed the automated browser review, one finalized withdrawal, durable
+restart, exact bridge-coin deposit, and indexed 10/0 → 6/0 → 6/4 ACC balances.
+For this isolated comparison only, set `PASSPORT_MIDNAMES_DIAG_RC_PROVER=1` in
+the inner `env` list of the native command above; the default remains the
+release prover. The shared-stack demo has a separate, already documented
+[`PASSPORT_COMPAT_PROVER=1`](../../infra/localnet/README.md#isolated-prover-for-the-pinned-compact-035-acc)
+option. The release prover still needs a compatible withdrawal proof before
+this route can be claimed as release-stack qualified. The RC-prover PASS uses
+a synthetic owner and automated click, not a real passkey-provider ceremony.
+
 The signed `a20a9b9` negative run `midnames-night-browser-decline-20261116a`
 passed on isolated `undeployed`. Chromium displayed the same exact review and
 clicked **Decline**. The source/target balances stayed 10/0 with zero owner

@@ -782,4 +782,14 @@ browser run finalized both original legs of one named payment and recovered
 those exact IDs after reload. Real-provider acceptance and online deployment
 remain open.
 
+A fresh isolated Ledger 9 [prover comparison](../../examples/midnames-local/evidence/ledger9-night-by-name-prover-comparison-20261122.json)
+found that the release `9.0.2` prover refuses the pinned Compact 0.35 JubJub
+NIGHT withdrawal proof before an original exists. With the same release node
+and indexer but the pinned `9.0.0-rc.8` compatibility prover, an automated
+browser-reviewed synthetic owner payment finalized one withdrawal and one
+exact-output deposit, moving the two ACC balances from 10/0 through 6/0 to
+6/4. This qualifies that local compatibility profile only. The optional
+shared-stack compatibility prover is configured in the
+[localnet guide](../../infra/localnet/README.md#isolated-prover-for-the-pinned-compact-035-acc).
+
 See the [standalone recipe](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local).

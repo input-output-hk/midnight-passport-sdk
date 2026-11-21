@@ -82,6 +82,14 @@ device wallet and local mock JubJub credential. It does not qualify real
 provider consent, online naming, or an independent inclusion proof beyond the
 configured indexer and node checks.
 
+A [fresh isolated Ledger 9 comparison](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/ledger9-night-by-name-prover-comparison-20261122.json)
+repeated the two-leg route on a release node and Indexer API v4. The release
+`9.0.2` prover rejected the pinned Compact 0.35 JubJub withdrawal proof
+before submission. The pinned `9.0.0-rc.8` compatibility prover on the same
+release chain completed one browser-reviewed synthetic payment with exact
+bridge-output consumption and 10/0 → 6/0 → 6/4 ACC balances. This is a
+local compatibility profile, not release-prover or online conformance.
+
 The signed `a20a9b9` isolated owner-browser refusal adds a narrow #318 negative
 result: after Chromium displayed the exact named NIGHT route and clicked
 **Decline**, both ACC balances remained 10/0, with no owner signature, payment

@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-11-22",
+  "networkProfile": "fresh isolated undeployed Ledger 9, Indexer API v4",
+  "referenceClient": "pinned Ledger 9 1.0.2 export with Compact 0.35 ACC and Midnames registry",
+  "commonImages": {
+    "node": "sha256:0c1ad548d523c1109aa1f16daab1bf72dcb78c7e17b8a8c6d97424ad0eba7b8a",
+    "indexer": "sha256:119f35db548ba1c390845f215bb1e928e73038bef7c315825aee0461bd54499d"
+  },
+  "releaseProver": {
+    "sourceHead": "fba2ac615c43eebd85321df1428caedbdafac075",
+    "proverImage": "sha256:787ef99db4b4706eb14d94ad389ca45f1c09bcdf740afecb01899bfbda63dc64",
+    "runId": "1753beaba5d89c06",
+    "result": "FAIL before withdrawal original",
+    "proofResponse": "HTTP 400: The constraint system is not satisfied",
+    "sourceNightBefore": "10",
+    "targetNightBefore": "0",
+    "ownedContainersStopped": 3,
+    "leaseReleased": true
+  },
+  "rcProverIntermediate": {
+    "sourceHead": "a1b50b69e3992962550bcc7aaf8afc23386ba9f1",
+    "runId": "b4b545e4c46e1d0a",
+    "withdrawalFinalized": true,
+    "depositSubmitted": false,
+    "stopReason": "The native fixture omitted the wallet's encoded bridge address from its exact coin observation.",
+    "ownedContainersStopped": 3,
+    "leaseReleased": true
+  },
+  "rcProverComplete": {
+    "sourceHead": "3ae84d13f1ff52a7074747d297569a8bc9bedbef",
+    "proverImage": "sha256:2666c7bd7b4517f8ad135565387f98d14347a9ac715c6c466d4a8a852b545ecf",
+    "runId": "97194d396bddbe11",
+    "networkId": "053ca56c9795f14b1a39b40d6502f9f4c5cc5b4cc7dfce8ea315f801bfee199b",
+    "browserReview": "automated approval before the owner signature or either payment leg",
+    "sourceNightBefore": "10",
+    "targetNightBefore": "0",
+    "sourceNightAfterWithdrawal": "6",
+    "targetNightAfterWithdrawal": "0",
+    "sourceNightFinal": "6",
+    "targetNightFinal": "4",
+    "withdrawalHash": "a6b93c39de929a342455dc279e7fe9d8e40f98fdac9ef41f683187fc3ae01b60",
+    "withdrawalIndexedAt": 93,
+    "depositHash": "fd1e6ebeb483499373d45d6a8a80f95f94a519c29092d2af1b97fdb9268aab9f",
+    "depositIndexedAt": 96,
+    "exactOriginalBridgeOutputConsumed": true,
+    "withdrawalDispatches": 1,
+    "depositDispatches": 1,
+    "ownedContainersStopped": 3,
+    "retainedVolumes": true,
+    "unrelatedResourcesControlled": 0,
+    "leaseReleased": true,
+    "inputsUnchanged": true,
+    "result": "PASS"
+  },
+  "limits": [
+    "The full payment passed only with the RC prover and isolated local chain; the release prover refused the withdrawal proof.",
+    "The browser review was automated with a synthetic owner; this is not a human passkey-provider acceptance run.",
+    "The fixture uses a root-owned local .night name; it does not qualify the public passport.night namespace or an online registry."
+  ]
+}
