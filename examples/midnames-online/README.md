@@ -43,6 +43,16 @@ that mapping or qualify an online claim, deposit, or NIGHT send. The current
 [Midnight Domains site](https://midnight.domains/) says registration is paused
 during its Ledger 9 migration.
 
+A [dated, single-provider mainnet observation](evidence/mainnet-passport-name-v4-observation-20261122.json)
+found the published Midnames registry through the explicitly configured
+`api.midnames.com` Indexer API v4 endpoint. At the indexer's selected block,
+`passport.night` resolved through `@midnames/sdk@2.1.0` with a **shielded
+default target**. This establishes neither Passport ownership of that name
+nor a contract-call target, delegated subdomain policy, or a known ACC mapping.
+It has no independent node-finality or second-provider check. Keep the
+online Passport profile disabled; the mainnet observation cannot substitute
+for the Preprod profile or the qualification above.
+
 The Caddyfile was checked with Caddy 2.9.1. A local synthetic upstream check
 verified HTTP and WebSocket path rewrites, upstream header injection, local
 preflight, rejection of untrusted and missing origins, replacement of an

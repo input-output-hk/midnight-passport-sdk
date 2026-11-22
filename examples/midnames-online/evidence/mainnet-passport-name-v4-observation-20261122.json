@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "kind": "midnames-mainnet-single-indexer-namespace-observation",
+  "observedAt": "2026-11-22T20:42:42.064Z",
+  "executedSourceCommit": "66e6799b4419cd880ad790e50f7b07a953ced5ef",
+  "result": "OBSERVED_SINGLE_PROVIDER_ONLY",
+  "networkId": "mainnet",
+  "indexerOrigin": "https://api.midnames.com",
+  "indexerApi": "v4",
+  "registryAddress": "83b0d57aba442f92e12b5cdf92642adb9927ccd554a9061b5bd0992fc72596bb",
+  "indexerSelectedBlock": {
+    "height": 3569987,
+    "hash": "42fc1b92e7f673d6e62e740886b664dbd61d613c3bc0bb5b2f61382ec9b9d1c2"
+  },
+  "registryPresent": true,
+  "name": "passport.night",
+  "defaultTargetType": "shielded",
+  "method": "@midnames/sdk@2.1.0 resolveDomain against the explicitly configured Indexer API v4 provider, with registry state read at the selected block hash",
+  "sourceReference": "https://github.com/midnames/ns-sdk/blob/f8f2edd425221b95c9158d74e7318d2fbb4f61b2/src/provider.ts",
+  "limits": [
+    "One Midnames-hosted indexer; no independent node finality or state proof.",
+    "Target type is the name default, not proof of ownership, delegation, or a contract-call route.",
+    "No Passport ACC name-to-contract mapping is established.",
+    "The observed default shielded target does not establish absence of other operation-specific fields.",
+    "The pinned SDK does not show a Passport-controlled parent, user-owned ACC name, or release-ready online profile."
+  ]
+}

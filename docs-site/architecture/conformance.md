@@ -28,6 +28,13 @@ at signed source `3a860393` runs the configured resolver from Node against
 the two self-hosted local indexers. It does not qualify a browser credential
 or an online provider.
 
+A later [single-provider mainnet read](https://github.com/input-output-hk/midnight-passport-sdk/blob/codex/midnames-ledger9-value-native/examples/midnames-online/evidence/mainnet-passport-name-v4-observation-20261122.json)
+observed an existing `passport.night` record with a shielded default target
+through Midnames' Indexer API v4 endpoint. It does not establish Passport
+control or delegation of that name, a contract-call ACC target, a second
+provider, or node-verified state. Public `passport.night` issuance remains
+unqualified.
+
 A later [independent local indexer read](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/independent-indexer-local-provenance-20261122.json)
 at signed `aa0d436d` used a second self-hosted Indexer API v4 instance with
 separate storage and credentials. Both indexers returned identical serialized

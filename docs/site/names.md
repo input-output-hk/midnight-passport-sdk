@@ -226,6 +226,14 @@ profile. Keep a project token in a host-controlled indexer proxy or provider,
 never in `VITE_` browser inputs. The reference browser does not host an
 authenticated proxy itself.
 
+A [22 November single-provider mainnet read](../../examples/midnames-online/evidence/mainnet-passport-name-v4-observation-20261122.json)
+reached Midnames' registry through its Indexer API v4 endpoint and observed
+`passport.night` with a shielded **default** target at one indexer-selected
+block. The name's existence is distinct from Passport control of its parent,
+delegated subdomains, or a contract-call route to an ACC. This read lacks an
+independent node-finality check and a second provider, so it cannot admit an
+online Passport profile.
+
 For a local host using Midnight Preprod, the optional
 [Blockfrost indexer proxy](../../examples/midnames-online/README.md) exposes the
 v4 HTTP/WebSocket paths to the browser and adds the project ID only upstream.
