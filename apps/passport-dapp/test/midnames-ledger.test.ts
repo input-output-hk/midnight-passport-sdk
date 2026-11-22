@@ -21,7 +21,13 @@ import {
   QueryContext,
   partitionTranscripts,
 } from '@midnightntwrk/ledger-v9';
-import { createMidnamesIndexer, createMidnamesLedgerReads } from '../src/midnames/ledger-reader.js';
+import type { AccRegistry } from '@input-output-hk/mn-passport-contract';
+import { resolveBinding } from '@input-output-hk/mn-passport-contract';
+import {
+  createMidnamesIndexer,
+  createMidnamesLedgerReads,
+  detectAccBindingFromState,
+} from '../src/midnames/ledger-reader.js';
 import { MIDNAMES_REGISTRY_VERIFIERS } from '../src/midnames/registry-pins.js';
 
 const profile = { networkId: 'undeployed', namespace: 'night', registryAddress: '11'.repeat(32) };
@@ -36,6 +42,56 @@ const payment = {
   buy_enabled: true,
 };
 const owner = { bytes: new Uint8Array(32).fill(4) };
+
+test('ACC admission identifies a complete circuit assignment per account', async () => {
+  const oldKeys = { alpha: Uint8Array.of(1), beta: Uint8Array.of(2) };
+  const newKeys = { alpha: Uint8Array.of(3), beta: Uint8Array.of(4) };
+  const hashes = (keys: typeof oldKeys) =>
+    Object.fromEntries(
+      Object.entries(keys).map(([name, key]) => [
+        name,
+        {
+          pure: false,
+          proof: true,
+          keyLocation: `acc/test/${name}`,
+          hashes: {
+            zkir: '0'.repeat(64),
+            bzkir: '0'.repeat(64),
+            verifierKey: createHash('sha256').update(key).digest('hex'),
+            proverKey: '0'.repeat(64),
+          },
+        },
+      ]),
+    );
+  const base = resolveBinding('acc-s3r1.1');
+  const registry: AccRegistry = {
+    current: 'old',
+    versions: {
+      old: { ...base, circuits: hashes(oldKeys) },
+      candidate: { ...base, circuits: hashes(newKeys) },
+    },
+  };
+  const state = (keys: typeof oldKeys, names: readonly unknown[] = Object.keys(keys)) => ({
+    operations: () => names,
+    operation: (name: string) =>
+      Object.hasOwn(keys, name) ? { verifierKey: keys[name as keyof typeof keys] } : undefined,
+  });
+  assert.equal(await detectAccBindingFromState(state(oldKeys), registry), 'old');
+  assert.equal(await detectAccBindingFromState(state(newKeys), registry), 'candidate');
+  assert.equal(
+    await detectAccBindingFromState(state({ alpha: oldKeys.alpha, beta: newKeys.beta }), registry),
+    null,
+  );
+  assert.equal(await detectAccBindingFromState(state(oldKeys, ['alpha']), registry), null);
+  assert.equal(await detectAccBindingFromState(state(oldKeys, ['alpha', 'alpha']), registry), null);
+  assert.equal(
+    await detectAccBindingFromState(
+      state(oldKeys, [new TextEncoder().encode('alpha'), 'beta']),
+      registry,
+    ),
+    'old',
+  );
+});
 
 function fields(values: [string, string][] = []) {
   return Array.from({ length: 10 }, (_, index) => {

@@ -8,7 +8,12 @@ import { createDefaultProvider } from '@midnames/sdk/provider';
 import { requireMidnamesV4IndexerPair } from './indexer-endpoints.js';
 import { ContractState } from '@midnight-ntwrk/compact-runtime';
 import { PassportNameError } from '@input-output-hk/mn-passport-account/names';
-import { resolveBinding } from '@input-output-hk/mn-passport-contract';
+import {
+  ACC_REGISTRY,
+  detectDeployedVersionByCircuit,
+  resolveBinding,
+  type AccRegistry,
+} from '@input-output-hk/mn-passport-contract';
 import { ledger } from '#acc';
 import type { MidnamesProfile, MidnamesReads } from './resolver.js';
 import {
@@ -58,12 +63,32 @@ async function matchesVerifiers(
   return true;
 }
 
-function compatibleVerifiers(bindingId: string): ReadonlyMap<string, string> {
-  return new Map(
-    Object.entries(resolveBinding(bindingId).circuits).flatMap(([name, circuit]) =>
-      circuit.proof && circuit.hashes ? [[name, circuit.hashes.verifierKey]] : [],
-    ),
-  );
+/** Identify a deployed ACC from its complete circuit-to-verifier assignment. */
+export async function detectAccBindingFromState(
+  state: VerifierState,
+  registry: AccRegistry = ACC_REGISTRY,
+): Promise<string | null> {
+  const observed: Record<string, string> = Object.create(null);
+  const rawNames = state.operations();
+  if (!rawNames.length) return null;
+  for (const raw of rawNames) {
+    let name: string;
+    try {
+      name =
+        typeof raw === 'string'
+          ? raw
+          : raw instanceof Uint8Array
+            ? new TextDecoder('utf-8', { fatal: true }).decode(raw)
+            : '';
+    } catch {
+      return null;
+    }
+    if (!/^[a-z][a-z0-9_]*$/.test(name) || Object.hasOwn(observed, name)) return null;
+    const verifier = state.operation(name)?.verifierKey;
+    if (!verifier) return null;
+    observed[name] = await sha256(verifier);
+  }
+  return detectDeployedVersionByCircuit(observed, registry);
 }
 
 export function createMidnamesLedgerReads(
@@ -91,7 +116,7 @@ export function createMidnamesLedgerReads(
         : MIDNAMES_REGISTRY_VERIFIERS,
     ),
   );
-  const accVerifiers = compatibleVerifiers(bindingId);
+  resolveBinding(bindingId);
   const readDomain = async (
     name: string,
     profile: Readonly<MidnamesProfile>,
@@ -137,9 +162,12 @@ export function createMidnamesLedgerReads(
     if (!observed) return undefined;
     try {
       const account = observed.contractState.deserialize({ v9: ContractState });
-      if (!(await matchesVerifiers(account, accVerifiers))) return undefined;
+      const detectedBinding = await detectAccBindingFromState(account);
+      if (!detectedBinding) return undefined;
       const decoded = ledger(account.data);
-      return decoded.booted && decoded.spec_version === 3n ? decoded : undefined;
+      return decoded.booted && decoded.spec_version === 3n
+        ? { bindingId: detectedBinding, ledger: decoded }
+        : undefined;
     } catch {
       return undefined;
     }
@@ -185,8 +213,9 @@ export function createMidnamesLedgerReads(
       const account = await supportedAccount(address, requestedNetwork);
       if (!account) return undefined;
       const night = new Uint8Array(32);
-      return account.unshielded_balances.member(night)
-        ? account.unshielded_balances.lookup(night)
+      if (account.bindingId !== bindingId) return undefined;
+      return account.ledger.unshielded_balances.member(night)
+        ? account.ledger.unshielded_balances.lookup(night)
         : 0n;
     },
   };
