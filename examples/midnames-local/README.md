@@ -70,6 +70,10 @@ shared release prover on port 6300, selects separate deployment and claim
 journals, and pins the candidate in both service and browser. The ordinary
 `acc-s3r1.1` demo and online binding policy remain unchanged. Use a dedicated
 browser profile for candidate accounts and their retained claim receipts.
+The prepared Compact 0.35 standalone registry still uses an owned compatibility
+prover on port 16320 for name-claim proofs; the candidate ACC uses the shared
+release prover on port 6300. The launcher records and stops only its own
+compatibility container, preserving its volume and the shared stack.
 The candidate launcher requires `--claim` and a verified standalone registry profile.
 
 An existing live profile supplies the standalone registry address and chain

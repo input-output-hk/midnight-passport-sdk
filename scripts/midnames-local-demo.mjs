@@ -504,7 +504,7 @@ async function startClaimHost(options, claim, env) {
   // its Node grandchild still holds the sponsor wallet and claim journal.
   const child = spawn('node', args, {
     cwd: join(root, 'apps/passport-dapp'),
-    env,
+    env: { ...env, MN_PROOF_SERVER_URL: 'http://127.0.0.1:16320' },
     stdio: ['ignore', 'pipe', 'inherit'],
   });
   let output = '';
@@ -629,9 +629,7 @@ async function compatProver(stateDir) {
 /** @param {DemoOptions} options @param {Claim|undefined} claim */
 async function demo(options, claim) {
   privateState(options.stateDir);
-  const prover = options.candidateAssets
-    ? { started: false }
-    : await compatProver(options.stateDir);
+  const prover = await compatProver(options.stateDir);
   /** @type {Awaited<ReturnType<typeof startClaimHost>> | undefined} */
   let claimHost;
   try {

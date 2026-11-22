@@ -164,8 +164,11 @@ For the provisional Ledger 9 `acc-s3r1.1-zkir036` source profile, the
 can open account creation and the standalone name panel in one browser
 session. It uses a separate deployment registry and claim journal and admits
 the candidate only with exact build pins and loopback Indexer API v4. This
-configuration route does not yet qualify the full combined journey; a fresh
-native page run is required before that claim.
+configuration route does not yet qualify the full combined journey. In the
+local launcher, candidate ACC proofs use the shared release prover on 6300;
+the pinned Compact 0.35 standalone name registry uses an owned compatibility
+prover on 16320. The browser and sponsor journals must be checked together
+after a fresh native claim run before reporting the journey as qualified.
 Candidate demo funding uses a separate NIGHT-only policy and reservation file;
 an older stable funding receipt is not evidence of a candidate deposit.
 

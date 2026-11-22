@@ -29,7 +29,9 @@ else
     !process.env.PASSPORT_BINDING_ID || process.env.PASSPORT_BINDING_ID === 'acc-s3r1.1',
     'Unknown local claim ACC binding.',
   );
-const proverUrl = candidateBinding ? 'http://127.0.0.1:6300' : 'http://127.0.0.1:16320';
+// This pinned Compact 0.35 registry proves through its owned compatibility
+// sidecar. The candidate ACC itself uses the shared release prover separately.
+const proverUrl = 'http://127.0.0.1:16320';
 const origin = 'http://localhost:5173';
 const claimProtocolVersion = Number(process.env.VITE_MIDNAMES_CLAIM_PROTOCOL_VERSION);
 assert.equal(claimProtocolVersion, 2001100, 'Pin the shared Ledger 9 claim protocol.');
