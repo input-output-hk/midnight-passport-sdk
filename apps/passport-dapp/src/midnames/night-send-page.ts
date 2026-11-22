@@ -17,7 +17,11 @@ import {
   type BrowserNightSendRecord,
   type BrowserNightSendScope,
 } from './night-send-journal.js';
-import { NightDepositInterrupted, type NightSendIntent } from './night-send.js';
+import {
+  NightDepositInterrupted,
+  type NightSendIntent,
+  type NightSendRequest,
+} from './night-send.js';
 import {
   namedNightStatus,
   newNamedNightRequest,
@@ -169,6 +173,38 @@ async function connectedPageSend(
   });
 }
 
+type ConnectedNightResult = Awaited<
+  ReturnType<Awaited<ReturnType<typeof connectedPageSend>>['send']>
+>;
+
+async function settleSubmittedDeposit(
+  initial: ConnectedNightResult,
+  request: NightSendRequest,
+  connected: Awaited<ReturnType<typeof connectedPageSend>>,
+  checkScope: () => void,
+) {
+  if (initial.phase !== 'deposit-pending') return initial;
+  const withdrawalHash = initial.withdrawal.hash;
+  const depositHash = initial.deposit.hash;
+  const deadline = Date.now() + 10 * 60_000;
+  let result: ConnectedNightResult = initial;
+  while (Date.now() < deadline && result.phase === 'deposit-pending') {
+    await new Promise<void>((resolve) => window.setTimeout(resolve, 5_000));
+    checkScope();
+    const retained = await connected.readActive();
+    if (
+      retained?.intent.requestId !== request.requestId ||
+      retained.withdrawal?.hash !== withdrawalHash ||
+      retained.deposit?.hash !== depositHash
+    )
+      throw new Error('The saved NIGHT payment changed while awaiting finality.');
+    result = await connected.send(request);
+    if (result.withdrawal.hash !== withdrawalHash || result.deposit?.hash !== depositHash)
+      throw new Error('The reconciled NIGHT payment differs from its original IDs.');
+  }
+  return result;
+}
+
 /** Reference-page action; the journal, wallet and owner remain separate authorities. */
 export function createNamedNightPage(
   host: DemoActionHost,
@@ -255,8 +291,11 @@ export function createNamedNightPage(
       active,
     );
     try {
-      const result = await connected.send(request);
+      const submitted = await connected.send(request);
       host.stage('reconcile');
+      if (submitted.phase === 'deposit-pending')
+        host.status('Both original NIGHT payment legs were sent. Waiting for their finality.');
+      const result = await settleSubmittedDeposit(submitted, request, connected, checkScope);
       host.record('namedNightPayment', {
         requestId: request.requestId,
         phase: result.phase,
