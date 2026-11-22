@@ -511,6 +511,38 @@ test('JubJub owner withdrawal binds amount and recipient to consent and the sign
   });
 });
 
+test('JubJub unshielded withdrawal admits only the exact local Ledger 9 candidate pin', async () => {
+  const candidate = 'acc-s3r1.1-zkir036';
+  const manifest = '590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f';
+  const request = { color: '00'.repeat(32), amount: '1', recipient: '11'.repeat(32) };
+  for (const [
+    networkId,
+    manifestSha256,
+    allowed,
+  ] of /** @type {Array<[string, string, boolean]>} */ ([
+    ['undeployed', manifest, true],
+    ['undeployed', '0'.repeat(64), false],
+    ['preview', manifest, false],
+  ])) {
+    const w = world();
+    const accounts = createPassportAccounts({
+      ...w.ports,
+      network: { ...w.ports.network, networkId, bindingId: candidate, manifestSha256 },
+    });
+    const account = await accounts.createAccount({ userName: 'candidate', retireAuthority: true });
+    assert.ok(account.withdrawUnshielded);
+    const before = w.sessionFlows.length;
+    if (allowed) {
+      await account.withdrawUnshielded(request);
+      assert.equal(w.calls.at(-1), 'withdraw_unshielded_with_jubjub');
+      assert.equal(w.sessionFlows.length, before + 1);
+    } else {
+      await assert.rejects(account.withdrawUnshielded(request), { code: 'BindingUnsupported' });
+      assert.equal(w.sessionFlows.length, before);
+    }
+  }
+});
+
 test('JubJub shielded spend binds the qualified coin to the signature and witness', async () => {
   const w = world();
   const account = await w.accounts.createAccount({ userName: 'shielded', retireAuthority: true });
