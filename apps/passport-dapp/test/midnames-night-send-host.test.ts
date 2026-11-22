@@ -97,6 +97,55 @@ test('provisional named NIGHT send refuses before wallet access or owner withdra
   assert.equal(walletTouched, false);
 });
 
+test('stable NIGHT host refuses a candidate-pinned journal scope before wallet access', async () => {
+  let walletTouched = false;
+  const account = {
+    address: source,
+    networkId: 'undeployed',
+    bindingId: network.bindingId,
+    scheme: 'jubjub-schnorr',
+    credentialId: new Uint8Array(16).fill(0xdd),
+  } as PassportAccount;
+  const wallet = {
+    descriptor: {
+      async connect() {
+        walletTouched = true;
+        throw new Error('The wallet must not be connected.');
+      },
+    },
+  } as unknown as DevWallet;
+  await assert.rejects(
+    () =>
+      createConnectedNightSend(
+        {
+          account,
+          scope: {
+            ...scope,
+            bindingId: 'acc-s3r1.1-zkir036',
+            manifestSha256: '590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f',
+          },
+          wallet,
+          names: {} as PassportNameService,
+          isSupportedRecipient: async () => true,
+          readSourceBalance: async () => 10n,
+          review: async () => true,
+          checkScope: () => {},
+          checkApproved: () => {},
+          network,
+          binding: accModule,
+          prover: {
+            proveTx: async () => {
+              throw new Error('No proof');
+            },
+          },
+        },
+        new IDBFactory(),
+      ),
+    /cannot send NIGHT by name/,
+  );
+  assert.equal(walletTouched, false);
+});
+
 async function connectedJourney(network: NetworkConfig, provisionalLocal = false) {
   const factory = new IDBFactory();
   const finalized = new Set<string>();

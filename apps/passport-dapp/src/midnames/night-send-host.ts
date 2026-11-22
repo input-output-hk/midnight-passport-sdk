@@ -66,10 +66,9 @@ function matchingCandidateJournalScope(
   scope: BrowserNightSendScope,
   network: NetworkConfig,
 ): boolean {
-  return (
-    network.bindingId !== 'acc-s3r1.1-zkir036' ||
-    (scope.bindingId === network.bindingId && scope.manifestSha256 === network.manifestSha256)
-  );
+  if (network.bindingId === 'acc-s3r1.1-zkir036')
+    return scope.bindingId === network.bindingId && scope.manifestSha256 === network.manifestSha256;
+  return scope.bindingId === undefined && scope.manifestSha256 === undefined;
 }
 
 function checkedSelection(options: ConnectedNightSendOptions) {
