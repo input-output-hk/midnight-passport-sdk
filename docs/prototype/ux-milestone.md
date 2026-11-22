@@ -175,7 +175,8 @@ indexed success and matching registry target. Those steps span signed source
 heads; the final head rechecked the saved registration without another send.
 One exact-head create-to-claim run and the combined named payment remain open.
 Candidate demo funding now uses a dedicated wallet and state files when the
-operator explicitly combines `--candidate-assets --funding`. The funding
+operator explicitly combines `--candidate-assets --funding`. The candidate
+wallet uses port 18789, separate from the stable demo on 8789. The funding
 service's [native shared-chain run](../../examples/midnames-local/evidence/candidate-funding-native-20261122.json)
 confirmed its original request, indexed 10-unit NIGHT credit and same-ID
 replay. A separate [headless Passport page run](../../examples/midnames-local/evidence/candidate-funding-browser-20261122.json)

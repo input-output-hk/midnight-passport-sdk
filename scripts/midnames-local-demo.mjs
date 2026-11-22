@@ -694,6 +694,12 @@ async function demo(options, claim) {
     }
     if (options.funding) {
       const fundingName = options.candidateAssets ? 'candidate-funding' : 'funding';
+      if (options.candidateAssets) {
+        // The stable demo may own 8789. Keep the candidate wallet and its
+        // Passport-service proxy on one separate loopback port.
+        env.PASSPORT_FUNDING_PORT = '18789';
+        env.PASSPORT_FUNDING_URL = 'http://127.0.0.1:18789';
+      }
       const provision = JSON.parse(
         readFileSync(join(options.stateDir, `${fundingName}-wallet-provision.json`), 'utf8'),
       );
@@ -723,7 +729,7 @@ async function demo(options, claim) {
         VITE_MIDNAMES_CLAIM_PREPARATION: '1',
       });
     }
-    const args = ['demo', 'up', '--no-key-service', '--arm', 'jubjub'];
+    const args = [join(root, 'scripts/demo.mjs'), 'up', '--no-key-service', '--arm', 'jubjub'];
     if (options.funding) args.push('--funding');
     if (options.mockPasskey) args.push('--mock-passkey');
     if (options.open) args.push('--open');
@@ -735,7 +741,10 @@ async function demo(options, claim) {
     if (claim) console.log(`midnames-demo: ${claim.name} resolves to ${claim.accountAddress}.`);
     else console.log('midnames-demo: account setup mode; claim a name before enabling named send.');
     console.log('midnames-demo: open the printed localhost URL in a dedicated browser profile.');
-    const child = spawn('pnpm', args, { cwd: root, env, stdio: 'inherit' });
+    // The direct Node child must finish the shared service drain before this
+    // launcher releases its claim host and prover. Keep terminal SIGINT in
+    // this process group so the child receives only the forwarded signal.
+    const child = spawn('node', args, { cwd: root, env, stdio: 'inherit', detached: true });
     let interrupted = false;
     const forward = () => {
       interrupted = true;

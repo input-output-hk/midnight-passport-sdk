@@ -104,7 +104,11 @@ named-send journey; its native receipt must be recorded separately.
 To enable candidate NIGHT deposits, first run the one-time
 [`--candidate-funding-only` wallet provisioner](../../apps/passport-funding-service/README.md),
 then add `--funding` to the candidate `up` command. It selects the separate
-candidate wallet, asset policy, reservation journal and deployment log. The
+candidate wallet, asset policy, reservation journal and deployment log, and
+uses loopback port 18789 while the stable demo may continue on 8789. The
+[concurrent launch check](evidence/candidate-concurrent-funding-launch-20261122.json)
+verified both pinned services, a headless page smoke and clean owned shutdown
+on the shared stack. It sent no transaction. The
 [native funding receipt](evidence/candidate-funding-native-20261122.json)
 confirms 10 base units credited and a same-ID replay on shared Ledger 9. A
 [headless Passport page run](evidence/candidate-funding-browser-20261122.json)

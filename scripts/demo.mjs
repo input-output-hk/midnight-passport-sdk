@@ -31,7 +31,10 @@ if (
 const demoManifestPin =
   demoBindingId === binding.id ? manifestPin : candidateBinding.manifestSha256;
 const keyPort = 8788;
-const fundingPort = 8789;
+const fundingPortText = process.env.PASSPORT_FUNDING_PORT ?? '8789';
+const fundingPort = Number(fundingPortText);
+if (!/^[1-9][0-9]*$/.test(fundingPortText) || fundingPort < 1024 || fundingPort > 65535)
+  throw new Error('demo: PASSPORT_FUNDING_PORT must be a port from 1024 to 65535');
 
 /** @typedef {{ command: string, arm: 'p256' | 'jubjub', armExplicit?: true, keyService: boolean, funding: boolean, open: boolean, mockPasskey: boolean, passportRepo?: string, contractDir?: string, account?: string, color?: string, amount?: string, requestId?: string, help?: boolean }} DemoOptions */
 
@@ -97,7 +100,7 @@ const usage = `Usage: nix develop -c node scripts/demo.mjs [up|setup|check|fund]
   --passport-repo X  Local checkout of midnightntwrk/passport (or PASSPORT_REPO).
   --contract-dir X   Reuse a previously compiled ACC tree (or PASSPORT_CONTRACT_DIR).
   --no-key-service   Skip the optional standalone key server on port 8788.
-  --funding          Start the separate funding service on port 8789 (localnet).
+  --funding          Start the separate funding service on PASSPORT_FUNDING_PORT (default 8789).
   --mock-passkey     Use the dev-only mock-passkey URL.
   --arm X            Browser account arm: p256 (default) or jubjub (create/open preview).
   --open             Open the demo URL in the default browser.
@@ -255,6 +258,24 @@ function stopOwned(child, group = true) {
       /* already exited */
     }
   }
+}
+
+/** A signalled shared launcher owns the sponsor lease until its drain exits.
+ * @param {import('node:child_process').ChildProcess | undefined} child */
+function waitForOwnedExit(child, timeoutMs = 45_000) {
+  if (!child || child.exitCode !== null || child.signalCode !== null) return Promise.resolve();
+  return new Promise((resolve) => {
+    const onExit = () => {
+      clearTimeout(timer);
+      resolve(undefined);
+    };
+    const timer = setTimeout(() => {
+      console.error(
+        'demo: still waiting for the shared launcher to drain; preserve its sponsor lease',
+      );
+    }, timeoutMs);
+    child.once('exit', onExit);
+  });
 }
 
 /** @param {import('node:child_process').ChildProcess} child */
@@ -450,8 +471,12 @@ async function up(options) {
     if (status !== 0 && status !== 130) process.exitCode = status;
   } finally {
     cleanup();
-    process.off('SIGINT', cleanup);
-    process.off('SIGTERM', cleanup);
+    try {
+      if (process.env.MIDNIGHT_STACK === 'shared-ledger9') await waitForOwnedExit(prototype);
+    } finally {
+      process.off('SIGINT', cleanup);
+      process.off('SIGTERM', cleanup);
+    }
   }
 }
 
