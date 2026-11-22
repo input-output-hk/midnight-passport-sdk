@@ -639,6 +639,7 @@ async function demo(options, claim) {
     const env = {
       ...process.env,
       MIDNIGHT_STACK: 'shared-ledger9',
+      ...(options.contractDir ? { PASSPORT_CONTRACT_DIR: options.contractDir } : {}),
       PASSPORT_REGISTRY_FILE: join(
         options.stateDir,
         options.candidateAssets ? 'registry-candidate.json' : 'registry.json',
@@ -788,6 +789,10 @@ export async function main(argv = process.argv.slice(2)) {
     if (options.setup && options.command !== 'up') throw new Error('--setup applies only to up.');
     if ((options.claim || options.funding) && options.command !== 'up')
       throw new Error('--claim and --funding apply only to up.');
+    if (options.command === 'up' && options.candidateAssets && !options.claim)
+      throw new Error(
+        '--candidate-assets needs --claim and a verified standalone registry profile.',
+      );
     if (options.claim && options.setup && !options.candidateAssets)
       throw new Error('--claim needs a verified local registry profile.');
     if (options.command === 'up' && !options.contractDir && !options.passportRepo)

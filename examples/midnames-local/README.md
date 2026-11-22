@@ -70,6 +70,7 @@ shared release prover on port 6300, selects separate deployment and claim
 journals, and pins the candidate in both service and browser. The ordinary
 `acc-s3r1.1` demo and online binding policy remain unchanged. Use a dedicated
 browser profile for candidate accounts and their retained claim receipts.
+The candidate launcher requires `--claim` and a verified standalone registry profile.
 
 An existing live profile supplies the standalone registry address and chain
 anchor; its previously registered name is not used as a candidate ACC pin.

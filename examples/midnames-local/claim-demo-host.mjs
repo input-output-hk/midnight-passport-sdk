@@ -81,6 +81,8 @@ const [prepared, reference, registryAddress, seedPath, journalDir, rawPort, rawO
   process.argv.slice(2);
 assert.ok(process.env.IN_NIX_SHELL && process.env.COMPACT_DIRECTORY, 'Use the pinned Nix shell.');
 assert.ok([prepared, reference, seedPath, journalDir].every((path) => path && isAbsolute(path)));
+if (candidateBinding)
+  assert.equal(process.env.PASSPORT_CONTRACT_DIR, reference, 'Candidate reference path changed.');
 assert.match(registryAddress ?? '', address);
 const port = Number(rawPort);
 assert.ok(Number.isInteger(port) && port > 0 && port < 65536 && port !== 5173);
