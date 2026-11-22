@@ -91,6 +91,21 @@ export async function detectAccBindingFromState(
   return detectDeployedVersionByCircuit(observed, registry);
 }
 
+/** A known provisional roster can be identified for diagnostics without admitting its account. */
+export async function admitAccBindingFromState(
+  state: VerifierState,
+  registry: AccRegistry = ACC_REGISTRY,
+): Promise<string | null> {
+  const version = await detectAccBindingFromState(state, registry);
+  if (!version) return null;
+  try {
+    resolveBinding(version, registry);
+    return version;
+  } catch {
+    return null;
+  }
+}
+
 export function createMidnamesLedgerReads(
   provider: RegistryProvider,
   networkId: string,
@@ -162,7 +177,7 @@ export function createMidnamesLedgerReads(
     if (!observed) return undefined;
     try {
       const account = observed.contractState.deserialize({ v9: ContractState });
-      const detectedBinding = await detectAccBindingFromState(account);
+      const detectedBinding = await admitAccBindingFromState(account);
       if (!detectedBinding) return undefined;
       const decoded = ledger(account.data);
       return decoded.booted && decoded.spec_version === 3n

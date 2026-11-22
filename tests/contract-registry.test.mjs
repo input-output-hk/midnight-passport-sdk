@@ -85,6 +85,20 @@ test('resolveBinding must reject versions outside the supported set', () => {
   );
   assert.equal(resolveBinding(BINDING_VERSION), ACC_REGISTRY.versions[BINDING_VERSION]);
   assert.throws(() => resolveBinding('acc-s3r1.1-zkir036'), UnsupportedBindingError);
+  const custom = {
+    current: 'custom-supported',
+    versions: {
+      'custom-supported': resolveBinding(BINDING_VERSION),
+      'custom-candidate': resolvePinnedBinding('acc-s3r1.1-zkir036'),
+    },
+  };
+  assert.throws(
+    () => resolveBinding('custom-candidate', custom),
+    (error) =>
+      error instanceof Error &&
+      error.name === 'UnsupportedBindingError' &&
+      error.message.includes('supported: custom-supported'),
+  );
 });
 
 test('detectDeployedVersion must recover a version from its verifier-key hashes', () => {

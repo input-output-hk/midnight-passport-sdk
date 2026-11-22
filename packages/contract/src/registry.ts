@@ -18,7 +18,7 @@ function deepFreeze<T>(value: T): T {
 }
 
 /**
- * The supported-versions registry, deep-frozen at initialisation. The
+ * The pinned-version registry, deep-frozen at initialisation. The
  * freeze is not incidental: this data is the integrity anchor the loader
  * (T3) verifies artefact bytes against, so it must be immutable before any
  * consumer can hold a reference — `readonly` types are compile-time only.
@@ -33,11 +33,11 @@ export const ACC_REGISTRY: AccRegistry = deepFreeze(GENERATED_REGISTRY);
 export const BINDING_VERSION: string = ACC_REGISTRY.current;
 
 /** Every binding version this SDK release can serve (architecture §8 decision 2's supported range). */
-export const SUPPORTED_BINDINGS: readonly string[] = Object.freeze(
-  Object.entries(ACC_REGISTRY.versions)
+const supportedBindings = (registry: AccRegistry): string[] =>
+  Object.entries(registry.versions)
     .filter(([, binding]) => !binding.provisional)
-    .map(([version]) => version),
-);
+    .map(([version]) => version);
+export const SUPPORTED_BINDINGS: readonly string[] = Object.freeze(supportedBindings(ACC_REGISTRY));
 
 /**
  * Thrown when a version outside the supported set is resolved (FS-0.2 D-8).
@@ -73,14 +73,14 @@ export function resolvePinnedBinding(
   const binding = Object.hasOwn(registry.versions, version)
     ? registry.versions[version]
     : undefined;
-  if (!binding) throw new UnsupportedBindingError(version);
+  if (!binding) throw new UnsupportedBindingError(version, supportedBindings(registry));
   return binding;
 }
 
 /** Resolve a supported binding; provisional pins remain available only to explicit host qualification. */
 export function resolveBinding(version: string, registry: AccRegistry = ACC_REGISTRY): AccBinding {
   const binding = resolvePinnedBinding(version, registry);
-  if (binding.provisional) throw new UnsupportedBindingError(version);
+  if (binding.provisional) throw new UnsupportedBindingError(version, supportedBindings(registry));
   return binding;
 }
 

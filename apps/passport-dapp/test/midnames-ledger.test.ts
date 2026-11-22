@@ -24,6 +24,7 @@ import {
 import type { AccRegistry } from '@input-output-hk/mn-passport-contract';
 import { resolveBinding } from '@input-output-hk/mn-passport-contract';
 import {
+  admitAccBindingFromState,
   createMidnamesIndexer,
   createMidnamesLedgerReads,
   detectAccBindingFromState,
@@ -68,7 +69,7 @@ test('ACC admission identifies a complete circuit assignment per account', async
     current: 'old',
     versions: {
       old: { ...base, circuits: hashes(oldKeys) },
-      candidate: { ...base, circuits: hashes(newKeys) },
+      candidate: { ...base, provisional: true, circuits: hashes(newKeys) },
     },
   };
   const state = (keys: typeof oldKeys, names: readonly unknown[] = Object.keys(keys)) => ({
@@ -78,6 +79,12 @@ test('ACC admission identifies a complete circuit assignment per account', async
   });
   assert.equal(await detectAccBindingFromState(state(oldKeys), registry), 'old');
   assert.equal(await detectAccBindingFromState(state(newKeys), registry), 'candidate');
+  assert.equal(await admitAccBindingFromState(state(oldKeys), registry), 'old');
+  assert.equal(
+    await admitAccBindingFromState(state(newKeys), registry),
+    null,
+    'a detected provisional roster must not become an admitted named ACC',
+  );
   assert.equal(
     await detectAccBindingFromState(state({ alpha: oldKeys.alpha, beta: newKeys.beta }), registry),
     null,
