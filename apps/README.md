@@ -1098,6 +1098,10 @@ synthetic connector and registry; it does not perform a payment.
 
 ### Standalone Midnames claim recovery
 
+After a reload, the landing controls become available only when the account
+actions are ready. Open with the same passkey to inspect a retained claim; this
+does not prepare or send another claim.
+
 Standalone claim reconciliation requires an explicit
 `VITE_MIDNAMES_CLAIM_PROTOCOL_VERSION` alongside the Indexer API v4 URLs.
 The shared Ledger 9 demo launcher pins the observed transaction protocol

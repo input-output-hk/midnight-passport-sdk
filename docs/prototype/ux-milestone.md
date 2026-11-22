@@ -121,6 +121,8 @@ refuse the lookup. See the [configuration and evidence scope](../site/names.md#s
 
 The opt-in localhost demo can use the open account's passkey to prepare a
 claim. The quote review describes the passkey request before the user approves.
+After reload, the account-opening control becomes ready only after its action
+handler is attached, so a fast click cannot be dropped during startup.
 The owner bundle rechecks the current root price and payee before requesting
 the credential. Receipt recovery remains a read, and dispatch remains a
 separate action.

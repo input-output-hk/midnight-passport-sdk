@@ -164,6 +164,7 @@ const ui = createUi(
     },
   },
 );
+ui.setReady(false);
 ActivityPanel(
   workspace.activityRoot,
   ui.activity,
@@ -501,13 +502,6 @@ const opened = async (a: PassportAccount, how: string, lastTx?: PassportTxResult
     });
 };
 
-if (injected()) {
-  status('Ready. Create a Passport account, or open one with your passkey.');
-} else {
-  ui.setReady(false);
-  status('The Passport connector is not injected (window.midnight.passport).');
-}
-
 const actionHost: DemoActionHost = {
   state: appState,
   ui,
@@ -562,3 +556,9 @@ ui.on('sendNamedNight', namedNightPage.send);
 ui.on('wallet', walletActions.connect);
 ui.on('walletRefresh', walletActions.walletRefresh);
 ui.on('walletDust', walletActions.walletDust);
+if (injected()) {
+  ui.setReady(true);
+  status('Ready. Create a Passport account, or open one with your passkey.');
+} else {
+  status('The Passport connector is not injected (window.midnight.passport).');
+}
