@@ -23,7 +23,9 @@ A [fresh isolated diagnostic](https://github.com/input-output-hk/midnight-passpo
 received nonempty withdrawal proof bytes from the stable `9.0.2` prover with
 the 0.36-generated key pair and the exact synthetic browser-reviewed witness.
 The existing ACC retained its old verifier key; the diagnostic stopped before
-transaction completion or payment dispatch. #318 still needs a new versioned
+transaction completion or payment dispatch. A second run held the exact
+withdrawal preimage fixed: the old pair returned HTTP 400 and the new pair
+returned nonempty proof bytes. #318 still needs a new versioned
 binding, matching deployed verifier, and a full indexed two-leg run.
 
 ## Merged recovery slice and remaining gates

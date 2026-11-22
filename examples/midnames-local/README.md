@@ -935,9 +935,13 @@ used the exact source-withdrawal witness, supplied the 0.36-generated
 withdrawal key pair to release proof server `9.0.2`, and received nonempty
 proof bytes. The diagnostic stopped at that response. The deployed ACC still
 had its 0.35 verifier key; no full transaction was proved or submitted and
-both ACC balances stayed 10/0. The earlier stable-prover HTTP 400 is therefore
-specific to the old artifact/profile in this comparison, but a chain-valid
-withdrawal with the new key pair is unproven. The retired 0.35 ACC cannot be
+both ACC balances stayed 10/0. A second, signed
+[same-witness control](evidence/stable-withdrawal-036-key-probe-20261122.json)
+sent one exact serialized withdrawal preimage to that prover twice. The
+deployed 0.35 key pair returned HTTP 400; changing only to the 0.36 pair
+returned nonempty proof bytes. This isolates the key-material difference at
+the prover request boundary, but a chain-valid withdrawal with the new pair
+is unproven. The retired 0.35 ACC cannot be
 repaired by replacing local files. A separately versioned artifact/binding,
 fresh ACC deployment with the matching verifier key, and a full two-leg native
 run are required before using 0.36 for this route.
@@ -947,7 +951,8 @@ name and `PASSPORT_MIDNAMES_DIAG_KEY_DIR` pointing to a private directory
 containing only the regenerated `withdraw_unshielded_with_jubjub.prover` and
 `.verifier`. The parent pins their published SHA-256 values before creating
 resources and after cleanup. It runs the normal synthetic browser review and
-stops on the exact proof response, before balancing or dispatch. This lane
+compares both key pairs against the same proof preimage. It stops on the
+alternate proof response, before balancing or dispatch. This lane
 is a prover compatibility test, not an operator payment route.
 
 The signed `a20a9b9` negative run `midnames-night-browser-decline-20261116a`

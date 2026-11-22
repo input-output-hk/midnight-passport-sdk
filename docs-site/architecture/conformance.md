@@ -99,7 +99,9 @@ then received nonempty proof bytes from `9.0.2` with the new withdrawal pair
 for the exact synthetic browser-reviewed witness. It deliberately stopped
 before transaction completion or submission, leaving balances 10/0 and the
 old on-chain verifier unchanged. This narrows the artifact compatibility
-boundary; it does not establish a valid new ACC binding or release-prover
+boundary. A second signed run used one exact serialized withdrawal preimage:
+the 0.35 keys returned HTTP 400, while the 0.36 pair returned nonempty proof
+bytes. Neither run established a valid new ACC binding or release-prover
 payment conformance.
 
 The signed `a20a9b9` isolated owner-browser refusal adds a narrow #318 negative

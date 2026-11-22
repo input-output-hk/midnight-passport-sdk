@@ -35,9 +35,34 @@
   "inputsUnchanged": true,
   "leaseReleased": true,
   "limits": [
-    "This observes an HTTP proof response for the exact native withdrawal witness with alternate 0.36-generated key material; it does not verify that proof against an on-chain verifier key.",
-    "The deployed ACC still has its retired Compact 0.35 verifier key; no verifier replacement, full withdrawal transaction, payment dispatch or recipient deposit occurred.",
+    "The same-witness comparison changes only the supplied withdrawal prover/verifier key pair for the two HTTP proof requests. It shows old-key HTTP 400 followed by nonempty new-key response, but does not verify the returned proof against a deployed new verifier key.",
+    "The deployed ACC still has its retired Compact 0.35 verifier key; no full withdrawal transaction, payment dispatch or recipient deposit occurred.",
     "A separately versioned 0.36 ACC artifact/binding and fresh deployment are required before a stable-prover two-leg send can be qualified.",
     "The browser credential and approval are synthetic; online registry and real passkey-provider acceptance remain separate."
-  ]
+  ],
+  "sameWitnessControl": {
+    "sourceHead": "faa777071c7c1d7a970914551ecd1a777baf8b5e",
+    "runId": "5e92936273589ac6",
+    "method": "one unproven withdrawal; the exact serialized preimage and binding input are reused for old and alternate key pair requests",
+    "oldKeyResponse": "HTTP 400 on proof-server /prove",
+    "alternateKeyResponse": "nonempty proof bytes from proof-server /prove",
+    "proverImage": "sha256:787ef99db4b4706eb14d94ad389ca45f1c09bcdf740afecb01899bfbda63dc64",
+    "nodeImage": "sha256:0c1ad548d523c1109aa1f16daab1bf72dcb78c7e17b8a8c6d97424ad0eba7b8a",
+    "indexerImage": "sha256:119f35db548ba1c390845f215bb1e928e73038bef7c315825aee0461bd54499d",
+    "browserReview": "automated approval before owner signature and proof",
+    "ownerSignatures": 1,
+    "withdrawalDispatches": 0,
+    "depositDispatches": 0,
+    "sourceNightFinal": "10",
+    "targetNightFinal": "0",
+    "fullTransactionProved": false,
+    "originalWithdrawalSaved": false,
+    "parentReceiptSha256": "c04aaf683328990cbceb13d12bc8478a552ae165b3e87ce4995debcf747b4724",
+    "workerReceiptSha256": "cd93a937ea05fb89741492e727ac90272f235473d102fe9ff95d90996295720e",
+    "ownedContainersStopped": 3,
+    "retainedVolumes": true,
+    "unrelatedResourcesControlled": 0,
+    "inputsUnchanged": true,
+    "leaseReleased": true
+  }
 }

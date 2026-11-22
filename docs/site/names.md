@@ -801,6 +801,9 @@ An [isolated stable-prover diagnostic](../../examples/midnames-local/evidence/st
 received nonempty `9.0.2` proof bytes with the 0.36-generated withdrawal
 pair after an automated browser review. It stopped before the full transaction
 or either payment leg; the source and target ACC balances remained 10/0.
+A second signed run held the withdrawal preimage fixed: the old pair returned
+HTTP 400 and the new pair returned nonempty proof bytes from the same stable
+prover. No full transaction was proved or dispatched.
 The original ACC still holds its 0.35 verifier key. A newly versioned binding
 and deployed ACC with matching keys need a full proof, submission and indexed
 two-leg check before claiming release compatibility.
