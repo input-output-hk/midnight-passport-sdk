@@ -106,8 +106,12 @@ To enable candidate NIGHT deposits, first run the one-time
 then add `--funding` to the candidate `up` command. It selects the separate
 candidate wallet, asset policy, reservation journal and deployment log. The
 [native funding receipt](evidence/candidate-funding-native-20261122.json)
-confirms 10 base units credited and a same-ID replay on shared Ledger 9; the
-connected browser funding action still needs its own acceptance run. An
+confirms 10 base units credited and a same-ID replay on shared Ledger 9. A
+[headless Passport page run](evidence/candidate-funding-browser-20261122.json)
+then credited another 10 units through the live candidate services, reopened
+at 24 units without resending, and checked finalized Indexer API v4 state. It
+used a fixture to select the existing ACC, so a fresh passkey and actual account
+connector remain part of the combined browser journey. An
 [exact-head exported-adapter proof-only run](evidence/candidate-acc-shared-adapter-deposit-proof-20261122.json)
 validated the generated module, candidate deposit verifier and unbound proof,
 and a later [native settlement](evidence/candidate-acc-shared-adapter-settled-deposit-20261122.json)

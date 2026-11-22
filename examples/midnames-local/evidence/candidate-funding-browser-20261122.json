@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "scope": "headless Passport funding page with an existing candidate ACC fixture, live local services and shared Ledger 9",
+  "sourceHead": "06d124eebeea9afe69ec2ee67d6a041fd8a139a9",
+  "bindingId": "acc-s3r1.1-zkir036",
+  "manifestSha256": "590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f",
+  "networkId": "undeployed",
+  "indexerApi": "v4",
+  "accountAddress": "1bbba3a26618dc64720ad78fadc98d9b404eab7f983f7bf9c210f8c6c8b2e4c0",
+  "requestId": "f62196c2-64da-40c4-a61b-895fe107b49d",
+  "asset": "NIGHT",
+  "amountBaseUnits": "10",
+  "balanceBefore": "14",
+  "balanceAfter": "24",
+  "browser": {
+    "page": "actual Passport Vite page on localhost:5173",
+    "accountConnector": "test-only connector for the already deployed candidate ACC; no credential ceremony or account creation",
+    "fundingPostCount": 1,
+    "responseStatus": 200,
+    "pendingRequestKeyAfterConfirmation": false,
+    "reopenBalance": "24",
+    "reopenFundingPostCount": 0,
+    "pageErrors": []
+  },
+  "preparationTxId": "00e2ddea9c64a0c4b2a880d94962dd4bae3a122b6853de6383d12df4b6f2ae220c",
+  "depositTxId": "c25701685d3ece0769c1d0d62a12be5e28e793b11f4246e70e8f865e238aa6e8",
+  "depositBlock": {
+    "height": 71258,
+    "hash": "21349e6a0e3af4d021fde72781dd77385a1ab504ad1b30326255cd2026594dcb",
+    "status": "SUCCESS",
+    "contractActions": ["1bbba3a26618dc64720ad78fadc98d9b404eab7f983f7bf9c210f8c6c8b2e4c0"],
+    "canonical": true,
+    "finalized": true
+  },
+  "reservationState": "complete; zero pending",
+  "resources": "candidate Passport and funding services stopped; synthetic browser profile and private receipts retained; stable funding service and shared stack untouched",
+  "limits": [
+    "The account connector was a fixture; this run does not prove a virtual or real passkey, account creation, or full wallet worker path.",
+    "A same-ID replay was proved in the preceding native funding run, not this browser run.",
+    "The combined name claim and connected browser named NIGHT payment remain unqualified."
+  ]
+}

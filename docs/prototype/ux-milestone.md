@@ -178,7 +178,11 @@ Candidate demo funding now uses a dedicated wallet and state files when the
 operator explicitly combines `--candidate-assets --funding`. The funding
 service's [native shared-chain run](../../examples/midnames-local/evidence/candidate-funding-native-20261122.json)
 confirmed its original request, indexed 10-unit NIGHT credit and same-ID
-replay. The connected browser funding action remains to be qualified. The connected named NIGHT page source
+replay. A separate [headless Passport page run](../../examples/midnames-local/evidence/candidate-funding-browser-20261122.json)
+confirmed a second 10-unit NIGHT credit through the live candidate services,
+finalized chain action and reload without a duplicate request. It selected the
+existing ACC through a test connector; the combined passkey/worker path remains
+open. The connected named NIGHT page source
 now checks the exact candidate binding and manifest through page selection,
 owner review, host admission and deposit preflight. Its browser journal also
 pins the candidate profile so a stable or changed binding cannot resume its

@@ -1257,6 +1257,8 @@ with a verified generated module and loopback API v4 guards. The demo launcher
 now selects its dedicated candidate funding seed, policy, reservations and
 deployment log when `--candidate-assets --funding` is explicit. A
 [shared-chain native run](../examples/midnames-local/evidence/candidate-funding-native-20261122.json)
-confirmed a 10-unit deposit, indexed finality and same-ID replay. This is a
-funding-service gate; the connected browser funding action and named payment
-remain separate acceptance work.
+confirmed a 10-unit deposit, indexed finality and same-ID replay. A
+[headless Passport page run](../examples/midnames-local/evidence/candidate-funding-browser-20261122.json)
+then confirmed another 10-unit NIGHT deposit, finalized Indexer API v4 action
+and reload without resubmission. It used an existing-account connector fixture;
+the full passkey/worker path and named payment remain separate acceptance work.
