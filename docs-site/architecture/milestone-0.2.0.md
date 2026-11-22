@@ -55,9 +55,13 @@ funded its separate device wallet, and finalized DUST registration. It reviewed
 withdrawal and deposit finalized at separate blocks; after browser restart,
 the same journal archived both IDs and the ACC balances were 6 and 28. The
 diagnostic fixes and recovery span signed source heads, and the name was
-registered before this run. A fresh one-head create-to-claim-to-payment path,
-automatic recovery presentation, physical passkey and online provider remain
-open.
+registered before this run. A later
+[one-head local browser receipt](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/candidate-onehead-create-claim-pay-20261122.json)
+records a new ACC, post-activation `.night` claim, separate device-wallet DUST,
+and a 4 NIGHT payment to a named ACC in one synthetic-passkey profile. Both
+original legs finalized; one explicit check archived them. A 1 NIGHT payment
+on the next signed head completed automatically after the page waited for
+finality. Physical passkey and online provider qualification remain open.
 
 A later isolated candidate
 [paid-claim retry](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/candidate-acc-page-paid-claim-retry-20261122.json)

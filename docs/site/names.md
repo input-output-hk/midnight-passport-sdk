@@ -708,8 +708,8 @@ The current source exposes `beforeSubmit` on `withdrawUnshielded` so a host can
 commit those original IDs before the standard Midnight adapter dispatches a
 finalized transaction. An unsupported chain adapter refuses before owner signing;
 a rejected callback prevents dispatch. The opt-in local named-send UI uses
-this hook. One connected local candidate journey is recorded below; a fresh
-single-head create-to-claim-to-payment run remains open.
+this hook. Connected local candidate journeys and the fresh single-head
+create-to-claim-to-payment run are recorded below.
 
 An optional source-only owner port now connects that callback to the named NIGHT
 orchestrator. The callback checks the finalized network, source ACC and JubJub
@@ -748,8 +748,10 @@ coin. Before wallet signing, the worker now re-reads the active journal and
 derives the expected output from the finalized, decoded original withdrawal.
 It refuses a page request that pairs the original hash with a different
 same-value bridge coin. The connected local candidate run checked the exact
-bridge output and finalized the deposit; separate one-head and online runs
-remain open.
+bridge output and finalized the deposit. The later
+[one-head browser run](../../examples/midnames-local/evidence/candidate-onehead-create-claim-pay-20261122.json)
+also issued a new name for its source ACC before paying a named recipient;
+online qualification remains open.
 
 The internal browser wallet now has a device-held deposit adapter. It balances,
 signs and retains one exact prepared `deposit_unshielded` original, then accepts
@@ -791,6 +793,13 @@ attempt when an existing journal has no withdrawal ID. A
 finalized both original legs of one named payment and recovered those exact IDs
 after reload. It used a synthetic passkey and spans signed heads. Real-provider
 acceptance and online deployment remain open.
+A later [one-head local run](../../examples/midnames-local/evidence/candidate-onehead-create-claim-pay-20261122.json)
+created and activated a fresh ACC, registered its own `.night` name, and paid a
+different named ACC in the same persistent browser profile. The first payment
+archived after one explicit original-only check. The page now waits for a
+fenced deposit's finality; a separate payment on the next signed head completed
+and archived automatically. Neither result qualifies a physical passkey or an
+online Midnames provider.
 
 The local candidate launcher sets `VITE_MIDNAMES_NIGHT_SEND=1` only with
 `--night-send --claim --funding` and `--candidate-assets`. Its default candidate

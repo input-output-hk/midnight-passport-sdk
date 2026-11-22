@@ -127,9 +127,16 @@ default journal remains unchanged when the flag is omitted.
 The [connected browser receipt](evidence/candidate-connected-browser-night-send-20261122.json)
 shows this opt-in control completing a 4 NIGHT payment to an already registered
 name. It preserved the original withdrawal through a deposit preparation failure,
-then reconciled both finalized legs without resending either. The run used a
-synthetic passkey and crossed signed source heads; new-name issuance in the same
-fresh profile and physical passkey acceptance remain separate gates.
+then reconciled both finalized legs without resending either. That run used a
+synthetic passkey and crossed signed source heads.
+A later [one-head browser receipt](evidence/candidate-onehead-create-claim-pay-20261122.json)
+records a new ACC, a name claimed after activation, independent device-wallet
+funding and DUST, and both canonically finalized legs of a 4 NIGHT payment to a
+named recipient ACC. The browser archived only those original IDs after one
+explicit finality check. A separate 1 NIGHT follow-up on a later signed head
+completed automatically after submission, without another click or leg.
+Both runs used a synthetic passkey on the local provisional binding; online
+and physical-provider qualification remain open.
 
 The [concurrent launch check](evidence/candidate-concurrent-funding-launch-20261122.json)
 verified both pinned services, a headless page smoke and clean owned shutdown
@@ -150,8 +157,8 @@ demo launcher still disables named NIGHT sending by default. The page admits
 only the exact candidate pin with an explicit local profile, loopback
 service/chain endpoints, fresh owner review and a binding-pinned original
 journal. Headless checks cover page admission and no-ID refusal; the connected
-browser receipt above adds local two-leg payment and recovery evidence, while
-a one-head claim-to-payment run remains open.
+browser receipts above add local two-leg payment, original-only recovery and
+one-head claim-to-payment evidence.
 
 ### Register a name and fund a Passport account
 

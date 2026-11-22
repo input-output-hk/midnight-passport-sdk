@@ -166,7 +166,7 @@ For the provisional Ledger 9 `acc-s3r1.1-zkir036` source profile, the
 can open account creation and the standalone name panel in one browser
 session. It uses a separate deployment registry and claim journal and admits
 the candidate only with exact build pins and loopback Indexer API v4. This
-configuration route does not yet qualify the full combined journey. In the
+configuration route is now qualified for the bounded local journey below. In the
 local launcher, candidate ACC proofs use the shared release prover on 6300;
 the pinned Compact 0.35 standalone name registry uses an owned compatibility
 prover on 16320. The browser and sponsor journals must be checked together
@@ -206,8 +206,15 @@ created and funded a fresh ACC, registered DUST for its separate device wallet,
 reviewed a named 4 NIGHT payment, and finalized one withdrawal and one deposit.
 It reconciled those exact IDs after a browser deposit resume, then reopened to
 confirm an archived journal and source/recipient balances of 6/28. This run
-spans signed heads and used an already registered name; a fresh one-head
-create-to-claim-to-payment run remains open. The candidate launcher stays
+spans signed heads and used an already registered name. A later
+[one-head local browser run](../../examples/midnames-local/evidence/candidate-onehead-create-claim-pay-20261122.json)
+created a new ACC, claimed `codexflow24.night` after activation, funded the ACC
+and a separate device wallet, registered DUST, and paid 4 NIGHT to the already
+registered `codexacc22.night` ACC. Both original legs finalized; one explicit
+original-only browser check archived them after finality. A follow-up payment
+on a later signed head exercised the automatic finality wait and finished
+without that extra click. This is a synthetic-credential local result, not
+physical-passkey or online-provider acceptance. The candidate launcher stays
 disabled without its explicit opt-in.
 
 An unavailable indexer leaves the original receipt intact and reports the

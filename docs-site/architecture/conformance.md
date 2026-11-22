@@ -133,8 +133,13 @@ provisional binding. A later [connected candidate browser receipt](https://githu
 adds a fresh mock-passkey ACC, separate funded device wallet, reviewed name,
 canonical withdrawal and deposit, retained-ID recovery, and 10/24 → 6/28
 balances on the shared Ledger 9 stack. It spans signed heads and reuses an
-earlier claim. A fresh one-head claim-to-payment run, physical passkey custody,
-online provider substitution and the wider recovery matrix remain open.
+earlier claim. A later
+[one-head local browser receipt](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/candidate-onehead-create-claim-pay-20261122.json)
+adds a post-activation claim for a new ACC and a canonically finalized named
+payment in one persistent synthetic-passkey profile. It needed one explicit
+original-only finality check; a later separate payment completed automatically
+after a page-level finality wait. Physical passkey custody, online provider
+substitution and the wider recovery matrix remain open.
 
 The signed `a20a9b9` isolated owner-browser refusal adds a narrow #318 negative
 result: after Chromium displayed the exact named NIGHT route and clicked

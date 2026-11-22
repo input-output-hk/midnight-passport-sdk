@@ -1018,6 +1018,12 @@ now has an opt-in local named-send page and connected bridge/finality adapter.
 The [connected browser receipt](../examples/midnames-local/evidence/candidate-connected-browser-night-send-20261122.json)
 qualifies one local candidate payment across signed heads. Physical-provider
 and online qualification remain open.
+The [one-head local receipt](../examples/midnames-local/evidence/candidate-onehead-create-claim-pay-20261122.json)
+adds fresh ACC creation, post-activation name claim, and a named NIGHT payment
+in one persistent synthetic-passkey profile. Its first payment needed one
+original-only finality check after the chain completed. The page now waits for
+finality when both payment legs are fenced; a separate native follow-up
+completed automatically and archived those exact IDs without another click.
 
 The source-only owner review model can now stage a named NIGHT route for the
 actual credential ceremony. It shows the exact name, pinned registry, full
