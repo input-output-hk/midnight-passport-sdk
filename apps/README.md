@@ -1175,7 +1175,12 @@ shows **Register a .night name** on the Passport account's Balances page after
 creation or passkey-based opening. Reviewing a valid quote for the already
 deployed ACC retains the selected `.night` name per registry, ACC, and
 credential. It restores that choice after reopening with the same credential
-and reconciles a retained original receipt. Availability and imported-receipt
+and reconciles a retained original receipt. If the user has not chosen a name,
+**Suggest a local .night name** fills a random `demo-<24 hex characters>.night` candidate only
+after checking for an earlier selection under that credential. It does not
+reserve, claim, fund or send; **Continue registration** still checks the
+registry and presents the quote before owner approval and payment confirmation.
+Availability and imported-receipt
 checks leave the name unselected; enter it again after a reload. A pending claim stays visibly
 pending until the original transaction and current registry binding agree.
 On reopen, a retained original also checks the sponsor's dispatch fence: if it is

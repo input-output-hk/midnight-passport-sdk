@@ -201,7 +201,10 @@ nix develop -c node scripts/midnames-local-demo.mjs up \
 
 Open the activated ACC with its passkey, go to **Passport account → Balances →
 Register a .night name**, enter an unregistered name such as `yurii.night`, and
-click **Continue registration**. Review the exact quote and click **Approve with
+click **Continue registration**. If you have not chosen a label, **Suggest a
+local .night name** fills a random `demo-<24 hex characters>.night` candidate
+after checking for an earlier credential-scoped selection; it does not claim
+or reserve that name. Review the exact quote and click **Approve with
 passkey**. The page then displays the saved payment terms without sending; click
 **Confirm payment and register** after reviewing them. The page checks the
 original claim after dispatch. Raw receipts and manual checks remain under

@@ -151,6 +151,11 @@ remain open qualification.
 
 The opt-in **Register a .night name** panel on Passport account → Balances
 appears after creation or passkey-based opening of the target ACC. The claim
+panel can suggest a random local `demo-<24 hex characters>.night` label when the field is empty;
+it first checks for an earlier selection under the same credential and restores
+that selection instead of replacing its original. A suggestion is not an issued
+name, reservation, quote or transaction. The user still reviews the registry
+result, quote, passkey request and payment separately. The claim
 profile requires the observed Indexer v4 transaction protocol
 pin (`2001100` on both the shared Ledger 9 demo and the release-image isolated fixture).
 This is separate from the `/api/v4/graphql` endpoint version. Reviewing a
@@ -177,7 +182,10 @@ The [shared-chain browser receipt](../../examples/midnames-local/evidence/candid
 records one synthetic ACC creation, same-profile paid `.night` claim, exact
 indexed success and matching registry target. Those steps span signed source
 heads; the final head rechecked the saved registration without another send.
-One exact-head create-to-claim run and the combined named payment remain open.
+The later [one-head local run](../../examples/midnames-local/evidence/candidate-onehead-create-claim-pay-20261122.json)
+completed ACC creation, a new name claim and named NIGHT payments with a
+synthetic passkey on the shared chain. It does not qualify a physical provider,
+online naming or a released candidate binding.
 The local launcher now accepts an explicit claim journal ID for a separate new
 account/name after an earlier claim has been confirmed. It preserves the first
 journal and requires the same ID for that claim's recovery; switching IDs is
