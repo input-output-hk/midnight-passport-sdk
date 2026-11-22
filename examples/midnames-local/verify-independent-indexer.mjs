@@ -39,6 +39,25 @@ if (
 
 const indexerImage =
   'ghcr.io/midnight-ntwrk/indexer-standalone@sha256:119f35db548ba1c390845f215bb1e928e73038bef7c315825aee0461bd54499d';
+function localIndexerPort(http, ws) {
+  const reader = new URL(http);
+  const websocket = new URL(ws);
+  assert.equal(reader.protocol, 'http:');
+  assert.equal(reader.hostname, '127.0.0.1');
+  assert.match(reader.port, /^[1-9][0-9]{0,4}$/);
+  assert.equal(reader.pathname, '/api/v4/graphql');
+  assert.equal(reader.search + reader.hash + reader.username + reader.password, '');
+  assert.equal(websocket.protocol, 'ws:');
+  assert.equal(websocket.hostname, reader.hostname);
+  assert.equal(websocket.port, reader.port);
+  assert.equal(websocket.pathname, '/api/v4/graphql/ws');
+  assert.equal(websocket.search + websocket.hash + websocket.username + websocket.password, '');
+  return reader.port;
+}
+const primaryPort = localIndexerPort(primaryHttp, primaryWs);
+const witnessPort = localIndexerPort(witnessHttp, witnessWs);
+assert.notEqual(primaryPort, witnessPort, 'The witness must use a distinct loopback port.');
+assert.equal(new URL(nodeUrl).href, 'http://127.0.0.1:9944/');
 const privateKeys = [
   'APP__INFRA__STORAGE__PASSWORD',
   'APP__INFRA__PUB_SUB__PASSWORD',
@@ -82,6 +101,7 @@ assert.equal(witness.Config.Image, indexerImage);
 assert.equal(witness.Config.Labels['com.docker.compose.project'], witnessProject);
 assert.equal(witness.Config.Labels['com.docker.compose.service'], 'read-witness-indexer');
 assert.equal(primary.Config.Labels['com.docker.compose.project'], 'midnight-network');
+assert.equal(primary.Config.Labels['com.docker.compose.service'], 'indexer');
 const witnessNetwork = witness.NetworkSettings.Networks['midnight-network_default'];
 assert.ok(witnessNetwork?.Aliases?.includes('read-witness-indexer'));
 assert.ok(
@@ -91,13 +111,11 @@ assert.ok(
 assert.ok(
   primary.NetworkSettings.Networks['midnight-network_default']?.Aliases?.includes('indexer'),
 );
-const witnessPort = new URL(witnessHttp).port;
 assert.ok(
   witness.NetworkSettings.Ports['8088/tcp']?.some(
     (binding) => binding.HostIp === '127.0.0.1' && binding.HostPort === witnessPort,
   ),
 );
-const primaryPort = new URL(primaryHttp).port;
 assert.ok(
   primary.NetworkSettings.Ports['8088/tcp']?.some(
     (binding) => binding.HostIp === '127.0.0.1' && binding.HostPort === primaryPort,
@@ -107,7 +125,7 @@ const witnessVolume = witness.Mounts.find((mount) => mount.Destination === '/dat
 const primaryVolume = primary.Mounts.find((mount) => mount.Destination === '/data');
 assert.equal(witnessVolume?.Type, 'volume');
 assert.equal(primaryVolume?.Type, 'volume');
-assert.match(witnessVolume.Name, /^midnight-passport-read-witness.*_indexer-data$/);
+assert.equal(witnessVolume.Name, `${witnessProject}_indexer-data`);
 assert.notEqual(witnessVolume.Name, primaryVolume.Name);
 assert.ok(isAbsolute(witnessEnvFile));
 const envPath = resolve(witnessEnvFile);
