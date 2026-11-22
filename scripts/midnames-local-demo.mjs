@@ -54,6 +54,7 @@ const usage = `Usage: nix develop -c node scripts/midnames-local-demo.mjs [check
   --real-passkey      Use a PRF-capable passkey instead of the development mock.
   --setup             Open account creation without a name (fresh chain only).
   --claim             Enable registration against the verified local .night registry.
+  --claim-journal-id X  Select a retained, isolated claim journal for this demo run.
   --funding           Enable deposits with the separately funded demo wallet.
   --night-send        Opt in to candidate ACC named NIGHT send (needs --claim --funding).
   --prepared-registry PATH  Pinned Compact 0.35 registry artifacts for --claim.
@@ -69,7 +70,7 @@ and private records are preserved.
 
 class CleanupUnconfirmedError extends Error {}
 
-/** @typedef {{command: 'check'|'stack'|'up'|'stop', profile: string, stateDir: string, passportRepo: string|undefined, contractDir: string|undefined, preparedRegistry: string|undefined, candidateAssets: string|undefined, attachOnly: boolean, mockPasskey: boolean, setup: boolean, claim: boolean, funding: boolean, nightSend: boolean, open: boolean, help: boolean}} DemoOptions */
+/** @typedef {{command: 'check'|'stack'|'up'|'stop', profile: string, stateDir: string, passportRepo: string|undefined, contractDir: string|undefined, preparedRegistry: string|undefined, candidateAssets: string|undefined, claimJournalId: string|undefined, attachOnly: boolean, mockPasskey: boolean, setup: boolean, claim: boolean, funding: boolean, nightSend: boolean, open: boolean, help: boolean}} DemoOptions */
 /** @typedef {{command: string, args: string[], env: NodeJS.ProcessEnv}} ComposeTarget */
 /** @typedef {{networkId: string, registryAddress: string, name: string, accountAddress: string, claimBlock: {height: number, hash: string}}} Claim */
 
@@ -88,6 +89,7 @@ export function parseArgs(argv) {
     contractDir: process.env.PASSPORT_CONTRACT_DIR,
     preparedRegistry: process.env.PASSPORT_MIDNAMES_PREPARED_REGISTRY,
     candidateAssets: undefined,
+    claimJournalId: undefined,
     attachOnly: false,
     mockPasskey: true,
     setup: false,
@@ -108,6 +110,7 @@ export function parseArgs(argv) {
         '--contract-dir',
         '--prepared-registry',
         '--candidate-assets',
+        '--claim-journal-id',
       ].includes(arg)
     ) {
       const value = args[++index];
@@ -117,7 +120,11 @@ export function parseArgs(argv) {
       else if (arg === '--passport-repo') result.passportRepo = resolve(value);
       else if (arg === '--prepared-registry') result.preparedRegistry = resolve(value);
       else if (arg === '--candidate-assets') result.candidateAssets = resolve(value);
-      else result.contractDir = resolve(value);
+      else if (arg === '--claim-journal-id') {
+        if (!/^[a-z0-9][a-z0-9-]{0,39}$/.test(value))
+          throw new Error('--claim-journal-id needs a lowercase letters/digits/hyphens label.');
+        result.claimJournalId = value;
+      } else result.contractDir = resolve(value);
     } else if (arg === '--attach-only') result.attachOnly = true;
     else if (arg === '--real-passkey') result.mockPasskey = false;
     else if (arg === '--setup') result.setup = true;
@@ -489,8 +496,9 @@ async function startClaimHost(options, claim, env) {
   assert.equal(provision.status, 'complete', 'Claim sponsor wallet funding is unresolved.');
   const journal = join(
     options.stateDir,
-    options.candidateAssets ? 'claim-journal-candidate' : 'claim-journal',
+    `${options.candidateAssets ? 'claim-journal-candidate' : 'claim-journal'}${options.claimJournalId ? `-${options.claimJournalId}` : ''}`,
   );
+  console.log(`midnames-demo: retaining claim journal at ${journal}.`);
   privateState(journal);
   const args = [
     '--experimental-import-meta-resolve',
@@ -805,6 +813,8 @@ export async function main(argv = process.argv.slice(2)) {
     if (options.setup && options.command !== 'up') throw new Error('--setup applies only to up.');
     if ((options.claim || options.funding) && options.command !== 'up')
       throw new Error('--claim and --funding apply only to up.');
+    if (options.claimJournalId && !options.claim)
+      throw new Error('--claim-journal-id needs --claim.');
     if (
       options.nightSend &&
       (options.command !== 'up' || !options.candidateAssets || !options.claim || !options.funding)

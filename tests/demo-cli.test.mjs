@@ -46,6 +46,15 @@ test('local Midnames candidate profile requires an explicit asset selection', ()
   assert.equal(selected.setup, true);
   assert.equal(selected.claim, true);
   assert.throws(() => parseMidnamesArgs(['up', '--candidate-assets']), /needs a path/);
+  assert.equal(
+    parseMidnamesArgs(['up', '--claim', '--claim-journal-id', 'fresh-20261123']).claimJournalId,
+    'fresh-20261123',
+  );
+  for (const invalid of ['../other', '/tmp/other', 'Upper', 'a'.repeat(41)])
+    assert.throws(
+      () => parseMidnamesArgs(['up', '--claim', '--claim-journal-id', invalid]),
+      /--claim-journal-id needs a lowercase/,
+    );
 });
 
 test('demo fund command sends a pinned authenticated request with the caller idempotency key', async () => {

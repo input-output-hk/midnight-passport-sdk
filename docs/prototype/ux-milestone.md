@@ -174,6 +174,11 @@ records one synthetic ACC creation, same-profile paid `.night` claim, exact
 indexed success and matching registry target. Those steps span signed source
 heads; the final head rechecked the saved registration without another send.
 One exact-head create-to-claim run and the combined named payment remain open.
+The local launcher now accepts an explicit claim journal ID for a separate new
+account/name after an earlier claim has been confirmed. It preserves the first
+journal and requires the same ID for that claim's recovery; switching IDs is
+not a safe retry after an unknown outcome. The sponsor wallet remains single
+writer under the shared lease.
 Candidate demo funding now uses a dedicated wallet and state files when the
 operator explicitly combines `--candidate-assets --funding`. The candidate
 wallet uses port 18789, separate from the stable demo on 8789. The funding

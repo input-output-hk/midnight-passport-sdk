@@ -1132,6 +1132,11 @@ busy result **before** naming proof or preparation. The page explains that no ne
 claim was started by that request; reconcile or retire the original through its
 own browser flow before another account asks for a quote. A busy refusal does not
 authorize clearing the sponsor journal or the other browser's site data.
+After a claim is confirmed, an operator can launch a separate local candidate
+claim with `--claim-journal-id LABEL`. It retains the previous journal and
+selects another private directory under the same demo state. Reuse the label
+to recover that exact original; do not choose a different label to retry an
+uncertain claim. Only one claim host and sponsor wallet may run at a time.
 
 For online Preprod reads, the optional
 [host-controlled indexer proxy](../examples/midnames-online/README.md) keeps a

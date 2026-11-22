@@ -17,6 +17,7 @@ import { createClaimSponsorHandler } from './claim-sponsor-http.mts';
 import { startDemoOwnerBundle } from './claim-owner-browser-host.mjs';
 import { verifyPreparedRegistry } from './verify-prepared.mjs';
 import { verifyDemoArtefacts } from '../../scripts/demo-artifact-pin.mjs';
+import { assertOtherClaimJournalsSettled } from './claim-journal-selection.mts';
 
 const networkId = 'undeployed';
 const indexerUrl = 'http://127.0.0.1:8088/api/v4/graphql';
@@ -144,6 +145,20 @@ try {
       : undefined,
   );
   const profile = { networkId, registryAddress, namespace: 'night' };
+  await assertOtherClaimJournalsSettled(journalDir, async (receipt) => {
+    if (
+      receipt.networkId !== networkId ||
+      receipt.registryAddress !== registryAddress ||
+      (await readClaimFinality(indexerUrl, receipt, fetch, claimProtocolVersion)) !== true
+    )
+      return false;
+    const claim = await reader.readClaim(receipt.name, profile);
+    return (
+      claim?.ownerCommitment === receipt.ownerCommitment &&
+      claim.target.kind === 'contract' &&
+      claim.target.address === receipt.accountAddress
+    );
+  });
   async function live(destination) {
     const selected = claimDestination(destination);
     if (selected.registryAddress !== registryAddress)
