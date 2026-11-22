@@ -460,7 +460,7 @@ export async function qualifyNightSend({
                 async proveTx(bytes) {
                   const tx = ledger.Transaction.deserialize(
                     'signature',
-                    'proof',
+                    'pre-proof',
                     'pre-binding',
                     bytes,
                   );
