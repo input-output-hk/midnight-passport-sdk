@@ -8,7 +8,42 @@ import { gunzipSync } from 'node:zlib';
 const digest = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const circuitName = /^[a-z][a-z0-9_]*$/;
 
-export function loadBundle(bundlePath, bindingId, manifestSha256) {
+function parseKeyManifest(bytes, bindingId, manifestSha256, manifest) {
+  if (!bytes) return undefined;
+  const keyManifest = JSON.parse(bytes.toString('utf8'));
+  if (
+    keyManifest.schemaVersion !== 1 ||
+    keyManifest.bindingId !== bindingId ||
+    keyManifest.compilerManifestSha256 !== manifestSha256 ||
+    Object.keys(keyManifest.circuits ?? {}).length !==
+      Object.keys(manifest.keys ?? {}).filter((name) => name.endsWith('.prover')).length
+  )
+    throw new Error('key manifest does not match the compiler profile');
+  return keyManifest;
+}
+
+function selectedKeyPin(name, pin, keyManifest) {
+  if (!keyManifest) return pin;
+  const match = /^([a-z][a-z0-9_]*)\.(prover|verifier)$/.exec(name);
+  const profilePin = match && keyManifest.circuits?.[match[1]]?.[match[2]];
+  if (
+    !Number.isSafeInteger(profilePin?.size) ||
+    profilePin.size <= 0 ||
+    !/^[a-f0-9]{64}$/.test(profilePin?.sha256 ?? '')
+  )
+    throw new Error(`invalid key-generation pin: ${name}`);
+  return { type: 'file', size: profilePin.size, hash: profilePin.sha256 };
+}
+
+function assertZkirPin(name, pin, keyManifest) {
+  if (!keyManifest) return;
+  const [circuit, kind] = name.split('.');
+  const profilePin = keyManifest.circuits?.[circuit]?.[kind];
+  if (profilePin?.size !== pin.size || profilePin?.sha256 !== pin.hash)
+    throw new Error(`ZKIR key profile differs from compiler manifest: ${name}`);
+}
+
+export function loadBundle(bundlePath, bindingId, manifestSha256, keyManifestBytes) {
   const bundle = JSON.parse(gunzipSync(readFileSync(bundlePath)).toString('utf8'));
   if (bundle.schemaVersion !== 1 || bundle.bindingId !== bindingId)
     throw new Error('unsupported key bundle');
@@ -17,6 +52,7 @@ export function loadBundle(bundlePath, bindingId, manifestSha256) {
   const manifest = JSON.parse(bundle.manifest);
   if (manifest['compiler-version'] !== '0.35.0' || manifest['manifest-version'] !== '1')
     throw new Error('unsupported compiler manifest');
+  const keyManifest = parseKeyManifest(keyManifestBytes, bindingId, manifestSha256, manifest);
 
   const expected = new Map();
   const provers = new Map();
@@ -24,13 +60,15 @@ export function loadBundle(bundlePath, bindingId, manifestSha256) {
     if (name === 'type') continue;
     const match = /^([a-z][a-z0-9_]*)\.(prover|verifier)$/.exec(name);
     if (!match || pin?.type !== 'file') throw new Error(`unexpected key entry: ${name}`);
-    if (match[2] === 'prover') provers.set(name, pin);
-    else expected.set(`keys/${name}`, pin);
+    const selectedPin = selectedKeyPin(name, pin, keyManifest);
+    if (match[2] === 'prover') provers.set(name, selectedPin);
+    else expected.set(`keys/${name}`, selectedPin);
   }
   for (const [name, pin] of Object.entries(manifest.zkir ?? {})) {
     if (name === 'type') continue;
     if (!/^([a-z][a-z0-9_]*)\.(zkir|bzkir)$/.test(name) || pin?.type !== 'file')
       throw new Error(`unexpected ZKIR entry: ${name}`);
+    assertZkirPin(name, pin, keyManifest);
     expected.set(`zkir/${name}`, pin);
   }
   if (Object.keys(bundle.files ?? {}).length !== expected.size || !provers.size)

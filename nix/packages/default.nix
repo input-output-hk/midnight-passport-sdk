@@ -18,6 +18,7 @@
           compact-midnight
           compact-toolchain
           compact-toolchain-0_31_1
+          compact-toolchain-0_36_1
           compact-toolchains
           ;
       }

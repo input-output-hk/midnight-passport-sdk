@@ -5,7 +5,8 @@
 # compact-toolchain, parameterised by version so that several toolchains can
 # sit side by side in one COMPACT_DIRECTORY: the default (newest) one, plus the
 # 0.31.1 that packages/contract/acc-versions.generated.json still records for
-# the prototype binding (`compact compile +0.31.1 …`).
+# the prototype binding (`compact compile +0.31.1 …`), and the 0.36.1 key
+# generator used by the separately versioned Ledger 9 candidate profile.
 {
   lib,
   stdenv,
@@ -46,6 +47,10 @@ let
     toolchain."0.35.0" = {
       x86_64-linux = "sha256-aWALrzEmnXeODkXFRIQSaaOadMuuTIp4ln3B5YNJSk0=";
       aarch64-darwin = "sha256-XK7taJYnQCybajS5ZUIKJLffHTsUWbF2cacW/q9Q8KI=";
+    };
+    toolchain."0.36.1" = {
+      x86_64-linux = "sha256-duCFfJpGecXdMNWyzYShBcYCrsPCkN3fSec2R9x0bTs=";
+      aarch64-darwin = "sha256-w9IFLt22RA2muoqvQ2EFUJ+QUGd1k3H1/WDRXKsQWhQ=";
     };
   };
 
@@ -138,8 +143,17 @@ let
   compact-midnight = mkCli "0.5.3";
   compact-toolchain = mkToolchain "0.35.0";
   compact-toolchain-0_31_1 = mkToolchain "0.31.1";
+  compact-toolchain-0_36_1 = mkToolchain "0.36.1";
 in
 {
-  inherit compact-midnight compact-toolchain compact-toolchain-0_31_1;
-  compact-toolchains = mkToolchains compact-toolchain [ compact-toolchain-0_31_1 ];
+  inherit
+    compact-midnight
+    compact-toolchain
+    compact-toolchain-0_31_1
+    compact-toolchain-0_36_1
+    ;
+  compact-toolchains = mkToolchains compact-toolchain [
+    compact-toolchain-0_31_1
+    compact-toolchain-0_36_1
+  ];
 }

@@ -16,6 +16,15 @@ that withdrawal and the recipient deposit after a fresh source ACC deployed
 with the [entire alternate verifier roster](../../examples/midnames-local/evidence/stable-full-roster-night-send-20261122.json).
 This source retained the 0.35 generated module, runtime and ZKIR. It is a
 diagnostic profile, not a supported Compact 0.36 compiler/runtime migration.
+The [subsequent 0.36.1 inventory](../../examples/midnames-local/evidence/compact0361-acc-key-inventory-20261122.json)
+regenerated all 52 pairs with the patch-release key generator; every prover
+and verifier hash matched the 0.36.0 inventory. The candidate pins 0.36.1
+because [upstream fixed a key-generation defect](https://github.com/midnightntwrk/compact/releases/tag/compactc-v0.36.1)
+in that patch release. The
+newly packaged key manifest, small ZKIR/verifier bundle and restore CLI are
+source candidates; the SDK registry, service and demo still admit only the old
+binding. No new native run or wider circuit qualification follows from the
+offline patch comparison.
 
 An on-chain verifier change defines a **new binding identity**. Never replace
 key files under `acc-s3r1.1`, reinterpret its existing deployments, or make a
@@ -29,7 +38,7 @@ needs another identity and its own review.
 ## Admission for the candidate binding
 
 1. Pin the original source revision, Compact 0.35 compiler manifest and
-   generated module bytes separately from the 0.36 ZKIR key generator and
+   generated module bytes separately from the 0.36.1 ZKIR key generator and
    recipe. Reproduce all 52 prover/verifier hashes from the exact ZKIR input;
    the [inventory](../../examples/midnames-local/evidence/compact036-acc-key-inventory-20261122.json)
    is the starting comparison, not a release manifest.

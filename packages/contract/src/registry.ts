@@ -107,6 +107,41 @@ export function detectDeployedVersion(
 }
 
 /**
+ * Detect a binding from the complete on-chain circuit-to-verifier assignment.
+ * Use this for account admission when more than one key-generation profile may
+ * have the same hash set: a permutation of verifier keys is not a valid ACC
+ * binding even if {@link detectDeployedVersion} matches the unordered set.
+ */
+export function detectDeployedVersionByCircuit(
+  onChainVerifierKeyHashes: Readonly<Record<string, string>>,
+  registry: AccRegistry = ACC_REGISTRY,
+): string | null {
+  const observed = Object.entries(onChainVerifierKeyHashes)
+    .map(([name, hash]) => [name, typeof hash === 'string' ? normaliseHash(hash) : ''] as const)
+    .sort(([a], [b]) => a.localeCompare(b));
+  if (
+    observed.length === 0 ||
+    observed.some(([name, hash]) => !/^[a-z][a-z0-9_]*$/.test(name) || !/^[a-f0-9]{64}$/.test(hash))
+  )
+    return null;
+  const matches = Object.entries(registry.versions)
+    .filter(([, binding]) => {
+      const expected = Object.entries(binding.circuits)
+        .flatMap(([name, pin]) => (pin.hashes ? [[name, pin.hashes.verifierKey] as const] : []))
+        .sort(([a], [b]) => a.localeCompare(b));
+      return (
+        expected.length === observed.length &&
+        expected.every(
+          ([name, hash], index) => name === observed[index]?.[0] && hash === observed[index]?.[1],
+        )
+      );
+    })
+    .map(([version]) => version);
+  if (matches.length === 0) return null;
+  return matches.includes(registry.current) ? registry.current : (matches[0] ?? null);
+}
+
+/**
  * The connect-time compatibility guard (architecture §8 decision 2): the
  * SDK serves an account only if its binding version is in the supported
  * set — otherwise it throws {@link UnsupportedBindingError}. The same

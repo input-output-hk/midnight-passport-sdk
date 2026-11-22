@@ -19,6 +19,7 @@ const {
   SUPPORTED_BINDINGS,
   UnsupportedBindingError,
   detectDeployedVersion,
+  detectDeployedVersionByCircuit,
   resolveBinding,
 } = await import(new URL('../packages/contract/dist/index.js', import.meta.url).href);
 
@@ -93,6 +94,26 @@ test('detectDeployedVersion must recover a version from its verifier-key hashes'
   assert.equal(detectDeployedVersion([]), null, 'no evidence must detect nothing');
   const tampered = ['0'.repeat(64), ...verifierHashes.slice(1)];
   assert.equal(detectDeployedVersion(tampered), null, 'a foreign key set must detect nothing');
+});
+
+test('binding detection rejects a permuted or incomplete circuit-to-verifier assignment', () => {
+  const binding = resolveBinding(BINDING_VERSION);
+  const assigned = Object.fromEntries(
+    Object.entries(binding.circuits).flatMap(([name, pin]) =>
+      pin.hashes ? [[name, pin.hashes.verifierKey]] : [],
+    ),
+  );
+  assert.equal(detectDeployedVersionByCircuit(assigned), BINDING_VERSION);
+  const [first, second] = Object.keys(assigned);
+  assert.ok(first && second);
+  const permuted = { ...assigned, [first]: assigned[second], [second]: assigned[first] };
+  assert.equal(detectDeployedVersionByCircuit(permuted), null);
+  assert.equal(detectDeployedVersionByCircuit({ ...assigned, [first]: undefined }), null);
+  assert.equal(detectDeployedVersionByCircuit({ ...assigned, extra: 'f'.repeat(64) }), null);
+  const normalised = Object.fromEntries(
+    Object.entries(assigned).map(([name, hash]) => [name, `0x${hash.toUpperCase()}`]),
+  );
+  assert.equal(detectDeployedVersionByCircuit(normalised), BINDING_VERSION);
 });
 
 test('the release pure circuits the passkey caller needs must be present', () => {

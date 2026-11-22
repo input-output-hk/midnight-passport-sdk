@@ -14,6 +14,7 @@ export {
   UnsupportedBindingError,
   assertBindingCompatible,
   detectDeployedVersion,
+  detectDeployedVersionByCircuit,
   resolveBinding,
 } from './registry.js';
 export {

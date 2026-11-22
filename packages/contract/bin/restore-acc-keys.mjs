@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Restore public prover/verifier keys from a pinned Compact 0.35.0 ZKIR bundle.
-// The caller pins the compiler manifest independently of the artefact host.
+// Restore public prover/verifier keys from a pinned ACC ZKIR bundle. The
+// compiler's ZKIR pin and the key-generation profile are independent axes.
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
@@ -15,7 +15,7 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gunzipSync } from 'node:zlib';
 
@@ -34,15 +34,25 @@ const option = (name) => {
   return value;
 };
 const bindingId = args.includes('--binding') ? option('--binding') : 'acc-45721e1';
-/** @type {Record<string, {manifest: string, keys: string}>} */
+/** @type {Record<string, {manifest: string, keys: string, keyToolchain: string, compilerKeys: boolean}>} */
 const packagePins = {
   'acc-45721e1': {
     manifest: '682bfbd3420e4ad1ce8061a585f1029c395d82accdee030751ed25ede62df8ec',
     keys: '195ed95074cfe6dd6670c5229c59f291761d366238415c25499c54d5f6e98d24',
+    keyToolchain: '0.35.0',
+    compilerKeys: true,
   },
   'acc-s3r1.1': {
     manifest: '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f',
     keys: '6f452180f8beb3b4c1844ac18be3517403412be0a06e055dcc867c18e69f52c5',
+    keyToolchain: '0.35.0',
+    compilerKeys: true,
+  },
+  'acc-s3r1.1-zkir036': {
+    manifest: '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f',
+    keys: '05eaeaa3e0fa785ebf13f02225c657201720b0e9b0140374dd6386084fde0e10',
+    keyToolchain: '0.36.1',
+    compilerKeys: false,
   },
 };
 const packagePin = packagePins[bindingId];
@@ -60,6 +70,8 @@ const output = resolve(option('--output'));
 const expectedManifest = args.includes('--manifest-sha256')
   ? option('--manifest-sha256')
   : packagePin.manifest;
+if (!packagePin.compilerKeys && expectedManifest !== packagePin.manifest)
+  fail('alternate key profile requires its packaged compiler-manifest pin');
 const selected = args.includes('--circuit') ? option('--circuit') : undefined;
 const selectedMany = args.includes('--circuits') ? option('--circuits') : undefined;
 if (selected && selectedMany) fail('provide at most one of --circuit or --circuits');
@@ -113,6 +125,13 @@ const allCircuits = Object.keys(manifest.keys ?? {})
   .filter((name) => name.endsWith('.prover'))
   .map((name) => name.slice(0, -'.prover'.length))
   .sort();
+/** @type {Record<string, {prover: {size: number, hash: string}, verifier: {size: number, hash: string}}>} */
+let keyPins = Object.fromEntries(
+  allCircuits.map((name) => [
+    name,
+    { prover: manifest.keys[`${name}.prover`], verifier: manifest.keys[`${name}.verifier`] },
+  ]),
+);
 if (expectedManifest === packagePin.manifest) {
   const keyManifestBytes = readFileSync(
     new URL(`../resources/${bindingId}.key-manifest.json`, import.meta.url),
@@ -127,7 +146,7 @@ if (expectedManifest === packagePin.manifest) {
     keyManifest.compiler?.version !== manifest['compiler-version'] ||
     keyManifest.compiler?.commit !== manifest['compiler-commit'] ||
     keyManifest.regeneration?.tool !== 'zkir-v3' ||
-    keyManifest.regeneration?.toolchainVersion !== '0.35.0' ||
+    keyManifest.regeneration?.toolchainVersion !== packagePin.keyToolchain ||
     Object.keys(keyManifest.circuits ?? {}).length !== allCircuits.length
   )
     fail('key manifest disagrees with the pinned compiler manifest');
@@ -135,13 +154,31 @@ if (expectedManifest === packagePin.manifest) {
     for (const [kind, pin] of Object.entries({
       zkir: manifest.zkir?.[`${circuit}.zkir`],
       bzkir: manifest.zkir?.[`${circuit}.bzkir`],
-      prover: manifest.keys?.[`${circuit}.prover`],
-      verifier: manifest.keys?.[`${circuit}.verifier`],
+      ...(packagePin.compilerKeys
+        ? {
+            prover: manifest.keys?.[`${circuit}.prover`],
+            verifier: manifest.keys?.[`${circuit}.verifier`],
+          }
+        : {}),
     })) {
       const recorded = keyManifest.circuits[circuit]?.[kind];
       if (!pin || recorded?.sha256 !== pin.hash || recorded?.size !== pin.size)
         fail(`${circuit}.${kind}: key manifest differs from the pinned compiler manifest`);
     }
+    const generated = keyManifest.circuits[circuit];
+    for (const kind of ['prover', 'verifier']) {
+      const pin = generated?.[kind];
+      if (
+        !Number.isSafeInteger(pin?.size) ||
+        pin.size <= 0 ||
+        !/^[a-f0-9]{64}$/.test(pin?.sha256 ?? '')
+      )
+        fail(`${circuit}.${kind}: invalid key-generation pin`);
+    }
+    keyPins[circuit] = {
+      prover: { size: generated.prover.size, hash: generated.prover.sha256 },
+      verifier: { size: generated.verifier.size, hash: generated.verifier.sha256 },
+    };
   }
 }
 if (bundledFiles) {
@@ -150,7 +187,7 @@ if (bundledFiles) {
     if (!/^[a-z][a-z0-9_]*$/.test(circuit)) fail(`invalid circuit name: ${circuit}`);
     expected.set(`zkir/${circuit}.zkir`, manifest.zkir?.[`${circuit}.zkir`]);
     expected.set(`zkir/${circuit}.bzkir`, manifest.zkir?.[`${circuit}.bzkir`]);
-    expected.set(`keys/${circuit}.verifier`, manifest.keys?.[`${circuit}.verifier`]);
+    expected.set(`keys/${circuit}.verifier`, keyPins[circuit]?.verifier);
   }
   if (Object.keys(bundledFiles).length !== expected.size)
     fail('key bundle does not contain the exact pinned input set');
@@ -174,8 +211,9 @@ if (bundledFiles) {
 const compactHome = process.env.COMPACT_DIRECTORY;
 if (!compactHome) fail('run inside the pinned Nix shell (COMPACT_DIRECTORY is missing)');
 const compactCompiler = readlinkSync(join(compactHome, 'bin', 'compactc'));
-if (!compactCompiler.includes('/versions/0.35.0/')) fail('Compact 0.35.0 toolchain is required');
-const zkirCompiler = join(dirname(compactCompiler), 'zkir-v3');
+const platform = compactCompiler.match(/\/versions\/[^/]+\/([^/]+)\/compactc$/)?.[1];
+if (!platform) fail('cannot identify the pinned Compact platform');
+const zkirCompiler = join(compactHome, 'versions', packagePin.keyToolchain, platform, 'zkir-v3');
 if (!existsSync(zkirCompiler)) fail('pinned zkir-v3 compiler is missing');
 
 if (selectedNames?.some((name) => !allCircuits.includes(name)))
@@ -193,8 +231,8 @@ for (const circuit of circuits) {
   const prover = join(output, `${circuit}.prover`);
   const verifier = join(output, `${circuit}.verifier`);
   const zkirPin = manifest.zkir?.[`${circuit}.zkir`];
-  const proverPin = manifest.keys?.[`${circuit}.prover`];
-  const verifierPin = manifest.keys?.[`${circuit}.verifier`];
+  const proverPin = keyPins[circuit]?.prover;
+  const verifierPin = keyPins[circuit]?.verifier;
   if (!zkirPin || !proverPin || !verifierPin)
     fail(`${circuit}: incomplete circuit pins in the compiler manifest`);
   if (zkir && !(await checked(zkir, zkirPin)))

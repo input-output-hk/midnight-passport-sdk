@@ -24,10 +24,12 @@ for (const origin of corsOrigins) {
     throw new Error(`invalid CORS origin: ${origin}`);
 }
 
+const keyManifestBytes = readFileSync(join(contract, `resources/${bindingId}.key-manifest.json`));
 const { files, manifestBytes, provers } = loadBundle(
   join(contract, `resources/${bindingId}.zkir.json.gz`),
   bindingId,
   manifestSha256,
+  keyManifestBytes,
 );
 const profile = selectKeyProfile(process.env.PASSPORT_KEY_PROFILE ?? 'all', provers);
 
@@ -48,7 +50,6 @@ const restored = spawnSync(
 if (restored.error) throw restored.error;
 if (restored.status !== 0) throw new Error(`key restoration failed (${restored.status})`);
 
-const keyManifestBytes = readFileSync(join(contract, `resources/${bindingId}.key-manifest.json`));
 const server = createKeyServer({
   bindingId,
   files,
