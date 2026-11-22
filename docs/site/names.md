@@ -835,7 +835,16 @@ one withdrawal and one exact-output recipient ACC deposit using stable prover
 `9.0.2`. Both 52-verifier rosters matched on chain, the intent resumed between
 legs, and balances moved 10/0 → 6/0 → 6/4 with no replay. The local
 qualification reader is an explicit fixture seam. The SDK and ordinary demo
-still refuse this provisional binding; paid user-owned claim, browser passkey
-approval, recovery matrix and online naming are unqualified.
+still refuse this provisional binding. A separate [isolated candidate paid-claim run](../../examples/midnames-local/evidence/candidate-acc-page-paid-claim-retry-20261122.json)
+deployed and activated the full candidate ACC, then used the Passport page with
+a virtual naming credential and fixture connector to prepare two paid claim
+originals in one browser profile. The first claim failed on chain after the
+registry policy was disabled; the sponsor archived its exact original and the
+page released it after reload. A fresh reviewed retry dispatched once and
+recovered indexed success and the same-ACC binding at a canonical finalized
+block after a lost response. The candidate reader was injected only into the
+isolated page harness. Combined ACC creation and claim in the ordinary demo,
+real passkey approval, the broader recovery matrix and online naming remain
+unqualified.
 
 See the [standalone recipe](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local).

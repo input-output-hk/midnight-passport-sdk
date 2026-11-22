@@ -1,0 +1,95 @@
+{
+  "activatedAccAddress": "14c1181524e783ac7a11d225583cb33c842a144aa89294b765393a5e12794053",
+  "candidateAccVerifierRosterChecked": true,
+  "candidateBinding": "acc-s3r1.1-zkir036",
+  "candidateManifestSha256": "590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f",
+  "cleanup": {
+    "inputsUnchanged": true,
+    "leaseReleased": true,
+    "ownedContainersStopped": 3,
+    "retainedVolumes": true,
+    "unrelatedResourcesControlled": 0
+  },
+  "images": [
+    {
+      "arch": "arm64",
+      "id": "sha256:0c1ad548d523c1109aa1f16daab1bf72dcb78c7e17b8a8c6d97424ad0eba7b8a",
+      "service": "node",
+      "tag": "ghcr.io/midnight-ntwrk/midnight-node@sha256:0c1ad548d523c1109aa1f16daab1bf72dcb78c7e17b8a8c6d97424ad0eba7b8a"
+    },
+    {
+      "arch": "arm64",
+      "id": "sha256:119f35db548ba1c390845f215bb1e928e73038bef7c315825aee0461bd54499d",
+      "service": "indexer",
+      "tag": "ghcr.io/midnight-ntwrk/indexer-standalone@sha256:119f35db548ba1c390845f215bb1e928e73038bef7c315825aee0461bd54499d"
+    },
+    {
+      "arch": "arm64",
+      "id": "sha256:787ef99db4b4706eb14d94ad389ca45f1c09bcdf740afecb01899bfbda63dc64",
+      "service": "proof-server",
+      "tag": "ghcr.io/midnight-ntwrk/proof-server@sha256:787ef99db4b4706eb14d94ad389ca45f1c09bcdf740afecb01899bfbda63dc64"
+    }
+  ],
+  "indexedReceiptSha256": "4c620e8fd4953815fc8af2239bc31650122011054885c9b4e6634d3c51b32728",
+  "journey": {
+    "accountCreationConnectorCalls": 1,
+    "bothOriginalsPreparedInPassportPage": true,
+    "connectorWasFixture": true,
+    "firstOriginal": {
+      "archivedAfterBrowserReload": true,
+      "browserDispatchTransport": "unknown",
+      "browserReleaseReason": "CLAIM_SEGMENT_FAILURE",
+      "canonicalFinalizedHash": "0ac116d9533220a850a09a607bbf2638d7900da4e99515e0ec8d0ca8b9773559",
+      "dispatches": 1,
+      "indexedReason": "claim-failed",
+      "sponsorArchive": "exact indexed claim failure",
+      "transactionIdentifiers": [
+        "009363284564f07d0c0de7dbca7d72cc975a501d47d7138c3215fe41cb04065b3c",
+        "001d2f25dd2beaa49e9ef29ea88e58fe115ab0005fce27aca1ac23831240d95d1c"
+      ],
+      "transactionSha256": "56ff94b57eae2ca21af2bdbef8670cfac4bb02ec71f99736370e06be5dd19ad1"
+    },
+    "pageDispatchRequests": 2,
+    "pagePrepareRequests": 2,
+    "pageProofRequests": 2,
+    "pageQuoteRequests": 2,
+    "retry": {
+      "canonicalFinalizedBlock": {
+        "hash": "fd554528b3226ea7b266824fc8c8cf992d0e5e4286c8686f0328a9c4b8b25d98",
+        "height": 96
+      },
+      "dispatches": 1,
+      "indexedSuccess": true,
+      "lostSponsorResponse": true,
+      "recoveredInSameBrowserProfile": true,
+      "registryBoundToSameAcc": true,
+      "transactionIdentifiers": [
+        "0011b616dc21199c85928057f2be9adc0bb3d6e83e7a3cd57ad702a719103df610",
+        "00e4c4656e5ace2ddb4dbb976b9c12d064fbf87bab549178e8fa1adcb34a761ed8"
+      ],
+      "transactionSha256": "74597cdda0a6b6c70f17177e035d3830dbd8018ed3b61277449c21dba6f30841"
+    },
+    "sameActivatedAcc": true,
+    "sameBrowserProfile": true,
+    "sameOwnerCommitment": true
+  },
+  "kind": "candidate-acc-isolated-page-owned-paid-claim-retry",
+  "limits": [
+    "The ACC was deployed and activated by the isolated native runner before browser login; the page connector supplied that account. This does not prove a combined create/open and claim ceremony.",
+    "The page used a virtual naming credential and fixture-only provisional ACC reader/connector. The ordinary SDK and demo still refuse this binding.",
+    "The result covers one paid local standalone .night claim failure and retry. It does not qualify a real passkey provider, public passport.night, online provider agreement, name-owner recovery or a released package."
+  ],
+  "maintenanceAuthorityRetired": true,
+  "name": "charlie.night",
+  "networkId": "undeployed",
+  "observedAt": "2026-11-22",
+  "originalTransactionCount": 20,
+  "parentReceiptSha256": "4f9029d77380009764c2dbba9dffbfa8f5c8ff54758848b3553465dd911efad5",
+  "registryAddress": "3d0502ab6b226f12ad621fb6c4e5e9882c75b2df479545cd65d1325f7ad30591",
+  "registryProfile": "standalone-0.35",
+  "result": "PASS",
+  "schemaVersion": 1,
+  "sourceDirty": false,
+  "sourceHead": "f1309daa8362d7415d91e799638ee9755eee69e8",
+  "workerReceiptSha256": "8eec79633f51117861acb803e0a6fe15c09e4b258f77189de363b25120514d6e"
+}

@@ -1052,7 +1052,9 @@ candidate ACCs, one root-owned `.night` name, one finalized withdrawal and one
 recipient ACC deposit. The retained intent recovered between legs, with 10/0
 → 6/0 → 6/4 balances and no replay. This establishes only the isolated local
 candidate route. User-owned paid registration, browser consent, recovery and
-online admission remain separate gates.
+online admission remain separate gates for that named payment run. A separate
+[candidate paid-claim run](evidence/candidate-acc-page-paid-claim-retry-20261122.json)
+now qualifies one local page-owned registration and failure retry.
 
 ### Provisional candidate paid name claim and retry
 
@@ -1083,10 +1085,15 @@ nix develop -c env -u LD_DYLD_PATH \
 Choose a new output name and unused subnet after inspecting Docker networks.
 The lane requires at least 50 GiB free disk and 24 GiB Docker memory, preserves
 all originals and failed receipts, and stops only its recorded containers.
-Until a passing native receipt is recorded, this is an available qualification
-command, not a claim of candidate name issuance. A pass would establish the
-isolated page-owned local route; combined ACC creation and claim, real
-passkey-provider consent, and online service admission need separate evidence.
+The signed `f1309da` [native run](evidence/candidate-acc-page-paid-claim-retry-20261122.json)
+passed with two page-prepared paid originals in one persistent browser profile.
+The first had an indexed claim failure, an exact sponsor archive and browser
+release after reload. The fresh retry dispatched once, then recovered its
+indexed success and same-ACC binding after a lost sponsor response. The runner
+deployed the candidate ACC before opening the page; its login connector was a
+fixture and its naming credential was virtual. Combined ACC creation and
+claim, real passkey-provider consent, and online service admission need
+separate evidence.
 
 The signed `a20a9b9` negative run `midnames-night-browser-decline-20261116a`
 passed on isolated `undeployed`. Chromium displayed the same exact review and
