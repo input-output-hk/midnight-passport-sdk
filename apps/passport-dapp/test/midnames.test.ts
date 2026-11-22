@@ -236,6 +236,9 @@ test('an online profile requires a complete known name-to-ACC pin before lookup'
     indexerWsUrl: 'wss://indexer.preview.midnight.network/api/v4/graphql/ws',
     verificationIndexerUrl: 'https://witness.preview.example.test/api/v4/graphql',
     verificationIndexerWsUrl: 'wss://witness.preview.example.test/api/v4/graphql/ws',
+    nodeUrl: 'https://node.preview.example.test/rpc',
+    anchorBlockHeight: '42',
+    anchorBlockHash: 'ab'.repeat(32),
   };
   for (const missing of [
     {},
@@ -259,6 +262,14 @@ test('an online profile requires a complete known name-to-ACC pin before lookup'
     { verificationIndexerUrl: undefined },
     { verificationIndexerUrl: config.indexerUrl },
     { verificationIndexerWsUrl: 'wss://user:password@witness.preview.example.test/graphql' },
+    { nodeUrl: undefined },
+    { anchorBlockHeight: undefined },
+    { anchorBlockHash: undefined },
+    { nodeUrl: config.indexerUrl },
+    { nodeUrl: config.verificationIndexerUrl },
+    { anchorBlockHash: '0x' + config.anchorBlockHash },
+    { anchorBlockHeight: '0' },
+    { anchorBlockHeight: '1e2' },
   ])
     assert.throws(() => configureMidnames({ ...config, ...invalid }, 'preview', 'acc-s3r1.1'));
 });
@@ -270,6 +281,9 @@ test('a remote indexer requires the known mapping even when labelled undeployed'
     indexerWsUrl: 'wss://example.test/api/v4/graphql/ws',
     verificationIndexerUrl: 'https://witness.example.test/api/v4/graphql',
     verificationIndexerWsUrl: 'wss://witness.example.test/api/v4/graphql/ws',
+    nodeUrl: 'https://node.example.test/rpc',
+    anchorBlockHeight: '42',
+    anchorBlockHash: 'ab'.repeat(32),
   };
   assert.throws(
     () => configureMidnames(remote, 'undeployed', 'acc-s3r1.1'),

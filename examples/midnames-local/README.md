@@ -32,6 +32,11 @@ contracts at that canonical block hash, and checks it again. An older indexer
 tip refuses rather than making a moved name look current. This is a local chain-state
 observation through one indexer, not an authenticated online provider or a
 guarantee that the binding will remain unchanged after the read.
+It also exercises the interactive resolver's node-pin check on the indexer's
+selected block and verifies the supported ACC target. The launcher passes the
+same claim-block pin and shared node URL into the browser. If the indexer tip
+is not finalized on the node yet, the browser refuses that lookup until the
+two catch up; it does not silently use an unfinalized record.
 
 ```sh
 nix develop -c node scripts/midnames-local-demo.mjs check

@@ -927,14 +927,20 @@ The demo's optional Midnames reader uses the existing **Name service** panel.
 Set the base build inputs in the [naming adapter guide](../docs/site/names.md#source-preview-midnames-210).
 A configured lookup reads the registry's contract target and verifies the
 deployed ACC binding at the same indexer block before displaying it. The
-indexer is still trusted for the block and contract-state bytes. A
+indexer is still trusted for contract-state bytes. With a configured node pin,
+the lookup first checks that the selected indexer block is canonical and
+finalized on that node. Configure `VITE_MIDNAMES_NODE_URL` and the recorded
+`VITE_MIDNAMES_CHAIN_ANCHOR_HEIGHT` and `VITE_MIDNAMES_CHAIN_ANCHOR_HASH`
+together. The local launcher supplies the shipped claim block; online profiles
+require a separately configured node origin and an independently confirmed
+non-genesis chain block. A
 non-`undeployed` network or non-loopback indexer also requires an independently
 observed, public known-name and ACC pin plus a second, distinct-origin indexer
 endpoint pair. Each lookup
 rechecks the known pair through both paths and refuses an absent, changed or
 divergent binding. Configure `VITE_MIDNAMES_VERIFICATION_INDEXER_URL` and
 `VITE_MIDNAMES_VERIFICATION_INDEXER_WS_URL` together. Distinct origins do not
-prove independent chain state; online qualification still needs a verified live
+prove independent chain state or state-byte authenticity; online qualification still needs a verified live
 mapping and authenticated host-controlled provider where required. Claim
 finality continues to use the primary path.
 The default remains the mock.

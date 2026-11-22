@@ -17,6 +17,7 @@ import {
 } from '@input-output-hk/mn-passport-contract';
 import { ledger } from '#acc';
 import type { MidnamesProfile, MidnamesReads } from './resolver.js';
+import type { MidnamesIndexerBlock } from './chain-finality.js';
 import {
   MIDNAMES_REGISTRY_VERIFIERS,
   STANDALONE_REGISTRY_VERIFIERS,
@@ -120,6 +121,7 @@ export function createMidnamesLedgerReads(
   bindingId: string,
   profileId: MidnamesRegistryProfile = 'midnames-2.1.0',
   candidate?: CandidateAccountQualification,
+  verifyFinalizedBlock?: (block: MidnamesIndexerBlock) => Promise<void>,
 ): MidnamesReads & {
   readSupportedTarget(
     name: string,
@@ -221,6 +223,7 @@ export function createMidnamesLedgerReads(
         block.height < 0
       )
         throw new PassportNameError('Unavailable');
+      await verifyFinalizedBlock?.(block);
       const source: RegistryProvider = {
         ...provider,
         queryContractState: (address) =>

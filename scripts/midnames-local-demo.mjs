@@ -704,6 +704,9 @@ async function demo(options, claim) {
         VITE_MIDNAMES_NETWORK_ID: 'undeployed',
         VITE_MIDNAMES_INDEXER_URL: 'http://127.0.0.1:8088/api/v4/graphql',
         VITE_MIDNAMES_INDEXER_WS_URL: 'ws://127.0.0.1:8088/api/v4/graphql/ws',
+        VITE_MIDNAMES_NODE_URL: 'http://127.0.0.1:9944',
+        VITE_MIDNAMES_CHAIN_ANCHOR_HEIGHT: String(claim.claimBlock.height),
+        VITE_MIDNAMES_CHAIN_ANCHOR_HASH: claim.claimBlock.hash,
         ...(!options.candidateAssets && {
           VITE_MIDNAMES_KNOWN_NAME: claim.name,
           VITE_MIDNAMES_KNOWN_ACC: claim.accountAddress,

@@ -7,6 +7,7 @@ import {
 import { isClaimSponsorOrigin, requestClaimDispatch } from './claim-dispatch.js';
 import { registryProfile } from './registry-pins.js';
 import { requireMidnamesV4IndexerPair } from './indexer-endpoints.js';
+import { createMidnamesNodeFinality, type MidnamesNodePin } from './chain-finality.js';
 import { claimHex, claimName, type ClaimRecovery } from './claim-receipt.js';
 import type { ClaimPreparation } from './claim-quote.js';
 import type { CandidateAccountQualification } from './ledger-reader.js';
@@ -23,6 +24,9 @@ export interface MidnamesConfig {
   readonly indexerWsUrl?: string | undefined;
   readonly verificationIndexerUrl?: string | undefined;
   readonly verificationIndexerWsUrl?: string | undefined;
+  readonly nodeUrl?: string | undefined;
+  readonly anchorBlockHeight?: string | undefined;
+  readonly anchorBlockHash?: string | undefined;
   readonly knownName?: string | undefined;
   readonly knownAccountAddress?: string | undefined;
 }
@@ -78,6 +82,37 @@ function selectedClaimProtocolVersion(
   return claimProtocolVersion(config.claimProtocolVersion);
 }
 
+function configuredNodePin(
+  config: MidnamesConfig,
+  online: boolean,
+  indexerHttp: string,
+  verificationHttp: string | undefined,
+): MidnamesNodePin | undefined {
+  const { nodeUrl, anchorBlockHeight, anchorBlockHash } = config;
+  const hasNodePin =
+    nodeUrl !== undefined || anchorBlockHeight !== undefined || anchorBlockHash !== undefined;
+  if (online && !hasNodePin)
+    throw new Error('Online naming requires a separately pinned finalized node.');
+  if (!hasNodePin) return undefined;
+  if (!nodeUrl || !anchorBlockHeight || !anchorBlockHash)
+    throw new Error('Naming node finality requires a complete node URL and chain block pin.');
+  if (!/^[1-9][0-9]*$/.test(anchorBlockHeight))
+    throw new Error('Naming chain anchor height must be a positive decimal integer.');
+  const pin = {
+    nodeUrl: endpoint(nodeUrl, 'https:', 'http:'),
+    anchorHeight: Number(anchorBlockHeight),
+    anchorHash: anchorBlockHash,
+  };
+  createMidnamesNodeFinality(pin);
+  if (
+    online &&
+    (new URL(pin.nodeUrl).origin === new URL(indexerHttp).origin ||
+      (verificationHttp && new URL(pin.nodeUrl).origin === new URL(verificationHttp).origin))
+  )
+    throw new Error('Online naming needs a node origin separate from both indexers.');
+  return pin;
+}
+
 function configuredIndexers(config: MidnamesConfig, networkId: string) {
   const {
     indexerUrl,
@@ -118,7 +153,7 @@ function configuredIndexers(config: MidnamesConfig, networkId: string) {
       new URL(verification.ws).origin === new URL(ws).origin)
   )
     throw new Error('Naming verification must use a distinct indexer origin.');
-  return { http, ws, verification };
+  return { http, ws, verification, online };
 }
 
 function requireCandidateLocal(
@@ -159,8 +194,10 @@ export function configureMidnames(
   )
     throw new Error('Configure the registry, namespace, matching network, and both indexer URLs.');
   const profileId = registryProfile(config.registryProfile, networkId);
-  const { http, ws, verification } = configuredIndexers(config, networkId);
+  const { http, ws, verification, online } = configuredIndexers(config, networkId);
   requireCandidateLocal(candidate, profileId, networkId, http, ws, verification);
+  const nodePin = configuredNodePin(config, online, http, verification?.http);
+  const verifyFinalizedBlock = nodePin && createMidnamesNodeFinality(nodePin);
   const load = (readerHttp: string, readerWs: string) =>
     import('./ledger-reader.js').then(({ createMidnamesIndexer, createMidnamesLedgerReads }) =>
       createMidnamesLedgerReads(
@@ -169,6 +206,7 @@ export function configureMidnames(
         bindingId,
         profileId,
         candidate,
+        verifyFinalizedBlock,
       ),
     );
   const lazyReads = (readerHttp: string, readerWs: string) => {

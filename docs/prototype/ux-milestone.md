@@ -111,9 +111,11 @@ The Name service panel can use an explicitly configured Midnames registry.
 A partial configuration disables lookup and shows the setup requirement.
 Lookup reads the registry and supported target ACC at one indexer block,
 then displays the checked contract target without initiating an account or
-wallet action. The indexer remains a trusted source of those bytes. An online
+wallet action. With a node chain pin, it checks that block against the node's
+finalized canonical chain before reading either contract. The indexer remains
+a trusted source of the contract-state bytes. An online
 profile requires a public known-name-to-ACC
-pin and two distinct-origin indexer paths. Each lookup rechecks the pin and
+pin, two distinct-origin indexer paths and a separately pinned node. Each lookup rechecks the pin and
 requires both paths to agree; changed, divergent or unavailable observations
 refuse the lookup. See the [configuration and evidence scope](../site/names.md#source-preview-midnames-210).
 

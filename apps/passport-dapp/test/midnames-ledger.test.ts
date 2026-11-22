@@ -468,6 +468,22 @@ test('installed Midnames v2.1 reads its generated registry over the Ledger 9 ind
         : null;
     },
   } as unknown as Parameters<typeof createMidnamesLedgerReads>[0];
+  const blocked = createMidnamesLedgerReads(
+    pinnedProvider,
+    'undeployed',
+    'acc-s3r1.1',
+    undefined,
+    undefined,
+    async (block) => {
+      assert.deepEqual(block, { hash: blockHash, height: 100 });
+      throw new Error('node finality unavailable');
+    },
+  );
+  await assert.rejects(
+    blocked.readSupportedTarget('alice.night', profile),
+    /node finality unavailable/,
+  );
+  assert.deepEqual(offsets, [], 'Do not read registry or ACC bytes before the node block check.');
   const atomic = createMidnamesLedgerReads(pinnedProvider, 'undeployed', 'acc-s3r1.1');
   await assert.rejects(atomic.readSupportedTarget('alice.night', profile), {
     code: 'InvalidRecord',

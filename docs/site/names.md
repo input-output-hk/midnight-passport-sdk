@@ -119,6 +119,9 @@ network as the Passport demo.
 | `VITE_MIDNAMES_INDEXER_WS_URL` | Public WSS endpoint, or WS on loopback |
 | `VITE_MIDNAMES_VERIFICATION_INDEXER_URL` | Second HTTPS GraphQL endpoint on a distinct origin; required for a non-`undeployed` network or non-loopback primary indexer |
 | `VITE_MIDNAMES_VERIFICATION_INDEXER_WS_URL` | Second WSS endpoint on a distinct origin; required together with its HTTP endpoint for those profiles |
+| `VITE_MIDNAMES_NODE_URL` | Separate node JSON-RPC HTTPS endpoint, or HTTP on loopback; required for online lookup and set by the local launcher |
+| `VITE_MIDNAMES_CHAIN_ANCHOR_HEIGHT` | Positive decimal height of a previously confirmed block on the intended chain; required with the node URL |
+| `VITE_MIDNAMES_CHAIN_ANCHOR_HASH` | That block's 64-character lowercase hash, without `0x`; required with the node URL |
 | `VITE_MIDNAMES_KNOWN_NAME` | Exact canonical name from an independent, dated observation; required on non-`undeployed` networks or with a non-loopback indexer |
 | `VITE_MIDNAMES_KNOWN_ACC` | Its independently observed 64-hex deployed ACC address; required on non-`undeployed` networks or with a non-loopback indexer |
 
@@ -128,8 +131,14 @@ checks the registry verifier roster and resolves the name from that block using
 the Midnames `/core` subpath. Only its contract target proceeds. The adapter
 checks the activated ACC and complete verifier roster at **the same block**.
 Missing names, wrong target types and unavailable reads have separate outcomes.
-An indexer is a trusted read input: a stale or dishonest indexer can still
-serve a stale block. The demo presents the result for inspection and value
+With a configured node pin, the adapter first checks the anchor and the
+indexer's selected block hash against that node's canonical, finalized chain.
+It refuses an unfinalized, noncanonical or wrong-chain block before reading the
+registry or ACC. Online profiles require this pin on a node origin separate
+from both indexers. The node can be behind the indexer, in which case lookup
+refuses until a finalized block becomes available. The indexer remains trusted
+for the **contract-state bytes** returned at the selected block; the node check
+is not a state proof. The demo presents the result for inspection and value
 routes re-resolve before submission.
 
 For any non-`undeployed` network or non-loopback indexer, the two known-mapping
@@ -173,9 +182,11 @@ before it is enabled.
 The local [finalized-state verifier](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local#open-the-local-passport-and-midnames-demo)
 uses the node's canonical finalized block as a single Indexer API v4 offset
 for the registry and target ACC. This avoids reading those two contracts on
-different indexer tips in that operator check. The interactive resolver still
-reads current indexer state when each lookup runs; the check does not turn an
-indexer response into a cryptographic state proof or qualify online providers.
+different indexer tips in that operator check. The interactive resolver also
+checks its selected indexer block against the configured node's finalized
+canonical chain on each supported-target lookup. It still trusts indexer
+contract-state bytes at that block. Neither check qualifies an online provider
+or proves the returned state cryptographically.
 
 As checked on 19 November 2026, the pinned SDK's historical Midnight-hosted
 preprod indexer endpoint returns HTTP 410. The [current network endpoint
