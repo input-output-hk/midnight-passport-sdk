@@ -33,6 +33,7 @@ import {
 } from '../../scripts/qualification/native-isolation-control.mjs';
 import { dedicatedIndexerReadiness } from '../../scripts/qualification/indexer-readiness.mjs';
 import { verifyPreparedRegistry } from './verify-prepared.mjs';
+import { verifyArtefacts } from '../../packages/service/dist/artefacts.js';
 import { assertReviewTerminal, interactiveReviewRequested } from './terminal-review.mjs';
 
 assert.ok(process.env.IN_NIX_SHELL);
@@ -61,8 +62,24 @@ const docker = (args) =>
   ).trim();
 assert.match(
   out ?? '',
-  /^midnames-(?:deposit|deposit-browser|night-send|night-browser|claim-handoff|claim-browser|claim-preproof|claim-owner-browser|claim-partial-probe|claim-retry|claim-page-retry)-[a-z0-9-]{1,48}$/,
+  /^midnames-(?:acc-candidate|deposit|deposit-browser|night-send|night-browser|claim-handoff|claim-browser|claim-preproof|claim-owner-browser|claim-partial-probe|claim-retry|claim-page-retry)-[a-z0-9-]{1,48}$/,
 );
+const candidateAccount = out.startsWith('midnames-acc-candidate-');
+const candidateAssets = process.env.PASSPORT_MIDNAMES_CANDIDATE_ASSETS;
+assert.equal(
+  Boolean(candidateAssets),
+  candidateAccount,
+  'Candidate ACC assets require their own lane',
+);
+if (candidateAccount) {
+  assert.ok(candidateAssets && isAbsolute(candidateAssets));
+  assert.equal(realpathSync(candidateAssets), candidateAssets);
+  assert.ok(BigInt(disk.bavail) * BigInt(disk.bsize) >= 50n * 1024n ** 3n);
+  verifyArtefacts(
+    candidateAssets,
+    '590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f',
+  );
+}
 const browserReview =
   out.startsWith('midnames-deposit-browser-') || out.startsWith('midnames-night-browser-');
 const keyProbe = out.startsWith('midnames-night-browser-keyprobe-');
@@ -87,23 +104,26 @@ assert.ok(!browserDecline || !manualBrowserReview);
 assert.ok(!browserRepoint || !manualBrowserReview);
 assert.ok(!hybridVerifier || (!manualBrowserReview && !browserRepoint));
 assert.ok(!fullVerifier || (!manualBrowserReview && !browserRepoint));
-const fixtureMode = out.startsWith('midnames-claim-browser-')
-  ? 'claim-browser'
-  : out.startsWith('midnames-claim-preproof-')
-    ? 'claim-preproof'
-    : out.startsWith('midnames-claim-owner-browser-')
-      ? 'claim-owner-browser'
-      : out.startsWith('midnames-claim-partial-probe-')
-        ? 'claim-partial-probe'
-        : out.startsWith('midnames-claim-page-retry-')
-          ? 'claim-page-retry'
-          : out.startsWith('midnames-claim-retry-')
-            ? 'claim-retry'
-            : out.startsWith('midnames-claim-handoff-')
-              ? 'claim-handoff'
-              : out.startsWith('midnames-night-send-') || out.startsWith('midnames-night-browser-')
-                ? 'named-night-send'
-                : 'named-shielded-deposit';
+const fixtureMode = candidateAccount
+  ? 'acc-candidate'
+  : out.startsWith('midnames-claim-browser-')
+    ? 'claim-browser'
+    : out.startsWith('midnames-claim-preproof-')
+      ? 'claim-preproof'
+      : out.startsWith('midnames-claim-owner-browser-')
+        ? 'claim-owner-browser'
+        : out.startsWith('midnames-claim-partial-probe-')
+          ? 'claim-partial-probe'
+          : out.startsWith('midnames-claim-page-retry-')
+            ? 'claim-page-retry'
+            : out.startsWith('midnames-claim-retry-')
+              ? 'claim-retry'
+              : out.startsWith('midnames-claim-handoff-')
+                ? 'claim-handoff'
+                : out.startsWith('midnames-night-send-') ||
+                    out.startsWith('midnames-night-browser-')
+                  ? 'named-night-send'
+                  : 'named-shielded-deposit';
 if (interactive)
   assert.ok(
     !browserReview &&
@@ -289,6 +309,7 @@ try {
     PASSPORT_MIDNAMES_BROWSER_DECISION: browserDecline ? 'decline' : 'approve',
     PASSPORT_MIDNAMES_BROWSER_REPOINT: browserRepoint ? '1' : '0',
     PASSPORT_MIDNAMES_DIAG_KEY_DIR: keyProbeDirectory,
+    PASSPORT_MIDNAMES_CANDIDATE_ASSETS: candidateAssets,
   };
   const worker = spawn(
     process.execPath,
@@ -296,7 +317,10 @@ try {
       '--experimental-import-meta-resolve',
       '--import',
       'tsx',
-      join(import.meta.dirname, 'deposit-fixture.mjs'),
+      join(
+        import.meta.dirname,
+        candidateAccount ? 'candidate-account-fixture.mjs' : 'deposit-fixture.mjs',
+      ),
       output,
       prepared,
       ref,
@@ -334,6 +358,13 @@ try {
       await inputs.verify(check);
       await verifyPreparedRegistry(prepared, check);
       verifyProbeKeys();
+      if (candidateAccount) {
+        assert.ok(candidateAssets);
+        verifyArtefacts(
+          candidateAssets,
+          '590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f',
+        );
+      }
       receipt.inputsUnchanged = true;
     }
   } catch (error) {

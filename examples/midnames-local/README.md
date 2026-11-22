@@ -996,6 +996,33 @@ inventory-matched `.verifier` files and the pinned JubJub withdrawal
 creating the isolated stack. Use it only for a fresh isolated diagnostic;
 the existing retired ACC cannot accept this roster.
 
+### Provisional candidate ACC native gate
+
+The `midnames-acc-candidate-` lane uses the separately staged, complete
+`acc-s3r1.1-zkir036` asset tree. It verifies every file against the derived
+manifest before claiming the native lease, selects that same tree for the
+compiled contract, verifier reads and transaction proving, then deploys and
+activates a fresh JubJub ACC on an isolated Ledger 9 stack. It checks all 52
+on-chain verifier assignments and retired maintenance authority. The parent
+checks the physical inputs again, stops only its recorded containers and
+releases its exact lease. It requires 50 GiB free and 24 GiB Docker memory.
+
+```sh
+PASSPORT_MIDNAMES_CANDIDATE_ASSETS=/absolute/path/to/verified-candidate-assets \
+nix develop -c env -u LD_DYLD_PATH \
+  PASSPORT_MIDNAMES_NATIVE=1 PASSPORT_RC_LOCALNET=1 \
+  node examples/midnames-local/qualify-deposit.mjs \
+  midnames-acc-candidate-fresh-run \
+  /absolute/path/to/prepared-registry \
+  /absolute/path/to/acc-reference/contract
+```
+
+Use a new output name for each attempt. A PASS proves only this candidate
+deployment and activation on the declared isolated chain. The binding stays
+provisional: name issuance, recipient resolution, NIGHT withdrawal/deposit,
+recovery, real passkey consent and online provider acceptance need their own
+gates before the SDK or demo admits it.
+
 The signed `a20a9b9` negative run `midnames-night-browser-decline-20261116a`
 passed on isolated `undeployed`. Chromium displayed the same exact review and
 clicked **Decline**. The source/target balances stayed 10/0 with zero owner
