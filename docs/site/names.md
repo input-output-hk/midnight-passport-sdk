@@ -791,5 +791,11 @@ exact-output deposit, moving the two ACC balances from 10/0 through 6/0 to
 6/4. This qualifies that local compatibility profile only. The optional
 shared-stack compatibility prover is configured in the
 [localnet guide](../../infra/localnet/README.md#isolated-prover-for-the-pinned-compact-035-acc).
+The first stable `9.0.0` prover also refused the same withdrawal. An
+[offline ACC key comparison](../../examples/midnames-local/evidence/compact036-acc-withdrawal-key-probe-20261122.json)
+found that the exact source produces 52 byte-identical ZKIR files with Compact
+0.36, while the newer ZKIR key generator deterministically changes the JubJub
+withdrawal key pair. The deposit control keys remain identical. This does not
+prove the HTTP 400 cause or qualify new keys for an existing deployed ACC.
 
 See the [standalone recipe](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local).

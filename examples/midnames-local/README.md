@@ -922,6 +922,19 @@ option. The release prover still needs a compatible withdrawal proof before
 this route can be claimed as release-stack qualified. The RC-prover PASS uses
 a synthetic owner and automated click, not a real passkey-provider ceremony.
 
+A separate [offline Compact 0.36 ACC probe](evidence/compact036-acc-withdrawal-key-probe-20261122.json)
+copied the exact pinned source without editing it. All 52 generated ZKIR files
+matched the 0.35 artifacts byte for byte. Recompiling the same JubJub
+withdrawal ZKIR with the pinned 0.35 ZKIR tool reproduced the deployed key
+pair; the 0.36 tool's newer ZKIR generator deterministically produced a
+different prover and verifier key pair of the same format and lengths. The
+`deposit_unshielded` control keys stayed byte-identical. This is a concrete
+key-generation compatibility lead, not proof that these changed keys caused
+the stable prover's HTTP 400. No proof used the new keys, and no verifier key
+was installed. The retired 0.35 ACC cannot be repaired by replacing local
+files; a new artifact/binding profile and isolated native qualification are
+required before using 0.36 for this route.
+
 The signed `a20a9b9` negative run `midnames-night-browser-decline-20261116a`
 passed on isolated `undeployed`. Chromium displayed the same exact review and
 clicked **Decline**. The source/target balances stayed 10/0 with zero owner

@@ -88,7 +88,12 @@ repeated the two-leg route on a release node and Indexer API v4. The release
 before submission. The pinned `9.0.0-rc.8` compatibility prover on the same
 release chain completed one browser-reviewed synthetic payment with exact
 bridge-output consumption and 10/0 → 6/0 → 6/4 ACC balances. This is a
-local compatibility profile, not release-prover or online conformance.
+local compatibility profile, not release-prover or online conformance. The
+first stable `9.0.0` prover also rejected that withdrawal. An
+[offline ACC key probe](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact036-acc-withdrawal-key-probe-20261122.json)
+found identical Compact 0.35/0.36 ZKIR for all 52 circuits but different,
+repeatable JubJub withdrawal key bytes from the newer generator. The precise
+HTTP 400 cause and a qualified replacement binding remain open.
 
 The signed `a20a9b9` isolated owner-browser refusal adds a narrow #318 negative
 result: after Chromium displayed the exact named NIGHT route and clicked
