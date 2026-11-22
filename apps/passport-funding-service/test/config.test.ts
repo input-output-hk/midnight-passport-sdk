@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { BINDING_VERSION, resolveBinding } from '@input-output-hk/mn-passport-contract';
@@ -118,6 +118,38 @@ test('startup refuses a changed binding, manifest, weak token and NIGHT outside 
       }),
     /NIGHT requires/,
   );
+});
+
+test('provisional funding requires separate local assets and NIGHT-only policy', () => {
+  const candidatePath = join(dir, 'candidate-assets');
+  const nightPolicy = join(dir, 'candidate-night.json');
+  mkdirSync(candidatePath, { recursive: true });
+  const candidateAssets = realpathSync(candidatePath);
+  writeFileSync(
+    nightPolicy,
+    JSON.stringify([{ color: '00'.repeat(32), maxPerRequest: '10', maxPerUtcDay: '100' }]),
+  );
+  const env = {
+    ...base,
+    PASSPORT_BINDING_ID: 'acc-s3r1.1-zkir036',
+    PASSPORT_CANDIDATE_LOCAL: '1',
+    PASSPORT_MANIFEST_SHA256: '590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f',
+    PASSPORT_ARTEFACT_DIR: candidateAssets,
+    MIDNIGHT_STACK: 'shared-ledger9',
+    PASSPORT_FUNDING_ASSETS_FILE: nightPolicy,
+  };
+  const selected = loadFundingConfig(env);
+  assert.equal(selected.bindingId, env.PASSPORT_BINDING_ID);
+  assert.equal(selected.artefactDir, candidateAssets);
+  assert.equal(selected.manifestSha256, env.PASSPORT_MANIFEST_SHA256);
+  for (const changed of [
+    { PASSPORT_CANDIDATE_LOCAL: '0' },
+    { MIDNIGHT_STACK: 'undeployed' },
+    { MN_NETWORK_ID: 'preview' },
+    { PASSPORT_MANIFEST_SHA256: '00'.repeat(32) },
+    { PASSPORT_FUNDING_ASSETS_FILE: assetsFile },
+  ])
+    assert.throws(() => loadFundingConfig({ ...env, ...changed }));
 });
 
 test('deployment eligibility is network scoped and a corrupt log fails closed', () => {

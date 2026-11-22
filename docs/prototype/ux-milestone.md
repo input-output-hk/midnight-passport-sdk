@@ -166,6 +166,8 @@ session. It uses a separate deployment registry and claim journal and admits
 the candidate only with exact build pins and loopback Indexer API v4. This
 configuration route does not yet qualify the full combined journey; a fresh
 native page run is required before that claim.
+Candidate demo funding uses a separate NIGHT-only policy and reservation file;
+an older stable funding receipt is not evidence of a candidate deposit.
 
 An unavailable indexer leaves the original receipt intact and reports the
 check as unavailable. Without claim preparation or sponsor dispatch, the panel

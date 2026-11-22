@@ -89,6 +89,9 @@ The candidate build checks the exact manifest and generated module hashes.
 The service checks the complete candidate asset tree at startup. A successful
 build or page start does not qualify the combined create, claim, deposit and
 named-send journey; its native receipt must be recorded separately.
+`--funding` is optional after provisioning a dedicated funding wallet with a
+NIGHT-only policy. The candidate uses separate funding reservations and the
+candidate deployment log; no old stable-account reservation is reused.
 
 ### Register a name and fund a Passport account
 

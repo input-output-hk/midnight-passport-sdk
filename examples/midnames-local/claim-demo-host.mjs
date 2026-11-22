@@ -16,12 +16,20 @@ import { verifyIndexedClaimFailure } from './claim-indexed-failure.mjs';
 import { createClaimSponsorHandler } from './claim-sponsor-http.mts';
 import { startDemoOwnerBundle } from './claim-owner-browser-host.mjs';
 import { verifyPreparedRegistry } from './verify-prepared.mjs';
+import { verifyDemoArtefacts } from '../../scripts/demo-artifact-pin.mjs';
 
 const networkId = 'undeployed';
 const indexerUrl = 'http://127.0.0.1:8088/api/v4/graphql';
 const indexerWsUrl = 'ws://127.0.0.1:8088/api/v4/graphql/ws';
 const nodeUrl = 'http://127.0.0.1:9944';
-const proverUrl = 'http://127.0.0.1:16320';
+const candidateBinding = process.env.PASSPORT_BINDING_ID === 'acc-s3r1.1-zkir036';
+if (candidateBinding) verifyDemoArtefacts(process.env);
+else
+  assert.ok(
+    !process.env.PASSPORT_BINDING_ID || process.env.PASSPORT_BINDING_ID === 'acc-s3r1.1',
+    'Unknown local claim ACC binding.',
+  );
+const proverUrl = candidateBinding ? 'http://127.0.0.1:6300' : 'http://127.0.0.1:16320';
 const origin = 'http://localhost:5173';
 const claimProtocolVersion = Number(process.env.VITE_MIDNAMES_CLAIM_PROTOCOL_VERSION);
 assert.equal(claimProtocolVersion, 2001100, 'Pin the shared Ledger 9 claim protocol.');
@@ -97,11 +105,13 @@ assert.deepEqual(walletModule.CONFIG, {
 });
 const get = (name) =>
   import(import.meta.resolve(name, pathToFileURL(join(reference, 'package.json')).href));
-const [{ Transaction }, { getContractLedger }, { firstValueFrom }] = await Promise.all([
-  get('@midnightntwrk/ledger-v9'),
-  appImport('@midnames/sdk/core'),
-  get('rxjs'),
-]);
+const [{ Transaction }, { getContractLedger }, { firstValueFrom }, { ledger: accountLedger }] =
+  await Promise.all([
+    get('@midnightntwrk/ledger-v9'),
+    appImport('@midnames/sdk/core'),
+    get('rxjs'),
+    appImport('@input-output-hk/mn-passport-contract/bindings/acc-s3r1.1'),
+  ]);
 const wallet = await walletModule.createWallet(seed);
 let owner;
 let server;
@@ -119,8 +129,15 @@ try {
   const reader = createMidnamesLedgerReads(
     createMidnamesIndexer(networkId, indexerUrl, indexerWsUrl),
     networkId,
-    'acc-s3r1.1',
+    candidateBinding ? 'acc-s3r1.1-zkir036' : 'acc-s3r1.1',
     'standalone-0.35',
+    candidateBinding
+      ? {
+          bindingId: 'acc-s3r1.1-zkir036',
+          manifestSha256: process.env.PASSPORT_MANIFEST_SHA256,
+          decodeState: (state) => accountLedger(state.data),
+        }
+      : undefined,
   );
   const profile = { networkId, registryAddress, namespace: 'night' };
   async function live(destination) {

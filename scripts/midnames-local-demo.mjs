@@ -34,6 +34,9 @@ const defaultProfile = join(
   root,
   'examples/midnames-local/evidence/shared-ledger9-paidfix-deposit-20261118.json',
 );
+const candidateManifest = JSON.parse(
+  readFileSync(join(root, 'packages/contract/acc-versions.generated.json'), 'utf8'),
+).versions['acc-s3r1.1-zkir036'].manifestSha256;
 const usage = `Usage: nix develop -c node scripts/midnames-local-demo.mjs [check|stack|up|stop] [options]
 
   check               Read-only attach and name-to-ACC verification. Never starts Docker.
@@ -644,6 +647,7 @@ async function demo(options, claim) {
         ? {
             PASSPORT_BINDING_ID: 'acc-s3r1.1-zkir036',
             PASSPORT_CANDIDATE_LOCAL: '1',
+            PASSPORT_MANIFEST_SHA256: candidateManifest,
             PASSPORT_ARTEFACT_DIR: options.candidateAssets,
             PASSPORT_COMPAT_PROVER: '0',
             PASSPORT_PUBLIC_PROOF_SERVER_URL: 'http://127.0.0.1:6300',
@@ -691,8 +695,18 @@ async function demo(options, claim) {
         PASSPORT_FUNDING_SEED_FILE: join(options.stateDir, 'funding-seed.private.hex'),
         PASSPORT_FUNDING_TOKEN_FILE: join(options.stateDir, 'funding-token.private.txt'),
         PASSPORT_FUNDING_ASSETS_FILE: join(options.stateDir, 'funding-assets.private.json'),
-        PASSPORT_FUNDING_RESERVATIONS_FILE: join(options.stateDir, 'funding-reservations.json'),
-        PASSPORT_FUNDING_DEPLOYMENTS_FILE: join(options.stateDir, 'registry.deployments.json'),
+        PASSPORT_FUNDING_RESERVATIONS_FILE: join(
+          options.stateDir,
+          options.candidateAssets
+            ? 'funding-reservations-candidate.json'
+            : 'funding-reservations.json',
+        ),
+        PASSPORT_FUNDING_DEPLOYMENTS_FILE: join(
+          options.stateDir,
+          options.candidateAssets
+            ? 'registry-candidate.deployments.json'
+            : 'registry.deployments.json',
+        ),
       });
     }
     if (options.claim) {

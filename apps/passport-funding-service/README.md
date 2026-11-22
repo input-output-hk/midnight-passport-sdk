@@ -80,6 +80,15 @@ color, amount, transaction ID and confirmed ACC balances for NIGHT and the test 
 or when the Passport service is bound beyond loopback. The operator CLI remains available as
 `demo fund`.
 
+For the provisional `acc-s3r1.1-zkir036` local source profile, supply the
+verified separate `PASSPORT_ARTEFACT_DIR`, exact candidate
+`PASSPORT_MANIFEST_SHA256`, `PASSPORT_BINDING_ID=acc-s3r1.1-zkir036`,
+`PASSPORT_CANDIDATE_LOCAL=1`, and `MIDNIGHT_STACK=shared-ledger9`. Use a
+NIGHT-only asset policy and separate reservations and deployment-log files.
+The service checks the complete candidate tree before listening; the ordinary
+funding profile remains pinned to `acc-s3r1.1`. The candidate funding route
+still requires a native deposit qualification on its exact source head.
+
 The reference reservation store is safe for one host sharing one file. It creates
 `<reservations-file>.lock` during updates. If the process dies with the lock present, inspect
 pending requests, wallet transactions and ACC balances before removing it. Use a transactional
