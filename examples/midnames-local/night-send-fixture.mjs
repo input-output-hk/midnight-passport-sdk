@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
+import { createServer } from 'node:http';
 import { setTimeout as delay } from 'node:timers/promises';
+import { proveUnboundNightDeposit } from '../../packages/adapter-midnight-js/src/night-deposit.ts';
 import {
   NightPaymentDeclined,
   sendNightByName,
@@ -32,6 +34,43 @@ function openJournal(directory) {
     readLeg: async (leg) => read(leg),
     fenceLeg: async (leg, original) => write(leg, original),
   };
+}
+
+async function withCandidateArtifacts(assets, run) {
+  const prefix = '/v1/zk/acc-s3r1.1-zkir036/';
+  const server = createServer((request, response) => {
+    const path = new URL(request.url ?? '/', 'http://127.0.0.1').pathname;
+    const file = path.startsWith(prefix) ? path.slice(prefix.length) : '';
+    if (
+      request.method !== 'GET' ||
+      !/^(?:compiler\/contract-manifest\.json|(?:zkir|keys)\/[a-z][a-z0-9_]*\.(?:zkir|bzkir|prover|verifier))$/.test(
+        file,
+      )
+    ) {
+      response.writeHead(404).end();
+      return;
+    }
+    try {
+      const bytes = readFileSync(join(assets, file));
+      response.writeHead(200, { 'content-type': 'application/octet-stream' });
+      response.end(bytes);
+    } catch {
+      response.writeHead(404).end();
+    }
+  });
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
+  });
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address !== 'string');
+    return await run(`http://127.0.0.1:${address.port}${prefix.slice(0, -1)}`);
+  } finally {
+    await new Promise((resolve, reject) =>
+      server.close((error) => (error ? reject(error) : resolve())),
+    );
+  }
 }
 
 async function until(read, timeout = 120_000) {
@@ -106,6 +145,8 @@ export async function qualifyNightSend({
   ref,
   probeKeyDirectory,
   verifyHybridSource,
+  candidateAssets,
+  candidateManifestSha256,
   step,
 }) {
   const [{ versionOfRecord }, rx, types] = await Promise.all([
@@ -396,7 +437,48 @@ export async function qualifyNightSend({
           hasExactNightBridgeCoin(await availableNight(), expected, encodedBridge),
         ),
       );
-      const balanced = await makeCall(target, intent.operations[1], [color, BigInt(intent.amount)]);
+      const balanced = candidateAssets
+        ? await withCandidateArtifacts(candidateAssets, async (artefactUrl) => {
+            const proven = await proveUnboundNightDeposit({
+              network: {
+                networkId,
+                bindingId: 'acc-s3r1.1-zkir036',
+                manifestSha256: candidateManifestSha256,
+                nodeUrl: process.env.MN_NODE_URL + '/',
+                indexerUrl: process.env.MN_INDEXER_URL,
+                indexerWsUrl: process.env.MN_INDEXER_WS_URL,
+                artefactUrl,
+              },
+              binding,
+              target,
+              amount: BigInt(intent.amount),
+              walletKeys: {
+                coinPublicKey: providers.walletProvider.getCoinPublicKey(),
+                encryptionPublicKey: providers.walletProvider.getEncryptionPublicKey(),
+              },
+              prover: {
+                async proveTx(bytes) {
+                  const tx = ledger.Transaction.deserialize(
+                    'signature',
+                    'proof',
+                    'pre-binding',
+                    bytes,
+                  );
+                  const result = await providers.proofProvider.proveTx({ version: 'v9', tx });
+                  assert.equal(result.version, 'v9');
+                  return { tx: result.tx.serialize() };
+                },
+              },
+              provisionalLocal: true,
+            });
+            const result = await providers.walletProvider.balanceTx({
+              version: 'v9',
+              tx: ledger.Transaction.deserialize('signature', 'proof', 'pre-binding', proven),
+            });
+            assert.equal(result.version, 'v9');
+            return result;
+          })
+        : await makeCall(target, intent.operations[1], [color, BigInt(intent.amount)]);
       assertExactNightBridgeSpend(balanced.tx, expected, ledger.addressFromKey);
       return prepared('deposit', balanced);
     },
@@ -594,6 +676,7 @@ export async function qualifyNightSend({
     withdrawal,
     deposit,
     exactBridgeOutputConsumed: true,
+    candidateAdapterDeposit: Boolean(candidateAssets),
     replayBroadcasts: 0,
   };
 }

@@ -753,6 +753,8 @@ try {
       probeKeyDirectory:
         hybridVerifier || fullVerifier ? undefined : process.env.PASSPORT_MIDNAMES_DIAG_KEY_DIR,
       verifyHybridSource,
+      candidateAssets: candidateNight ? candidateAssets : undefined,
+      candidateManifestSha256: candidateNight ? candidatePin.manifestSha256 : undefined,
       step,
     });
     if (process.env.PASSPORT_MIDNAMES_BROWSER_REVIEW === '1') {
