@@ -102,7 +102,16 @@ old on-chain verifier unchanged. This narrows the artifact compatibility
 boundary. A second signed run used one exact serialized withdrawal preimage:
 the 0.35 keys returned HTTP 400, while the 0.36 pair returned nonempty proof
 bytes. Neither run established a valid new ACC binding or release-prover
-payment conformance.
+payment conformance. A later
+[isolated hybrid diagnostic](https://github.com/input-output-hk/midnight-passport-sdk/blob/codex/midnames-ledger9-value-native/examples/midnames-local/evidence/stable-hybrid-night-send-20261122.json)
+deployed the alternate withdrawal verifier on a fresh source ACC, then
+completed one indexed withdrawal and exact-output recipient deposit with
+release prover `9.0.2`: 10/0 → 6/0 → 6/4, one dispatch per leg. The source
+retained the old runtime, ZKIR and 51 other old verifier keys, so this is an
+unsupported diagnostic hybrid. An
+[offline inventory](https://github.com/input-output-hk/midnight-passport-sdk/blob/codex/midnames-ledger9-value-native/examples/midnames-local/evidence/compact036-acc-key-inventory-20261122.json)
+found 48 of 52 key pairs changed. A complete versioned 0.36 ACC binding and
+its native, online and real-provider gates remain open.
 
 The signed `a20a9b9` isolated owner-browser refusal adds a narrow #318 negative
 result: after Chromium displayed the exact named NIGHT route and clicked

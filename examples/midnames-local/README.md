@@ -940,11 +940,26 @@ both ACC balances stayed 10/0. A second, signed
 sent one exact serialized withdrawal preimage to that prover twice. The
 deployed 0.35 key pair returned HTTP 400; changing only to the 0.36 pair
 returned nonempty proof bytes. This isolates the key-material difference at
-the prover request boundary, but a chain-valid withdrawal with the new pair
-is unproven. The retired 0.35 ACC cannot be
-repaired by replacing local files. A separately versioned artifact/binding,
-fresh ACC deployment with the matching verifier key, and a full two-leg native
-run are required before using 0.36 for this route.
+the prover request boundary. The retired 0.35 ACC cannot be repaired by
+replacing local files.
+
+The [complete offline key inventory](evidence/compact036-acc-key-inventory-20261122.json)
+compared all 52 pinned ACC ZKIR circuits against keys regenerated with the
+Compact 0.36 tool: 48 prover and 48 verifier pairs changed; four stayed
+identical. A later [isolated hybrid diagnostic](evidence/stable-hybrid-night-send-20261122.json)
+deployed an ordinary recipient ACC and a source ACC with only its JubJub
+withdrawal verifier replaced by the 0.36-generated key. The source retained
+the old runtime, ZKIR and other 51 verifier keys, so it is not a supported SDK
+binding. With release proof server `9.0.2`, an automated browser review and
+one owner signature preceded exactly one withdrawal and one deposit dispatch.
+Both transactions finalized and indexed; ACC balances moved 10/0 → 6/0 →
+6/4, consuming the exact withdrawal output with no replay broadcast. The
+fresh parent confirmed unchanged inputs, three stopped owned containers,
+retained volumes and a released lease. This proves a chain-valid two-leg
+payment for this **diagnostic hybrid deployment**, not compatibility of an
+already deployed 0.35 ACC. A separately versioned complete artifact/binding,
+all matching keys, and its native and provider qualification remain required
+for a supported release route. The browser owner was synthetic.
 
 The diagnostic lane uses a fresh `midnames-night-browser-keyprobe-` output
 name and `PASSPORT_MIDNAMES_DIAG_KEY_DIR` pointing to a private directory
@@ -954,6 +969,12 @@ resources and after cleanup. It runs the normal synthetic browser review and
 compares both key pairs against the same proof preimage. It stops on the
 alternate proof response, before balancing or dispatch. This lane
 is a prover compatibility test, not an operator payment route.
+
+The hybrid lane uses a fresh `midnames-night-browser-hybrid-` output name and
+the same private `PASSPORT_MIDNAMES_DIAG_KEY_DIR`. It verifies the entire
+deployed source verifier roster and refuses a mismatch before proof. It is
+restricted to isolated diagnostic qualification; do not use its hybrid ACC as
+an application or release binding.
 
 The signed `a20a9b9` negative run `midnames-night-browser-decline-20261116a`
 passed on isolated `undeployed`. Chromium displayed the same exact review and

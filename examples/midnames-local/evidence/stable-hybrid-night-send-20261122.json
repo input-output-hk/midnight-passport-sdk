@@ -1,0 +1,66 @@
+{
+  "alternateWithdrawalVerifierSha256": "0d379e75fc29bb44de21a263a1f3bd941658aed71ccaa41cf445b29b104715a4",
+  "balances": {
+    "afterWithdrawal": {
+      "source": "6",
+      "target": "0"
+    },
+    "before": {
+      "source": "10",
+      "target": "0"
+    },
+    "final": {
+      "source": "6",
+      "target": "4"
+    }
+  },
+  "browserReview": {
+    "approved": true,
+    "displayed": true,
+    "mode": "automated"
+  },
+  "deposit": {
+    "actions": ["5deb1b3843e8549f8cbb9f5f3b5a956f449b993367dc5db68e88cce8f53ef490"],
+    "blockHeight": 97,
+    "succeeded": true,
+    "txHash": "f91925b134b5b7647079fb8842098894ec4917dec56544b20b0d8dce648238da"
+  },
+  "depositDispatches": 1,
+  "exactBridgeOutputConsumed": true,
+  "images": {
+    "indexer": "sha256:119f35db548ba1c390845f215bb1e928e73038bef7c315825aee0461bd54499d",
+    "node": "sha256:0c1ad548d523c1109aa1f16daab1bf72dcb78c7e17b8a8c6d97424ad0eba7b8a",
+    "proof-server": "sha256:787ef99db4b4706eb14d94ad389ca45f1c09bcdf740afecb01899bfbda63dc64"
+  },
+  "inputsUnchanged": true,
+  "leaseReleased": true,
+  "limits": [
+    "This is a diagnostic hybrid source ACC, not a supported or versioned SDK binding; 51 source verifiers retained the 0.35 key material.",
+    "The review used a synthetic browser owner. Real passkey-provider consent, an online registry, public passport.night, and installed consumer acceptance remain separate.",
+    "The ordinary retired 0.35 ACC binding still fails the stable prover; replacing local keys cannot change an existing deployed verifier roster.",
+    "A full independently reviewed 0.36 ACC artifact/binding, key registry, and applicable native and provider gates remain open."
+  ],
+  "observedAt": "2026-11-22",
+  "ownedContainersStopped": 3,
+  "ownerSignatures": 1,
+  "parentReceiptSha256": "7a4aa9281ceab5de58a549856c03a7b66a63041b2e7a8689cdba15e4f59e9a3f",
+  "profile": "fresh isolated Ledger 9 node, Indexer API v4, release proof server 9.0.2; synthetic browser-reviewed owner",
+  "replayBroadcasts": 0,
+  "result": "PASS",
+  "retainedVolumes": true,
+  "runId": "a2dbc305898bc014",
+  "schemaVersion": 1,
+  "sourceBinding": "diagnostic source ACC: old 0.35 ZKIR/runtime and 51 original verifiers, 0.36-generated JubJub withdrawal prover/verifier only; recipient ordinary 0.35 ACC",
+  "sourceHead": "fe28c47134a395827d66f0cb34e435e0c9711f26",
+  "supportedBinding": false,
+  "unrelatedResourcesControlled": 0,
+  "withdrawal": {
+    "actions": ["083357346a66a6efcbab27cdabca521e2ec63b22b71f07ff05280538e86fa088"],
+    "blockHeight": 94,
+    "succeeded": true,
+    "txHash": "d5d3238e2a834e73a234c92da71432f9c82d17695f84c2242defa9305ae29983"
+  },
+  "withdrawalCircuit": "withdraw_unshielded_with_jubjub",
+  "withdrawalDispatches": 1,
+  "workerReceiptSha256": "1a2b03dfe94c6e175e887e5ce17e18537a2c2aa098bd376e9e1bd5693bcafca5"
+}

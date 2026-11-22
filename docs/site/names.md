@@ -803,9 +803,18 @@ pair after an automated browser review. It stopped before the full transaction
 or either payment leg; the source and target ACC balances remained 10/0.
 A second signed run held the withdrawal preimage fixed: the old pair returned
 HTTP 400 and the new pair returned nonempty proof bytes from the same stable
-prover. No full transaction was proved or dispatched.
-The original ACC still holds its 0.35 verifier key. A newly versioned binding
-and deployed ACC with matching keys need a full proof, submission and indexed
-two-leg check before claiming release compatibility.
+prover. It stopped before transaction proof or dispatch. The
+[full offline key inventory](../../examples/midnames-local/evidence/compact036-acc-key-inventory-20261122.json)
+found that 48 of 52 ACC prover/verifier pairs change under the 0.36 tool.
+A later [isolated hybrid diagnostic](../../examples/midnames-local/evidence/stable-hybrid-night-send-20261122.json)
+deployed only the new JubJub withdrawal verifier on a source ACC, retaining
+the old runtime, ZKIR and 51 other verifier keys. With the release `9.0.2`
+prover, one synthetic browser-reviewed owner signature led to one indexed
+withdrawal and one indexed recipient deposit. Balances moved 10/0 → 6/0 →
+6/4, with exact bridge-output consumption and no replay. This source is an
+unsupported diagnostic hybrid, not a versioned SDK binding. An existing
+retired 0.35 ACC still has its old on-chain verifier. Full 0.36 artifact/key
+versioning and qualification, online naming and real-provider acceptance
+remain open.
 
 See the [standalone recipe](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local).
