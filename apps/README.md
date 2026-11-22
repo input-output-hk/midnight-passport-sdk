@@ -952,6 +952,10 @@ The candidate ACC proves through the shared Ledger 9 release prover on port
 serves the pinned Compact 0.35 standalone name registry's claim proof. The
 launcher stops only that owned prover container and leaves the shared stack's
 volumes untouched.
+The [local candidate claim receipt](../examples/midnames-local/evidence/candidate-acc-combined-local-claim-20261122.json)
+records a same-profile synthetic account creation and paid name claim across
+signed heads, followed by a read-only final-head registration check. It does
+not qualify a real passkey provider or a single-head named payment journey.
 
 The separate [named shielded deposit sender](../examples/midnames-local/README.md#review-the-named-deposit-in-the-sender-browser)
 can display a localhost browser review before preparing and dispatching its

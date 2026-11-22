@@ -169,6 +169,11 @@ local launcher, candidate ACC proofs use the shared release prover on 6300;
 the pinned Compact 0.35 standalone name registry uses an owned compatibility
 prover on 16320. The browser and sponsor journals must be checked together
 after a fresh native claim run before reporting the journey as qualified.
+The [shared-chain browser receipt](../../examples/midnames-local/evidence/candidate-acc-combined-local-claim-20261122.json)
+records one synthetic ACC creation, same-profile paid `.night` claim, exact
+indexed success and matching registry target. Those steps span signed source
+heads; the final head rechecked the saved registration without another send.
+One exact-head create-to-claim run and the combined named payment remain open.
 Candidate demo funding uses a separate NIGHT-only policy and reservation file;
 an older stable funding receipt is not evidence of a candidate deposit.
 

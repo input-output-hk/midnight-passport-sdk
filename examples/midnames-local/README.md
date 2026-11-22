@@ -76,6 +76,13 @@ release prover on port 6300. The launcher records and stops only its own
 compatibility container, leaving the shared stack and its volumes untouched.
 The candidate launcher requires `--claim` and a verified standalone registry profile.
 
+The [synthetic shared-chain receipt](evidence/candidate-acc-combined-local-claim-20261122.json)
+shows one candidate ACC created in the Passport page and a same-profile paid
+`.night` claim with indexed success and a matching on-chain contract target.
+The creation, claim and post-fix readback used separate signed heads. The final
+head rejects an unowned prover listener and reopens the confirmed name, but a
+single-head combined journey and named NIGHT send in that profile remain open.
+
 An existing live profile supplies the standalone registry address and chain
 anchor; its previously registered name is not used as a candidate ACC pin.
 With a funded claim sponsor and prepared registry, `--setup --claim` opens
