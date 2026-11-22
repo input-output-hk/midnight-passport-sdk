@@ -37,6 +37,8 @@ export async function qualifyPageOwnedClaim({
   ledger,
   readLive,
   reads,
+  candidateQualification,
+  candidateAccountModule,
   profile,
   step,
 }) {
@@ -51,6 +53,15 @@ export async function qualifyPageOwnedClaim({
     maximumDust: '100000000000000000',
     ...(failedOriginal ? { failedOriginal } : {}),
     ...(firstAttemptFailure ? { prepareFailedInPage: true } : {}),
+    ...(candidateQualification
+      ? {
+          candidate: {
+            bindingId: candidateQualification.bindingId,
+            manifestSha256: candidateQualification.manifestSha256,
+            modulePath: candidateAccountModule,
+          },
+        }
+      : {}),
   });
   const hex = (value) => (typeof value === 'string' ? value : Buffer.from(value).toString('hex'));
   const walletKeys = {

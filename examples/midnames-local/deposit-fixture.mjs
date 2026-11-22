@@ -541,6 +541,7 @@ try {
         ledger,
         reads,
         candidateQualification,
+        candidateAccountModule: candidateModule,
         profile,
         step,
         readLive,

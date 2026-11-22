@@ -29,6 +29,7 @@ const input = JSON.parse(readFileSync(resolve(output, 'page-claim-input.json'), 
   maximumDust: string;
   failedOriginal?: unknown;
   prepareFailedInPage?: boolean;
+  candidate?: { bindingId: string; manifestSha256: string; modulePath: string };
 };
 assert.match(input.registryAddress, /^[0-9a-f]{64}$/);
 assert.match(input.accountAddress, /^[0-9a-f]{64}$/);
@@ -37,6 +38,16 @@ assert.match(input.registryPayee, /^[0-9a-f]{64}$/);
 assert.match(input.sponsorPaymentAddress, /^[0-9a-f]{64}$/);
 assert.match(input.night, /^[0-9]+$/);
 assert.match(input.maximumDust, /^[0-9]+$/);
+const candidate = input.candidate;
+if (candidate) {
+  assert.equal(candidate.bindingId, 'acc-s3r1.1-zkir036');
+  assert.match(candidate.manifestSha256, /^[0-9a-f]{64}$/);
+  assert.equal(
+    candidate.modulePath,
+    resolve(output, '..', 'candidate-account-runtime/account.mjs'),
+  );
+  assert.ok(process.env.PASSPORT_MIDNAMES_CANDIDATE_ASSETS);
+} else assert.equal(process.env.PASSPORT_MIDNAMES_CANDIDATE_ASSETS, undefined);
 const sponsorPort = process.env.PASSPORT_MIDNAMES_SPONSOR_PORT;
 const ownerPort = process.env.PASSPORT_MIDNAMES_OWNER_PORT;
 assert.match(sponsorPort ?? '', /^[1-9][0-9]{0,4}$/);
@@ -44,7 +55,8 @@ assert.match(ownerPort ?? '', /^[1-9][0-9]{0,4}$/);
 assert.equal(process.env.MN_INDEXER_URL, 'http://127.0.0.1:18108/api/v4/graphql');
 assert.equal(process.env.MN_INDEXER_WS_URL, 'ws://127.0.0.1:18108/api/v4/graphql/ws');
 Object.assign(process.env, {
-  PASSPORT_MANIFEST_SHA256: '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f',
+  PASSPORT_MANIFEST_SHA256:
+    candidate?.manifestSha256 ?? '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f',
   PASSPORT_NETWORK_ID: 'undeployed',
   VITE_MIDNAMES_REGISTRY_PROFILE: 'standalone-0.35',
   VITE_MIDNAMES_REGISTRY_ADDRESS: input.registryAddress,
@@ -59,7 +71,7 @@ Object.assign(process.env, {
 
 const connector = `
   export const ARM = 'p256', SIGNING_MODE = 'passkey', NETWORK_ID = 'undeployed';
-  export const BINDING_ID = 'acc-s3r1.1', RP_ID = 'localhost';
+  export const BINDING_ID = ${JSON.stringify(candidate?.bindingId ?? 'acc-s3r1.1')}, RP_ID = 'localhost';
   export const ORIGIN = location.origin, SERVICE_URL = location.origin;
   export const MANIFEST_SHA256 = ${JSON.stringify(process.env.PASSPORT_MANIFEST_SHA256)};
   export const ARTEFACT_URL = SERVICE_URL + '/v1/zk/' + BINDING_ID;
@@ -110,8 +122,26 @@ const vite = await createServer({
     {
       name: 'native-page-account-fixture',
       enforce: 'pre',
+      resolveId(id) {
+        if (candidate && id === 'virtual:native-candidate-account')
+          return '\0native-candidate-account';
+      },
       load(id) {
-        if (id.split('?')[0] === resolve('src/connector.ts')) return connector;
+        const file = id.split('?')[0];
+        if (file === resolve('src/connector.ts')) return connector;
+        if (!candidate) return;
+        if (id === '\0native-candidate-account') return readFileSync(candidate.modulePath, 'utf8');
+        if (file !== resolve('src/midnames/config.ts')) return;
+        const source = readFileSync(file, 'utf8');
+        const expected = '        bindingId,\n        profileId,\n';
+        assert.equal(source.split(expected).length, 2, 'Candidate reader injection point changed.');
+        return (
+          `import { ledger as candidateLedger } from 'virtual:native-candidate-account';\n` +
+          source.replace(
+            expected,
+            `        bindingId,\n        profileId,\n        { bindingId: ${JSON.stringify(candidate.bindingId)}, manifestSha256: ${JSON.stringify(candidate.manifestSha256)}, decodeState: (state) => candidateLedger(state.data) },\n`,
+          )
+        );
       },
     },
   ],

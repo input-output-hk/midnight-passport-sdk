@@ -1065,7 +1065,9 @@ admission by a registry policy change. The lane checks its exact indexed
 failure, archives that sponsor journal, releases the browser original, and
 reviews and sends a fresh claim after restoring the policy. It verifies the
 final binding at one canonical block. This qualification reader explicitly
-admits the candidate only for this run; the ordinary demo still refuses it.
+admits the candidate only for this run. The native page harness injects the
+same candidate ledger decoder into its Vite reader and connector; the ordinary
+demo still refuses it.
 
 ```sh
 PASSPORT_MIDNAMES_CANDIDATE_ASSETS=/absolute/path/to/verified-candidate-assets \
