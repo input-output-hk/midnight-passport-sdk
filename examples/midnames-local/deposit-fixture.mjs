@@ -558,6 +558,8 @@ try {
       repointTarget,
       repointName: browserRepoint ? repointName : undefined,
       defaultField,
+      ref,
+      probeKeyDirectory: process.env.PASSPORT_MIDNAMES_DIAG_KEY_DIR,
       step,
     });
     if (process.env.PASSPORT_MIDNAMES_BROWSER_REVIEW === '1') {
@@ -581,6 +583,12 @@ try {
         assert.deepEqual(proofReceipt.sent, { withdraw: 0, deposit: 0 });
         assert.deepEqual(proofReceipt.final, { source: '10', target: '0', repoint: '0' });
         step('verified-browser-owner-repoint-before-night-send');
+      } else if (proofReceipt.keyProbe) {
+        assert.equal(proofReceipt.approvals, 1);
+        assert.equal(proofReceipt.signatures, 1);
+        assert.deepEqual(proofReceipt.sent, { withdraw: 0, deposit: 0 });
+        assert.deepEqual(proofReceipt.final, { source: '10', target: '0' });
+        step('verified-browser-review-before-withdrawal-key-probe');
       } else step('verified-browser-owner-review-before-night-send');
     }
     Object.assign(receipt, { ...proofReceipt, claimIdentifier, registryAddress, passed: true });
@@ -589,7 +597,9 @@ try {
         ? 'verified-native-named-night-decline'
         : proofReceipt.repointed
           ? 'verified-native-named-night-repoint-refusal'
-          : 'verified-native-named-night-send',
+          : proofReceipt.keyProbe
+            ? 'verified-stable-prover-withdrawal-key-response-without-send'
+            : 'verified-native-named-night-send',
     );
   } else {
     await wallet.wallet.stop();

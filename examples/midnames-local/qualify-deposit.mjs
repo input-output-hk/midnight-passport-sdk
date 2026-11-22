@@ -65,6 +65,14 @@ assert.match(
 );
 const browserReview =
   out.startsWith('midnames-deposit-browser-') || out.startsWith('midnames-night-browser-');
+const keyProbe = out.startsWith('midnames-night-browser-keyprobe-');
+const keyProbeDirectory = process.env.PASSPORT_MIDNAMES_DIAG_KEY_DIR;
+assert.equal(
+  Boolean(keyProbeDirectory),
+  keyProbe,
+  'Key probe input is limited to its diagnostic lane',
+);
+if (keyProbeDirectory) assert.ok(isAbsolute(keyProbeDirectory));
 const browserDecline = out.startsWith('midnames-night-browser-decline-');
 const browserRepoint = out.startsWith('midnames-night-browser-repoint-');
 const manualBrowserReview = process.env.PASSPORT_MIDNAMES_BROWSER_MANUAL === '1';
@@ -118,6 +126,23 @@ const images = isolatedImages(
   info.Architecture === 'aarch64' ? 'arm64' : 'amd64',
   proverImages[selectedProver],
 );
+const probeKeyHashes = {
+  'withdraw_unshielded_with_jubjub.prover':
+    'e4b273724feacdaacb4a842ac51ce4c0a9a51de96cc182fe67cc089fa05b33ab',
+  'withdraw_unshielded_with_jubjub.verifier':
+    '0d379e75fc29bb44de21a263a1f3bd941658aed71ccaa41cf445b29b104715a4',
+};
+const verifyProbeKeys = () => {
+  if (!keyProbeDirectory) return;
+  assert.equal(realpathSync(keyProbeDirectory), keyProbeDirectory);
+  for (const [name, expected] of Object.entries(probeKeyHashes)) {
+    const path = join(keyProbeDirectory, name);
+    const stat = lstatSync(path);
+    assert.ok(stat.isFile() && !stat.isSymbolicLink());
+    assert.equal(createHash('sha256').update(readFileSync(path)).digest('hex'), expected);
+  }
+};
+verifyProbeKeys();
 const review = join(root, 'review');
 mkdirSync(review, { recursive: true, mode: 0o700 });
 assert.equal(realpathSync(review), review);
@@ -231,6 +256,7 @@ try {
     PASSPORT_MIDNAMES_BROWSER_MANUAL: manualBrowserReview ? '1' : '0',
     PASSPORT_MIDNAMES_BROWSER_DECISION: browserDecline ? 'decline' : 'approve',
     PASSPORT_MIDNAMES_BROWSER_REPOINT: browserRepoint ? '1' : '0',
+    PASSPORT_MIDNAMES_DIAG_KEY_DIR: keyProbeDirectory,
   };
   const worker = spawn(
     process.execPath,
@@ -275,6 +301,7 @@ try {
       const check = () => assert.ok(deadline.cleanupRemaining() > 0);
       await inputs.verify(check);
       await verifyPreparedRegistry(prepared, check);
+      verifyProbeKeys();
       receipt.inputsUnchanged = true;
     }
   } catch (error) {
