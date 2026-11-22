@@ -5,7 +5,9 @@
   "runnerCommit": "effbc17110500f3e392486952f9b691337909e11",
   "scope": "Owned retained isolated Ledger 9 chain, Indexer API v4, release proof server; synthetic sponsor and name owner. The shared demo and chain were not modified by this run.",
   "registry": {
-    "sourceSha256": "6958d01ee7873ffd7c502fa8a3e49d1a4f230ce137cc2f03433f8e4eae6eecea",
+    "upstreamSourceSha256": "6958d01ee7873ffd7c502fa8a3e49d1a4f230ce137cc2f03433f8e4eae6eecea",
+    "standaloneSourceSha256": "b72b96e7903780af6fdbb0c752dfb0de7b1b75c247ba0d8b23ab39026c04a253",
+    "adaptedSourceSha256": "2ea29974202665d56d53e6503c3de3ab1c42779b3cf7fe57b8c9912a127a1967",
     "change": "Only the Compact language pragma was adapted to 0.28 for compiler 0.36.1.",
     "compiler": "0.36.1",
     "runtime": "0.21.0",

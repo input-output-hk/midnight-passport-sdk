@@ -58,11 +58,11 @@ resolved to the same activated ACC before and after the owner commitment
 changed. All 13 registry verifier keys matched the deployed roster, so this
 did not replace a maintenance-retired verifier. The run used an isolated
 chain, synthetic owner and sponsor, one self-hosted indexer, and the existing
-deletion-credit guard. It advances the local P2/P5/P8 subset; a connected
-Passport page-to-chain 0.36.1 claim, online registry/provider, independent
-inclusion proof, real passkey custody, and total-loss name continuity remain
-unqualified. The ordinary shared demo still pins its separate 0.35 registry
-profile.
+deletion-credit guard. It advances the local P2/P8 name-and-provider subset;
+P5 total-loss recovery remains unqualified. A connected Passport
+page-to-chain 0.36.1 claim, online registry/provider, independent inclusion
+proof, and real passkey custody also remain unqualified. The ordinary shared
+demo still pins its separate 0.35 registry profile.
 
 **Local recovery source preview, 20 November 2026:** The sponsor can now
 recognize its exact quote in a bounded private archive, refuse a superseded
