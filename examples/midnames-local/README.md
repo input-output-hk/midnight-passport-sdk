@@ -900,13 +900,23 @@ The [22 November Ledger 9 comparison](evidence/ledger9-night-by-name-prover-comp
 retested this route on a fresh release node and Indexer API v4. The release
 prover `9.0.2` refused the Compact 0.35 JubJub withdrawal proof with HTTP 400
 (`The constraint system is not satisfied`) before a withdrawal original was
-created. Holding the node, indexer, reference client and contract artifacts
-fixed while selecting the pinned `9.0.0-rc.8` prover, signed `3ae84d13`
+created. A second isolated run at signed `880f14c8` held the release node,
+indexer, reference client and contract artifacts fixed and selected the first
+stable `9.0.0` prover. It reached the same withdrawal and received the same
+HTTP 400 before an original was created. This places the observed
+incompatibility at or before the first stable release; it does not establish
+the cause. The [ledger release notes](https://github.com/midnightntwrk/midnight-ledger/blob/proof-server-9.0.0/.github/release-notes/ledger-9.1.0.0.md#breaking-changes-or-required-actions-for-developers)
+describe changed proof and verifier-key material, but the effect on this
+exact circuit needs separate verification. Selecting the pinned `9.0.0-rc.8`
+prover on the same release node/indexer, signed `3ae84d13`,
 completed the automated browser review, one finalized withdrawal, durable
 restart, exact bridge-coin deposit, and indexed 10/0 → 6/0 → 6/4 ACC balances.
 For this isolated comparison only, set `PASSPORT_MIDNAMES_DIAG_RC_PROVER=1` in
 the inner `env` list of the native command above; the default remains the
-release prover. The shared-stack demo has a separate, already documented
+`9.0.2` release prover. `PASSPORT_MIDNAMES_DIAG_PROVER=9.0.0` selects the
+digest-pinned first stable prover and `9.0.1` selects the next stable candidate
+for further isolated diagnosis; neither is a supported demo profile. The
+shared-stack demo has a separate, already documented
 [`PASSPORT_COMPAT_PROVER=1`](../../infra/localnet/README.md#isolated-prover-for-the-pinned-compact-035-acc)
 option. The release prover still needs a compatible withdrawal proof before
 this route can be claimed as release-stack qualified. The RC-prover PASS uses

@@ -18,6 +18,17 @@
     "ownedContainersStopped": 3,
     "leaseReleased": true
   },
+  "firstStableProver": {
+    "sourceHead": "880f14c8cc4b3f295234f9e1c03acdbfb83081b8",
+    "proverImage": "sha256:5617e26aa76d06c44f4bee667c37eb71ccf02fefe0e5848100fa84001282d515",
+    "runId": "b5e99cbb179712fc",
+    "result": "FAIL before withdrawal original",
+    "proofResponse": "HTTP 400: The constraint system is not satisfied",
+    "ownedContainersStopped": 3,
+    "retainedVolumes": true,
+    "leaseReleased": true,
+    "inputsUnchanged": true
+  },
   "rcProverIntermediate": {
     "sourceHead": "a1b50b69e3992962550bcc7aaf8afc23386ba9f1",
     "runId": "b4b545e4c46e1d0a",
@@ -54,7 +65,7 @@
     "result": "PASS"
   },
   "limits": [
-    "The full payment passed only with the RC prover and isolated local chain; the release prover refused the withdrawal proof.",
+    "The full payment passed only with the RC prover and isolated local chain; both the first stable 9.0.0 and 9.0.2 provers refused the withdrawal proof. The observed incompatibility begins no later than 9.0.0; its cause is not established.",
     "The browser review was automated with a synthetic owner; this is not a human passkey-provider acceptance run.",
     "The fixture uses a root-owned local .night name; it does not qualify the public passport.night namespace or an online registry."
   ]
