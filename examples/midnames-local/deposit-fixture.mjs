@@ -88,7 +88,9 @@ const [
 ]);
 const mode = process.env.PASSPORT_MIDNAMES_FIXTURE_MODE;
 const hybridVerifier = output.split('/').at(-1).startsWith('midnames-night-browser-hybrid-');
-assert.ok(!hybridVerifier || mode === 'named-night-send');
+const fullVerifier = output.split('/').at(-1).startsWith('midnames-night-browser-full036-');
+assert.ok(!(hybridVerifier && fullVerifier));
+assert.ok(!(hybridVerifier || fullVerifier) || mode === 'named-night-send');
 assert.ok(
   [
     'named-shielded-deposit',
@@ -510,10 +512,22 @@ try {
     const { qualifyNightSend } = await import('./night-send-fixture.mjs');
     const { JubjubDevice, jubjubChallenges } = await getReferenceSigner();
     const device = JubjubDevice.generate();
-    if (hybridVerifier) {
+    if (hybridVerifier || fullVerifier) {
       const diagnostic = process.env.PASSPORT_MIDNAMES_DIAG_KEY_DIR;
       assert.ok(diagnostic, 'Missing pinned alternate withdrawal key pair');
       const circuit = 'withdraw_unshielded_with_jubjub';
+      const inventory = fullVerifier
+        ? JSON.parse(
+            readFileSync(
+              new URL('./evidence/compact036-acc-key-inventory-20261122.json', import.meta.url),
+              'utf8',
+            ),
+          )
+        : undefined;
+      if (fullVerifier) {
+        assert.equal(inventory.result, 'complete');
+        assert.equal(Object.keys(inventory.circuits).length, 52);
+      }
       const newVerifier = new Uint8Array(readFileSync(join(diagnostic, circuit + '.verifier')));
       const newProver = new Uint8Array(readFileSync(join(diagnostic, circuit + '.prover')));
       assert.equal(
@@ -525,10 +539,19 @@ try {
         'e4b273724feacdaacb4a842ac51ce4c0a9a51de96cc182fe67cc089fa05b33ab',
       );
       const originalZk = providers.zkConfigProvider;
+      const newVerifiers = fullVerifier
+        ? Object.fromEntries(
+            Object.entries(inventory.circuits).map(([name, pin]) => {
+              const bytes = new Uint8Array(readFileSync(join(diagnostic, `${name}.verifier`)));
+              assert.equal(sha(bytes), pin.newVerifierSha256);
+              return [name, bytes];
+            }),
+          )
+        : { [circuit]: newVerifier };
       providers.zkConfigProvider = Object.assign(Object.create(originalZk), {
         getVerifierKey: (id) =>
-          id === circuit
-            ? Promise.resolve(new Uint8Array(newVerifier))
+          Object.hasOwn(newVerifiers, id)
+            ? Promise.resolve(new Uint8Array(newVerifiers[id]))
             : originalZk.getVerifierKey(id),
         getProverKey: (id) =>
           id === circuit ? Promise.resolve(new Uint8Array(newProver)) : originalZk.getProverKey(id),
@@ -546,36 +569,54 @@ try {
         process.env.MN_PROOF_SERVER_URL,
         alternateRegistry,
       );
-      step('select-isolated-hybrid-withdrawal-verifier');
+      step(
+        fullVerifier
+          ? 'select-isolated-full-036-verifier-roster'
+          : 'select-isolated-hybrid-withdrawal-verifier',
+      );
     }
     const source = await deployAccount('source', device.pk, inbox.generateEncKeyPair().publicKey);
-    const verifyHybridSource = hybridVerifier
-      ? async () => {
-          const account = key.deserialize(
-            (await providers.publicDataProvider.queryContractState(source)).serialize(),
-          );
-          const expected = JSON.parse(
-            readFileSync(
-              new URL(
-                '../../packages/contract/resources/acc-s3r1.1.key-manifest.json',
-                import.meta.url,
-              ),
-              'utf8',
-            ),
-          ).circuits;
-          assert.equal(account.operations().length, Object.keys(expected).length);
-          for (const [name, pin] of Object.entries(expected)) {
-            assert.equal(
-              sha(account.operation(name)?.verifierKey),
-              name === 'withdraw_unshielded_with_jubjub'
-                ? '0d379e75fc29bb44de21a263a1f3bd941658aed71ccaa41cf445b29b104715a4'
-                : pin.verifier.sha256,
-              `Isolated source verifier mismatch: ${name}`,
+    const verifyHybridSource =
+      hybridVerifier || fullVerifier
+        ? async () => {
+            const account = key.deserialize(
+              (await providers.publicDataProvider.queryContractState(source)).serialize(),
             );
+            const expected = JSON.parse(
+              readFileSync(
+                new URL(
+                  '../../packages/contract/resources/acc-s3r1.1.key-manifest.json',
+                  import.meta.url,
+                ),
+                'utf8',
+              ),
+            ).circuits;
+            assert.equal(account.operations().length, Object.keys(expected).length);
+            const inventory = fullVerifier
+              ? JSON.parse(
+                  readFileSync(
+                    new URL(
+                      './evidence/compact036-acc-key-inventory-20261122.json',
+                      import.meta.url,
+                    ),
+                    'utf8',
+                  ),
+                ).circuits
+              : undefined;
+            for (const [name, pin] of Object.entries(expected)) {
+              assert.equal(
+                sha(account.operation(name)?.verifierKey),
+                fullVerifier
+                  ? inventory[name].newVerifierSha256
+                  : name === 'withdraw_unshielded_with_jubjub'
+                    ? '0d379e75fc29bb44de21a263a1f3bd941658aed71ccaa41cf445b29b104715a4'
+                    : pin.verifier.sha256,
+                `Isolated source verifier mismatch: ${name}`,
+              );
+            }
+            assert.deepEqual(account.maintenanceAuthority.committee, []);
           }
-          assert.deepEqual(account.maintenanceAuthority.committee, []);
-        }
-      : undefined;
+        : undefined;
     if (verifyHybridSource) {
       await verifyHybridSource();
       assert.equal(await reads.isSupportedAccount(source, 'undeployed'), false);
@@ -630,7 +671,8 @@ try {
       repointName: browserRepoint ? repointName : undefined,
       defaultField,
       ref,
-      probeKeyDirectory: hybridVerifier ? undefined : process.env.PASSPORT_MIDNAMES_DIAG_KEY_DIR,
+      probeKeyDirectory:
+        hybridVerifier || fullVerifier ? undefined : process.env.PASSPORT_MIDNAMES_DIAG_KEY_DIR,
       verifyHybridSource,
       step,
     });
@@ -664,24 +706,30 @@ try {
         assert.deepEqual(proofReceipt.final, { source: '10', target: '0' });
         step('verified-browser-review-before-withdrawal-key-probe');
       } else {
-        if (hybridVerifier) {
+        if (hybridVerifier || fullVerifier) {
           await verifyHybridSource();
           assert.deepEqual(proofReceipt.sent, { withdraw: 1, deposit: 1 });
           assert.deepEqual(proofReceipt.final, { source: '6', target: '4' });
-          step('verified-isolated-hybrid-verifier-native-send');
+          step(
+            fullVerifier
+              ? 'verified-isolated-full-036-verifier-roster-native-send'
+              : 'verified-isolated-hybrid-verifier-native-send',
+          );
         } else step('verified-browser-owner-review-before-night-send');
       }
     }
     Object.assign(receipt, {
       ...proofReceipt,
-      hybridVerifierDiagnostic: hybridVerifier
-        ? {
-            sourceOnly: true,
-            circuit: 'withdraw_unshielded_with_jubjub',
-            verifierSha256: '0d379e75fc29bb44de21a263a1f3bd941658aed71ccaa41cf445b29b104715a4',
-            supportedBinding: false,
-          }
-        : undefined,
+      hybridVerifierDiagnostic:
+        hybridVerifier || fullVerifier
+          ? {
+              sourceOnly: true,
+              circuit: 'withdraw_unshielded_with_jubjub',
+              verifierSha256: '0d379e75fc29bb44de21a263a1f3bd941658aed71ccaa41cf445b29b104715a4',
+              fullAlternateVerifierRoster: fullVerifier,
+              supportedBinding: false,
+            }
+          : undefined,
       claimIdentifier,
       registryAddress,
       passed: true,
@@ -693,8 +741,10 @@ try {
           ? 'verified-native-named-night-repoint-refusal'
           : proofReceipt.keyProbe
             ? 'verified-stable-prover-withdrawal-key-response-without-send'
-            : hybridVerifier
-              ? 'verified-stable-prover-hybrid-verifier-named-night-send'
+            : hybridVerifier || fullVerifier
+              ? fullVerifier
+                ? 'verified-stable-prover-full-036-verifier-roster-named-night-send'
+                : 'verified-stable-prover-hybrid-verifier-named-night-send'
               : 'verified-native-named-night-send',
     );
   } else {

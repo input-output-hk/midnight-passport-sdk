@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
-import { lstatSync, mkdirSync, readFileSync, realpathSync, statfsSync } from 'node:fs';
+import { lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, statfsSync } from 'node:fs';
 import { isIPv4 } from 'node:net';
 import { isAbsolute, join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -67,10 +67,11 @@ const browserReview =
   out.startsWith('midnames-deposit-browser-') || out.startsWith('midnames-night-browser-');
 const keyProbe = out.startsWith('midnames-night-browser-keyprobe-');
 const hybridVerifier = out.startsWith('midnames-night-browser-hybrid-');
+const fullVerifier = out.startsWith('midnames-night-browser-full036-');
 const keyProbeDirectory = process.env.PASSPORT_MIDNAMES_DIAG_KEY_DIR;
 assert.equal(
   Boolean(keyProbeDirectory),
-  keyProbe || hybridVerifier,
+  keyProbe || hybridVerifier || fullVerifier,
   'Alternate key input is limited to its diagnostic lanes',
 );
 if (keyProbeDirectory) assert.ok(isAbsolute(keyProbeDirectory));
@@ -85,6 +86,7 @@ assert.ok(!manualBrowserReview || browserReview);
 assert.ok(!browserDecline || !manualBrowserReview);
 assert.ok(!browserRepoint || !manualBrowserReview);
 assert.ok(!hybridVerifier || (!manualBrowserReview && !browserRepoint));
+assert.ok(!fullVerifier || (!manualBrowserReview && !browserRepoint));
 const fixtureMode = out.startsWith('midnames-claim-browser-')
   ? 'claim-browser'
   : out.startsWith('midnames-claim-preproof-')
@@ -134,10 +136,38 @@ const probeKeyHashes = {
   'withdraw_unshielded_with_jubjub.verifier':
     '0d379e75fc29bb44de21a263a1f3bd941658aed71ccaa41cf445b29b104715a4',
 };
+const fullVerifierInventory = fullVerifier
+  ? JSON.parse(
+      readFileSync(
+        join(root, 'examples/midnames-local/evidence/compact036-acc-key-inventory-20261122.json'),
+        'utf8',
+      ),
+    )
+  : undefined;
+if (fullVerifier) {
+  assert.equal(fullVerifierInventory.result, 'complete');
+  assert.equal(fullVerifierInventory.circuitsCompared, 52);
+  assert.equal(fullVerifierInventory.changedVerifierCount, 48);
+  assert.equal(Object.keys(fullVerifierInventory.circuits).length, 52);
+}
 const verifyProbeKeys = () => {
   if (!keyProbeDirectory) return;
   assert.equal(realpathSync(keyProbeDirectory), keyProbeDirectory);
-  for (const [name, expected] of Object.entries(probeKeyHashes)) {
+  const hashes = fullVerifier
+    ? {
+        'withdraw_unshielded_with_jubjub.prover':
+          probeKeyHashes['withdraw_unshielded_with_jubjub.prover'],
+        ...Object.fromEntries(
+          Object.entries(fullVerifierInventory.circuits).map(([name, pin]) => [
+            `${name}.verifier`,
+            pin.newVerifierSha256,
+          ]),
+        ),
+      }
+    : probeKeyHashes;
+  if (fullVerifier)
+    assert.deepEqual(readdirSync(keyProbeDirectory).sort(), Object.keys(hashes).sort());
+  for (const [name, expected] of Object.entries(hashes)) {
     const path = join(keyProbeDirectory, name);
     const stat = lstatSync(path);
     assert.ok(stat.isFile() && !stat.isSymbolicLink());
