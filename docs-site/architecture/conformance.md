@@ -93,7 +93,14 @@ first stable `9.0.0` prover also rejected that withdrawal. An
 [offline ACC key probe](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact036-acc-withdrawal-key-probe-20261122.json)
 found identical Compact 0.35/0.36 ZKIR for all 52 circuits but different,
 repeatable JubJub withdrawal key bytes from the newer generator. The precise
-HTTP 400 cause and a qualified replacement binding remain open.
+HTTP 400 cause and a qualified replacement binding remain open. A
+[native stable-prover probe](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/stable-withdrawal-036-key-probe-20261122.json)
+then received nonempty proof bytes from `9.0.2` with the new withdrawal pair
+for the exact synthetic browser-reviewed witness. It deliberately stopped
+before transaction completion or submission, leaving balances 10/0 and the
+old on-chain verifier unchanged. This narrows the artifact compatibility
+boundary; it does not establish a valid new ACC binding or release-prover
+payment conformance.
 
 The signed `a20a9b9` isolated owner-browser refusal adds a narrow #318 negative
 result: after Chromium displayed the exact named NIGHT route and clicked

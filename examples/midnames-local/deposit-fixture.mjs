@@ -584,6 +584,8 @@ try {
         assert.deepEqual(proofReceipt.final, { source: '10', target: '0', repoint: '0' });
         step('verified-browser-owner-repoint-before-night-send');
       } else if (proofReceipt.keyProbe) {
+        assert.equal(proofReceipt.sameWitnessOldKeyRefused, true);
+        assert.equal(proofReceipt.sameWitnessNewKeyReturnedProof, true);
         assert.equal(proofReceipt.approvals, 1);
         assert.equal(proofReceipt.signatures, 1);
         assert.deepEqual(proofReceipt.sent, { withdraw: 0, deposit: 0 });

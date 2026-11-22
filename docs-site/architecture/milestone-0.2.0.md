@@ -19,6 +19,13 @@ The milestone groups candidate work; it does not commit every Passport v1.0 prom
 
 The shared [local demo launcher](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local) attaches to a compatible Ledger 9 stack and does not start it again. [PR #367](https://github.com/input-output-hk/midnight-passport-sdk/pull/367) packaged that setup; [PR #368](https://github.com/input-output-hk/midnight-passport-sdk/pull/368) enabled optional registration and NIGHT funding with distinct sponsor and funding wallets. The browser must explicitly confirm the saved claim before sending. A prepared receipt is not an issued name.
 
+A [fresh isolated diagnostic](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/stable-withdrawal-036-key-probe-20261122.json)
+received nonempty withdrawal proof bytes from the stable `9.0.2` prover with
+the 0.36-generated key pair and the exact synthetic browser-reviewed witness.
+The existing ACC retained its old verifier key; the diagnostic stopped before
+transaction completion or payment dispatch. #318 still needs a new versioned
+binding, matching deployed verifier, and a full indexed two-leg run.
+
 ## Merged recovery slice and remaining gates
 
 [PR #370](https://github.com/input-output-hk/midnight-passport-sdk/pull/370) merged the source preview. At signed `3de4da8`, the full local Nix gate, independent exact-head review, [20 hosted core jobs](https://github.com/input-output-hk/midnight-passport-sdk/actions/runs/44465556996), and both image checks passed. It adds exact-original local funding recovery, finalized and same-block local name-to-ACC checks, a [Compact 0.36 read-only registry probe](https://github.com/input-output-hk/midnight-passport-sdk/blob/fd8919e961a34ca0fbfae2387be78039a208040d/examples/midnames-local/evidence/compact036-readonly-20261119.json), browser-to-sponsor pre-proof quote and saved-claim reconciliation, busy-before-proof refusal, and release of an older quote only after exact sponsor proof that it never reached wallet balancing. A [Preprod indexer proxy](https://github.com/input-output-hk/midnight-passport-sdk/blob/3de4da88852ff885e3d597a6b1337aa84242f5ed/examples/midnames-online/README.md) keeps a Blockfrost project ID on the host for an optional read-only profile. A separate host check anchors two tokenless v4 indexer reads and one operator-supplied known mapping to the same node-finalized block. The proxy and checker have synthetic/local-browser evidence only; neither qualifies a live public provider, independent backend, or online name.

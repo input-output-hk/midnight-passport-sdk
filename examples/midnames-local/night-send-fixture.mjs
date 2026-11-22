@@ -166,6 +166,7 @@ export async function qualifyNightSend({
       alternateRegistry,
     );
     let targetProofReturned = false;
+    let oldKeyRefused = false;
     const proving = {
       check: (...args) => ordinary.check(...args),
       lookupKey: (...args) => ordinary.lookupKey(...args),
@@ -175,7 +176,18 @@ export async function qualifyNightSend({
           parsed?.circuitId === 'withdraw_unshielded_with_jubjub' &&
           parsed.contractAddress === address
         ) {
-          const result = await alternate.prove(...args);
+          const preimage = Uint8Array.from(args[0]);
+          const proofArgs = () => [Uint8Array.from(preimage), args[1], args[2]];
+          try {
+            await ordinary.prove(...proofArgs());
+          } catch (error) {
+            assert.match(String(error), /code="400"/);
+            oldKeyRefused = true;
+          }
+          assert.ok(oldKeyRefused, 'The old-key control unexpectedly returned a proof');
+          // Both requests use the same serialized preimage, key location and
+          // binding input. The next call changes only the key pair.
+          const result = await alternate.prove(...proofArgs());
           assert.ok(result.length > 0, 'Stable prover returned an empty proof');
           targetProofReturned = true;
           throw new AlternateKeyProofReturned('Diagnostic proof returned; do not submit');
@@ -188,7 +200,8 @@ export async function qualifyNightSend({
     } catch (error) {
       // The ledger wraps callback errors. Only a returned proof from the exact
       // withdrawal can turn the diagnostic stop into a passing observation.
-      if (targetProofReturned) throw new AlternateKeyProofReturned('Stable prover returned proof');
+      if (oldKeyRefused && targetProofReturned)
+        throw new AlternateKeyProofReturned('Same-witness old-key refusal and new-key response');
       throw error;
     }
     throw new Error('The diagnostic withdrawal proof was not requested');
@@ -463,6 +476,8 @@ export async function qualifyNightSend({
     assert.deepEqual(final, { source: '10', target: '0' });
     return {
       keyProbe: true,
+      sameWitnessOldKeyRefused: true,
+      sameWitnessNewKeyReturnedProof: true,
       source,
       target,
       name: request.name,

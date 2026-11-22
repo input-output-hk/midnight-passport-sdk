@@ -797,5 +797,12 @@ found that the exact source produces 52 byte-identical ZKIR files with Compact
 0.36, while the newer ZKIR key generator deterministically changes the JubJub
 withdrawal key pair. The deposit control keys remain identical. This does not
 prove the HTTP 400 cause or qualify new keys for an existing deployed ACC.
+An [isolated stable-prover diagnostic](../../examples/midnames-local/evidence/stable-withdrawal-036-key-probe-20261122.json)
+received nonempty `9.0.2` proof bytes with the 0.36-generated withdrawal
+pair after an automated browser review. It stopped before the full transaction
+or either payment leg; the source and target ACC balances remained 10/0.
+The original ACC still holds its 0.35 verifier key. A newly versioned binding
+and deployed ACC with matching keys need a full proof, submission and indexed
+two-leg check before claiming release compatibility.
 
 See the [standalone recipe](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local).
