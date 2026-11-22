@@ -129,7 +129,11 @@ sender completed one stable-prover NIGHT withdrawal and exact-output ACC
 deposit with 10/0 → 6/0 → 6/4 balances. Both on-chain verifier rosters,
 retired authority, original leg journal and exact-owned cleanup passed. This
 advances the local P2/P5/P8 subset, but the normal SDK/demo still refuse the
-provisional binding. Paid user-owned naming, browser credential custody,
+provisional binding. A later [connected candidate browser receipt](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/candidate-connected-browser-night-send-20261122.json)
+adds a fresh mock-passkey ACC, separate funded device wallet, reviewed name,
+canonical withdrawal and deposit, retained-ID recovery, and 10/24 → 6/28
+balances on the shared Ledger 9 stack. It spans signed heads and reuses an
+earlier claim. A fresh one-head claim-to-payment run, physical passkey custody,
 online provider substitution and the wider recovery matrix remain open.
 
 The signed `a20a9b9` isolated owner-browser refusal adds a narrow #318 negative

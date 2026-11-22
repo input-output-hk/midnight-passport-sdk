@@ -44,9 +44,20 @@ after the split was reconciled against the original transaction before the
 deposit. The recipient candidate ACC balance moved from 0 to 4 at an indexed
 finalized block. The redacted receipt is
 `examples/midnames-local/evidence/candidate-acc-shared-adapter-settled-deposit-20261122.json`.
-This was one native deposit to an existing ACC; the connected browser send,
-source ACC withdrawal, and combined two-leg payment remain unqualified on
-the shared chain.
+This was one native deposit to an existing ACC, before the connected browser
+source withdrawal and combined two-leg run below.
+
+A later [connected candidate browser run](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/candidate-connected-browser-night-send-20261122.json)
+created and funded a fresh synthetic-passkey ACC on the shared Ledger 9 chain,
+funded its separate device wallet, and finalized DUST registration. It reviewed
+`codexacc22.night` against the pinned registry and recipient ACC, then withdrew
+4 NIGHT and deposited that exact output into the recipient. The original
+withdrawal and deposit finalized at separate blocks; after browser restart,
+the same journal archived both IDs and the ACC balances were 6 and 28. The
+diagnostic fixes and recovery span signed source heads, and the name was
+registered before this run. A fresh one-head create-to-claim-to-payment path,
+automatic recovery presentation, physical passkey and online provider remain
+open.
 
 A later isolated candidate
 [paid-claim retry](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/candidate-acc-page-paid-claim-retry-20261122.json)

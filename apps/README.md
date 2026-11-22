@@ -1015,7 +1015,9 @@ a durable marker keeps any no-ID outcome blocked, including a callback refusal.
 A separate source helper maps the reviewed amount and bridge address to
 the selected JubJub account's unshielded NIGHT withdrawal. The reference demo
 now has an opt-in local named-send page and connected bridge/finality adapter.
-This path has no native/provider qualification.
+The [connected browser receipt](../examples/midnames-local/evidence/candidate-connected-browser-night-send-20261122.json)
+qualifies one local candidate payment across signed heads. Physical-provider
+and online qualification remain open.
 
 The source-only owner review model can now stage a named NIGHT route for the
 actual credential ceremony. It shows the exact name, pinned registry, full
@@ -1024,8 +1026,9 @@ withdrawal callback, an opt-in host check requires that same named intent to
 remain approved before the journal fence. The ACC signature itself authorizes
 the withdrawal to the bridge; the name and destination ACC are checked by the
 host and are not fields signed by this ACC circuit. The opt-in local send
-control now stages this review for the actual owner credential call. A
-provider/browser payment is not qualified yet.
+control now stages this review for the actual owner credential call. The local
+candidate run exercised a synthetic passkey; physical-provider and online
+acceptance remain open.
 
 The local NIGHT deposit recipe and browser wallet share a source bridge guard
 for the decoded fenced withdrawal. It requires one exact controlled NIGHT
@@ -1034,8 +1037,9 @@ using another or additional unshielded input. The browser worker can now
 balance, sign and dispatch one prepared `deposit_unshielded` original after the
 host journals it. The worker independently reads the exact committed IndexedDB
 fence before dispatch. It refuses another ACC action, unshielded change, a different
-original or a second dispatch. The opt-in demo send control uses this worker;
-native browser deposit qualification is still needed.
+original or a second dispatch. The opt-in demo send control uses this worker.
+The local candidate browser deposit finalized with the exact original
+withdrawal output; physical-provider and online qualification remain open.
 
 The built-in wallet now offers a separate internal NIGHT bridge observation port
 for the demo host. It returns the device-held wallet's raw bridge address and
@@ -1045,13 +1049,13 @@ It also exposes the guarded internal deposit methods; the public DApp Connector
 remains read-only. Wallet connection now checks the pinned v1 service binding,
 manifest and artefact URL before using its proof-server endpoint.
 
-The next source-only host composition joins that worker to the selected JubJub
+The source-only host composition joins that worker to the selected JubJub
 account, configured name resolver, original-only browser journal and finality
 reader. It prepares an unbound `deposit_unshielded` call for the device wallet to
 balance and sign, then fences the original before dispatch. Each attempt opens a
 fresh journal handle, retaining the withdrawal through proof failure and later
-resume. The opt-in demo button uses this host. Native proof, connected browser
-payment and real-provider acceptance remain open.
+resume. The opt-in demo button uses this host. The connected local candidate
+payment finalized across signed heads; real-provider acceptance remains open.
 
 The retained Compact 0.35 `deposit_unshielded` call can misstate deletion
 credit against the current Ledger 9 cost model. A shared-chain predecessor was

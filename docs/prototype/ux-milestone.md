@@ -194,10 +194,14 @@ saved-original no-ID guard, while the host tests simulate its two legs. A fresh
 isolated [native run](../../examples/midnames-local/evidence/candidate-acc-adapter-named-night-send-20261122.json)
 settled both legs with the exported recipient deposit adapter at one signed
 head. It does not prove a connected browser withdrawal-to-deposit payment or
-recovery; the candidate launcher stays disabled without that explicit opt-in.
-The candidate worker now preserves its binding and manifest pin when it checks
-the finalized withdrawal and deposit fence. A headless browser checks the
-actual IndexedDB boundary; native connected browser payment remains pending.
+recovery by itself. A later [connected browser run](../../examples/midnames-local/evidence/candidate-connected-browser-night-send-20261122.json)
+created and funded a fresh ACC, registered DUST for its separate device wallet,
+reviewed a named 4 NIGHT payment, and finalized one withdrawal and one deposit.
+It reconciled those exact IDs after a browser deposit resume, then reopened to
+confirm an archived journal and source/recipient balances of 6/28. This run
+spans signed heads and used an already registered name; a fresh one-head
+create-to-claim-to-payment run remains open. The candidate launcher stays
+disabled without its explicit opt-in.
 
 An unavailable indexer leaves the original receipt intact and reports the
 check as unavailable. Without claim preparation or sponsor dispatch, the panel

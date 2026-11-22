@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "kind": "candidate-acc-connected-browser-named-night-send",
+  "result": "PASS_WITH_RECOVERY",
+  "observedAt": "2026-11-22",
+  "sourceHeads": {
+    "createFundAndDust": "5717b83a18df91356140d9962db1c757bfb6ed8a",
+    "withdrawal": "3f737f0c526f2c2fe21f46a42390da712777f9fe",
+    "depositAndFinalReconciliation": "267bba52f857b3e7ef14539732811569c082d0e2"
+  },
+  "profile": "shared Ledger 9 node, Indexer API v4, release prover; fresh headless Chromium profile and synthetic PRF-capable passkey",
+  "bindingId": "acc-s3r1.1-zkir036",
+  "manifestSha256": "590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f",
+  "registryAddress": "90e8734cc3ddc8aaf649b969ecfb61828f75d580725670a0718ed19a8f4a8fe0",
+  "name": "codexacc22.night",
+  "sourceAccAddress": "bbc72b4ea0cbf280b4cea2304c8522d4929ee33f888157e6d7baf19fe925b247",
+  "recipientAccAddress": "1bbba3a26618dc64720ad78fadc98d9b404eab7f983f7bf9c210f8c6c8b2e4c0",
+  "amount": "4",
+  "balances": {
+    "before": { "source": "10", "recipient": "24" },
+    "after": { "source": "6", "recipient": "28" }
+  },
+  "withdrawal": {
+    "txHash": "bc939387f4d4c7f19fe4bda99d5b65c804e98ff9bbfcec907cb7049c81973c7c",
+    "blockHeight": 72984,
+    "canonicalSuccess": true
+  },
+  "deposit": {
+    "txHash": "834a7fd28904e25527461ad64165b708108653401c52d410cf458ca5bb0076ea",
+    "blockHeight": 73076,
+    "canonicalSuccess": true
+  },
+  "checks": {
+    "freshAccCreatedAndActivated": true,
+    "candidateFundingReopened": true,
+    "separateDeviceWalletFunded": true,
+    "deviceDustRegistrationFinalized": true,
+    "namedRouteAndOwnerCeremonyReviewed": true,
+    "exactWithdrawalBridgeOutput": true,
+    "originalOnlyDepositResume": true,
+    "browserJournalArchivedAfterBothLegs": true,
+    "sourceAndRecipientBalancesReadAfterReload": true,
+    "sharedDockerStackUnchanged": true,
+    "ownedDemoServicesStopped": true
+  },
+  "diagnosticHistory": [
+    "An earlier owner attempt stopped at the account library's candidate binding guard before signing or transaction preparation; its exact no-ID browser record was archived as unsupported after inspection.",
+    "The first signed withdrawal finalized, but deposit preparation stopped at a detached browser fetch call before a deposit original existed.",
+    "After the fetch fix, the browser resumed the original withdrawal, fenced one deposit original, then reconciled both finalized IDs without another withdrawal or deposit submission."
+  ],
+  "limits": [
+    "The journey spans three signed source heads; it is not a fresh one-head create-to-payment qualification.",
+    "The owner credential was a synthetic mock passkey, not a physical authenticator.",
+    "The named recipient was registered earlier and the claim sponsor's prior finalized journal remained occupied; this run did not issue a new name.",
+    "The initial deposit failure required an explicit original-only resume; automatic recovery and ordinary-user presentation remain open.",
+    "Only the local provisional candidate binding and shared Ledger 9 profile were exercised; online Midnames and production provider acceptance remain unqualified."
+  ]
+}

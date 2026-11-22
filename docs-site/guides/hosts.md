@@ -32,7 +32,10 @@ selects separately verified `acc-s3r1.1-zkir036` assets and the shared Ledger 9
 release prover. It keeps candidate deployments and claim originals in separate
 local journals. This is an explicit source opt-in: the ordinary demo and public
 SDK binding remain on `acc-s3r1.1`, and online candidate admission is refused.
-A fresh combined browser create, claim and named-send run is still required.
+A [connected local browser receipt](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/candidate-connected-browser-night-send-20261122.json)
+now covers fresh ACC creation, funding, device-wallet DUST, and a named two-leg
+payment with original-only recovery across signed heads. The name was already
+registered; a fresh one-head create-to-claim-to-payment run is still required.
 
 The reference demo pins the published Midnames 2.1.0 reader for lookups. Its
 generated reader matches the pinned
@@ -86,6 +89,7 @@ At signed `ec83ce9`, the local named NIGHT fixture showed one owner-browser
 review of the source, resolved recipient, bridge wallet and two ACC operations
 before any synthetic owner signature. An automated approval led to one
 withdrawal and one deposit after durable original-intent recovery, with 6/4
-final ACC balances. Human passkey consent, an owner send page in the reference
-demo and online naming remain separate qualification gates.
+final ACC balances. The reference demo now has an opt-in owner send page and a
+connected local candidate payment receipt. Human passkey consent and online
+naming remain separate qualification gates.
 See the [demo configuration and evidence](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/site/names.md#source-preview-midnames-210).
