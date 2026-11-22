@@ -515,6 +515,9 @@ original, while the browser releases only its own quote-and-owner reservation.
 An earlier caller cannot claim that owner or strand a different browser's
 recovery. A quote with a recorded owner decision still requires that exact
 commitment.
+The [synthetic Chromium recovery receipt](../../examples/midnames-local/evidence/archived-competing-quote-browser-20261122.json)
+checks two separate browser storage profiles, sponsor HTTP refusal, reload,
+exact local release and a distinct fresh quote. It sends no claim transaction.
 
 If the preparation response is lost, reopen with the original credential and
 select **Continue registration**, then **Check saved claim** when offered. The host looks up the original preparation.

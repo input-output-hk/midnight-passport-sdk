@@ -137,8 +137,25 @@ test('archives only an expired unprepared intent and releases the sponsor for a 
   await assert.rejects(
     reopened.findPrepared({ ...siblingRequest, quote: { ...sibling, night: '2' } }),
   );
+  // Older archives recorded the first lookup caller as an owner even though
+  // this quote never entered balance. That arbitrary field cannot strand the
+  // browser that actually holds the reservation.
+  writeFileSync(
+    join(archive, `quote-decision-${sibling.id}.json`),
+    JSON.stringify({
+      kind: 'archive-refused',
+      digest: await claimQuoteDigest(sibling),
+      ownerCommitment: siblingRequest.ownerCommitment,
+    }),
+  );
+  await assert.rejects(
+    reopened.findPrepared({ ...siblingRequest, ownerCommitment: 'ff'.repeat(32) }),
+    ClaimPreIntentRefusal,
+  );
   writeFileSync(join(archive, `quote-${sibling.id}.json`), '{broken');
   await assert.rejects(reopened.findPrepared(siblingRequest));
+  rmSync(archive, { recursive: true });
+  await assert.rejects(reopened.findPrepared(siblingRequest), /not issued/);
 });
 
 test('a competing browser recovers its own archived no-intent quote after an unrelated lookup', async (t) => {
