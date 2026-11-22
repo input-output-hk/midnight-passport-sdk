@@ -12,7 +12,7 @@ import {
 } from '../../apps/passport-dapp/src/midnames/ledger-reader.ts';
 import { claimDestination } from '../../apps/passport-dapp/src/midnames/claim-quote.ts';
 import { readClaimFinality } from '../../apps/passport-dapp/src/midnames/claim-finality.ts';
-import { verifyIndexedClaimFailure } from './claim-indexed-failure.mjs';
+import { verifyIndexedClaimFailure, verifyIndexedClaimSuccess } from './claim-indexed-failure.mjs';
 import { createClaimSponsorHandler } from './claim-sponsor-http.mts';
 import { startDemoOwnerBundle } from './claim-owner-browser-host.mjs';
 import { verifyPreparedRegistry } from './verify-prepared.mjs';
@@ -131,33 +131,45 @@ try {
     coin: hex(await providers.walletProvider.getCoinPublicKey()),
     encryption: hex(await providers.walletProvider.getEncryptionPublicKey()),
   };
-  const reader = createMidnamesLedgerReads(
-    createMidnamesIndexer(networkId, indexerUrl, indexerWsUrl),
-    networkId,
-    candidateBinding ? 'acc-s3r1.1-zkir036' : 'acc-s3r1.1',
-    'standalone-0.35',
-    candidateBinding
-      ? {
-          bindingId: 'acc-s3r1.1-zkir036',
-          manifestSha256: process.env.PASSPORT_MANIFEST_SHA256,
-          decodeState: (state) => accountLedger(state.data),
-        }
-      : undefined,
-  );
+  const indexer = createMidnamesIndexer(networkId, indexerUrl, indexerWsUrl);
+  const makeReader = (source) =>
+    createMidnamesLedgerReads(
+      source,
+      networkId,
+      candidateBinding ? 'acc-s3r1.1-zkir036' : 'acc-s3r1.1',
+      'standalone-0.35',
+      candidateBinding
+        ? {
+            bindingId: 'acc-s3r1.1-zkir036',
+            manifestSha256: process.env.PASSPORT_MANIFEST_SHA256,
+            decodeState: (state) => accountLedger(state.data),
+          }
+        : undefined,
+    );
+  const reader = makeReader(indexer);
   const profile = { networkId, registryAddress, namespace: 'night' };
   await assertOtherClaimJournalsSettled(journalDir, async (receipt) => {
-    if (
-      receipt.networkId !== networkId ||
-      receipt.registryAddress !== registryAddress ||
-      (await readClaimFinality(indexerUrl, receipt, fetch, claimProtocolVersion)) !== true
-    )
+    if (receipt.networkId !== networkId || receipt.registryAddress !== registryAddress)
       return false;
-    const claim = await reader.readClaim(receipt.name, profile);
-    return (
-      claim?.ownerCommitment === receipt.ownerCommitment &&
-      claim.target.kind === 'contract' &&
-      claim.target.address === receipt.accountAddress
-    );
+    await verifyIndexedClaimSuccess({
+      receipt,
+      nodeUrl,
+      indexerUrl,
+      protocolVersion: claimProtocolVersion,
+      readBindingAt: async (hash) => {
+        const at = makeReader({
+          ...indexer,
+          queryContractState: (address) =>
+            indexer.queryContractState(address, { type: 'blockHash', blockHash: hash }),
+        });
+        const claim = await at.readClaim(receipt.name, profile);
+        return {
+          ...claim,
+          supportedAccount: await at.isSupportedAccount(receipt.accountAddress, networkId),
+        };
+      },
+    });
+    return true;
   });
   async function live(destination) {
     const selected = claimDestination(destination);

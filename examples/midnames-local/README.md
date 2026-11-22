@@ -119,9 +119,11 @@ For a **new** account/name on the same chain, select a new, explicit
 `--claim-journal-id` when starting the demo. The launcher retains the earlier
 journal and uses a separate private directory under `--state-dir`; restart with
 the same ID to recover an uncertain original. Do not select a new ID to retry
-an uncertain claim. Only one claim host runs at a time, and the shared sponsor
-lease must be free before switching journals. The default journal remains
-unchanged when the flag is omitted.
+an uncertain claim. The host checks every earlier active journal's exact
+original against a canonical node-finalized block and the name/ACC binding at
+that block before it admits a separate journal. Only one claim host runs at a
+time, and the shared sponsor lease must be free before switching journals. The
+default journal remains unchanged when the flag is omitted.
 The [connected browser receipt](evidence/candidate-connected-browser-night-send-20261122.json)
 shows this opt-in control completing a 4 NIGHT payment to an already registered
 name. It preserved the original withdrawal through a deposit preparation failure,

@@ -4,7 +4,8 @@ import type { ClaimReceipt } from '../../apps/passport-dapp/src/midnames/claim-r
 import { claimReceiptLimit } from '../../apps/passport-dapp/src/midnames/claim-receipt.ts';
 import { openClaimDispatch, readClaimRecord } from './claim-dispatch.mts';
 
-const activeJournal = /^claim-journal(?:-candidate)?(?:-[a-z0-9][a-z0-9-]{0,39})?$/;
+const activeJournal =
+  /^claim-journal(?:$|-candidate$|-(?:stable|candidate)-[a-z0-9][a-z0-9-]{0,39}$)/;
 const journalLimit = 128;
 
 /** A new local claim must not bypass another journal's unknown original. */

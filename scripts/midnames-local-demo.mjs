@@ -138,6 +138,17 @@ export function parseArgs(argv) {
   return result;
 }
 
+/** @param {DemoOptions} options */
+export function claimJournalDirectory(options) {
+  const profile = options.candidateAssets ? 'candidate' : 'stable';
+  const name = options.claimJournalId
+    ? `claim-journal-${profile}-${options.claimJournalId}`
+    : profile === 'candidate'
+      ? 'claim-journal-candidate'
+      : 'claim-journal';
+  return join(options.stateDir, name);
+}
+
 /** @param {string} command @param {string[]} args @param {{env?: NodeJS.ProcessEnv, timeout?: number}} [options] */
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
@@ -494,10 +505,7 @@ async function startClaimHost(options, claim, env) {
     readFileSync(join(options.stateDir, 'claim-sponsor-wallet-provision.json'), 'utf8'),
   );
   assert.equal(provision.status, 'complete', 'Claim sponsor wallet funding is unresolved.');
-  const journal = join(
-    options.stateDir,
-    `${options.candidateAssets ? 'claim-journal-candidate' : 'claim-journal'}${options.claimJournalId ? `-${options.claimJournalId}` : ''}`,
-  );
+  const journal = claimJournalDirectory(options);
   console.log(`midnames-demo: retaining claim journal at ${journal}.`);
   privateState(journal);
   const args = [

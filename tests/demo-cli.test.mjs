@@ -6,7 +6,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fund, manifestStatus, parseArgs } from '../scripts/demo.mjs';
-import { parseArgs as parseMidnamesArgs } from '../scripts/midnames-local-demo.mjs';
+import {
+  claimJournalDirectory,
+  parseArgs as parseMidnamesArgs,
+} from '../scripts/midnames-local-demo.mjs';
 import binding from '../packages/contract/acc-binding-v2.generated.json' with { type: 'json' };
 
 test('demo CLI chooses up by default and parses explicit setup options', () => {
@@ -55,6 +58,31 @@ test('local Midnames candidate profile requires an explicit asset selection', ()
       () => parseMidnamesArgs(['up', '--claim', '--claim-journal-id', invalid]),
       /--claim-journal-id needs a lowercase/,
     );
+  const stable = claimJournalDirectory(
+    parseMidnamesArgs([
+      'up',
+      '--claim',
+      '--state-dir',
+      '/tmp/demo',
+      '--claim-journal-id',
+      'candidate-foo',
+    ]),
+  );
+  const candidate = claimJournalDirectory(
+    parseMidnamesArgs([
+      'up',
+      '--claim',
+      '--state-dir',
+      '/tmp/demo',
+      '--candidate-assets',
+      '/tmp/assets',
+      '--claim-journal-id',
+      'foo',
+    ]),
+  );
+  assert.equal(stable, '/tmp/demo/claim-journal-stable-candidate-foo');
+  assert.equal(candidate, '/tmp/demo/claim-journal-candidate-foo');
+  assert.notEqual(stable, candidate);
 });
 
 test('demo fund command sends a pinned authenticated request with the caller idempotency key', async () => {
