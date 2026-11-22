@@ -222,6 +222,9 @@ export async function proveUnboundNightDeposit(
   const zkConfigProvider = new FetchZkConfigProvider<string>(network.artefactUrl, {
     verify: 'require',
     expectedManifestHash: network.manifestSha256,
+    // The provider's default ponyfill may call a detached native browser fetch.
+    // Bind through the active global so Chrome can fetch the pinned verifier.
+    fetchFunc: (url, init) => globalThis.fetch(url, init),
   });
   const walletProvider = createWalletProvider({
     getCoinPublicKey: () => walletKeys.coinPublicKey,
