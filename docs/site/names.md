@@ -862,9 +862,11 @@ checked the deployed candidate verifier, fetched the pinned deposit artifacts
 from an owned loopback key server, and proved one unbalanced 4 NIGHT deposit
 call with the shared 9.0.2 prover. It did not balance or submit a transaction
 and makes no ACC balance-change claim. The diagnostic composed the call using the
-adapter's measured-deposit helper; the exported candidate proving route still
-refuses before I/O. The browser send page and funding service remain disabled
-until the connected two-leg route, exact generated module, and native settlement
-are qualified together.
+adapter's measured-deposit helper. The exported adapter now accepts an explicit
+local candidate proof request only after checking the deployed and HTTP artifact
+deposit verifier against the candidate pin; its exact-head native proof is still
+pending. The browser send page and funding service remain disabled until the
+connected two-leg route, exact generated module, and native settlement are
+qualified together.
 
 See the [standalone recipe](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local).

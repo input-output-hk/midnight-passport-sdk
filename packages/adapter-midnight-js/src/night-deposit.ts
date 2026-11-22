@@ -27,6 +27,8 @@ const NIGHT_DEPOSIT_PINS = Object.freeze({
   'acc-s3r1.1': '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f',
   'acc-s3r1.1-zkir036': '590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f',
 });
+const CANDIDATE_DEPOSIT_VERIFIER_SHA256 =
+  'bb4421a5909564377d15f0756299bef99740089b842e8d9796ad2d3d75831de9';
 const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]']);
 
 function localEndpoint(value: string, protocols: readonly string[], pathname: string): boolean {
@@ -56,7 +58,7 @@ export interface UnboundNightDepositRequest {
     readonly encryptionPublicKey: string;
   };
   readonly prover: Prover;
-  /** Explicit source-only opt-in for the provisional Ledger 9 key profile. */
+  /** Explicit local proof-only opt-in; the host separately controls balancing and dispatch. */
   readonly provisionalLocal?: boolean;
 }
 
@@ -75,15 +77,25 @@ export function assertNightDepositPreflight(request: UnboundNightDepositRequest)
         !localEndpoint(network.indexerWsUrl, ['ws:', 'wss:'], '/api/v4/graphql/ws') ||
         !localEndpoint(network.artefactUrl, ['http:', 'https:'], '/v1/zk/acc-s3r1.1-zkir036'))) ||
     !ADDRESS.test(target) ||
+    typeof amount !== 'bigint' ||
     amount <= 0n ||
     amount >= 1n << 128n ||
+    typeof walletKeys.coinPublicKey !== 'string' ||
     !walletKeys.coinPublicKey ||
+    typeof walletKeys.encryptionPublicKey !== 'string' ||
     !walletKeys.encryptionPublicKey ||
     typeof binding.Contract !== 'function' ||
     typeof binding.ledger !== 'function' ||
     typeof prover.proveTx !== 'function'
   )
     throw new Error('Unsupported pinned NIGHT deposit request.');
+}
+
+async function sha256(value: Uint8Array): Promise<string> {
+  if (!(value instanceof Uint8Array) || value.length === 0)
+    throw new Error('The pinned NIGHT deposit verifier is missing.');
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', Uint8Array.from(value)));
+  return Array.from(digest, (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
 /** Replace Compact 0.35's padded or short deletion credit with the measured value. */
@@ -202,8 +214,6 @@ export async function proveUnboundNightDeposit(
 ): Promise<Uint8Array> {
   const { network, binding, target, amount, walletKeys, prover } = request;
   assertNightDepositPreflight(request);
-  if (network.bindingId !== 'acc-s3r1.1')
-    throw new Error('Provisional NIGHT deposit proof is not qualified.');
   setNetworkId(network.networkId);
   const publicDataProvider = indexerPublicDataProvider({
     queryURL: network.indexerUrl,
@@ -251,6 +261,19 @@ export async function proveUnboundNightDeposit(
   const [, state, parameters] = captured.snapshot;
   const operation = ContractState.deserialize(state.serialize()).operation('deposit_unshielded');
   if (!operation) throw new Error('The named NIGHT recipient lacks the pinned deposit operation.');
+  if (network.bindingId === 'acc-s3r1.1-zkir036') {
+    // The provisional profile must agree at the chain and HTTP artifact boundaries
+    // before its isolated proof port sees a deposit call.
+    const [chainVerifier, artifactVerifier] = await Promise.all([
+      sha256(operation.verifierKey),
+      zkConfigProvider.getVerifierKey('deposit_unshielded').then(sha256),
+    ]);
+    if (
+      chainVerifier !== CANDIDATE_DEPOSIT_VERIFIER_SHA256 ||
+      artifactVerifier !== CANDIDATE_DEPOSIT_VERIFIER_SHA256
+    )
+      throw new Error('The provisional NIGHT deposit verifier differs from its pin.');
+  }
   const keyLocation = encodeContractKeyLocation({
     contractAddress: target,
     circuitId: 'deposit_unshielded',

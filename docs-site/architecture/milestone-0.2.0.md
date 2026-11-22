@@ -31,9 +31,11 @@ the previously created candidate ACC's deposit verifier, fetched pinned
 `deposit_unshielded` artifacts from an owned loopback key server, and obtained
 one unbalanced 4 NIGHT proof from release prover `9.0.2`. The redacted receipt
 is in `examples/midnames-local/evidence/candidate-acc-shared-deposit-proof-20261122.json`.
-The diagnostic submitted no transaction. The exported provisional adapter
-route and connected demo remain closed; this result does not qualify a funded
-deposit, browser send, or combined two-leg payment on the shared chain.
+The diagnostic submitted no transaction. The exported adapter has since added
+an explicit local candidate proof request with deployed and HTTP verifier-pin
+checks; its exact-head native proof is pending. The connected demo remains
+closed, and the earlier diagnostic does not qualify a funded deposit, browser
+send, or combined two-leg payment on the shared chain.
 
 A later isolated candidate
 [paid-claim retry](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/candidate-acc-page-paid-claim-retry-20261122.json)

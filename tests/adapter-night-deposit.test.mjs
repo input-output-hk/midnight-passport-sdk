@@ -45,6 +45,19 @@ test('unbound NIGHT deposit refuses unsupported network, binding, target, amount
       /Unsupported pinned NIGHT deposit request/,
     );
   for (const change of [
+    { amount: 4 },
+    { walletKeys: { coinPublicKey: 1, encryptionPublicKey: 2 } },
+  ])
+    assert.throws(
+      () =>
+        assertNightDepositPreflight(
+          /** @type {Parameters<typeof assertNightDepositPreflight>[0]} */ (
+            /** @type {unknown} */ ({ ...baseline(), ...change })
+          ),
+        ),
+      /Unsupported pinned NIGHT deposit request/,
+    );
+  for (const change of [
     { binding: { ...binding, Contract: undefined } },
     { prover: { proveTx: undefined } },
   ])
@@ -59,7 +72,7 @@ test('unbound NIGHT deposit refuses unsupported network, binding, target, amount
     );
 });
 
-test('provisional NIGHT deposit needs the exact pin, explicit opt-in and loopback API v4', async () => {
+test('provisional NIGHT deposit needs the exact pin, explicit opt-in and loopback API v4', () => {
   const candidate = {
     ...baseline(),
     network: {
@@ -74,10 +87,6 @@ test('provisional NIGHT deposit needs the exact pin, explicit opt-in and loopbac
     provisionalLocal: true,
   };
   assert.doesNotThrow(() => assertNightDepositPreflight(candidate));
-  await assert.rejects(
-    () => proveUnboundNightDeposit(candidate),
-    /Provisional NIGHT deposit proof is not qualified/,
-  );
   for (const changed of [
     { provisionalLocal: false },
     { network: { ...candidate.network, manifestSha256: 'ab'.repeat(32) } },
