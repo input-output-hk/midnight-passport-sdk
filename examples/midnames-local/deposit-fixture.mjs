@@ -49,9 +49,11 @@ http.request = function (...args) {
 };
 const sha = (b) => createHash('sha256').update(b).digest('hex');
 const candidateNight = output.split('/').at(-1).startsWith('midnames-night-candidate-');
+const candidateClaim = output.split('/').at(-1).startsWith('midnames-claim-candidate-');
+const candidateProfile = candidateNight || candidateClaim;
 const candidateAssets = process.env.PASSPORT_MIDNAMES_CANDIDATE_ASSETS;
-assert.equal(Boolean(candidateAssets), candidateNight);
-const candidatePin = candidateNight ? resolvePinnedBinding('acc-s3r1.1-zkir036') : undefined;
+assert.equal(Boolean(candidateAssets), candidateProfile);
+const candidatePin = candidateProfile ? resolvePinnedBinding('acc-s3r1.1-zkir036') : undefined;
 if (candidatePin) assert.equal(candidatePin.provisional, true);
 const pins = await verifyPreparedRegistry(prepared);
 const assets = join(prepared, 'managed');
@@ -218,8 +220,26 @@ try {
     });
     return address;
   };
+  const verifyCandidateAccount = async (address) => {
+    assert.ok(candidatePin);
+    const observed = await providers.publicDataProvider.queryContractState(address);
+    const onChain = key.deserialize(observed.serialize());
+    assert.equal(onChain.operations().length, 52);
+    for (const [name, pin] of Object.entries(candidatePin.circuits)) {
+      if (pin.proof)
+        assert.equal(sha(onChain.operation(name)?.verifierKey), pin.hashes.verifierKey);
+    }
+    assert.deepEqual(onChain.maintenanceAuthority.committee, []);
+    const decoded = acc.ledger(compactRuntime.ContractState.deserialize(observed.serialize()).data);
+    assert.equal(decoded.booted, true);
+    assert.equal(decoded.spec_version, 3n);
+  };
   const encKeys = inbox.generateEncKeyPair();
   const accountAddress = await deployAccount('account', randomJubJubPoint(), encKeys.publicKey);
+  if (candidatePin) {
+    await verifyCandidateAccount(accountAddress);
+    step('verified-candidate-recipient-roster');
+  }
 
   const regProviders = {
     ...providers,
@@ -365,19 +385,20 @@ try {
     process.env.MN_INDEXER_URL,
     process.env.MN_INDEXER_WS_URL,
   );
+  const candidateQualification = candidatePin
+    ? {
+        bindingId: 'acc-s3r1.1-zkir036',
+        manifestSha256: candidatePin.manifestSha256,
+        decodeState: (state) =>
+          acc.ledger(compactRuntime.ContractState.deserialize(state.serialize()).data),
+      }
+    : undefined;
   const reads = createMidnamesLedgerReads(
     indexer,
     'undeployed',
     candidatePin ? 'acc-s3r1.1-zkir036' : 'acc-s3r1.1',
     'standalone-0.35',
-    candidatePin
-      ? {
-          bindingId: 'acc-s3r1.1-zkir036',
-          manifestSha256: candidatePin.manifestSha256,
-          decodeState: (state) =>
-            acc.ledger(compactRuntime.ContractState.deserialize(state.serialize()).data),
-        }
-      : undefined,
+    candidateQualification,
   );
   const profile = { networkId: 'undeployed', namespace: 'night', registryAddress };
   const service = createMidnamesNameService(profile, reads);
@@ -519,6 +540,7 @@ try {
         providers,
         ledger,
         reads,
+        candidateQualification,
         profile,
         step,
         readLive,
@@ -627,18 +649,9 @@ try {
     }
     const source = await deployAccount('source', device.pk, inbox.generateEncKeyPair().publicKey);
     if (candidatePin) {
-      for (const address of [accountAddress, source]) {
-        const onChain = key.deserialize(
-          (await providers.publicDataProvider.queryContractState(address)).serialize(),
-        );
-        assert.equal(onChain.operations().length, 52);
-        for (const [name, pin] of Object.entries(candidatePin.circuits)) {
-          if (pin.proof)
-            assert.equal(sha(onChain.operation(name)?.verifierKey), pin.hashes.verifierKey);
-        }
-        assert.deepEqual(onChain.maintenanceAuthority.committee, []);
-        assert.ok(await reads.isSupportedAccount(address, 'undeployed'));
-      }
+      await verifyCandidateAccount(source);
+      assert.ok(await reads.isSupportedAccount(accountAddress, 'undeployed'));
+      assert.ok(await reads.isSupportedAccount(source, 'undeployed'));
       step('verified-two-candidate-acc-rosters');
     }
     const verifyHybridSource =

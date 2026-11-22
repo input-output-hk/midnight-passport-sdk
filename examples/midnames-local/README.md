@@ -1054,6 +1054,38 @@ recipient ACC deposit. The retained intent recovered between legs, with 10/0
 candidate route. User-owned paid registration, browser consent, recovery and
 online admission remain separate gates.
 
+### Provisional candidate paid name claim and retry
+
+The `midnames-claim-candidate-` lane uses the same complete candidate ACC
+assets and prepared standalone registry on a fresh isolated chain. It deploys
+and activates a candidate ACC, verifies its full on-chain verifier roster and
+retired maintenance authority, then runs two page-owned paid claim originals
+in one headless Passport browser profile. The first is forced to fail after
+admission by a registry policy change. The lane checks its exact indexed
+failure, archives that sponsor journal, releases the browser original, and
+reviews and sends a fresh claim after restoring the policy. It verifies the
+final binding at one canonical block. This qualification reader explicitly
+admits the candidate only for this run; the ordinary demo still refuses it.
+
+```sh
+PASSPORT_MIDNAMES_CANDIDATE_ASSETS=/absolute/path/to/verified-candidate-assets \
+nix develop -c env -u LD_DYLD_PATH \
+  PASSPORT_MIDNAMES_NATIVE=1 PASSPORT_RC_LOCALNET=1 \
+  node examples/midnames-local/qualify-deposit.mjs \
+  midnames-claim-candidate-fresh-run \
+  /absolute/path/to/prepared-standalone-registry \
+  /absolute/path/to/acc-reference/contract \
+  10.254.85.0/28
+```
+
+Choose a new output name and unused subnet after inspecting Docker networks.
+The lane requires at least 50 GiB free disk and 24 GiB Docker memory, preserves
+all originals and failed receipts, and stops only its recorded containers.
+Until a passing native receipt is recorded, this is an available qualification
+command, not a claim of candidate name issuance. A pass would establish the
+isolated page-owned local route; combined ACC creation and claim, real
+passkey-provider consent, and online service admission need separate evidence.
+
 The signed `a20a9b9` negative run `midnames-night-browser-decline-20261116a`
 passed on isolated `undeployed`. Chromium displayed the same exact review and
 clicked **Decline**. The source/target balances stayed 10/0 with zero owner
