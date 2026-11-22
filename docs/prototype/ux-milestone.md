@@ -191,6 +191,10 @@ unknown name, a name pointing to the source ACC, an unsupported ACC, and an
 insufficient source balance. An unavailable naming provider is reported as
 unavailable, not as an unregistered name. No owner ceremony or payment starts
 for these cases.
+For local name registration, a competing quote moved into an archived sponsor
+journal can be refused as never balanced without assigning its owner to the
+first lookup caller. Only the credential's matching quote-and-owner reservation
+is released; any recorded owner decision stays bound to that owner.
 The local launcher now accepts an explicit claim journal ID for a separate new
 account/name after an earlier claim has been confirmed. It preserves the first
 journal and requires the same ID for that claim's recovery; switching IDs is

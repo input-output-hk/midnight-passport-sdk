@@ -1245,6 +1245,9 @@ was archived remain recoverable through an exact bounded archive lookup; an
 unrelated occupying original never becomes their prepared receipt. Unit, HTTP
 and synthetic Chromium checks cover this path; a fresh native sponsor-side
 failed-original retirement is still a separate gate.
+If such a quote never entered balance, the sponsor refuses it without assigning
+its owner to the first lookup caller. The browser releases only its own saved
+quote and owner commitment; a recorded sponsor owner decision remains bound.
 The choice and public receipt live in this browser's IndexedDB, so a different
 device needs the original receipt and credential to recover it. This source
 preview does not establish name-owner recovery after total credential loss.

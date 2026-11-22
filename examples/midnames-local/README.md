@@ -1386,6 +1386,10 @@ outage, changed binding, another partial result and uncertain finality keep the
 original fenced. Other quotes that moved with an archived journal remain
 recoverable by exact bounded lookup; a quote without a balance intent receives
 only its own durable refusal, never the occupying original's receipt.
+The sponsor does not assign an owner commitment to a quote that never entered
+balance. The browser's credential-scoped journal checks its own saved owner
+commitment before releasing that reservation, even if another caller checked
+the archived quote first. A recorded owner decision remains owner-bound.
 The dispatch handler rechecks
 the approved quote and original transaction before opening the dispatch fence.
 If live terms change before any intent is recorded, the sponsor durably refuses

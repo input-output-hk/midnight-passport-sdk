@@ -509,6 +509,12 @@ must belong to a different quote. The sponsor records an exact pre-intent
 refusal beside the archived quote, allowing only that browser's unprepared
 reservation to be released. Missing, malformed or conflicting archive data
 keeps the reservation pending for investigation.
+For a quote that never entered balance, the sponsor has no recorded owner
+commitment to assign: its refusal is bound to the exact quote and competing
+original, while the browser releases only its own quote-and-owner reservation.
+An earlier caller cannot claim that owner or strand a different browser's
+recovery. A quote with a recorded owner decision still requires that exact
+commitment.
 
 If the preparation response is lost, reopen with the original credential and
 select **Continue registration**, then **Check saved claim** when offered. The host looks up the original preparation.
