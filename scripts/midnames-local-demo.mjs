@@ -693,16 +693,25 @@ async function demo(options, claim) {
       });
     }
     if (options.funding) {
+      const fundingName = options.candidateAssets ? 'candidate-funding' : 'funding';
       const provision = JSON.parse(
-        readFileSync(join(options.stateDir, 'funding-wallet-provision.json'), 'utf8'),
+        readFileSync(join(options.stateDir, `${fundingName}-wallet-provision.json`), 'utf8'),
       );
       assert.equal(provision.status, 'complete', 'Funding wallet setup is unresolved.');
       Object.assign(env, {
-        PASSPORT_FUNDING_SEED_FILE: join(options.stateDir, 'funding-seed.private.hex'),
-        PASSPORT_FUNDING_TOKEN_FILE: join(options.stateDir, 'funding-token.private.txt'),
-        PASSPORT_FUNDING_ASSETS_FILE: join(options.stateDir, 'funding-assets.private.json'),
-        PASSPORT_FUNDING_RESERVATIONS_FILE: join(options.stateDir, 'funding-reservations.json'),
-        PASSPORT_FUNDING_DEPLOYMENTS_FILE: join(options.stateDir, 'registry.deployments.json'),
+        PASSPORT_FUNDING_SEED_FILE: join(options.stateDir, `${fundingName}-seed.private.hex`),
+        PASSPORT_FUNDING_TOKEN_FILE: join(options.stateDir, `${fundingName}-token.private.txt`),
+        PASSPORT_FUNDING_ASSETS_FILE: join(options.stateDir, `${fundingName}-assets.private.json`),
+        PASSPORT_FUNDING_RESERVATIONS_FILE: join(
+          options.stateDir,
+          `${fundingName}-reservations.json`,
+        ),
+        PASSPORT_FUNDING_DEPLOYMENTS_FILE: join(
+          options.stateDir,
+          options.candidateAssets
+            ? 'registry-candidate.deployments.json'
+            : 'registry.deployments.json',
+        ),
       });
     }
     if (options.claim) {
@@ -788,8 +797,6 @@ export async function main(argv = process.argv.slice(2)) {
       throw new Error(
         '--candidate-assets needs --claim and a verified standalone registry profile.',
       );
-    if (options.candidateAssets && options.funding)
-      throw new Error('Candidate NIGHT deposits are not qualified; omit --funding.');
     if (options.claim && options.setup && !options.candidateAssets)
       throw new Error('--claim needs a verified local registry profile.');
     if (options.command === 'up' && !options.contractDir && !options.passportRepo)

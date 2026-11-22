@@ -89,9 +89,13 @@ seed file, explicit candidate reservation and deployment files, a NIGHT-only
 asset policy and loopback Ledger 9 / Indexer API v4 and Passport service URLs.
 Candidate eligibility and balance reads check the complete pinned on-chain
 verifier roster before a reservation or wallet preparation. Its
-general value-call endpoint remains closed for candidate accounts. The Midnames
-demo launcher does not yet enable candidate funding: the funding-service route
-still needs an exact-head native reservation, submission and replay qualification.
+general value-call endpoint remains closed for candidate accounts. A
+[shared-chain native run](../../examples/midnames-local/evidence/candidate-funding-native-20261122.json)
+confirmed candidate NIGHT credit, finalized indexed action and same-ID replay
+at signed source `c009ed3f`. The Midnames demo launcher admits this candidate
+funding route only with explicit `--candidate-assets --funding` and a complete
+dedicated wallet provision receipt. The connected browser funding action is a
+separate acceptance step.
 
 For that qualification on the shared local stack, prepare a **separate** candidate
 funding wallet after the candidate registry and chain anchor have been recorded:

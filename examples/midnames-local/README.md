@@ -101,7 +101,13 @@ The candidate build checks the exact manifest and generated module hashes.
 The service checks the complete candidate asset tree at startup. A successful
 build or page start does not qualify the combined create, claim, deposit and
 named-send journey; its native receipt must be recorded separately.
-`--funding` is refused for this provisional profile. An
+To enable candidate NIGHT deposits, first run the one-time
+[`--candidate-funding-only` wallet provisioner](../../apps/passport-funding-service/README.md),
+then add `--funding` to the candidate `up` command. It selects the separate
+candidate wallet, asset policy, reservation journal and deployment log. The
+[native funding receipt](evidence/candidate-funding-native-20261122.json)
+confirms 10 base units credited and a same-ID replay on shared Ledger 9; the
+connected browser funding action still needs its own acceptance run. An
 [exact-head exported-adapter proof-only run](evidence/candidate-acc-shared-adapter-deposit-proof-20261122.json)
 validated the generated module, candidate deposit verifier and unbound proof,
 and a later [native settlement](evidence/candidate-acc-shared-adapter-settled-deposit-20261122.json)

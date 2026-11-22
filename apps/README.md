@@ -1254,5 +1254,9 @@ browser check covers that boundary and its saved-original refusal; it does not
 qualify a native connected payment.
 The funding service has a separate source-only candidate NIGHT deposit path
 with a verified generated module and loopback API v4 guards. The demo launcher
-keeps candidate funding disabled until its own native reservation and replay
-gate passes.
+now selects its dedicated candidate funding seed, policy, reservations and
+deployment log when `--candidate-assets --funding` is explicit. A
+[shared-chain native run](../examples/midnames-local/evidence/candidate-funding-native-20261122.json)
+confirmed a 10-unit deposit, indexed finality and same-ID replay. This is a
+funding-service gate; the connected browser funding action and named payment
+remain separate acceptance work.
