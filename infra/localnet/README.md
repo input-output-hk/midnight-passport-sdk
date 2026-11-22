@@ -65,6 +65,8 @@ MIDNIGHT_STACK=shared-ledger9 \
 starts **only** a second indexer with its own storage volume and credentials.
 It joins the existing `midnight-network_default` network to read the shared
 node. It does not start or stop the shared node, primary indexer, or prover.
+Its service name has a distinct `read-witness-indexer` network alias so it
+cannot replace the shared project's `indexer` DNS answer.
 Run the read-only attach check first; if the shared stack or its network is
 absent, stop here rather than creating another chain. Use a unique project and
 private credential directory for each witness. The command refuses to replace
@@ -77,7 +79,7 @@ nix develop -c node scripts/midnames-witness-env.mjs \
   "$HOME/.local/share/midnight-passport/read-witness/.midnight-indexer.env"
 PASSPORT_VERIFICATION_INDEXER_ENV_FILE="$HOME/.local/share/midnight-passport/read-witness/.midnight-indexer.env" \
   docker compose -p midnight-passport-read-witness \
-  -f infra/localnet/docker-compose.verification-indexer.yml up -d --no-deps indexer
+  -f infra/localnet/docker-compose.verification-indexer.yml up -d --no-deps read-witness-indexer
 ```
 
 The witness listens on loopback port `18089` by default. Wait until its
@@ -93,7 +95,7 @@ volume and credentials, use the same project and Compose file:
 ```sh
 PASSPORT_VERIFICATION_INDEXER_ENV_FILE="$HOME/.local/share/midnight-passport/read-witness/.midnight-indexer.env" \
   docker compose -p midnight-passport-read-witness \
-  -f infra/localnet/docker-compose.verification-indexer.yml stop indexer
+  -f infra/localnet/docker-compose.verification-indexer.yml stop read-witness-indexer
 ```
 
 ## Owner-managed current Ledger 9 Compose profile

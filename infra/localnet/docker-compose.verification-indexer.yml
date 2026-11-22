@@ -4,7 +4,7 @@
 name: ${PASSPORT_VERIFICATION_PROJECT:-midnight-passport-read-witness}
 
 services:
-  indexer:
+  read-witness-indexer:
     image: ghcr.io/midnight-ntwrk/indexer-standalone@sha256:119f35db548ba1c390845f215bb1e928e73038bef7c315825aee0461bd54499d
     platform: linux/arm64
     restart: 'no'

@@ -53,12 +53,17 @@ nix develop -c pnpm --filter passport-dapp exec node --import tsx \
   ws://127.0.0.1:8088/api/v4/graphql/ws \
   http://127.0.0.1:18089/api/v4/graphql \
   ws://127.0.0.1:18089/api/v4/graphql/ws \
-  http://127.0.0.1:9944
+  http://127.0.0.1:9944 \
+  midnight-passport-read-witness \
+  "$HOME/.local/share/midnight-passport/read-witness/.midnight-indexer.env"
 ```
 
-The read-only command verifies both selected indexer blocks against the node's
-canonical finalized chain, compares the serialized registry and target ACC
-state at the **same recorded block hash**, then exercises the app's
+The read-only command verifies the receipt's genesis against the node and
+requires both indexers to select the same canonical finalized tip. It inspects
+the exact witness container, unique network alias, image digest, separate
+volume and private credential file without printing credential values. It
+compares the serialized registry and target ACC state at the **same recorded
+block hash**, then exercises the app's
 two-indexer resolver and exact known name-to-ACC pin. It fails on missing,
 divergent or incompatible records and on a block that is not canonical and
 finalized. This demonstrates a replaceable,
