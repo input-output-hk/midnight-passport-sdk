@@ -1241,9 +1241,10 @@ separate wallet-address flow. See the
 The provisional `acc-s3r1.1-zkir036` candidate has a source-only browser
 admission path pinned to the local manifest, standalone registry, loopback
 service and Indexer API v4. Its payment journal refuses a receipt from a
-different binding. The local demo launcher still sets
-`VITE_MIDNAMES_NIGHT_SEND=0` for candidate assets. The headless page check
-covers visibility and retained no-ID refusal; it does not establish an actual
+different binding. The local demo launcher defaults to
+`VITE_MIDNAMES_NIGHT_SEND=0` for candidate assets and sets it to `1` only with
+explicit `--night-send --claim --funding` and `--candidate-assets`. The headless
+page check covers visibility and retained no-ID refusal; it does not establish an actual
 connected candidate payment. A fresh isolated
 [native run](../examples/midnames-local/evidence/candidate-acc-adapter-named-night-send-20261122.json)
 settled both legs at one signed head, using the exported deposit adapter for

@@ -187,13 +187,14 @@ open. The connected named NIGHT page source
 now checks the exact candidate binding and manifest through page selection,
 owner review, host admission and deposit preflight. Its browser journal also
 pins the candidate profile so a stable or changed binding cannot resume its
-original. The launcher still sets `VITE_MIDNAMES_NIGHT_SEND=0` for candidate
-assets. Headless candidate checks cover visibility and the saved-original
-no-ID guard, while the host tests simulate its two legs. A fresh isolated
-[native run](../../examples/midnames-local/evidence/candidate-acc-adapter-named-night-send-20261122.json)
+original. The launcher defaults to `VITE_MIDNAMES_NIGHT_SEND=0` for candidate
+assets and enables it only with explicit `--night-send --claim --funding`
+and `--candidate-assets`. Headless candidate checks cover visibility and the
+saved-original no-ID guard, while the host tests simulate its two legs. A fresh
+isolated [native run](../../examples/midnames-local/evidence/candidate-acc-adapter-named-night-send-20261122.json)
 settled both legs with the exported recipient deposit adapter at one signed
 head. It does not prove a connected browser withdrawal-to-deposit payment or
-recovery; the launcher stays disabled for candidate assets.
+recovery; the candidate launcher stays disabled without that explicit opt-in.
 The candidate worker now preserves its binding and manifest pin when it checks
 the finalized withdrawal and deposit fence. A headless browser checks the
 actual IndexedDB boundary; native connected browser payment remains pending.
