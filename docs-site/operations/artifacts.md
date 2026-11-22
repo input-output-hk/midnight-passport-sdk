@@ -32,6 +32,25 @@ nix develop -c node packages/contract/bin/restore-acc-keys.mjs \
   --output /persistent/cache/acc-s3r1.1-zkir036
 ```
 
+For an isolated source evaluation, stage the complete candidate tree from the
+original compiled ACC output and that restored key cache. The output path must
+be new and outside both inputs; the command verifies every copied file against
+the pinned derived manifest before publishing the tree:
+
+```sh
+nix develop -c node packages/contract/bin/stage-acc-candidate-assets.mjs \
+  --source /path/to/original/contracts/managed/account \
+  --keys /persistent/cache/acc-s3r1.1-zkir036 \
+  --output /persistent/cache/acc-s3r1.1-zkir036-assets
+```
+
+On a volume that supports copy-on-write clones, append `--require-reflink` to
+avoid a full second copy of the large prover keys. The command refuses that
+option if the filesystem cannot clone them.
+
+This source-only staging does not configure the Passport account service or
+browser to use the candidate. Preserve the original tree for existing ACCs.
+
 This is an **artifact candidate, not a supported SDK binding**. The published
 key-service image, SDK registry, account service and reference demo still select
 `acc-s3r1.1`; the current source key service can select the candidate only

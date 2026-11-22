@@ -9,6 +9,7 @@ import { gunzipSync } from 'node:zlib';
 
 const SOURCE_SHA256 = '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f';
 const BINDING_ID = 'acc-s3r1.1-zkir036';
+/** @param {Uint8Array} bytes */
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
 
 /** @param {Uint8Array} sourceBytes @param {Uint8Array} keyManifestBytes */
@@ -62,6 +63,7 @@ export function composeAccProfileManifest(sourceBytes, keyManifestBytes) {
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   if (process.argv.length > 3 || (process.argv[2] && process.argv[2] !== '--write'))
     throw new Error('usage: compose-acc-profile.mjs [--write]');
+  /** @param {string} name */
   const resource = (name) => new URL(`../resources/${name}`, import.meta.url);
   const bundle = JSON.parse(
     gunzipSync(readFileSync(resource(`${BINDING_ID}.zkir.json.gz`))).toString('utf8'),
