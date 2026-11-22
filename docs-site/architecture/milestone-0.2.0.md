@@ -37,8 +37,16 @@ adapter fetched the candidate verifier and manifest, compared the deployed and
 fetched verifier hashes with the pin, and returned one unbound proof with one
 prover call and zero dispatches. Its redacted receipt is
 `examples/midnames-local/evidence/candidate-acc-shared-adapter-deposit-proof-20261122.json`.
-The connected demo remains closed; these results do not qualify a funded
-deposit, browser send, or combined two-leg payment on the shared chain.
+At signed `0d47432b`, a separate funded synthetic wallet later
+balanced and submitted the exported adapter's 4 NIGHT deposit proof after
+consuming one exact, previously split NIGHT output. An observer query error
+after the split was reconciled against the original transaction before the
+deposit. The recipient candidate ACC balance moved from 0 to 4 at an indexed
+finalized block. The redacted receipt is
+`examples/midnames-local/evidence/candidate-acc-shared-adapter-settled-deposit-20261122.json`.
+This was one native deposit to an existing ACC; the connected browser send,
+source ACC withdrawal, and combined two-leg payment remain unqualified on
+the shared chain.
 
 A later isolated candidate
 [paid-claim retry](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/candidate-acc-page-paid-claim-retry-20261122.json)

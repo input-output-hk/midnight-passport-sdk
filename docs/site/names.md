@@ -867,8 +867,14 @@ adapter's measured-deposit helper. At signed `a0617f03`, a later
 called `proveUnboundNightDeposit` itself. The adapter fetched the candidate
 verifier and manifest, checked the deployed and fetched verifier against its
 pin, and returned one unbound proof with one prover call and zero dispatches.
-The browser send page and funding service remain disabled until the connected
-two-leg route, device-held wallet balancing, and native settlement qualify
-together.
+At signed `0d47432b`, a later
+[settled native deposit](../../examples/midnames-local/evidence/candidate-acc-shared-adapter-settled-deposit-20261122.json)
+used a separately funded synthetic wallet. An earlier exact 4 NIGHT split
+was independently reconciled after an observer query error. The exported
+adapter proved the deposit; the wallet balanced and signed that exact output,
+and the indexer confirmed one deposit transaction and the recipient ACC's
+0 → 4 NIGHT balance change. This did not withdraw from another Passport ACC
+or run the browser worker. The browser send page and funding service remain
+disabled until the connected two-leg route and browser recovery qualify.
 
 See the [standalone recipe](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local).

@@ -104,9 +104,12 @@ named-send journey; its native receipt must be recorded separately.
 `--funding` is refused for this provisional profile. An
 [exact-head exported-adapter proof-only run](evidence/candidate-acc-shared-adapter-deposit-proof-20261122.json)
 validated the generated module, candidate deposit verifier and unbound proof,
-but did not balance or settle a deposit. The candidate named NIGHT send is
-likewise disabled in the browser: its isolated native fixture does not qualify
-the connected withdrawal-to-deposit route.
+and a later [native settlement](evidence/candidate-acc-shared-adapter-settled-deposit-20261122.json)
+used a separately funded synthetic wallet to consume a reconciled exact
+4 NIGHT output. The recipient ACC balance moved from 0 to 4. The candidate
+named NIGHT send is likewise disabled in the browser: the direct deposit and
+isolated two-leg fixture do not qualify the connected browser
+withdrawal-to-deposit route or its recovery.
 
 ### Register a name and fund a Passport account
 
