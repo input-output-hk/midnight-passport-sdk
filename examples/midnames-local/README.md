@@ -1023,6 +1023,33 @@ provisional: name issuance, recipient resolution, NIGHT withdrawal/deposit,
 recovery, real passkey consent and online provider acceptance need their own
 gates before the SDK or demo admits it.
 
+### Provisional candidate named NIGHT qualification
+
+The `midnames-night-candidate-` lane reuses the frozen candidate ACC assets and
+the separately verified standalone registry tree. It deploys two fresh candidate
+ACCs and a registry on a fresh isolated chain, issues a root-owned `.night` name
+to the recipient, checks the complete verifier roster on both accounts, then
+exercises the named NIGHT withdrawal and ACC deposit with a retained two-leg
+journal. Its explicit local qualification reader does not enable provisional
+bindings in the ordinary Passport demo or online profiles.
+
+```sh
+PASSPORT_MIDNAMES_CANDIDATE_ASSETS=/absolute/path/to/verified-candidate-assets \
+nix develop -c env -u LD_DYLD_PATH \
+  PASSPORT_MIDNAMES_NATIVE=1 PASSPORT_RC_LOCALNET=1 \
+  node examples/midnames-local/qualify-deposit.mjs \
+  midnames-night-candidate-fresh-run \
+  /absolute/path/to/prepared-standalone-registry \
+  /absolute/path/to/acc-reference/contract \
+  10.254.84.0/28
+```
+
+Choose a fresh output name and an unused subnet; inspect Docker networks first.
+The command refuses less than 50 GiB free disk. A passing root-assisted name
+fixture would establish only the isolated local candidate route. User-owned
+paid registration, browser consent, recovery and online admission remain
+separate gates.
+
 The signed `a20a9b9` negative run `midnames-night-browser-decline-20261116a`
 passed on isolated `undeployed`. Chromium displayed the same exact review and
 clicked **Decline**. The source/target balances stayed 10/0 with zero owner

@@ -22,7 +22,7 @@ import {
   partitionTranscripts,
 } from '@midnightntwrk/ledger-v9';
 import type { AccRegistry } from '@input-output-hk/mn-passport-contract';
-import { resolveBinding } from '@input-output-hk/mn-passport-contract';
+import { resolveBinding, resolvePinnedBinding } from '@input-output-hk/mn-passport-contract';
 import {
   admitAccBindingFromState,
   createMidnamesIndexer,
@@ -97,6 +97,35 @@ test('ACC admission identifies a complete circuit assignment per account', async
       registry,
     ),
     'old',
+  );
+});
+
+test('candidate account reads require the exact isolated local pin', () => {
+  const bindingId = 'acc-s3r1.1-zkir036';
+  const pin = resolvePinnedBinding(bindingId);
+  const provider = {} as Parameters<typeof createMidnamesLedgerReads>[0];
+  const decodeState = (() => {
+    throw Error('No chain read in pin preflight');
+  }) as NonNullable<Parameters<typeof createMidnamesLedgerReads>[4]>['decodeState'];
+  const candidate = { bindingId, manifestSha256: pin.manifestSha256, decodeState };
+  assert.doesNotThrow(() =>
+    createMidnamesLedgerReads(provider, 'undeployed', bindingId, 'standalone-0.35', candidate),
+  );
+  assert.throws(
+    () => createMidnamesLedgerReads(provider, 'undeployed', bindingId, 'standalone-0.35'),
+    { code: 'UNSUPPORTED_BINDING' },
+  );
+  assert.throws(
+    () =>
+      createMidnamesLedgerReads(provider, 'undeployed', bindingId, 'standalone-0.35', {
+        ...candidate,
+        manifestSha256: '0'.repeat(64),
+      }),
+    /exact local provisional pin/,
+  );
+  assert.throws(
+    () => createMidnamesLedgerReads(provider, 'preview', bindingId, 'standalone-0.35', candidate),
+    /registry profile|local/,
   );
 });
 

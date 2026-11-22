@@ -12,6 +12,7 @@ import {
 import { saveIsolationReceipt } from '../../scripts/qualification/native-isolation-files.mjs';
 import { verifyPreparedRegistry } from './verify-prepared.mjs';
 import { interactiveReviewRequested } from './terminal-review.mjs';
+import { ACC_REGISTRY, resolvePinnedBinding } from '../../packages/contract/dist/index.js';
 
 const [output, prepared, ref] = process.argv.slice(2);
 assert.equal(process.env.PASSPORT_MIDNAMES_NATIVE, '1');
@@ -47,6 +48,11 @@ http.request = function (...args) {
   return request;
 };
 const sha = (b) => createHash('sha256').update(b).digest('hex');
+const candidateNight = output.split('/').at(-1).startsWith('midnames-night-candidate-');
+const candidateAssets = process.env.PASSPORT_MIDNAMES_CANDIDATE_ASSETS;
+assert.equal(Boolean(candidateAssets), candidateNight);
+const candidatePin = candidateNight ? resolvePinnedBinding('acc-s3r1.1-zkir036') : undefined;
+if (candidatePin) assert.equal(candidatePin.provisional, true);
 const pins = await verifyPreparedRegistry(prepared);
 const assets = join(prepared, 'managed');
 const asset = (path) => readFileSync(join(assets, path));
@@ -57,6 +63,19 @@ symlinkSync(join(ref, 'node_modules'), join(runtimeRoot, 'node_modules'));
 const modulePath = join(runtimeRoot, 'registry.mjs');
 writeFileSync(modulePath, asset('contract/index.js'), { mode: 0o600, flag: 'wx' });
 assert.equal(sha(readFileSync(modulePath)), pins.compiled['contract/index.js']);
+let candidateModule;
+if (candidatePin) {
+  assert.ok(candidateAssets);
+  const accountRuntime = join(output, 'candidate-account-runtime');
+  mkdirSync(accountRuntime);
+  symlinkSync(join(ref, 'node_modules'), join(accountRuntime, 'node_modules'));
+  candidateModule = join(accountRuntime, 'account.mjs');
+  writeFileSync(candidateModule, readFileSync(join(candidateAssets, 'contract/index.js')), {
+    mode: 0o600,
+    flag: 'wx',
+  });
+  assert.equal(sha(readFileSync(candidateModule)), candidatePin.moduleHashes['contract/index.js']);
+}
 const get = async (name) =>
   import(import.meta.resolve(name, pathToFileURL(join(ref, 'package.json')).href));
 const [
@@ -67,6 +86,7 @@ const [
   { CompiledContract },
   contracts,
   ledger,
+  compactRuntime,
   zk,
   proof,
   { createMidnamesIndexer, createMidnamesLedgerReads },
@@ -76,10 +96,13 @@ const [
   import(pathToFileURL(join(ref, 'src/node/wallet.ts')).href),
   import(pathToFileURL(join(ref, 'src/wallet/wave-deploy.ts')).href),
   import(pathToFileURL(modulePath).href),
-  import(pathToFileURL(join(ref, 'contracts/managed/account/contract/index.js')).href),
+  import(
+    pathToFileURL(candidateModule ?? join(ref, 'contracts/managed/account/contract/index.js')).href
+  ),
   get('@midnight-ntwrk/compact-js'),
   get('@midnight-ntwrk/midnight-js-contracts'),
   get('@midnightntwrk/ledger-v9'),
+  get('@midnight-ntwrk/compact-runtime'),
   get('@midnight-ntwrk/midnight-js-node-zk-config-provider'),
   get('@midnight-ntwrk/midnight-js-http-client-proof-provider'),
   import('../../apps/passport-dapp/src/midnames/ledger-reader.ts'),
@@ -119,7 +142,8 @@ const step = (label) => {
   save();
   console.log(label);
 };
-const write = (name, data) => writeFileSync(join(output, name), data, { mode: 0o600, flag: 'wx' });
+const write = (name, data) =>
+  writeFileSync(join(output, name), data, { mode: 0o600, flag: 'wx', flush: true });
 process.chdir(output);
 let wallet;
 try {
@@ -127,6 +151,17 @@ try {
   wallet = await walletModule.createWallet('0'.repeat(63) + '1');
   await walletModule.syncWallet(wallet, 'isolated genesis sponsor');
   const providers = await walletModule.createProviders(wallet);
+  if (candidatePin) {
+    assert.ok(candidateAssets);
+    providers.zkConfigProvider = new zk.NodeZkConfigProvider(candidateAssets, {
+      expectedManifestHash: candidatePin.manifestSha256,
+    });
+    providers.proofProvider = proof.httpClientProofProvider(
+      process.env.MN_PROOF_SERVER_URL,
+      await zk.nodeZkConfigRegistry(candidateAssets),
+    );
+    step('select-complete-candidate-acc-assets');
+  }
   const submit = providers.midnightProvider.submitTx.bind(providers.midnightProvider);
   providers.midnightProvider.submitTx = async (tx) => {
     assert.equal(tx.version, 'v9');
@@ -148,7 +183,9 @@ try {
         throw Error('No shielded spend');
       },
     }),
-    CompiledContract.withCompiledFileAssets(join(ref, 'contracts/managed/account')),
+    CompiledContract.withCompiledFileAssets(
+      candidateAssets ?? join(ref, 'contracts/managed/account'),
+    ),
   );
   const randomJubJubPoint = () =>
     acc.pureCircuits.compute_public_point_with_jubjub(
@@ -328,7 +365,20 @@ try {
     process.env.MN_INDEXER_URL,
     process.env.MN_INDEXER_WS_URL,
   );
-  const reads = createMidnamesLedgerReads(indexer, 'undeployed', 'acc-s3r1.1', 'standalone-0.35');
+  const reads = createMidnamesLedgerReads(
+    indexer,
+    'undeployed',
+    candidatePin ? 'acc-s3r1.1-zkir036' : 'acc-s3r1.1',
+    'standalone-0.35',
+    candidatePin
+      ? {
+          bindingId: 'acc-s3r1.1-zkir036',
+          manifestSha256: candidatePin.manifestSha256,
+          decodeState: (state) =>
+            acc.ledger(compactRuntime.ContractState.deserialize(state.serialize()).data),
+        }
+      : undefined,
+  );
   const profile = { networkId: 'undeployed', namespace: 'night', registryAddress };
   const service = createMidnamesNameService(profile, reads);
   assert.deepEqual(await reads.readClaim('alice.night', profile), {
@@ -576,6 +626,21 @@ try {
       );
     }
     const source = await deployAccount('source', device.pk, inbox.generateEncKeyPair().publicKey);
+    if (candidatePin) {
+      for (const address of [accountAddress, source]) {
+        const onChain = key.deserialize(
+          (await providers.publicDataProvider.queryContractState(address)).serialize(),
+        );
+        assert.equal(onChain.operations().length, 52);
+        for (const [name, pin] of Object.entries(candidatePin.circuits)) {
+          if (pin.proof)
+            assert.equal(sha(onChain.operation(name)?.verifierKey), pin.hashes.verifierKey);
+        }
+        assert.deepEqual(onChain.maintenanceAuthority.committee, []);
+        assert.ok(await reads.isSupportedAccount(address, 'undeployed'));
+      }
+      step('verified-two-candidate-acc-rosters');
+    }
     const verifyHybridSource =
       hybridVerifier || fullVerifier
         ? async () => {
@@ -745,7 +810,9 @@ try {
               ? fullVerifier
                 ? 'verified-stable-prover-full-036-verifier-roster-named-night-send'
                 : 'verified-stable-prover-hybrid-verifier-named-night-send'
-              : 'verified-native-named-night-send',
+              : candidateNight
+                ? 'verified-candidate-native-named-night-send'
+                : 'verified-native-named-night-send',
     );
   } else {
     await wallet.wallet.stop();

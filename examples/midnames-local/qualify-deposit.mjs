@@ -62,17 +62,19 @@ const docker = (args) =>
   ).trim();
 assert.match(
   out ?? '',
-  /^midnames-(?:acc-candidate|deposit|deposit-browser|night-send|night-browser|claim-handoff|claim-browser|claim-preproof|claim-owner-browser|claim-partial-probe|claim-retry|claim-page-retry)-[a-z0-9-]{1,48}$/,
+  /^midnames-(?:acc-candidate|night-candidate|deposit|deposit-browser|night-send|night-browser|claim-handoff|claim-browser|claim-preproof|claim-owner-browser|claim-partial-probe|claim-retry|claim-page-retry)-[a-z0-9-]{1,48}$/,
 );
 const candidateAccount = out.startsWith('midnames-acc-candidate-');
+const candidateNight = out.startsWith('midnames-night-candidate-');
+const candidateProfile = candidateAccount || candidateNight;
 assert.ok(candidateAccount ? prepared === '-' : prepared && isAbsolute(prepared));
 const candidateAssets = process.env.PASSPORT_MIDNAMES_CANDIDATE_ASSETS;
 assert.equal(
   Boolean(candidateAssets),
-  candidateAccount,
+  candidateProfile,
   'Candidate ACC assets require their own lane',
 );
-if (candidateAccount) {
+if (candidateProfile) {
   assert.ok(candidateAssets && isAbsolute(candidateAssets));
   assert.equal(realpathSync(candidateAssets), candidateAssets);
   assert.ok(BigInt(disk.bavail) * BigInt(disk.bsize) >= 50n * 1024n ** 3n);
@@ -107,24 +109,26 @@ assert.ok(!hybridVerifier || (!manualBrowserReview && !browserRepoint));
 assert.ok(!fullVerifier || (!manualBrowserReview && !browserRepoint));
 const fixtureMode = candidateAccount
   ? 'acc-candidate'
-  : out.startsWith('midnames-claim-browser-')
-    ? 'claim-browser'
-    : out.startsWith('midnames-claim-preproof-')
-      ? 'claim-preproof'
-      : out.startsWith('midnames-claim-owner-browser-')
-        ? 'claim-owner-browser'
-        : out.startsWith('midnames-claim-partial-probe-')
-          ? 'claim-partial-probe'
-          : out.startsWith('midnames-claim-page-retry-')
-            ? 'claim-page-retry'
-            : out.startsWith('midnames-claim-retry-')
-              ? 'claim-retry'
-              : out.startsWith('midnames-claim-handoff-')
-                ? 'claim-handoff'
-                : out.startsWith('midnames-night-send-') ||
-                    out.startsWith('midnames-night-browser-')
-                  ? 'named-night-send'
-                  : 'named-shielded-deposit';
+  : candidateNight
+    ? 'named-night-send'
+    : out.startsWith('midnames-claim-browser-')
+      ? 'claim-browser'
+      : out.startsWith('midnames-claim-preproof-')
+        ? 'claim-preproof'
+        : out.startsWith('midnames-claim-owner-browser-')
+          ? 'claim-owner-browser'
+          : out.startsWith('midnames-claim-partial-probe-')
+            ? 'claim-partial-probe'
+            : out.startsWith('midnames-claim-page-retry-')
+              ? 'claim-page-retry'
+              : out.startsWith('midnames-claim-retry-')
+                ? 'claim-retry'
+                : out.startsWith('midnames-claim-handoff-')
+                  ? 'claim-handoff'
+                  : out.startsWith('midnames-night-send-') ||
+                      out.startsWith('midnames-night-browser-')
+                    ? 'named-night-send'
+                    : 'named-shielded-deposit';
 if (interactive)
   assert.ok(
     !browserReview &&
@@ -359,7 +363,7 @@ try {
       await inputs.verify(check);
       if (!candidateAccount) await verifyPreparedRegistry(prepared, check);
       verifyProbeKeys();
-      if (candidateAccount) {
+      if (candidateProfile) {
         assert.ok(candidateAssets);
         verifyArtefacts(
           candidateAssets,

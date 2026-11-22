@@ -12,6 +12,7 @@ import {
   ACC_REGISTRY,
   detectDeployedVersionByCircuit,
   resolveBinding,
+  resolvePinnedBinding,
   type AccRegistry,
 } from '@input-output-hk/mn-passport-contract';
 import { ledger } from '#acc';
@@ -26,6 +27,13 @@ import {
 type RegistryProvider = Parameters<typeof getContractLedger>[0];
 type DomainRecord = Parameters<typeof getTargetFromDomainData>[0];
 type DomainTarget = NonNullable<Awaited<ReturnType<MidnamesReads['readTarget']>>>;
+
+/** Isolated local qualification only; never supplied by the demo configuration. */
+export interface CandidateAccountQualification {
+  readonly bindingId: string;
+  readonly manifestSha256: string;
+  readonly decodeState: (state: InstanceType<typeof ContractState>) => ReturnType<typeof ledger>;
+}
 
 function readDomainTarget(domain: DomainRecord): DomainTarget {
   try {
@@ -111,6 +119,7 @@ export function createMidnamesLedgerReads(
   networkId: string,
   bindingId: string,
   profileId: MidnamesRegistryProfile = 'midnames-2.1.0',
+  candidate?: CandidateAccountQualification,
 ): MidnamesReads & {
   readSupportedTarget(
     name: string,
@@ -131,7 +140,17 @@ export function createMidnamesLedgerReads(
         : MIDNAMES_REGISTRY_VERIFIERS,
     ),
   );
-  resolveBinding(bindingId);
+  if (candidate) {
+    const pin = resolvePinnedBinding(candidate.bindingId);
+    if (
+      networkId !== 'undeployed' ||
+      pinnedProfile !== 'standalone-0.35' ||
+      candidate.bindingId !== bindingId ||
+      !pin.provisional ||
+      candidate.manifestSha256 !== pin.manifestSha256
+    )
+      throw new Error('Candidate ACC qualification requires the exact local provisional pin.');
+  } else resolveBinding(bindingId);
   const readDomain = async (
     name: string,
     profile: Readonly<MidnamesProfile>,
@@ -177,9 +196,10 @@ export function createMidnamesLedgerReads(
     if (!observed) return undefined;
     try {
       const account = observed.contractState.deserialize({ v9: ContractState });
-      const detectedBinding = await admitAccBindingFromState(account);
-      if (!detectedBinding) return undefined;
-      const decoded = ledger(account.data);
+      const detectedBinding = await detectAccBindingFromState(account);
+      if (!detectedBinding || detectedBinding !== bindingId) return undefined;
+      if (!candidate && !(await admitAccBindingFromState(account))) return undefined;
+      const decoded = candidate ? candidate.decodeState(account) : ledger(account.data);
       return decoded.booted && decoded.spec_version === 3n
         ? { bindingId: detectedBinding, ledger: decoded }
         : undefined;
