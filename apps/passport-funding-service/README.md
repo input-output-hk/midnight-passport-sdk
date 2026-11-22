@@ -93,6 +93,23 @@ general value-call endpoint remains closed for candidate accounts. The Midnames
 demo launcher does not yet enable candidate funding: the funding-service route
 still needs an exact-head native reservation, submission and replay qualification.
 
+For that qualification on the shared local stack, prepare a **separate** candidate
+funding wallet after the candidate registry and chain anchor have been recorded:
+
+```sh
+nix develop -c node scripts/midnames-demo-wallets.mjs \
+  /absolute/path/to/private/local-demo-state \
+  /absolute/path/to/pinned/acc-reference/contract \
+  --candidate-funding-only
+```
+
+The command checks the live chain anchor, claims the shared sponsor lease, and
+records each transfer before submitting it. It creates private
+`candidate-funding-*` seed, token, policy and provision receipts alongside the
+existing demo state. It never opens the ordinary funding wallet. If a receipt is
+unfinished, reconcile that exact transfer before rerunning; do not delete the
+receipt or change the seed to force a new attempt.
+
 The reference reservation store is safe for one host sharing one file. It creates
 `<reservations-file>.lock` during updates. If the process dies with the lock present, inspect
 pending requests, wallet transactions and ACC balances before removing it. Use a transactional
