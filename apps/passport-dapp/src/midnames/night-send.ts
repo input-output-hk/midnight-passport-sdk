@@ -69,6 +69,25 @@ export class NightPaymentDeclined extends Error {
   }
 }
 
+type NightSendPreflightCode =
+  | 'NightUnsupportedRoute'
+  | 'NightNameUnavailable'
+  | 'NightSelfRecipient'
+  | 'NightRecipientUnsupported'
+  | 'NightSourceUnsupported'
+  | 'NightInsufficientBalance';
+
+/** Fixed, user-facing refusal categories before any owner approval or transaction. */
+export class NightSendPreflightError extends Error {
+  constructor(
+    readonly code: NightSendPreflightCode,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'NightSendPreflightError';
+  }
+}
+
 interface PreparedLeg {
   readonly original: NightSendLeg;
   dispatch(): Promise<void>;
@@ -120,7 +139,10 @@ function validate(request: NightSendRequest) {
     !isToken(request.amount, /^[1-9][0-9]{0,38}$/) ||
     BigInt(request.amount) >= 1n << 128n
   )
-    throw new Error('Unsupported or invalid standalone NIGHT payment.');
+    throw new NightSendPreflightError(
+      'NightUnsupportedRoute',
+      'Unsupported or invalid standalone NIGHT payment.',
+    );
 }
 
 async function resolveIntent(
@@ -128,10 +150,21 @@ async function resolveIntent(
   ports: Pick<NightSendPorts, 'names' | 'isSupportedRecipient'>,
 ) {
   const target = await resolvePassportName(ports.names, request);
-  if (!target || target.mode !== 'external' || target.accountAddress === request.source)
-    throw new Error('The name must resolve to a different supported Passport ACC.');
+  if (!target || target.mode !== 'external')
+    throw new NightSendPreflightError(
+      'NightNameUnavailable',
+      'The name must resolve to a different supported Passport ACC.',
+    );
+  if (target.accountAddress === request.source)
+    throw new NightSendPreflightError(
+      'NightSelfRecipient',
+      'The name must resolve to a different supported Passport ACC.',
+    );
   if ((await ports.isSupportedRecipient(target.accountAddress, request.networkId)) !== true)
-    throw new Error('The named recipient is not an activated, supported Passport ACC.');
+    throw new NightSendPreflightError(
+      'NightRecipientUnsupported',
+      'The named recipient is not an activated, supported Passport ACC.',
+    );
   return Object.freeze({
     ...request,
     target: target.accountAddress,
@@ -294,8 +327,16 @@ export async function sendNightByName(input: NightSendRequest, ports: NightSendP
   if (!withdrawal) {
     assertSameIntent(intent, await resolveIntent(request, ports));
     const balance = await ports.readSourceBalance(intent.source);
-    if (balance === undefined || balance < BigInt(intent.amount))
-      throw new Error('Unsupported source account or insufficient NIGHT balance.');
+    if (balance === undefined)
+      throw new NightSendPreflightError(
+        'NightSourceUnsupported',
+        'Unsupported source account or insufficient NIGHT balance.',
+      );
+    if (balance < BigInt(intent.amount))
+      throw new NightSendPreflightError(
+        'NightInsufficientBalance',
+        'Unsupported source account or insufficient NIGHT balance.',
+      );
     if ((await ports.review(intent, balance)) !== true) throw new NightPaymentDeclined();
     if (!retained) await ports.journal.createIntent(intent);
     await recheckBeforeOwnerWithdrawal(

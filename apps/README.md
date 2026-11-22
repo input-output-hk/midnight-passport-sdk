@@ -1107,6 +1107,9 @@ name and a positive amount in NIGHT smallest units. The page checks a deployed
 compatible recipient and source balance, then shows the full route, registry,
 target, bridge and both ACC operations before the owner's combined credential
 review. A declined or changed route does not start the payment.
+Before that review, the page explains an absent name, self-recipient, unsupported
+ACC or insufficient balance separately. A naming provider outage is not treated
+as an absent name. These refusals start no owner ceremony or transaction.
 
 The selected account's original intent and each transaction ID stay in the
 browser journal. A pending withdrawal or deposit is displayed under the same

@@ -186,6 +186,11 @@ The later [one-head local run](../../examples/midnames-local/evidence/candidate-
 completed ACC creation, a new name claim and named NIGHT payments with a
 synthetic passkey on the shared chain. It does not qualify a physical provider,
 online naming or a released candidate binding.
+The named-send preflight now gives distinct plain-language refusals for an
+unknown name, a name pointing to the source ACC, an unsupported ACC, and an
+insufficient source balance. An unavailable naming provider is reported as
+unavailable, not as an unregistered name. No owner ceremony or payment starts
+for these cases.
 The local launcher now accepts an explicit claim journal ID for a separate new
 account/name after an earlier claim has been confirmed. It preserves the first
 journal and requires the same ID for that claim's recovery; switching IDs is
