@@ -59,6 +59,43 @@ MIDNIGHT_STACK=shared-ledger9 \
   nix develop -c pnpm demo up
 ```
 
+### Independent local Indexer API v4 read witness
+
+[`docker-compose.verification-indexer.yml`](docker-compose.verification-indexer.yml)
+starts **only** a second indexer with its own storage volume and credentials.
+It joins the existing `midnight-network_default` network to read the shared
+node. It does not start or stop the shared node, primary indexer, or prover.
+Run the read-only attach check first; if the shared stack or its network is
+absent, stop here rather than creating another chain. Use a unique project and
+private credential directory for each witness. The command refuses to replace
+an existing credential file; keep that file with its retained volume.
+
+```sh
+nix develop -c bash scripts/midnight-attach.sh
+mkdir -m 700 "$HOME/.local/share/midnight-passport/read-witness"
+nix develop -c node scripts/midnames-witness-env.mjs \
+  "$HOME/.local/share/midnight-passport/read-witness/.midnight-indexer.env"
+PASSPORT_VERIFICATION_INDEXER_ENV_FILE="$HOME/.local/share/midnight-passport/read-witness/.midnight-indexer.env" \
+  docker compose -p midnight-passport-read-witness \
+  -f infra/localnet/docker-compose.verification-indexer.yml up -d --no-deps indexer
+```
+
+The witness listens on loopback port `18089` by default. Wait until its
+`/api/v4/graphql` block height reaches the pinned claim block before the
+[two-indexer read check](../../examples/midnames-local/README.md#check-an-independent-indexer-read-path).
+The check compares serialized registry and ACC state at **one exact block hash**,
+then resolves a known name through both live indexer paths while anchoring each
+selected block to the shared finalized node. The two indexers share one node;
+this is provider replaceability evidence, not independent node consensus or a
+cryptographic state proof. To stop only the witness while preserving its
+volume and credentials, use the same project and Compose file:
+
+```sh
+PASSPORT_VERIFICATION_INDEXER_ENV_FILE="$HOME/.local/share/midnight-passport/read-witness/.midnight-indexer.env" \
+  docker compose -p midnight-passport-read-witness \
+  -f infra/localnet/docker-compose.verification-indexer.yml stop indexer
+```
+
 ## Owner-managed current Ledger 9 Compose profile
 
 [`docker-compose.ledger9.yml`](docker-compose.ledger9.yml) is a repo-owned

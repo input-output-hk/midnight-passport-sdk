@@ -38,6 +38,35 @@ same claim-block pin and shared node URL into the browser. If the indexer tip
 is not finalized on the node yet, the browser refuses that lookup until the
 two catch up; it does not silently use an unfinalized record.
 
+### Check an independent indexer read path
+
+After attaching to the shared stack, start the [indexer-only witness](../../infra/localnet/README.md#independent-local-indexer-api-v4-read-witness)
+in its own Docker project, volume and credential directory. It attaches to
+the existing node; it does not start a second chain. Wait for its block height
+to pass the recorded `paidfix.night` claim block (3696), then run:
+
+```sh
+nix develop -c pnpm --filter passport-dapp exec node --import tsx \
+  ../../examples/midnames-local/verify-independent-indexer.mjs \
+  ../../examples/midnames-local/evidence/shared-ledger9-paidfix-deposit-20261118.json \
+  http://127.0.0.1:8088/api/v4/graphql \
+  ws://127.0.0.1:8088/api/v4/graphql/ws \
+  http://127.0.0.1:18089/api/v4/graphql \
+  ws://127.0.0.1:18089/api/v4/graphql/ws \
+  http://127.0.0.1:9944
+```
+
+The read-only command verifies both selected indexer blocks against the node's
+canonical finalized chain, compares the serialized registry and target ACC
+state at the **same recorded block hash**, then exercises the app's
+two-indexer resolver and exact known name-to-ACC pin. It fails on missing,
+divergent or incompatible records and on a block that is not canonical and
+finalized. This demonstrates a replaceable,
+self-hosted local indexer read. The two indexers share the same node, so their
+agreement is not independent node consensus or a cryptographic state proof.
+Online naming still requires its own independently observed mapping, separate
+node/indexer origins and provider qualification.
+
 ```sh
 nix develop -c node scripts/midnames-local-demo.mjs check
 nix develop -c node scripts/midnames-local-demo.mjs up \
