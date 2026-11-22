@@ -19,8 +19,12 @@ The source candidate `acc-s3r1.1-zkir036` keeps the original Compact 0.35
 compiler manifest, generated module and ZKIR. It separately pins the Compact
 0.36.1 key generator and a complete [52-circuit key inventory](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-acc-key-inventory-20261122.json).
 Forty-eight prover/verifier pairs differ from the old profile. The package
-includes its separate key manifest and small ZKIR/verifier bundle; prover keys
-remain outside the package. Restore to a cache distinct from the old binding:
+includes its separate key manifest, derived artifact manifest and small
+ZKIR/verifier bundle; prover keys remain outside the package. The source
+compiler manifest stays pinned at `77fb9c17…`, while the derived artifact
+manifest that clients must pin for candidate keys has SHA-256
+`590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f`.
+Restore to a cache distinct from the old binding:
 
 ```sh
 nix develop -c node packages/contract/bin/restore-acc-keys.mjs \
@@ -28,9 +32,10 @@ nix develop -c node packages/contract/bin/restore-acc-keys.mjs \
   --output /persistent/cache/acc-s3r1.1-zkir036
 ```
 
-This is an **artifact candidate, not a supported SDK binding**. The registry,
-key-service image, account service and reference demo still select
-`acc-s3r1.1`; an existing ACC with retired maintenance authority cannot have
+This is an **artifact candidate, not a supported SDK binding**. The published
+key-service image, SDK registry, account service and reference demo still select
+`acc-s3r1.1`; the current source key service can select the candidate only
+explicitly through its versioned URL. An existing ACC with retired maintenance authority cannot have
 its verifier keys replaced. The candidate needs separate account deployment,
 host routing and operation/provider qualification before support is advertised.
 The [version decision](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/adr/0020-ledger9-acc-key-generation-binding.md)

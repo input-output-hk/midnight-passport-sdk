@@ -10,6 +10,9 @@ import { test } from 'node:test';
 const { createKeyServer, loadBundle } = await import(
   new URL('../apps/passport-key-service/src/server.mjs', import.meta.url).href
 );
+const { composeAccProfileManifest } = await import(
+  new URL('../packages/contract/bin/compose-acc-profile.mjs', import.meta.url).href
+);
 
 const packageRoot = fileURLToPath(new URL('../packages/contract/', import.meta.url));
 const restore = join(packageRoot, 'bin/restore-acc-keys.mjs');
@@ -102,9 +105,30 @@ test('candidate key service serves only its versioned verifier route', async () 
     candidate.compilerManifestSha256,
     readFileSync(join(packageRoot, `resources/${candidate.bindingId}.key-manifest.json`)),
   );
+  const composedManifest = composeAccProfileManifest(
+    loaded.manifestBytes,
+    readFileSync(join(packageRoot, `resources/${candidate.bindingId}.key-manifest.json`)),
+  );
+  assert.equal(
+    createHash('sha256').update(composedManifest).digest('hex'),
+    '590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f',
+  );
+  assert.deepEqual(
+    composedManifest,
+    readFileSync(join(packageRoot, `resources/${candidate.bindingId}.artefact-manifest.json`)),
+  );
+  assert.throws(
+    () =>
+      composeAccProfileManifest(
+        loaded.manifestBytes,
+        readFileSync(join(packageRoot, 'resources/acc-s3r1.1.key-manifest.json')),
+      ),
+    /incomplete or incompatible/,
+  );
   const server = createKeyServer({
     bindingId: candidate.bindingId,
     ...loaded,
+    manifestBytes: composedManifest,
     keyManifestBytes: readFileSync(
       join(packageRoot, `resources/${candidate.bindingId}.key-manifest.json`),
     ),
@@ -125,6 +149,14 @@ test('candidate key service serves only its versioned verifier route', async () 
     );
     assert.equal((await fetch(`${base}/v1/zk/acc-s3r1.1/keys/${circuit}.verifier`)).status, 404);
     assert.equal((await fetch(`${base}/zk/acc/keys/${circuit}.verifier`)).status, 404);
+    assert.deepEqual(
+      Buffer.from(
+        await (
+          await fetch(`${base}/v1/zk/${candidate.bindingId}/compiler/contract-manifest.json`)
+        ).arrayBuffer(),
+      ),
+      composedManifest,
+    );
     assert.equal((await fetch(`${base}/v1/profile`)).status, 200);
   } finally {
     await new Promise((resolve) => server.close(() => resolve(undefined)));

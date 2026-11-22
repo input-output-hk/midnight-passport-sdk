@@ -41,8 +41,12 @@ large. The image accepts `PASSPORT_KEY_DIR`, `PASSPORT_KEY_HOST` and
 `PASSPORT_KEY_PORT`. The default binding remains `acc-s3r1.1`. Current source
 also packages the separate Ledger 9 candidate `acc-s3r1.1-zkir036`; set
 `PASSPORT_KEY_BINDING_ID=acc-s3r1.1-zkir036` to restore and serve that exact
-profile in an isolated evaluation. Its Compact 0.35.0 compiler manifest and
-0.36.1 key-generation manifest are verified separately before readiness. Use a
+profile in an isolated evaluation. Its original Compact 0.35.0 compiler manifest
+and 0.36.1 key-generation manifest are verified separately; the service derives
+and pins a distinct artifact manifest for the new key hashes before readiness.
+That candidate artifact manifest has SHA-256
+`590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f`.
+Use a
 **separate persistent key cache or volume** for each binding: the two profiles
 have different key bytes, and a mismatched existing cache is refused. This
 source option is not present in the published RC9 image and does not by itself
@@ -76,17 +80,21 @@ its image. For the older RC5 image, keep the `all` profile.
 | Endpoint | Response |
 | --- | --- |
 | `GET /healthz` | Ready only after all keys pass verification. |
-| `GET /v1/manifest` | Readable key manifest with per-file SHA-256 and toolchain. |
+| `GET /v1/manifest` | Readable key-generation manifest with per-file SHA-256 and toolchain. |
 | `GET /v1/profile` | Active proving profile (`circuits`) and all bundled `verifierCircuits`. |
 | `GET /zk/acc/compiler/contract-manifest.json` | Pinned compiler manifest. |
 | `GET /zk/acc/zkir/<circuit>.{zkir,bzkir}` | Verified bundled ZKIR. |
 | `GET /zk/acc/keys/<circuit>.verifier` | Verified bundled verifier key. |
 | `GET /zk/acc/keys/<circuit>.prover` | Streamed, restored prover key. |
 | `GET /v1/zk/acc-s3r1.1/{compiler,zkir,keys}/...` | Binding-specific alias for the same pinned bytes. |
+| `GET /v1/zk/acc-s3r1.1-zkir036/{compiler,zkir,keys}/...` | Candidate-only route; `compiler/contract-manifest.json` is the derived artifact manifest with new key hashes. |
 
 `GET` and `HEAD` accept single `Range: bytes=...` requests so a proof server can
 resume large key downloads. Clients must pin the manifest hash independently:
-`77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f`.
+`77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f`
+for the old profile, or the candidate artifact hash above when explicitly
+evaluating the candidate. The original compiler manifest hash remains a
+separate source pin for both.
 The service itself verifies the bundled inputs; its cache verification takes
 place before readiness.
 
