@@ -51,7 +51,7 @@ const sharedEndpoints = {
   MN_NODE_URL: 'http://127.0.0.1:9944',
   MN_INDEXER_URL: 'http://127.0.0.1:8088/api/v4/graphql',
   MN_INDEXER_WS_URL: 'ws://127.0.0.1:8088/api/v4/graphql/ws',
-  MN_PROOF_SERVER_URL: 'http://127.0.0.1:16320',
+  MN_PROOF_SERVER_URL: candidateFundingOnly ? 'http://127.0.0.1:6300' : 'http://127.0.0.1:16320',
 };
 for (const [key, value] of Object.entries(sharedEndpoints)) {
   assert.ok(!process.env[key] || process.env[key] === value, `Conflicting shared endpoint: ${key}`);
@@ -140,10 +140,8 @@ try {
     node: 'http://127.0.0.1:9944',
     indexer: 'http://127.0.0.1:8088/api/v4/graphql',
     indexerWS: 'ws://127.0.0.1:8088/api/v4/graphql/ws',
-    proofServer: 'http://127.0.0.1:16320',
+    proofServer: sharedEndpoints.MN_PROOF_SERVER_URL,
   });
-  sharedSponsorLease('begin', registry);
-  leased = true;
   /** @param {string} name */
   const get = (name) =>
     import(import.meta.resolve(name, pathToFileURL(join(reference, 'package.json')).href));
@@ -151,25 +149,54 @@ try {
     pathToFileURL(join(root, 'examples/midnames-local/claim-dust-fixture.mjs')).href
   );
   const ledger = await get('@midnightntwrk/ledger-v9');
+  sharedSponsorLease('begin', registry);
+  leased = true;
   genesis = await walletModule.createWallet('0'.repeat(63) + '1');
   await walletModule.syncWallet(genesis, 'shared local genesis wallet for one-time demo funding');
   for (const [label, seed] of wallets) {
     assert.ok(label && seed);
     const receiptPath = join(stateDir, label + '-wallet-provision.json');
+    /** @type {{status:string,label:string,transactions:Record<string,string>,submissions:string[],attempts?:unknown[],dustInputs?:number}} */
+    let receipt = { status: 'intent', label, transactions: {}, submissions: [] };
     if (existsSync(receiptPath)) {
       const prior = JSON.parse(readFileSync(receiptPath, 'utf8'));
       if (prior.status === 'complete') continue;
-      throw new Error(
-        `${label} transfer is uncertain; reconcile ${receiptPath} before another transfer.`,
-      );
+      if (
+        label !== 'candidate-funding' ||
+        prior.status !== 'pre-submit-refused' ||
+        prior.reconciliation?.outcome !== 'proving-failed-before-submit' ||
+        Object.keys(prior.transactions ?? {}).length !== 0 ||
+        (prior.submissions?.length ?? 0) !== 0
+      )
+        throw new Error(
+          `${label} transfer is uncertain; reconcile ${receiptPath} before another transfer.`,
+        );
+      receipt = {
+        ...receipt,
+        attempts: [
+          ...(prior.attempts ?? []),
+          {
+            status: prior.status,
+            reconciliation: prior.reconciliation,
+            transactions: prior.transactions,
+          },
+        ],
+      };
     }
-    /** @type {{status: string, label: string, transactions: Record<string,string>, dustInputs?: number}} */
-    const receipt = { status: 'intent', label, transactions: {} };
     saveIsolationReceipt(receiptPath, receipt);
     const target = await walletModule.createWallet(seed);
     try {
       await walletModule.syncWallet(target, `dedicated ${label} wallet`);
       const providers = await walletModule.createProviders(target);
+      const submit = providers.midnightProvider.submitTx.bind(providers.midnightProvider);
+      providers.midnightProvider.submitTx = async (
+        /** @type {{version:string,tx:{transactionHash:()=>string}}} */ transaction,
+      ) => {
+        if (transaction.version !== 'v9') throw new Error('Candidate wallet requires Ledger 9.');
+        receipt.submissions.push(transaction.tx.transactionHash());
+        saveIsolationReceipt(receiptPath, receipt);
+        return submit(transaction);
+      };
       const dustInputs = await fundFreshClaimSponsor({
         sponsor: target,
         genesis,

@@ -97,7 +97,7 @@ For that qualification on the shared local stack, prepare a **separate** candida
 funding wallet after the candidate registry and chain anchor have been recorded:
 
 ```sh
-nix develop -c node scripts/midnames-demo-wallets.mjs \
+nix develop -c node --experimental-import-meta-resolve scripts/midnames-demo-wallets.mjs \
   /absolute/path/to/private/local-demo-state \
   /absolute/path/to/pinned/acc-reference/contract \
   --candidate-funding-only
@@ -106,9 +106,14 @@ nix develop -c node scripts/midnames-demo-wallets.mjs \
 The command checks the live chain anchor, claims the shared sponsor lease, and
 records each transfer before submitting it. It creates private
 `candidate-funding-*` seed, token, policy and provision receipts alongside the
-existing demo state. It never opens the ordinary funding wallet. If a receipt is
+existing demo state. Candidate wallet proofs use the shared release prover on
+port 6300. It never opens the ordinary funding wallet. If a receipt is
 unfinished, reconcile that exact transfer before rerunning; do not delete the
-receipt or change the seed to force a new attempt.
+receipt or change the seed to force a new attempt. The provisioner fences each
+node submission with its transaction hash in the receipt. A documented
+pre-submit proving failure may be retried under the same wallet seed while the
+failed attempt remains in the receipt history; any fenced submission stays
+pending for exact transaction reconciliation.
 
 The reference reservation store is safe for one host sharing one file. It creates
 `<reservations-file>.lock` during updates. If the process dies with the lock present, inspect
