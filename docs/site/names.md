@@ -854,4 +854,12 @@ isolated page harness. Combined ACC creation and claim in the ordinary demo,
 real passkey approval, the broader recovery matrix and online naming remain
 unqualified.
 
+The low-level `adapter-midnight-js` NIGHT deposit preflight now recognizes the
+candidate manifest only with an explicit `provisionalLocal` opt-in and loopback
+Ledger 9 / Indexer API v4 endpoints. This checks the proposed request before
+chain I/O; it is not a candidate deposit proof or permission for the browser
+send page or funding service to move value. Both connected routes remain
+disabled until their exact generated module, adapter and native deposit are
+qualified together.
+
 See the [standalone recipe](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local).

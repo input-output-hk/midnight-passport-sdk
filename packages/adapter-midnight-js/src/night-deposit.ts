@@ -22,8 +22,29 @@ import {
 import { createHeldCoinWitness, type MidnightBinding } from './chain.js';
 
 const ADDRESS = /^[a-f0-9]{64}$/;
-const MANIFEST = /^[a-f0-9]{64}$/;
 const MAX_PROVEN_BYTES = 4 * 1024 * 1024;
+const NIGHT_DEPOSIT_PINS = Object.freeze({
+  'acc-s3r1.1': '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f',
+  'acc-s3r1.1-zkir036': '590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f',
+});
+const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]']);
+
+function localEndpoint(value: string, protocols: readonly string[], pathname: string): boolean {
+  try {
+    const url = new URL(value);
+    return (
+      protocols.includes(url.protocol) &&
+      LOOPBACK.has(url.hostname) &&
+      url.pathname === pathname &&
+      !url.username &&
+      !url.password &&
+      !url.search &&
+      !url.hash
+    );
+  } catch {
+    return false;
+  }
+}
 
 export interface UnboundNightDepositRequest {
   readonly network: NetworkConfig;
@@ -35,6 +56,34 @@ export interface UnboundNightDepositRequest {
     readonly encryptionPublicKey: string;
   };
   readonly prover: Prover;
+  /** Explicit source-only opt-in for the provisional Ledger 9 key profile. */
+  readonly provisionalLocal?: boolean;
+}
+
+/** Validate the deposit binding before reading chain state or asking the device wallet to sign. */
+export function assertNightDepositPreflight(request: UnboundNightDepositRequest): void {
+  const { network, binding, target, amount, walletKeys, prover, provisionalLocal } = request;
+  const manifest = NIGHT_DEPOSIT_PINS[network.bindingId as keyof typeof NIGHT_DEPOSIT_PINS];
+  if (
+    network.networkId !== 'undeployed' ||
+    !manifest ||
+    network.manifestSha256 !== manifest ||
+    (network.bindingId === 'acc-s3r1.1-zkir036' &&
+      (!provisionalLocal ||
+        !localEndpoint(network.nodeUrl, ['http:', 'https:'], '/') ||
+        !localEndpoint(network.indexerUrl, ['http:', 'https:'], '/api/v4/graphql') ||
+        !localEndpoint(network.indexerWsUrl, ['ws:', 'wss:'], '/api/v4/graphql/ws') ||
+        !localEndpoint(network.artefactUrl, ['http:', 'https:'], '/v1/zk/acc-s3r1.1-zkir036'))) ||
+    !ADDRESS.test(target) ||
+    amount <= 0n ||
+    amount >= 1n << 128n ||
+    !walletKeys.coinPublicKey ||
+    !walletKeys.encryptionPublicKey ||
+    typeof binding.Contract !== 'function' ||
+    typeof binding.ledger !== 'function' ||
+    typeof prover.proveTx !== 'function'
+  )
+    throw new Error('Unsupported pinned NIGHT deposit request.');
 }
 
 /** Replace Compact 0.35's padded or short deletion credit with the measured value. */
@@ -152,17 +201,9 @@ export async function proveUnboundNightDeposit(
   request: UnboundNightDepositRequest,
 ): Promise<Uint8Array> {
   const { network, binding, target, amount, walletKeys, prover } = request;
-  if (
-    network.networkId !== 'undeployed' ||
-    network.bindingId !== 'acc-s3r1.1' ||
-    !MANIFEST.test(network.manifestSha256) ||
-    !ADDRESS.test(target) ||
-    amount <= 0n ||
-    amount >= 1n << 128n ||
-    !walletKeys.coinPublicKey ||
-    !walletKeys.encryptionPublicKey
-  )
-    throw new Error('Unsupported pinned NIGHT deposit request.');
+  assertNightDepositPreflight(request);
+  if (network.bindingId !== 'acc-s3r1.1')
+    throw new Error('Provisional NIGHT deposit proof is not qualified.');
   setNetworkId(network.networkId);
   const publicDataProvider = indexerPublicDataProvider({
     queryURL: network.indexerUrl,
