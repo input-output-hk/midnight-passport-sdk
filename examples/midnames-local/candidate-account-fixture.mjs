@@ -65,18 +65,29 @@ writeFileSync(modulePath, readFileSync(join(assets, 'contract/index.js')), {
 });
 assert.equal(sha256(readFileSync(modulePath)), binding.moduleHashes['contract/index.js']);
 
-const [walletModule, waves, acc, { CompiledContract }, contracts, ledger, zk, proof, inbox] =
-  await Promise.all([
-    import(pathToFileURL(join(ref, 'src/node/wallet.ts')).href),
-    import(pathToFileURL(join(ref, 'src/wallet/wave-deploy.ts')).href),
-    import(pathToFileURL(modulePath).href),
-    get('@midnight-ntwrk/compact-js'),
-    get('@midnight-ntwrk/midnight-js-contracts'),
-    get('@midnightntwrk/ledger-v9'),
-    get('@midnight-ntwrk/midnight-js-node-zk-config-provider'),
-    get('@midnight-ntwrk/midnight-js-http-client-proof-provider'),
-    import(pathToFileURL(join(ref, 'src/wallet/inbox.ts')).href),
-  ]);
+const [
+  walletModule,
+  waves,
+  acc,
+  { CompiledContract },
+  contracts,
+  ledger,
+  runtime,
+  zk,
+  proof,
+  inbox,
+] = await Promise.all([
+  import(pathToFileURL(join(ref, 'src/node/wallet.ts')).href),
+  import(pathToFileURL(join(ref, 'src/wallet/wave-deploy.ts')).href),
+  import(pathToFileURL(modulePath).href),
+  get('@midnight-ntwrk/compact-js'),
+  get('@midnight-ntwrk/midnight-js-contracts'),
+  get('@midnightntwrk/ledger-v9'),
+  get('@midnight-ntwrk/compact-runtime'),
+  get('@midnight-ntwrk/midnight-js-node-zk-config-provider'),
+  get('@midnight-ntwrk/midnight-js-http-client-proof-provider'),
+  import(pathToFileURL(join(ref, 'src/wallet/inbox.ts')).href),
+]);
 
 let wallet;
 try {
@@ -155,7 +166,9 @@ try {
   for (const [name, hash] of Object.entries(observed))
     assert.equal(hash, binding.circuits[name].hashes.verifierKey, `Candidate verifier ${name}`);
   assert.deepEqual(state.maintenanceAuthority.committee, []);
-  const decoded = acc.ledger(state.data);
+  // The generated ledger reader requires Compact runtime's WASM state class.
+  // ledger-v9's state is independent even when its serialized bytes agree.
+  const decoded = acc.ledger(runtime.ContractState.deserialize(state.serialize()).data);
   assert.equal(decoded.booted, true);
   assert.equal(decoded.spec_version, 3n);
   Object.assign(receipt, {
