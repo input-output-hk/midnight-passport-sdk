@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, realpathSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { BINDING_VERSION, resolveBinding } from '@input-output-hk/mn-passport-contract';
@@ -120,20 +120,47 @@ test('startup refuses a changed binding, manifest, weak token and NIGHT outside 
   );
 });
 
-test('provisional funding refuses before the stable deposit module can submit', () => {
-  assert.throws(
-    () =>
-      loadFundingConfig({
-        ...base,
-        PASSPORT_BINDING_ID: 'acc-s3r1.1-zkir036',
-        PASSPORT_CANDIDATE_LOCAL: '1',
-        PASSPORT_MANIFEST_SHA256:
-          '590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f',
-        PASSPORT_ARTEFACT_DIR: '/candidate/account',
-        MIDNIGHT_STACK: 'shared-ledger9',
-      }),
-    /binding differs from the package pin/,
+test('candidate funding admits only an explicit pinned local NIGHT profile', () => {
+  const candidate = join(dir, 'candidate-assets');
+  mkdirSync(candidate, { recursive: true });
+  const night = join(dir, 'candidate-night.json');
+  writeFileSync(
+    night,
+    JSON.stringify([{ color: '00'.repeat(32), maxPerRequest: '10', maxPerUtcDay: '100' }]),
   );
+  const profile = {
+    ...base,
+    PASSPORT_BINDING_ID: 'acc-s3r1.1-zkir036',
+    PASSPORT_CANDIDATE_LOCAL: '1',
+    PASSPORT_MANIFEST_SHA256: '590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f',
+    PASSPORT_ARTEFACT_DIR: realpathSync(candidate),
+    PASSPORT_FUNDING_ASSETS_FILE: night,
+    PASSPORT_FUNDING_SEED_FILE: seedFile,
+    PASSPORT_FUNDING_RESERVATIONS_FILE: join(dir, 'candidate-reservations.json'),
+    PASSPORT_FUNDING_DEPLOYMENTS_FILE: join(dir, 'candidate-deployments.json'),
+    MN_NODE_URL: 'http://127.0.0.1:9944',
+    MN_INDEXER_URL: 'http://127.0.0.1:8088/api/v4/graphql',
+    MN_INDEXER_WS_URL: 'ws://127.0.0.1:8088/api/v4/graphql/ws',
+    MN_PROOF_SERVER_URL: 'http://127.0.0.1:6300',
+  };
+  const config = loadFundingConfig(profile);
+  assert.equal(config.provisionalLocal, true);
+  assert.equal(config.artefactDir, realpathSync(candidate));
+  assert.equal(config.manifestSha256, profile.PASSPORT_MANIFEST_SHA256);
+  for (const changed of [
+    { PASSPORT_CANDIDATE_LOCAL: '0' },
+    { PASSPORT_MANIFEST_SHA256: '00'.repeat(32) },
+    { PASSPORT_MANIFEST_SHA256: '' },
+    { PASSPORT_FUNDING_ASSETS_FILE: assetsFile },
+    { PASSPORT_FUNDING_SEED_FILE: '' },
+    { PASSPORT_FUNDING_RESERVATIONS_FILE: '' },
+    { PASSPORT_FUNDING_DEPLOYMENTS_FILE: '' },
+    { MN_INDEXER_URL: 'http://example.com/api/v4/graphql' },
+    { MN_INDEXER_URL: 'http://127.0.0.1:8088/api/v3/graphql' },
+    { PASSPORT_FUNDING_HOST: '0.0.0.0' },
+    { MN_NETWORK_ID: 'testnet' },
+  ])
+    assert.throws(() => loadFundingConfig({ ...profile, ...changed }));
 });
 
 test('deployment eligibility is network scoped and a corrupt log fails closed', () => {

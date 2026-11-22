@@ -129,6 +129,7 @@ export function valueCallRoute(
     if (!authorized(req.headers.authorization)) throw new HttpError(403, 'funding caller refused');
     if (
       config.networkId !== 'undeployed' ||
+      config.provisionalLocal ||
       !['127.0.0.1', 'localhost', '::1'].includes(config.host)
     )
       throw new HttpError(403, 'demo value calls require the loopback localnet');

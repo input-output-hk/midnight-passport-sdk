@@ -1252,3 +1252,7 @@ The candidate device deposit request now carries the binding and manifest pin
 through the wallet worker's parser and IndexedDB fence. A synthetic headless
 browser check covers that boundary and its saved-original refusal; it does not
 qualify a native connected payment.
+The funding service has a separate source-only candidate NIGHT deposit path
+with a verified generated module and loopback API v4 guards. The demo launcher
+keeps candidate funding disabled until its own native reservation and replay
+gate passes.

@@ -174,7 +174,10 @@ records one synthetic ACC creation, same-profile paid `.night` claim, exact
 indexed success and matching registry target. Those steps span signed source
 heads; the final head rechecked the saved registration without another send.
 One exact-head create-to-claim run and the combined named payment remain open.
-Candidate demo funding remains disabled. The connected named NIGHT page source
+Candidate demo funding remains disabled. The funding service now has a
+source-only candidate NIGHT path guarded by the verified generated module,
+loopback API v4 endpoints, a separate funded wallet and a NIGHT-only policy.
+Its native reservation, send and replay gate has not run. The connected named NIGHT page source
 now checks the exact candidate binding and manifest through page selection,
 owner review, host admission and deposit preflight. Its browser journal also
 pins the candidate profile so a stable or changed binding cannot resume its

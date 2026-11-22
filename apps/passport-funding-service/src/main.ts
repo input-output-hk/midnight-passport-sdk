@@ -2,11 +2,6 @@ import { timingSafeEqual } from 'node:crypto';
 import type { AddressInfo } from 'node:net';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import {
-  Contract,
-  ledger,
-  pureCircuits,
-} from '@input-output-hk/mn-passport-contract/bindings/acc-s3r1.1';
 import { remoteV1Prover } from '@input-output-hk/mn-passport-adapter-service';
 import {
   createFileFundingStore,
@@ -18,6 +13,7 @@ import {
   type FundingProgress,
 } from '@input-output-hk/mn-passport-service';
 import { loadFundingConfig } from './config.ts';
+import { loadFundingBinding } from './binding.ts';
 import { deployedAddresses } from './deployments.ts';
 import { prepareLocalnetNight, type NightWallet } from './night-preparation.ts';
 import { submitMeasuredNightDeposit } from './measured-night-deposit.ts';
@@ -27,6 +23,7 @@ import type { createMidnightWalletPorts } from '@input-output-hk/mn-passport-ada
 
 const config = loadFundingConfig(process.env);
 verifyArtefacts(config.artefactDir, config.manifestSha256);
+const binding = await loadFundingBinding(config);
 
 const root = (relative: string): string => join(config.contractDir, relative);
 const setup = (await import(pathToFileURL(root('src/node/setup.ts')).href)) as {
@@ -105,7 +102,7 @@ const backend = createWalletFundingBackend({
                 nodeUrl: config.nodeUri,
                 artefactUrl: `${service}/v1/zk/${config.bindingId}`,
               },
-              binding: { Contract, ledger, pureCircuits },
+              binding,
               target: address,
               amount,
               walletKeys: {
@@ -113,6 +110,7 @@ const backend = createWalletFundingBackend({
                 encryptionPublicKey: asHex(encryption),
               },
               prover: remoteV1Prover(service),
+              provisionalLocal: config.provisionalLocal,
             },
             wallet.providers.walletProvider,
             wallet.providers.midnightProvider,

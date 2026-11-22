@@ -80,11 +80,16 @@ color, amount, transaction ID and confirmed ACC balances for NIGHT and the test 
 or when the Passport service is bound beyond loopback. The operator CLI remains available as
 `demo fund`.
 
-The funding service accepts only the packaged `acc-s3r1.1` binding. The
-provisional `acc-s3r1.1-zkir036` profile can create an ACC and register a name
-locally, but its deposit route is disabled until the generated ACC module,
-adapter and exact-head native deposit are qualified together. A candidate
-binding setting is rejected before the service connects a wallet.
+The funding service defaults to packaged `acc-s3r1.1`. An explicit source-only
+`acc-s3r1.1-zkir036` path verifies the candidate manifest and generated module
+before loading it, then routes NIGHT deposits through the pinned adapter. It
+requires `PASSPORT_CANDIDATE_LOCAL=1`, the exact candidate binding and manifest,
+an absolute canonical `PASSPORT_ARTEFACT_DIR`, a separately funded non-genesis
+seed file, explicit candidate reservation and deployment files, a NIGHT-only
+asset policy and loopback Ledger 9 / Indexer API v4 endpoints. Its
+general value-call endpoint remains closed for candidate accounts. The Midnames
+demo launcher does not yet enable candidate funding: the funding-service route
+still needs an exact-head native reservation, submission and replay qualification.
 
 The reference reservation store is safe for one host sharing one file. It creates
 `<reservations-file>.lock` during updates. If the process dies with the lock present, inspect
