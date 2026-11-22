@@ -106,7 +106,17 @@ To enable candidate NIGHT deposits, first run the one-time
 then add `--funding` to the candidate `up` command. It selects the separate
 candidate wallet, asset policy, reservation journal and deployment log, and
 uses loopback port 18789 while the stable demo may continue on 8789. The
-[concurrent launch check](evidence/candidate-concurrent-funding-launch-20261122.json)
+candidate named NIGHT control is a separate opt-in: add `--night-send` together
+with `--candidate-assets --claim --funding` only after both source and recipient
+ACCs are activated, the source has a confirmed NIGHT balance, and a `.night`
+name resolves to the intended recipient contract. The control keeps the
+withdrawal and deposit as one recoverable browser intent. Preserve the same
+browser profile if either leg becomes uncertain; do not initiate a new send.
+The launcher rejects `--night-send` outside this candidate local profile.
+The sponsor's single claim journal may still be occupied by a completed earlier
+name; named sending can use that confirmed name without requesting a new claim.
+
+The [concurrent launch check](evidence/candidate-concurrent-funding-launch-20261122.json)
 verified both pinned services, a headless page smoke and clean owned shutdown
 on the shared stack. It sent no transaction. The
 [native funding receipt](evidence/candidate-funding-native-20261122.json)

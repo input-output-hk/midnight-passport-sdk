@@ -789,6 +789,10 @@ browser run finalized both original legs of one named payment and recovered
 those exact IDs after reload. Real-provider acceptance and online deployment
 remain open.
 
+The local candidate launcher sets `VITE_MIDNAMES_NIGHT_SEND=1` only with
+`--night-send --claim --funding` and `--candidate-assets`. Its default candidate
+page leaves the control disabled.
+
 A fresh isolated Ledger 9 [prover comparison](../../examples/midnames-local/evidence/ledger9-night-by-name-prover-comparison-20261122.json)
 found that the release `9.0.2` prover refuses the pinned Compact 0.35 JubJub
 NIGHT withdrawal proof before an original exists. With the same release node

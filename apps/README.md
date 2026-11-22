@@ -947,8 +947,9 @@ It requires a separately verified `PASSPORT_ARTEFACT_DIR`,
 endpoints. Vite checks the candidate manifest and generated module before
 building; the service checks the full asset tree at startup. The public SDK
 binding remains provisional, and the ordinary demo keeps `acc-s3r1.1`.
-Candidate funding and connected named NIGHT sending are disabled pending
-generated-module, adapter and exact-head native deposit qualification.
+Candidate funding is separately provisioned. Candidate named NIGHT sending
+requires the local launcher's explicit `--night-send` with `--claim --funding`;
+it does not activate for an ordinary demo or online binding.
 The candidate ACC proves through the shared Ledger 9 release prover on port
 6300. The launcher's separately owned compatibility prover on port 16320
 serves the pinned Compact 0.35 standalone name registry's claim proof. The
