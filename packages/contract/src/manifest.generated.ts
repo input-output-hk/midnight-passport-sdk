@@ -902,5 +902,863 @@ export const ACC_REGISTRY: AccRegistry = {
         },
       },
     },
+    'acc-s3r1.1-zkir036': {
+      provisional: true,
+      manifestSha256: '590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f',
+      source: {
+        path: 'midnightntwrk/passport@6458ed5fe6a4843912328bbf11112b97e33abf45/contracts/account.compact',
+        sha256: 'a5a05eef67399856dc9d25ae9989a3972b4695f1f2fe6a25bfd68ee51669d3d5',
+      },
+      toolchain: {
+        cliVersion: 'compact 0.35.0; zkir-v3 0.36.1',
+        compilerVersion: '0.35.0',
+        languageVersion: '0.27.0',
+        runtimeVersion: '0.20.0',
+      },
+      moduleHashes: {
+        'contract/index.js': '0ee002d3ac6eae8c048fbd9017ed2f1215e3961629f998221dd9b3e77d74bccf',
+        'contract/index.d.ts': 'cc57ab4721b91f89e754b887ef55a5bb40dc356cf44089febfcfd8c4a10f8932',
+        'compiler/contract-info.json':
+          '01b290c31c806085c278d6649170460294d3791d9f005c75426cec086b9ee517',
+      },
+      circuits: {
+        activate_initial_device_with_jubjub: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/activate_initial_device_with_jubjub',
+          hashes: {
+            zkir: 'aa57039b114151e1889e8ae86afcc3aa2ca0e5929275bcc75061b28088eb868b',
+            bzkir: '18a73910ac9c1db1ae52a8c48abcbd891838d75206c5da48eb1338fd0db622ce',
+            verifierKey: 'b33fa139d34231f6ba1144a4ac3e947b35e679e8e91d31b554d7ff916932931e',
+            proverKey: '6b9571e641ff826dd381550d14e3c445f28efad59890c1cd8a50b27a9517995a',
+          },
+        },
+        activate_initial_device_with_k256: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/activate_initial_device_with_k256',
+          hashes: {
+            zkir: 'b197e27eaa0b96c3e320a65c238ff662ce3e6cb0be7d56a5e1dabba0e7db8662',
+            bzkir: '7f4bc97ce74a9bd5a67c20353a88bead7991b6c3407941ab4e3deb40cf169fa7',
+            verifierKey: '6de7d8e483e89b8894b651cd0d860620771b4fa532206c0ba7c08295a5095395',
+            proverKey: '2edd2dc726595643bdb58ead28332c769045be9bc81db85492eb9623ecb2c3bb',
+          },
+        },
+        activate_initial_device_with_p256: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/activate_initial_device_with_p256',
+          hashes: {
+            zkir: 'a6c4420309515190f2f93ff5ceb3caf8faf32c1a277c249456a7db6520cf8510',
+            bzkir: '12f725bccb2efa1e7efee56a6167a150464604e4ef7bc28bf4a11e5ea8e868d9',
+            verifierKey: 'e24d797882118f6d1e33c6e756e361fa7f0b405d658cbcaaa45b4602a19dde7e',
+            proverKey: 'c5f640112df733a15259a2e970d2d3cb157f7414d2cb2cb79e5d06b6d86f9926',
+          },
+        },
+        add_device_with_jubjub: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/add_device_with_jubjub',
+          hashes: {
+            zkir: 'd6086a4bcd2f3d6c0c891657121df7ad753f4b5c52f9843c68e9c927471e6c5f',
+            bzkir: '7f5029b616e9be3fc37aa47d64c89b90cdb96860cec0b6e1b07ac5c7534945eb',
+            verifierKey: 'f0233186ae0eb772cc40ef20f35cac0fc8984fcce5934b699f331af12a885a38',
+            proverKey: 'ed2751985656838f6c626e0316e000e6eba33698763dc60f4e1a9793079faa06',
+          },
+        },
+        add_device_with_k256: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/add_device_with_k256',
+          hashes: {
+            zkir: '86bdb1c8b2106d8c484efd67f3f68e851fccce96a1d4f3ad50c7cbc88216db5e',
+            bzkir: '18c1a452542d3a2ed869f2deaec360712d65924d66e7eb9950777808492b9118',
+            verifierKey: 'f2bd6b0c7747d18aef84cf2209b65ca6eae9958d0375a2b99324ee7bc4db2f5d',
+            proverKey: 'c79e44100b7aa2775897f21010e9a84910bdb8e51bb663dcba941257be33669b',
+          },
+        },
+        add_device_with_p256: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/add_device_with_p256',
+          hashes: {
+            zkir: 'a8fdf50e4fc80b7b5f6faf7fafda911aeeee9ceb9513677ccbfc4a86cabb8ce9',
+            bzkir: '9078244a60503e1e0d20c22184e065d406804d68a5b1b7cf899d97555056349f',
+            verifierKey: '405776ff9d1aace108c47438336b6e39a09ce5826ceeaf0f1656e74b7a604bba',
+            proverKey: '76b6fb7dfac70a932423bd56b315a7831d3d8c741d68766aead58478abe9cdc2',
+          },
+        },
+        append_inbox_with_jubjub: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/append_inbox_with_jubjub',
+          hashes: {
+            zkir: '7eabd8bcd3ef27e69937e8f84b3e2b280d38c2b2b6cb0c341f296fdc1b6b0135',
+            bzkir: '5f3085f9669fbc3ce6eba0aaacd8fa1fd3cb9ccdacbb1210955c9a736a192c56',
+            verifierKey: '5f08b03fe48e8cbc718915cc4fff1b7f1e64196054afef2f9ea727e03de26016',
+            proverKey: 'c95e4062690f30d94a17c22f1359f6ec462663d9c7088a420d4f6e63c8db96ee',
+          },
+        },
+        append_inbox_with_k256: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/append_inbox_with_k256',
+          hashes: {
+            zkir: '803210bd546868494b8f990eb1af15a2b9b64bc43839b49aa8fef9efee131f48',
+            bzkir: 'b11b97b050ba5e3265479be6d6a53083b54f5f664d47f3b19446daaf2e7dbf23',
+            verifierKey: '1ea3fd2fc1275ff49b78f91912b0b5ac9c2153d3b9e5986e122cba9828ec4a21',
+            proverKey: '93fae362b580935c95a1627a4297a91e1d01fe7b3abd0ff1f38d15dc1bbbe3dd',
+          },
+        },
+        append_inbox_with_p256: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/append_inbox_with_p256',
+          hashes: {
+            zkir: '23402cf8b906d819acea7514c7fea8963e2f47faf2334b975cbc1c9f00c3a3f0',
+            bzkir: '5216deac0c2d865f57cceec0527a8ead88ff8805565d07d35ec4cb544f76d92c',
+            verifierKey: 'e6479314509ec00e8e7543ff012e69b2f26b894260fe65fd71dbaf5236aa5130',
+            proverKey: '8b70e5ba246a51c874317a2c04044177c40f169ff11afc0babcdf2941ee02965',
+          },
+        },
+        challenge_add_device_with_jubjub: {
+          pure: true,
+          proof: false,
+        },
+        challenge_add_device_with_k256: {
+          pure: true,
+          proof: false,
+        },
+        challenge_add_device_with_p256: {
+          pure: true,
+          proof: false,
+        },
+        challenge_append_inbox_with_jubjub: {
+          pure: true,
+          proof: false,
+        },
+        challenge_append_inbox_with_k256: {
+          pure: true,
+          proof: false,
+        },
+        challenge_append_inbox_with_p256: {
+          pure: true,
+          proof: false,
+        },
+        challenge_issue_grant_with_jubjub: {
+          pure: true,
+          proof: false,
+        },
+        challenge_issue_grant_with_k256: {
+          pure: true,
+          proof: false,
+        },
+        challenge_issue_grant_with_p256: {
+          pure: true,
+          proof: false,
+        },
+        challenge_publish_recovery_session_with_jubjub: {
+          pure: true,
+          proof: false,
+        },
+        challenge_publish_recovery_session_with_k256: {
+          pure: true,
+          proof: false,
+        },
+        challenge_publish_recovery_session_with_p256: {
+          pure: true,
+          proof: false,
+        },
+        challenge_recover_cancel_with_jubjub: {
+          pure: true,
+          proof: false,
+        },
+        challenge_recover_cancel_with_k256: {
+          pure: true,
+          proof: false,
+        },
+        challenge_recover_cancel_with_p256: {
+          pure: true,
+          proof: false,
+        },
+        challenge_recover_submit: {
+          pure: true,
+          proof: false,
+        },
+        challenge_remove_device_with_jubjub: {
+          pure: true,
+          proof: false,
+        },
+        challenge_remove_device_with_k256: {
+          pure: true,
+          proof: false,
+        },
+        challenge_remove_device_with_p256: {
+          pure: true,
+          proof: false,
+        },
+        challenge_revoke_all_grants_with_jubjub: {
+          pure: true,
+          proof: false,
+        },
+        challenge_revoke_all_grants_with_k256: {
+          pure: true,
+          proof: false,
+        },
+        challenge_revoke_all_grants_with_p256: {
+          pure: true,
+          proof: false,
+        },
+        challenge_revoke_grant_with_jubjub: {
+          pure: true,
+          proof: false,
+        },
+        challenge_revoke_grant_with_k256: {
+          pure: true,
+          proof: false,
+        },
+        challenge_revoke_grant_with_p256: {
+          pure: true,
+          proof: false,
+        },
+        challenge_rotate_enc_key_with_jubjub: {
+          pure: true,
+          proof: false,
+        },
+        challenge_rotate_enc_key_with_k256: {
+          pure: true,
+          proof: false,
+        },
+        challenge_rotate_enc_key_with_p256: {
+          pure: true,
+          proof: false,
+        },
+        challenge_withdraw_shielded_to_contract_with_grant_jubjub: {
+          pure: true,
+          proof: false,
+        },
+        challenge_withdraw_shielded_to_contract_with_grant_k256: {
+          pure: true,
+          proof: false,
+        },
+        challenge_withdraw_shielded_to_contract_with_grant_p256: {
+          pure: true,
+          proof: false,
+        },
+        challenge_withdraw_shielded_to_contract_with_jubjub: {
+          pure: true,
+          proof: false,
+        },
+        challenge_withdraw_shielded_to_contract_with_k256: {
+          pure: true,
+          proof: false,
+        },
+        challenge_withdraw_shielded_to_contract_with_p256: {
+          pure: true,
+          proof: false,
+        },
+        challenge_withdraw_shielded_with_grant_jubjub: {
+          pure: true,
+          proof: false,
+        },
+        challenge_withdraw_shielded_with_grant_k256: {
+          pure: true,
+          proof: false,
+        },
+        challenge_withdraw_shielded_with_grant_p256: {
+          pure: true,
+          proof: false,
+        },
+        challenge_withdraw_shielded_with_jubjub: {
+          pure: true,
+          proof: false,
+        },
+        challenge_withdraw_shielded_with_k256: {
+          pure: true,
+          proof: false,
+        },
+        challenge_withdraw_shielded_with_p256: {
+          pure: true,
+          proof: false,
+        },
+        challenge_withdraw_unshielded_with_grant_jubjub: {
+          pure: true,
+          proof: false,
+        },
+        challenge_withdraw_unshielded_with_grant_k256: {
+          pure: true,
+          proof: false,
+        },
+        challenge_withdraw_unshielded_with_grant_p256: {
+          pure: true,
+          proof: false,
+        },
+        challenge_withdraw_unshielded_with_jubjub: {
+          pure: true,
+          proof: false,
+        },
+        challenge_withdraw_unshielded_with_k256: {
+          pure: true,
+          proof: false,
+        },
+        challenge_withdraw_unshielded_with_p256: {
+          pure: true,
+          proof: false,
+        },
+        compute_public_point_with_jubjub: {
+          pure: true,
+          proof: false,
+        },
+        compute_public_point_with_k256: {
+          pure: true,
+          proof: false,
+        },
+        compute_public_point_with_p256: {
+          pure: true,
+          proof: false,
+        },
+        deposit_shielded: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/deposit_shielded',
+          hashes: {
+            zkir: '9b4af24b42dce2987835aa08b517835015e5e08db893c783088e6f0ffe7943cc',
+            bzkir: 'e61e8dd6f86999518f5d9dfe5d09f63c172f989e8eed3ccf5d90e43a7ab81951',
+            verifierKey: '18caf9ffc1ea3271c340f97ee5433598b796a64fadcc1fb7bb5c65868574d328',
+            proverKey: '0c63768a2206101b86d8bfc49f7a55d3cdd230afa6a28f61964f160082a519cb',
+          },
+        },
+        deposit_unshielded: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/deposit_unshielded',
+          hashes: {
+            zkir: 'e1384ddb55763bd0a3226bbad3337b83a4e076087f212dbe0281e6db671dce1d',
+            bzkir: 'b64d5d0243053a4b383493835a3a2412e09c89248d351076c5097f528eb7e2f8',
+            verifierKey: 'bb4421a5909564377d15f0756299bef99740089b842e8d9796ad2d3d75831de9',
+            proverKey: 'd8409e37efa3f142a8c9fb44a7a4c25397312317f9cf28f1243c1bba887f56a3',
+          },
+        },
+        derive_boot_commitment_with_jubjub: {
+          pure: true,
+          proof: false,
+        },
+        derive_boot_commitment_with_k256: {
+          pure: true,
+          proof: false,
+        },
+        derive_boot_commitment_with_p256: {
+          pure: true,
+          proof: false,
+        },
+        derive_device_entry_with_jubjub: {
+          pure: true,
+          proof: false,
+        },
+        derive_device_entry_with_k256: {
+          pure: true,
+          proof: false,
+        },
+        derive_device_entry_with_p256: {
+          pure: true,
+          proof: false,
+        },
+        derive_grant_caller_commit: {
+          pure: true,
+          proof: false,
+        },
+        derive_grant_id_with_jubjub: {
+          pure: true,
+          proof: false,
+        },
+        derive_grant_id_with_k256: {
+          pure: true,
+          proof: false,
+        },
+        derive_grant_id_with_p256: {
+          pure: true,
+          proof: false,
+        },
+        derive_grant_object_commit: {
+          pure: true,
+          proof: false,
+        },
+        derive_grant_rp_commit: {
+          pure: true,
+          proof: false,
+        },
+        derive_grant_scope_digest: {
+          pure: true,
+          proof: false,
+        },
+        derive_grant_spent_commit: {
+          pure: true,
+          proof: false,
+        },
+        envelope_digest: {
+          pure: true,
+          proof: false,
+        },
+        issue_grant_with_jubjub: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/issue_grant_with_jubjub',
+          hashes: {
+            zkir: '5a375421790a8e1e2c7ee2a6a04bc45b59af6d3e5fd39ceac047605178bed0e8',
+            bzkir: '19887b86c759417a93ff30f90830e479ef987f5df2785a2ff9f42668cf8b0a99',
+            verifierKey: '41982739ecf0f0df2ccda4b316bf9d5852fca0138802b44e80ce84bcd5f0faa6',
+            proverKey: '56ce0cdd0e0df49156bf523842f3b4040f3d5de7df4d773df28d54570d74f54e',
+          },
+        },
+        issue_grant_with_k256: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/issue_grant_with_k256',
+          hashes: {
+            zkir: '4c7bf5878f4a389ddc72e6795d486b6914161b80abea9010df2b4a6daa533a49',
+            bzkir: '9e2689714f3714684806997559279f6c16f06f39c0d2e8d5c2363f66595d9cfa',
+            verifierKey: '4384814c9d95b0d400fc2b7e798a96b862bf222523498204827dc5f6ac27fc0d',
+            proverKey: '24e4b7468e31a727e2ad7d6d483f04173a220353316950a1afcca6bd6f240e20',
+          },
+        },
+        issue_grant_with_p256: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/issue_grant_with_p256',
+          hashes: {
+            zkir: 'bd368d086c56105ed3cd3d06a42818d268bba419ccc7c9b11f307a0d4c5caa6b',
+            bzkir: '1291bf1fd25ec9960392ec3a92c2679961244209df19447fe18a19f021433754',
+            verifierKey: '0d2c106295b78e387d8369ac3d5f6ac9186fe283b942079e95527e2652ef0c9a',
+            proverKey: '99ae64933200c8cc60ac824f9944ded65f6b1e53d47ee0181afe556a00018d6d',
+          },
+        },
+        publish_recovery_session_with_jubjub: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/publish_recovery_session_with_jubjub',
+          hashes: {
+            zkir: 'b3c9ba85558a6114552f1ccf3a0a8f5a3ad2931be27ec588ba8a80768500a23b',
+            bzkir: 'dca9f2a33349f5d2968230c754f17b24141d0f91fc1cac2cef26a239546de22c',
+            verifierKey: '7ccab5f6b494e5639d3abfca482fb99b2d5a9d23884b81930c57e78ded1c537d',
+            proverKey: 'cf89d635a2c3f6ac003a5ad66b79672650dea0046eddb0785beadab773bd955d',
+          },
+        },
+        publish_recovery_session_with_k256: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/publish_recovery_session_with_k256',
+          hashes: {
+            zkir: '280b5f54ba806fa04e5ebdc405462e7e169dd2bb6a8a8a86ee2dbf986134dc6a',
+            bzkir: '932442839907973dfb6fd445ce4f5ac031cfc620757ebaabe3d6e4373f93e94c',
+            verifierKey: '439eed8aab0d9d13cd50e67caedcb085937ef07d4cff532793fa7ccd7c607244',
+            proverKey: 'e9b8d8e702807227a875f59d4537de816e739cce93795569caad056cb34f4247',
+          },
+        },
+        publish_recovery_session_with_p256: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/publish_recovery_session_with_p256',
+          hashes: {
+            zkir: '7ce074fcc26434cec22780ded4504d8b739a58740a08b78dc2afe174cdd190e1',
+            bzkir: '384ba77a406a4637e1dde0a263c121942e8c158b53b609e26c1adbebac1c25f4',
+            verifierKey: '97bb9e32a0419d9a9bcaa8312f2a8c2851e7eaacb69604a6179619844ed256b9',
+            proverKey: 'bd4ec80d255c2451f4ee2d9fabda408a49aaada8d2f9477d3f667971901b97dc',
+          },
+        },
+        recover_cancel_with_jubjub: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/recover_cancel_with_jubjub',
+          hashes: {
+            zkir: 'e1f31a71a6cacf62ccfca7becddec9b606bf64a0260606992de763d1bd4043ef',
+            bzkir: 'c57abd77a80ed4e621b34443af26db53fafdbd7a49096b16d1546660bfc6c809',
+            verifierKey: 'ef6f2193f9bc8125ee8603374f51d62ed685494c5c5bededfc21b3c027fe1d34',
+            proverKey: 'aa49c352cd59bd5357e6cff155f7dac06c764b2a163c2f201df1e64cdd008262',
+          },
+        },
+        recover_cancel_with_k256: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/recover_cancel_with_k256',
+          hashes: {
+            zkir: '8b9f8ff7f7d407ea073da725f140390a58ecd73d6d25ac794ed516b49798edfc',
+            bzkir: '524168d4ebb34e98a0ee4dea5ee608da7a0247203468502650b71316eb1ed318',
+            verifierKey: '5225477cf2899e4d6604f0926a480b9cf7dd2761c16ff621f66dc3bc746f349e',
+            proverKey: '12a5d3b93393f7d70c4450e314a0f54b64d65efeb104b3494875f1fe89241140',
+          },
+        },
+        recover_cancel_with_p256: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/recover_cancel_with_p256',
+          hashes: {
+            zkir: 'e4e5883325e7baf0fee2915fe3fb5feb6fe31899ee35f2d2557244267eb2f394',
+            bzkir: '9ce7f3ba9478294146afea1d7e6b410813c80e212207a0c6ebcc3a366c25f1c7',
+            verifierKey: 'caf17f69425b04aec466d8ea0c306eb74da035cd5298dd2c6bafa5f5ec8d44c1',
+            proverKey: 'f7f18813885f845259c53b38963d2d36f8c4f0fb612e303504271405ac3c3bb2',
+          },
+        },
+        recover_finalise: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/recover_finalise',
+          hashes: {
+            zkir: '502d5a6e375ef497c2c2f85e5efebb99fc017d0e0724784da31f40b392dd5845',
+            bzkir: '1bd74678470e6b946c6f53f49b7ab4c0bf99edd90cc1cf11c48d29c24655b64c',
+            verifierKey: '67cdf364b9ae2905ca8b73cccd6a987eaa4cab83786da19065df88940c9999d2',
+            proverKey: '4b8c4135800571ecf50f88684de4030195567e823553ff0273d2e0330b4173bd',
+          },
+        },
+        recover_submit: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/recover_submit',
+          hashes: {
+            zkir: '383f701d09f5c763f17b5821c41944f3f5681a5b9cf9e39e525dded79e13e6d3',
+            bzkir: '079c73ba2e7314e580e73204d965c1d047c63776d01252918fa902eb8b776a3a',
+            verifierKey: 'ae78e27b3cfdb4981279b4b24f14b533863d7e3b738a07ab6f72d68512478746',
+            proverKey: '6f068fb42f21697ed3ba5165e1325ea2ebd0271f06dd593fdc7d2cdae9e68549',
+          },
+        },
+        remove_device_with_jubjub: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/remove_device_with_jubjub',
+          hashes: {
+            zkir: 'a282b7f98e02086266f95257eec57ef6b10b6d6810a5d0b85bdca1d0a8790622',
+            bzkir: '1a7f288bd9606663e82416fa38f6ba3aa29d3631a1b24b0879ee095cde9d337e',
+            verifierKey: 'd1a6495369e5047c0c25dd928f4494566b91fbf905866e9214513eaa450b1120',
+            proverKey: 'ddd78ce3ab45be49f8df1523416f3d82289c8b7ebb72d13c1d9847ce88916aa4',
+          },
+        },
+        remove_device_with_k256: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/remove_device_with_k256',
+          hashes: {
+            zkir: '399cb57558a9ff9b23992a39c3c00c33ebed22ce6198aee1762c5ea2d171832e',
+            bzkir: 'c318aa19e102c73eee1dc650e53d79f24dba9c98945f4263a06f1fd465832378',
+            verifierKey: 'bff3d5f98b0a5b787dfc7f999a8137d9d2d79e7e7e1d8304097ea5ed590dbcf3',
+            proverKey: '19be4dbf026346a2fc2f02878ca24f2867ae3da0abe1c006af1fdb64ebbb205c',
+          },
+        },
+        remove_device_with_p256: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/remove_device_with_p256',
+          hashes: {
+            zkir: '7be3cc6ce957fd54c76f2e0f896aaa65a9e0d5294fc813f3a64b0c2b4bc0ccf0',
+            bzkir: 'b6b22e9c8f44e8719ce3f5f01350de57d121b2e892eec72a333fc23de1cdd5bb',
+            verifierKey: '08968f5263b58b6818e9ee3c7091847d337fb3241530d3cc6b00d389ae02d08c',
+            proverKey: 'fb3c4b3d46eb3bf0a2b319da9540d6ec6673e85781ca8fa80b41f1e9d712bbc3',
+          },
+        },
+        revoke_all_grants_with_jubjub: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/revoke_all_grants_with_jubjub',
+          hashes: {
+            zkir: '59995aa084d8c21882a925db6ea6f7978e657dc2d55a583935046cb618aba5ff',
+            bzkir: 'bf4cde37c13b4a36cac999909154703cf2c05259c88f8b8cfe073cb49e60ce38',
+            verifierKey: 'c0ea02c1aee94ace6281f2d7e36c4c028d8acad743b1dfe320bf98e0b2b68aca',
+            proverKey: 'dadfcd35aada4ee8862afca05b7e958e60aeadc6adb1ad7453e167c0aed2f07d',
+          },
+        },
+        revoke_all_grants_with_k256: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/revoke_all_grants_with_k256',
+          hashes: {
+            zkir: '219e152e58f3159486f53f068867b6a3e85953a474acac7253a7916013de61d4',
+            bzkir: '25280f9de6e654a4cc25d7f729c8e7ca075e50714d3653370ceeb29b03876cf1',
+            verifierKey: '2b126817325d31e8fc18adaf0caa5572fb862516373888db08752e4e37adf908',
+            proverKey: 'b3dcd2a35bfe12c276bd33f6d0e49a3b816d2ff52d763eda3f32764cce0ccdfa',
+          },
+        },
+        revoke_all_grants_with_p256: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/revoke_all_grants_with_p256',
+          hashes: {
+            zkir: '1f5ec1f0f70f683313292e6985521d399bf31ede611a376df60d3cc9c487306e',
+            bzkir: 'f4c7b3cb7cb36d97bfe8b65b371f0f288179939d41d03f8112ea5b121d7068a2',
+            verifierKey: '931888c65ae1a45ffac3bf88f489654a06501495a3c36328f8d8fb46cb76ba24',
+            proverKey: 'b256bbdb9ee908e3e01bcf814268e49e9a7e095c7b47df7603d5d40efabedc99',
+          },
+        },
+        revoke_grant_with_jubjub: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/revoke_grant_with_jubjub',
+          hashes: {
+            zkir: '003661371a42bef348e1545ddd6cd0ee39cff090cfe5c992219f564d3f09f75d',
+            bzkir: '5bd4be3866cc3ecd94dbebb041813ecb3d9612f2de67b5f6fc4dc614303cdd0a',
+            verifierKey: '6e335c3a0da9eab85cc8c72a0337b8145ed9afbdcaa278582b5cd3e6b12b1628',
+            proverKey: '8477f9f464bfddfd77d22749d9451405e04193670e87cd3f68e43c761e8448d7',
+          },
+        },
+        revoke_grant_with_k256: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/revoke_grant_with_k256',
+          hashes: {
+            zkir: 'db75ac6df522d542403ac4618eeb49bc83b62889f4ea5a2b3b18e7eeaca0ed6e',
+            bzkir: 'e26652047875e884c4a3bb9bb84a4093d1df48bbca7f95593e3e746d0a6aaf76',
+            verifierKey: '2dea5fbf3c80e651d64dd28837f1c72ac0cff30fa3fe31d92eadfb61fc077e20',
+            proverKey: 'e92886def575b054d4e6108f35b30c58edc8b6280a878e202e305aded363cb24',
+          },
+        },
+        revoke_grant_with_p256: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/revoke_grant_with_p256',
+          hashes: {
+            zkir: '8be1da5093d66c9369b71df71cb620c5aeeeee8ddbc0a3878a1ab0fa98035aa5',
+            bzkir: 'a317336fafb5befff3a31da0c0f768821f1fafa0b7345997c524716e59314622',
+            verifierKey: 'cdb1be457cc105b5036d0d15d6558049c04e2268562e37e8532563547f8c22d7',
+            proverKey: '5b5a47e339b966dc23e62d39795d2c39cc3cae1cfb138143a9b1e8b4a7eb7a3a',
+          },
+        },
+        rotate_enc_key_with_jubjub: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/rotate_enc_key_with_jubjub',
+          hashes: {
+            zkir: 'c9e1e5f58c19179f290face9c90935a20c28938c4c8db2bbf0bf1fc0d10999ab',
+            bzkir: '6dbbbdf1d7a82c04ede1104a0e21b9685c821217ced445033c8c25d62ce79fec',
+            verifierKey: 'b6c2c439b3380e5098debce1d8adc628ff56b10647cf30f9c58768b8ec49e0ff',
+            proverKey: '58296306704657577349863b22467a9f583e9571e7b2a43c5d64753a98d2fba1',
+          },
+        },
+        rotate_enc_key_with_k256: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/rotate_enc_key_with_k256',
+          hashes: {
+            zkir: '7f22b917111f9de789a5da7d7b2c1182c8c5578b9d06bb7c11b5339ac829052f',
+            bzkir: '0a51fb926fac2cf86840912f226b48d2e5b8e8955c281f78ea67be8c6b0eb71c',
+            verifierKey: '83a3f2225df981fb57c3119e818accadfce3a9b9370dd4300ecb05c2a3008619',
+            proverKey: '8fe4a70808655e6854cb8c77f8792d4079a3190b0e6262a3fa21621a3d464e3a',
+          },
+        },
+        rotate_enc_key_with_p256: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/rotate_enc_key_with_p256',
+          hashes: {
+            zkir: '2b056dde43dc3e75a651b3f19f48abf8d0fe48c6a167a561b58c5a8ee714ea5f',
+            bzkir: '2f4bf0b5bce44c87d23de6e33276bc0dd6db19c6547e37bb4b53d81b574d1a83',
+            verifierKey: 'c5e0ac7fcc2e26c46bfd7ca2d280c39d988dcb85ec0cf7eddcc0d82080d5335b',
+            proverKey: '61067ef6c143880ec675ce34ac79a60ce2c4ad57a1d9f46ce4764049d9314d05',
+          },
+        },
+        webauthn_challenge_base64: {
+          pure: true,
+          proof: false,
+        },
+        webauthn_client_data_hash: {
+          pure: true,
+          proof: false,
+        },
+        withdraw_shielded_to_contract_with_grant_jubjub: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/withdraw_shielded_to_contract_with_grant_jubjub',
+          hashes: {
+            zkir: '4fc97af5c50876b4bd0ea47a2123979fc4ce41ddea9c765d6443d0ef5e476a6a',
+            bzkir: '268482cdcce97012f709257a44511e136598fc035660b6dbba397cfadbf0ba8a',
+            verifierKey: '34af72b618ce88f25aa6880af18fe79fe1e47edbc551ce595f332f35e0ab7f18',
+            proverKey: '59d4ad8747800c5f826095cff8dfb884b8736a37473fbdb3c0ab507f0426950b',
+          },
+        },
+        withdraw_shielded_to_contract_with_grant_k256: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/withdraw_shielded_to_contract_with_grant_k256',
+          hashes: {
+            zkir: 'c6bc89a91a74236892fccbf1674edc5e66fc6e7c45859f0ad7e5d627fbf0f35d',
+            bzkir: '455fa1f9feef6028d10a27f3b345bdf02c5bd7d11fb6139aef0be96fa00cecb2',
+            verifierKey: 'd03efae858007baad9f4a5662da80d2a74cdddf8956fc66612d0eccb865e42bf',
+            proverKey: '7a061d36b4214a7265999925dd61a10229cf37845a2e8e64dc1b5702cec39a24',
+          },
+        },
+        withdraw_shielded_to_contract_with_grant_p256: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/withdraw_shielded_to_contract_with_grant_p256',
+          hashes: {
+            zkir: '864271c1dff6c132d1290cda1abd8e29fa856e31d6dc0cd9a4a3e59a9351ea9c',
+            bzkir: '7603b29a6ce8e23662c1d239695cd26dcb5c7224bd0d1862a9c1cef72ef0d259',
+            verifierKey: 'fde90b5d05cc5f2b4a02dff671b27de71b567807f28ea4fc1b09b4a98ed68e4f',
+            proverKey: '91478c123243abaa33495e5fb432a8b58bcc506dc74775b076496f147c14ca89',
+          },
+        },
+        withdraw_shielded_to_contract_with_jubjub: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/withdraw_shielded_to_contract_with_jubjub',
+          hashes: {
+            zkir: 'c087bf65963c03672d68c11eff432bac02c912d089855f0c9c8664b45c67076e',
+            bzkir: '7affd1c494c23a69ae89393741ef018d98bdd241950412f405a9358d5f683b8f',
+            verifierKey: 'ce412f6f580a8a1c00ec4d6f38ccc0738a89a75392eaf052fb30d0354231ba35',
+            proverKey: 'ad4011ff928fe432cb32dfa7fe7c54d55ae0b1073572fe9dd847e8b3389b619c',
+          },
+        },
+        withdraw_shielded_to_contract_with_k256: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/withdraw_shielded_to_contract_with_k256',
+          hashes: {
+            zkir: '0db43b367e679e53477200c9ab5576baa640ede5b0ddaf9da89b866a1c423daa',
+            bzkir: '9818e67b1ebde1b70cb4cbbcb000de963d8894ca05ca5f3d63e625315d948b4a',
+            verifierKey: '909e19c3b737a6c86e69f02c3dbbf28e95da064421b67489ead3bb718094c12a',
+            proverKey: 'b93e48798cea50fdd2751a463510ee267857681f8ba8e8b9a84644902782bdd0',
+          },
+        },
+        withdraw_shielded_to_contract_with_p256: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/withdraw_shielded_to_contract_with_p256',
+          hashes: {
+            zkir: '3b89edcabbc56d04da38ab0e4c268b692769d482158ed1ed3799e487bb9642f0',
+            bzkir: 'c122aa2a0cf0cac904c4a7ca7e1260ecf755bc4bac03993a8ffc80d9a03d619a',
+            verifierKey: '5606bb235fba70eb2a99aad4def34a2dde625ef8bc7fed5eb0f437749b3f68c3',
+            proverKey: '67d7102319b0fe988cb92a1b21fcc1940125cee2b2f04e26c1af7e9c6ecc2a33',
+          },
+        },
+        withdraw_shielded_with_grant_jubjub: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/withdraw_shielded_with_grant_jubjub',
+          hashes: {
+            zkir: 'c7c7fb70f44d9a1400ac80884fe5b49bfab2b3c89ddc481bc3cc999db612ebec',
+            bzkir: 'adceb619d744cc08024186eb502a6de6a5a97d6db85a2fecbb9ae7dd75b7e79c',
+            verifierKey: 'ef5b5dc1849a48ed0a628f53eed5ba4d218ed59a53f61f6e9a5e2e413c88b3cc',
+            proverKey: 'f3630af1d48b43d174ed88b12e5513b47cd35fc76ab65c44e8ce8e302ad53f75',
+          },
+        },
+        withdraw_shielded_with_grant_k256: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/withdraw_shielded_with_grant_k256',
+          hashes: {
+            zkir: '767cc78b0c8b62f95b4d340061620868607807af57051446f5597751aa569878',
+            bzkir: '706e37884fb0936704135bf07a96759ef1b1f2fe34d8a20da83d7ef8775ba089',
+            verifierKey: 'e86ff0c442b4dff27bd987781b65e39efb1b2a20da00eb6766625d84150a150e',
+            proverKey: '538ecdf598f918d44b1926f36baa6f7b1666e1934d7debef941332fd8174b2a0',
+          },
+        },
+        withdraw_shielded_with_grant_p256: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/withdraw_shielded_with_grant_p256',
+          hashes: {
+            zkir: 'ac49dda9ef732a9a7dc526baf775bb7572f92d1ed69f8982c5dac61522af288a',
+            bzkir: 'da0b8e38224d29ba333a4e3535a5e893d47405cc54d610790a94f726d3b66fb2',
+            verifierKey: '04c24b43c7dbc33432fdbe482f0e9732216440126f274e1e307606925ca1280b',
+            proverKey: '3a55f3ccbfb3b37e306750cd26eab9ae57f4cda4166da78254899f13a77420c1',
+          },
+        },
+        withdraw_shielded_with_jubjub: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/withdraw_shielded_with_jubjub',
+          hashes: {
+            zkir: '7f5f16ce5a776c531d6edffb65c129d2291ced12a4bbc76223905e11d468c48b',
+            bzkir: '3adddc4067d19ab9809caaa3c64b227ccad8d04cbe162fba8403b2c2728e9e5c',
+            verifierKey: '8119afbced2b7d1a53aca787b43fced064f131120bdc366202ee43e26fcf3a45',
+            proverKey: 'a630fdabe5e8153e6f5d84ff6a4eb5d1566f346d2953e7a53b55434f9122245e',
+          },
+        },
+        withdraw_shielded_with_k256: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/withdraw_shielded_with_k256',
+          hashes: {
+            zkir: '88c323da596cb4d463159a1b25c30eedffef0106729dec657b03bdd0ad020535',
+            bzkir: '524b55567b0f3e8e6996da23258825c643367956b9932ca59ee0240e94b61fe4',
+            verifierKey: 'dbb6418ecdd1ab5bfab1aeecf34fa467c187baedbddda2d9112662584f435397',
+            proverKey: 'a3287252e192e0fd5172c91c34e41ee703468b8ef393327235dd160ed75afd9e',
+          },
+        },
+        withdraw_shielded_with_p256: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/withdraw_shielded_with_p256',
+          hashes: {
+            zkir: '5224abbbbc4a1adc0c77365d8e9a0b9c1077d12f2a78c9ff93bb82f543242f23',
+            bzkir: '4f261b83715f9314de02ba5d47e24a55df4086709ff9dafff765321d590790bd',
+            verifierKey: '1ba05b6aa2dced8466c4568e5135c8b84b220c5df4398681cb3e2847c39309bc',
+            proverKey: '72a30f8adb4a5de03c58b57e2678eec8d5c789821254fc6880a69ad69b1868d9',
+          },
+        },
+        withdraw_unshielded_with_grant_jubjub: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/withdraw_unshielded_with_grant_jubjub',
+          hashes: {
+            zkir: 'c3694f8f2c42693d9b3ab45605194d4a3dc31ba6664985902c1e64fa3b5c5f40',
+            bzkir: '17415c24728d9ad48acc37becd15faaca3ee900bfc63f11849cfc9d587324d57',
+            verifierKey: '8a77e12e64fea27a38bf192e1b2cd1287f9d468f4e0ad3988b9369b1e6cb6cc5',
+            proverKey: 'd9bcfd0a31df6644d87c425a70b91fda418718ad677c88f08f5bc0c0e0db4a05',
+          },
+        },
+        withdraw_unshielded_with_grant_k256: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/withdraw_unshielded_with_grant_k256',
+          hashes: {
+            zkir: 'b0ec72d2b80131da5caa38715865048ca6d27938b85263f2afff0670c9ef6328',
+            bzkir: '2dcc73fa099dc3e2363dddbb8e499a3ca76e2d9e7ac735a7bff64ab5bfe19171',
+            verifierKey: '4e1f0ff0d6468afac7d0867acfe6a14ec7beaad9da8a3168442f70368a111e18',
+            proverKey: '8d0109903f6555e9f3546b229783220849c8d4ed9c2aadb0ddc86a253ba8f3a7',
+          },
+        },
+        withdraw_unshielded_with_grant_p256: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/withdraw_unshielded_with_grant_p256',
+          hashes: {
+            zkir: '0a02e65b7f4a34e93f62c92604394a2352a42090b34fd965078ab8d49602c683',
+            bzkir: 'e7b394a60fe6deb93b52bd109b48005e861fbedb40d3da03587a37f94044cb9e',
+            verifierKey: 'f9593073cc18210e047bc4f207a129acf6305c408fe5a6e92d1ab8ea9ca6e471',
+            proverKey: '55e87b326c0dfe3c98b9d3440bc8cb7033b11f179821cbd2d2df9f25174de634',
+          },
+        },
+        withdraw_unshielded_with_jubjub: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/withdraw_unshielded_with_jubjub',
+          hashes: {
+            zkir: '5f17d3c2335ce77121a9b5dede0cf9c16b5f5aa3bb8ede55118cebc4796a6299',
+            bzkir: '8a8213796ff2816a8eb30bdfec3b28e825f689180ae37663853a7c3b8c2cb4bd',
+            verifierKey: '0d379e75fc29bb44de21a263a1f3bd941658aed71ccaa41cf445b29b104715a4',
+            proverKey: 'e4b273724feacdaacb4a842ac51ce4c0a9a51de96cc182fe67cc089fa05b33ab',
+          },
+        },
+        withdraw_unshielded_with_k256: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/withdraw_unshielded_with_k256',
+          hashes: {
+            zkir: '86687ed1b92a4ac33ab7d72e7eb14fe1e01e701ef99f46677d408103018a5688',
+            bzkir: '78dc9adfd0b54adb66bb56f293df151a05ea2406418bee02856ec407763775cb',
+            verifierKey: '1c2b2c30f62d3186b37f93ba32350761f09296e95da335a3dcab939ade943caa',
+            proverKey: 'a88e9da782049045f12791eb8006d789eba4949d2c700fc1c86465fccfbec914',
+          },
+        },
+        withdraw_unshielded_with_p256: {
+          pure: false,
+          proof: true,
+          keyLocation: 'acc/acc-s3r1.1-zkir036/withdraw_unshielded_with_p256',
+          hashes: {
+            zkir: '841c15cbb978a8b63e90a9d1501ce37233445b0a2150ceca3133ed82b28b29d4',
+            bzkir: 'f99341a19a55a5d384ac4eb8e308b31ebd01b999fcfb4f5b52c002b9f50a2a79',
+            verifierKey: '281d483a9ebec0993f41093ea63bf2d3a66a5015b1f87040c32c9b502577f6a2',
+            proverKey: 'e4dc3f7169e1626654ac5ffb56a9df81a8fe6b8d5dafd5f3a77bf22a8b5092db',
+          },
+        },
+      },
+    },
   },
 };

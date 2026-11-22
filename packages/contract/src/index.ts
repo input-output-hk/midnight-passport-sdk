@@ -16,6 +16,7 @@ export {
   detectDeployedVersion,
   detectDeployedVersionByCircuit,
   resolveBinding,
+  resolvePinnedBinding,
 } from './registry.js';
 export {
   AccModuleShapeError,

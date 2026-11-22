@@ -34,7 +34,9 @@ export const BINDING_VERSION: string = ACC_REGISTRY.current;
 
 /** Every binding version this SDK release can serve (architecture §8 decision 2's supported range). */
 export const SUPPORTED_BINDINGS: readonly string[] = Object.freeze(
-  Object.keys(ACC_REGISTRY.versions),
+  Object.entries(ACC_REGISTRY.versions)
+    .filter(([, binding]) => !binding.provisional)
+    .map(([version]) => version),
 );
 
 /**
@@ -58,23 +60,34 @@ export class UnsupportedBindingError extends Error {
 }
 
 /**
- * The full pinned entry for a supported version; throws
- * {@link UnsupportedBindingError} otherwise (own properties only — prototype
- * keys such as "__proto__" are rejected, not resolved). The returned entry
+ * The full pinned entry, including provisional source candidates; throws
+ * {@link UnsupportedBindingError} for unknown IDs (own properties only —
+ * prototype keys such as "__proto__" are rejected). A pin is not SDK
+ * admission; normal consumers use {@link resolveBinding}. The returned entry
  * is frozen and shared.
  */
-export function resolveBinding(version: string, registry: AccRegistry = ACC_REGISTRY): AccBinding {
+export function resolvePinnedBinding(
+  version: string,
+  registry: AccRegistry = ACC_REGISTRY,
+): AccBinding {
   const binding = Object.hasOwn(registry.versions, version)
     ? registry.versions[version]
     : undefined;
-  if (!binding) throw new UnsupportedBindingError(version, Object.keys(registry.versions));
+  if (!binding) throw new UnsupportedBindingError(version);
+  return binding;
+}
+
+/** Resolve a supported binding; provisional pins remain available only to explicit host qualification. */
+export function resolveBinding(version: string, registry: AccRegistry = ACC_REGISTRY): AccBinding {
+  const binding = resolvePinnedBinding(version, registry);
+  if (binding.provisional) throw new UnsupportedBindingError(version);
   return binding;
 }
 
 const normaliseHash = (hash: string) => hash.toLowerCase().replace(/^0x/, '');
 
 /**
- * Matches a deployed contract's verifier-key hashes against every supported
+ * Matches a deployed contract's verifier-key hashes against every pinned
  * version — the chain-derived answer to "which version is this account?"
  * while the ACC carries no on-chain version marker (FS-0.2 OQ-7). Input
  * hashes are normalised (lowercased, `0x` prefix stripped) and compared as
@@ -82,7 +95,8 @@ const normaliseHash = (hash: string) => hash.toLowerCase().replace(/^0x/, '');
  * null. Limits, recorded in the security register: versions differing only
  * in pure circuits or module bytes are indistinguishable, and the
  * circuit-to-key assignment is not checked. Ties prefer `current`, then
- * the lexicographically first supported version.
+ * the lexicographically first pinned version. Use {@link resolveBinding} after
+ * detection before admitting an account.
  */
 export function detectDeployedVersion(
   onChainVerifierKeyHashes: readonly string[],

@@ -1,6 +1,6 @@
 import { createReferenceHostDriver } from './host-driver.ts';
 import { randomBytes } from 'node:crypto';
-import { resolveBinding } from '@input-output-hk/mn-passport-contract';
+import { resolvePinnedBinding } from '@input-output-hk/mn-passport-contract';
 import type { ChainBackend } from './backend.ts';
 import type { ServiceConfig } from './config.ts';
 import { sponsoredAddresses } from './deployments.ts';
@@ -41,7 +41,7 @@ export async function loadReferenceBackend(config: ServiceConfig): Promise<Chain
         allowedAccount: (address) => sponsoredAddresses(config, deployments).has(address),
         deploymentCompleted: (address) => deployments.add(address),
       },
-      resolveBinding(config.bindingId),
+      resolvePinnedBinding(config.bindingId),
     ),
     check: (preimage, keyLocation) => proving.check(preimage, keyLocation),
     prove: (preimage, keyLocation, overwriteBindingInput) =>

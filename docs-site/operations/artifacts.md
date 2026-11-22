@@ -48,17 +48,19 @@ On a volume that supports copy-on-write clones, append `--require-reflink` to
 avoid a full second copy of the large prover keys. The command refuses that
 option if the filesystem cannot clone them.
 
-The source service now accepts an explicit absolute real `PASSPORT_ARTEFACT_DIR`
-and routes compiled-contract construction, verifier reads and transaction proof
-configuration to that verified tree together. Its binding guard still accepts
-only the old package pin, so setting this variable to the candidate tree is
-refused until the candidate is admitted across the registry, service and
-browser. Preserve the original tree for existing ACCs.
+The source registry records the candidate as a provisional pin. Call
+`resolvePinnedBinding('acc-s3r1.1-zkir036')` to inspect it; `resolveBinding` and
+`SUPPORTED_BINDINGS` still refuse it as an SDK-supported account. The source
+service can explicitly select this pin with `PASSPORT_BINDING_ID`, the matching
+`PASSPORT_MANIFEST_SHA256`, and an absolute `PASSPORT_ARTEFACT_DIR` that points
+to a separate verified candidate tree. It routes compiled-contract construction,
+verifier reads and transaction proof configuration to that tree together.
+Preserve the original tree for existing ACCs.
 
 This is an **artifact candidate, not a supported SDK binding**. The published
-key-service image, SDK registry, account service and reference demo still select
-`acc-s3r1.1`; the current source key service can select the candidate only
-explicitly through its versioned URL. An existing ACC with retired maintenance authority cannot have
+key-service image and reference demo still select `acc-s3r1.1`; the source
+account service and source key service can select the candidate only explicitly.
+The demo's account admission still refuses the candidate. An existing ACC with retired maintenance authority cannot have
 its verifier keys replaced. The candidate needs separate account deployment,
 host routing and operation/provider qualification before support is advertised.
 The [version decision](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/adr/0020-ledger9-acc-key-generation-binding.md)

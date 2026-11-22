@@ -59,9 +59,13 @@ nix develop -c node packages/contract/bin/restore-acc-keys.mjs \
   --output /isolated/cache/acc-s3r1.1-zkir036
 ```
 
-This is an artifact candidate, **not a supported account binding**. The SDK
-registry, key service image, account service and demo still select
-`acc-s3r1.1`. A deployed ACC whose maintenance authority was retired cannot
+This is an artifact candidate, **not a supported account binding**. The source
+registry carries its provisional pins for explicit host qualification, while
+`resolveBinding` and `SUPPORTED_BINDINGS` still admit only `acc-s3r1.1`.
+The source account service can explicitly select the candidate with a separate
+verified asset tree; the demo account admission still refuses it. The published
+key service image and default account service continue to select `acc-s3r1.1`.
+A deployed ACC whose maintenance authority was retired cannot
 have its verifier keys replaced; the candidate requires a fresh contract and
 separate operation/provider acceptance. Keep the two key caches isolated.
 The [version-axis decision](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/adr/0020-ledger9-acc-key-generation-binding.md)
