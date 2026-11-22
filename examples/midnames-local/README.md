@@ -71,6 +71,9 @@ self-hosted local indexer read. The two indexers share the same node, so their
 agreement is not independent node consensus or a cryptographic state proof.
 Online naming still requires its own independently observed mapping, separate
 node/indexer origins and provider qualification.
+The [redacted local receipt](evidence/independent-indexer-local-provenance-20261122.json)
+records the matching selected tips, exact witness provenance, state hashes and
+known name target from this read-only qualification.
 
 ```sh
 nix develop -c node scripts/midnames-local-demo.mjs check

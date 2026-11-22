@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "result": "PASS_LOCAL_READ_ONLY",
-  "sourceCommit": "c3234d60a4dd9ecd05e4134ad5ad7ed997de789a",
-  "observedAt": "2026-11-22T19:39:01.016Z",
+  "sourceCommit": "aa0d436d61cd09d46e64acc565791406b767193e",
+  "observedAt": "2026-11-22T19:42:51.110Z",
   "chain": {
     "networkId": "undeployed",
     "genesisHash": "0x823383ec0302be8417cfcbcc62f21df08f4047bca37aaea89e3f54b550ebae1d"
@@ -14,15 +14,15 @@
   "indexers": [
     {
       "id": "primary",
-      "height": 74995,
-      "hash": "5451a9aa3a9e2a698c8b76de8eea2e51838fb005e45bb1e51734a9c7a0fadc41",
+      "height": 75033,
+      "hash": "b0600cfa0edce4bf4506869c8dcf83310862cb7aff32adaef367e3a0a3ba1daf",
       "http": "http://127.0.0.1:8088/api/v4/graphql",
       "ws": "ws://127.0.0.1:8088/api/v4/graphql/ws"
     },
     {
       "id": "witness",
-      "height": 74995,
-      "hash": "5451a9aa3a9e2a698c8b76de8eea2e51838fb005e45bb1e51734a9c7a0fadc41",
+      "height": 75033,
+      "hash": "b0600cfa0edce4bf4506869c8dcf83310862cb7aff32adaef367e3a0a3ba1daf",
       "http": "http://127.0.0.1:18089/api/v4/graphql",
       "ws": "ws://127.0.0.1:18089/api/v4/graphql/ws"
     }

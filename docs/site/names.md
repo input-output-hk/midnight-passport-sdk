@@ -170,7 +170,7 @@ blocks against the canonical finalized node, then exercises the configured
 two-indexer resolver on the known `paidfix.night` → ACC pair. Its
 [redacted local receipt](../../examples/midnames-local/evidence/independent-indexer-local-provenance-20261122.json)
 records equal state hashes and a matching name resolution at signed source
-`c3234d60`. Both indexers use the same node and the historical claim-block
+`aa0d436d`. Both indexers use the same node and the historical claim-block
 pin; their agreement is a local replaceability check, not an authenticated
 state proof or online provider qualification.
 

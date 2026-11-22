@@ -19,7 +19,7 @@ the indexer's contract-state bytes or establishes an online provider or the
 proposed MIP-0007 delegated resolver.
 
 A later [independent local indexer read](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/independent-indexer-local-provenance-20261122.json)
-at signed `c3234d60` used a second self-hosted Indexer API v4 instance with
+at signed `aa0d436d` used a second self-hosted Indexer API v4 instance with
 separate storage and credentials. Both indexers returned identical serialized
 registry and ACC state at the same canonical finalized claim block and the
 same `paidfix.night` contract target through the configured two-provider
