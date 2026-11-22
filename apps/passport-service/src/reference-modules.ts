@@ -1,5 +1,6 @@
 import { createRequire } from 'node:module';
-import { join } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { ServiceConfig } from './config.ts';
 import { DeploymentLog } from './deployments.ts';
@@ -49,6 +50,65 @@ export async function loadReferenceModule<T>(
     }
   }
   return mod as T;
+}
+
+/** Select the same verified ACC asset root for compiled-contract construction. */
+export async function selectedAccountSetup(
+  config: Pick<ServiceConfig, 'contractDir' | 'artefactDir'>,
+  setup: SetupModule,
+  resolvePackage: (name: string) => string,
+): Promise<SetupModule> {
+  const referenceAssets = join(config.contractDir, 'contracts/managed/account');
+  if (config.artefactDir === referenceAssets) return setup;
+  const packagePath = resolvePackage('@midnight-ntwrk/compact-js/package.json');
+  const packageInfo = JSON.parse(readFileSync(packagePath, 'utf8')) as {
+    version?: unknown;
+    exports?: { '.': { import?: unknown } };
+  };
+  if (
+    packageInfo.version !== '3.0.0-rc.3' ||
+    packageInfo.exports?.['.']?.import !== './dist/esm/index.js'
+  )
+    throw new Error(
+      'passport-service: reference Compact runtime differs from the pinned asset selector',
+    );
+  const compact = (await import(
+    pathToFileURL(join(dirname(packagePath), 'dist/esm/index.js')).href
+  )) as {
+    CompiledContract?: {
+      getCompiledAssetsPath?: (contract: unknown) => string;
+      withCompiledFileAssets?: (contract: unknown, path: string) => unknown;
+    };
+  };
+  const getAssets = compact.CompiledContract?.getCompiledAssetsPath;
+  const withAssets = compact.CompiledContract?.withCompiledFileAssets;
+  if (
+    typeof getAssets !== 'function' ||
+    typeof withAssets !== 'function' ||
+    getAssets(setup.compiledAccountContract()) !== referenceAssets
+  )
+    throw new Error('passport-service: reference compiled ACC assets differ from the pinned tree');
+  return {
+    ...setup,
+    compiledAccountContract: () => withAssets(setup.compiledAccountContract(), config.artefactDir),
+  };
+}
+
+/** Preserve the reference providers only when they already use the selected ACC root. */
+export function selectedAccountProviders<T extends { readonly zkConfigProvider: unknown }>(
+  config: Pick<ServiceConfig, 'contractDir' | 'artefactDir' | 'proofServerUri'>,
+  providers: T,
+  registry: unknown,
+  zkConfig: ZkConfigModule,
+  proofProvider: ProofProviderModule,
+) {
+  if (config.artefactDir === join(config.contractDir, 'contracts/managed/account'))
+    return providers;
+  return {
+    ...providers,
+    zkConfigProvider: new zkConfig.NodeZkConfigProvider(config.artefactDir),
+    proofProvider: proofProvider.httpClientProofProvider(config.proofServerUri, registry),
+  };
 }
 
 export async function loadReferenceModules(config: ServiceConfig) {
@@ -101,12 +161,17 @@ export async function loadReferenceModules(config: ServiceConfig) {
   );
   const proofProvider = await loadReferenceModule<ProofProviderModule>(
     pkg('@midnight-ntwrk/midnight-js-http-client-proof-provider'),
-    ['httpClientProvingProvider'],
+    ['httpClientProvingProvider', 'httpClientProofProvider'],
   );
   const zkConfig = await loadReferenceModule<ZkConfigModule>(
     pkg('@midnight-ntwrk/midnight-js-node-zk-config-provider'),
-    ['nodeZkConfigRegistry'],
+    ['nodeZkConfigRegistry', 'NodeZkConfigProvider'],
   );
+
+  // The reference setup fixes the old account asset path. For an explicit alternate root,
+  // rebind the compiled contract and BOTH verifier/proof providers to the verified tree.
+  // A partial override would deploy one roster while proving another.
+  const selectedSetup = await selectedAccountSetup(config, setup, pkg);
 
   // The ledger classes the sponsor policy inspects a transaction with. Resolved from the same
   // tree, so `instanceof` holds against the transactions the wallet's own module deserialises.
@@ -119,11 +184,17 @@ export async function loadReferenceModules(config: ServiceConfig) {
 
   // The sponsor: the reference wallet over the configured seed, synced once. The seed goes in
   // here and nowhere else; it is never logged or returned.
-  const { providers } = await setup.setupWallet(config.sponsorSeed);
-
   // A registry over the account bundle only: delegated proving serves the binding's circuits.
   const registry = await zkConfig.nodeZkConfigRegistry(config.artefactDir);
   const proving = proofProvider.httpClientProvingProvider(config.proofServerUri, registry);
+  const { providers: walletProviders } = await setup.setupWallet(config.sponsorSeed);
+  const providers = selectedAccountProviders(
+    config,
+    walletProviders,
+    registry,
+    zkConfig,
+    proofProvider,
+  );
 
   const contracts = await loadReferenceModule<DeployBuilder>(
     pkg('@midnight-ntwrk/midnight-js-contracts'),
@@ -161,7 +232,7 @@ export async function loadReferenceModules(config: ServiceConfig) {
   return {
     providers,
     proving,
-    setup,
+    setup: selectedSetup,
     waves,
     signer,
     witnesses,

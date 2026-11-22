@@ -81,9 +81,13 @@ export interface DeployBuilder {
 }
 export interface ProofProviderModule {
   httpClientProvingProvider(url: string, zkConfig: unknown): Ledger.ProvingProvider;
+  httpClientProofProvider(url: string, zkConfig: unknown): unknown;
 }
 export interface ZkConfigModule {
   nodeZkConfigRegistry(root: string): Promise<unknown>;
+  NodeZkConfigProvider: new (root: string) => {
+    getVerifierKey(name: string): Promise<Uint8Array | undefined>;
+  };
 }
 export interface ProtocolModule {
   versionOfRecord(record: unknown): string;

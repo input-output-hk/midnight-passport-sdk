@@ -1,6 +1,6 @@
-import { readFileSync } from 'node:fs';
+import { lstatSync, readFileSync, realpathSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { isAbsolute, join } from 'node:path';
 /**
  * The Midnight stack the service, the reference client and the page all talk to: five values, one
  * explicit configuration (the MN_* variables; infra/networks/<stack>.env holds one per stack).
@@ -26,7 +26,7 @@ export interface ServiceConfig extends MidnightStack {
   readonly bindingId: string;
   /** The fetched contract tree (fetch-acc.sh output): reference client and node_modules. */
   readonly contractDir: string;
-  /** contracts/managed/account inside contractDir. */
+  /** Verified ACC assets; defaults to contracts/managed/account inside contractDir. */
   readonly artefactDir: string;
   readonly manifestSha256: string;
   /** Optional dedicated key service URL advertised by /v1/config. */
@@ -166,6 +166,14 @@ const sponsorSeedFor = (env: NodeJS.ProcessEnv, networkId: string): string => {
 
 export function loadConfig(env: NodeJS.ProcessEnv): ServiceConfig {
   const contractDir = need(env, 'PASSPORT_CONTRACT_DIR');
+  const selectedArtefacts = env.PASSPORT_ARTEFACT_DIR;
+  if (selectedArtefacts !== undefined) {
+    if (!isAbsolute(selectedArtefacts))
+      throw new Error('passport-service: PASSPORT_ARTEFACT_DIR must be an absolute directory');
+    const stat = lstatSync(selectedArtefacts);
+    if (!stat.isDirectory() || stat.isSymbolicLink())
+      throw new Error('passport-service: PASSPORT_ARTEFACT_DIR must be a real directory');
+  }
   const stack = loadStack(env);
   return {
     port: parsePort(env.PASSPORT_SERVICE_PORT ?? '8787'),
@@ -175,7 +183,9 @@ export function loadConfig(env: NodeJS.ProcessEnv): ServiceConfig {
     publicStack: loadPublicStack(env, stack),
     bindingId: env.PASSPORT_BINDING_ID ?? 'acc-s3r1.1',
     contractDir,
-    artefactDir: `${contractDir}/contracts/managed/account`,
+    artefactDir: selectedArtefacts
+      ? realpathSync(selectedArtefacts)
+      : `${contractDir}/contracts/managed/account`,
     manifestSha256: need(env, 'PASSPORT_MANIFEST_SHA256'),
     ...(env.PASSPORT_PUBLIC_ZK_BASE_URL !== undefined
       ? { publicZkBaseUrl: env.PASSPORT_PUBLIC_ZK_BASE_URL }

@@ -161,6 +161,7 @@ pnpm install && pnpm build
 | -------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
 | `PASSPORT_CONTRACT_DIR`    | required                       | The `fetch-acc.sh` output, the directory holding `contracts/managed`.                                                    |
 | `PASSPORT_MANIFEST_SHA256` | required                       | SHA-256 of `compiler/contract-manifest.json`, 64 hex characters (see the manifest pin).                                  |
+| `PASSPORT_ARTEFACT_DIR`    | `PASSPORT_CONTRACT_DIR/contracts/managed/account` | Optional absolute real ACC asset directory. The service verifies its complete manifest and selects its compiled-contract, verifier and proof providers together. The supported binding and manifest pins still apply. |
 | `MIDNIGHT_NETWORK`         | `local` (set by `prototype:up`) | Selects `CONFIG.local` in the reference wave-deploy code the service reuses; `patch-endpoints.sh` makes that read the `MN_*` variables below. |
 | `MN_NETWORK_ID`            | `undeployed`                   | The Midnight network id: lower-case letters, digits and hyphens.                                                         |
 | `MN_NODE_URL`              | `http://localhost:$MN_NODE_PORT` (19944) | Node, `http` or `https`.                                                                                        |

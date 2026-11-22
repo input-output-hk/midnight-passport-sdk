@@ -48,8 +48,12 @@ On a volume that supports copy-on-write clones, append `--require-reflink` to
 avoid a full second copy of the large prover keys. The command refuses that
 option if the filesystem cannot clone them.
 
-This source-only staging does not configure the Passport account service or
-browser to use the candidate. Preserve the original tree for existing ACCs.
+The source service now accepts an explicit absolute real `PASSPORT_ARTEFACT_DIR`
+and routes compiled-contract construction, verifier reads and transaction proof
+configuration to that verified tree together. Its binding guard still accepts
+only the old package pin, so setting this variable to the candidate tree is
+refused until the candidate is admitted across the registry, service and
+browser. Preserve the original tree for existing ACCs.
 
 This is an **artifact candidate, not a supported SDK binding**. The published
 key-service image, SDK registry, account service and reference demo still select

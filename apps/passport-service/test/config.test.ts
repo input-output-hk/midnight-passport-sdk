@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import {
   LOCALNET_ID,
@@ -75,6 +75,27 @@ test('the artefacts are read from contracts/managed/account in the contract dire
   assert.equal(config.contractDir, '/work/acc');
   assert.equal(config.artefactDir, '/work/acc/contracts/managed/account');
   assert.equal(config.manifestSha256, 'ab'.repeat(32));
+});
+
+test('an explicit ACC asset root must be an existing real absolute directory', (t) => {
+  const root = mkdtempSync(join(tmpdir(), 'passport-asset-root-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const config = loadConfig({ ...BASE, PASSPORT_ARTEFACT_DIR: root });
+  assert.equal(config.artefactDir, realpathSync(root));
+  assert.throws(
+    () => loadConfig({ ...BASE, PASSPORT_ARTEFACT_DIR: 'relative/account' }),
+    /PASSPORT_ARTEFACT_DIR must be an absolute directory/,
+  );
+  assert.throws(
+    () => loadConfig({ ...BASE, PASSPORT_ARTEFACT_DIR: '' }),
+    /PASSPORT_ARTEFACT_DIR must be an absolute directory/,
+  );
+  const link = join(root, 'linked-root');
+  symlinkSync(root, link);
+  assert.throws(
+    () => loadConfig({ ...BASE, PASSPORT_ARTEFACT_DIR: link }),
+    /PASSPORT_ARTEFACT_DIR must be a real directory/,
+  );
 });
 
 test('the dapp origin, the binding id and the deploy cap have defaults and can each be set', () => {
