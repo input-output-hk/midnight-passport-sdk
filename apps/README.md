@@ -940,8 +940,9 @@ endpoint pair. Each two-provider lookup first requires both indexers to select
 the same canonical finalized block, then reads both registry and target ACC
 at that block. A lagging or divergent indexer refuses before target display.
 The two-provider profile requires the separate node pin even on loopback.
-Each lookup rechecks the known pair through both paths and refuses an absent,
-changed or divergent binding. Configure `VITE_MIDNAMES_VERIFICATION_INDEXER_URL` and
+When a known mapping pin is configured, its recheck and the requested name
+share that selected block for one resolution. An absent, changed or divergent
+binding refuses. Configure `VITE_MIDNAMES_VERIFICATION_INDEXER_URL` and
 `VITE_MIDNAMES_VERIFICATION_INDEXER_WS_URL` together. Distinct origins do not
 prove independent chain state or state-byte authenticity; online qualification still needs a verified live
 mapping and authenticated host-controlled provider where required. Claim

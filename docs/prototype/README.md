@@ -27,6 +27,7 @@ It is independent of onboarding and never authorizes or redirects a transfer.
 The opt-in Midnames source profile requires its two configured indexers to
 select the same node-finalized block before comparing a named ACC target; a
 lagging reader is unavailable, not a second vote for an older destination.
+Its configured known mapping pin and requested name share one block per lookup.
 
 For the current `acc-s3r1.1` setup, funding flow, audit status and operator handover, see the
 [engineering handover](../site/handover.md). The run evidence below is historical and names the

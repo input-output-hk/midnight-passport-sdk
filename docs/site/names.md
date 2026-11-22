@@ -206,6 +206,9 @@ same finalized canonical block before reading either target. Both reads use
 that block hash for the registry and ACC. A lagging provider refuses instead
 of making an older target appear to agree with a newer one. The separate
 node pin is required for a two-indexer profile, including local loopback.
+For a different requested name, the known mapping pin and requested target
+are read at that same selected block within one resolution; the next
+resolution selects and checks a fresh block.
 This source behavior has no qualified online mapping or independent backend receipt.
 The [matched-tip local receipt](../../examples/midnames-local/evidence/independent-indexer-matched-tip-20261122.json)
 at signed source `3a860393` exercises that configured resolver with two

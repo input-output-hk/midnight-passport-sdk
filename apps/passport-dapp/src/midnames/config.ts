@@ -15,7 +15,7 @@ import {
 } from './chain-finality.js';
 import { claimHex, claimName, type ClaimRecovery } from './claim-receipt.js';
 import type { ClaimPreparation } from './claim-quote.js';
-import type { CandidateAccountQualification } from './ledger-reader.js';
+import type { CandidateAccountQualification, createMidnamesLedgerReads } from './ledger-reader.js';
 
 export interface MidnamesConfig {
   readonly claimSponsor?: string | undefined;
@@ -185,6 +185,68 @@ function requirePairNodePin(verification: unknown, nodePin: MidnamesNodePin | un
     throw new Error('Two-provider naming requires a separately pinned finalized node.');
 }
 
+type MidnamesReader = Pick<
+  ReturnType<typeof createMidnamesLedgerReads>,
+  | 'readTarget'
+  | 'isSupportedAccount'
+  | 'readSupportedTarget'
+  | 'readFinalizedBlock'
+  | 'readSupportedTargetAt'
+>;
+type LoadMidnamesReader = () => Promise<MidnamesReader>;
+
+/** Keep a known mapping and its requested name within one provider snapshot. */
+export function configuredNameService(
+  profile: {
+    readonly registryAddress: string;
+    readonly namespace: string;
+    readonly networkId: string;
+  },
+  reads: LoadMidnamesReader,
+  verificationReads: LoadMidnamesReader | undefined,
+  knownName: string | undefined,
+  knownAccountAddress: string | undefined,
+): PassportNameService {
+  const serviceFor = (
+    source: LoadMidnamesReader,
+    selectedBlock?: () => Promise<MidnamesIndexerBlock>,
+  ) =>
+    createMidnamesNameService(profile, {
+      readTarget: async (...args) => (await source()).readTarget(...args),
+      isSupportedAccount: async (...args) => (await source()).isSupportedAccount(...args),
+      readSupportedTarget: async (...args) => {
+        const reader = await source();
+        return selectedBlock
+          ? reader.readSupportedTargetAt(...args, await selectedBlock())
+          : reader.readSupportedTarget(...args);
+      },
+    });
+  const known = (service: PassportNameService) =>
+    knownName === undefined || knownAccountAddress === undefined
+      ? service
+      : requireKnownMidnamesMapping(service, profile.networkId, knownName, knownAccountAddress);
+  const primary = serviceFor(reads);
+  const validated = known(primary);
+  if (!verificationReads) return validated;
+  return Object.freeze({
+    provider: primary.provider,
+    async resolve(query: Parameters<PassportNameService['resolve']>[0]) {
+      let selected: Promise<MidnamesIndexerBlock> | undefined;
+      const select = () =>
+        (selected ??= requireMatchingFinalizedIndexerBlock(
+          async () => (await reads()).readFinalizedBlock(),
+          async () => (await verificationReads()).readFinalizedBlock(),
+        ));
+      const scoped = requireAgreeingMidnamesResolvers(
+        serviceFor(reads, select),
+        serviceFor(verificationReads, select),
+      );
+      // Known mapping and requested name share this one selected block.
+      return known(scoped).resolve(query);
+    },
+  });
+}
+
 /** Absence selects the demo mock. Partial or mismatched configuration refuses. */
 export function configureMidnames(
   config: MidnamesConfig,
@@ -231,39 +293,13 @@ export function configureMidnames(
   const reads = lazyReads(http, ws);
   const verificationReads = verification && lazyReads(verification.http, verification.ws);
   const profile = { registryAddress, namespace, networkId };
-  const serviceFor = (source: typeof reads, selectedBlock?: () => Promise<MidnamesIndexerBlock>) =>
-    createMidnamesNameService(profile, {
-      readTarget: async (...args) => (await source()).readTarget(...args),
-      isSupportedAccount: async (...args) => (await source()).isSupportedAccount(...args),
-      readSupportedTarget: async (...args) => {
-        const reader = await source();
-        return selectedBlock
-          ? reader.readSupportedTargetAt(...args, await selectedBlock())
-          : reader.readSupportedTarget(...args);
-      },
-    });
-  const readerService = serviceFor(reads);
-  const checkedService = verificationReads
-    ? Object.freeze({
-        provider: readerService.provider,
-        async resolve(query: Parameters<PassportNameService['resolve']>[0]) {
-          let selected: Promise<MidnamesIndexerBlock> | undefined;
-          const select = () =>
-            (selected ??= requireMatchingFinalizedIndexerBlock(
-              async () => (await reads()).readFinalizedBlock(),
-              async () => (await verificationReads()).readFinalizedBlock(),
-            ));
-          return requireAgreeingMidnamesResolvers(
-            serviceFor(reads, select),
-            serviceFor(verificationReads, select),
-          ).resolve(query);
-        },
-      })
-    : readerService;
-  const service =
-    knownName === undefined || knownAccountAddress === undefined
-      ? checkedService
-      : requireKnownMidnamesMapping(checkedService, networkId, knownName, knownAccountAddress);
+  const service = configuredNameService(
+    profile,
+    reads,
+    verificationReads,
+    knownName,
+    knownAccountAddress,
+  );
   const guardKnown = async () => {
     if (knownName !== undefined) await service.resolve({ name: knownName, networkId });
   };
