@@ -103,22 +103,22 @@ boundary. A second signed run used one exact serialized withdrawal preimage:
 the 0.35 keys returned HTTP 400, while the 0.36 pair returned nonempty proof
 bytes. Neither run established a valid new ACC binding or release-prover
 payment conformance. A later
-[isolated hybrid diagnostic](https://github.com/input-output-hk/midnight-passport-sdk/blob/codex/midnames-ledger9-value-native/examples/midnames-local/evidence/stable-hybrid-night-send-20261122.json)
+[isolated hybrid diagnostic](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/stable-hybrid-night-send-20261122.json)
 deployed the alternate withdrawal verifier on a fresh source ACC, then
 completed one indexed withdrawal and exact-output recipient deposit with
 release prover `9.0.2`: 10/0 → 6/0 → 6/4, one dispatch per leg. The source
 retained the old runtime, ZKIR and 51 other old verifier keys, so this is an
 unsupported diagnostic hybrid. An
-[offline inventory](https://github.com/input-output-hk/midnight-passport-sdk/blob/codex/midnames-ledger9-value-native/examples/midnames-local/evidence/compact036-acc-key-inventory-20261122.json)
+[offline inventory](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact036-acc-key-inventory-20261122.json)
 found 48 of 52 key pairs changed. A complete versioned 0.36 ACC binding and
 its native, online and real-provider gates remain open.
 
-A later [full-roster isolated run](https://github.com/input-output-hk/midnight-passport-sdk/blob/codex/midnames-036-binding/examples/midnames-local/evidence/stable-full-roster-night-send-20261122.json)
+A later [full-roster isolated run](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/stable-full-roster-night-send-20261122.json)
 deployed all 52 alternate verifier keys on a fresh source ACC and completed
 one stable-prover withdrawal and recipient deposit, with canonical indexed
 balances 10/0 → 6/0 → 6/4. This is still diagnostic: the SDK registry,
 restoration CLI and host routes serve the old binding, and the new source
-retains the old module/runtime. [ADR 0020](https://github.com/input-output-hk/midnight-passport-sdk/blob/codex/midnames-036-binding/docs/adr/0020-ledger9-acc-key-generation-binding.md)
+retains the old module/runtime. [ADR 0020](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/adr/0020-ledger9-acc-key-generation-binding.md)
 records the separate key-generation identity required before declaring a
 supported binding or broader Passport value conformance.
 
