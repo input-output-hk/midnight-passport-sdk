@@ -510,7 +510,6 @@ try {
     const { qualifyNightSend } = await import('./night-send-fixture.mjs');
     const { JubjubDevice, jubjubChallenges } = await getReferenceSigner();
     const device = JubjubDevice.generate();
-    let sourceForHybrid;
     if (hybridVerifier) {
       const diagnostic = process.env.PASSPORT_MIDNAMES_DIAG_KEY_DIR;
       assert.ok(diagnostic, 'Missing pinned alternate withdrawal key pair');
@@ -534,16 +533,15 @@ try {
         getProverKey: (id) =>
           id === circuit ? Promise.resolve(new Uint8Array(newProver)) : originalZk.getProverKey(id),
       });
-      const alternateRegistry = await zk.nodeZkConfigRegistry(join(ref, 'contracts/managed'));
-      const oldResolve = alternateRegistry.resolveKeyLocation.bind(alternateRegistry);
-      const { parseContractKeyLocation } = await get('@midnight-ntwrk/midnight-js-types');
-      alternateRegistry.resolveKeyLocation = async (location) => {
-        const original = await oldResolve(location);
-        const parsed = parseContractKeyLocation(location);
-        return parsed?.circuitId === circuit && parsed.contractAddress === sourceForHybrid
-          ? { ...original, proverKey: newProver, verifierKey: newVerifier }
-          : original;
-      };
+      const ordinaryRegistry = await zk.nodeZkConfigRegistry(join(ref, 'contracts/managed'));
+      assert.ok(Array.isArray(ordinaryRegistry.sources));
+      const { ZKConfigRegistry } = await get('@midnight-ntwrk/midnight-js-types');
+      // Full transaction proving first resolves the deployed verifier hash to
+      // an artifact source. A post-resolution key swap cannot pass that check.
+      const alternateRegistry = new ZKConfigRegistry([
+        providers.zkConfigProvider,
+        ...ordinaryRegistry.sources,
+      ]);
       providers.proofProvider = proof.httpClientProofProvider(
         process.env.MN_PROOF_SERVER_URL,
         alternateRegistry,
@@ -551,7 +549,6 @@ try {
       step('select-isolated-hybrid-withdrawal-verifier');
     }
     const source = await deployAccount('source', device.pk, inbox.generateEncKeyPair().publicKey);
-    sourceForHybrid = source;
     const verifyHybridSource = hybridVerifier
       ? async () => {
           const account = key.deserialize(
