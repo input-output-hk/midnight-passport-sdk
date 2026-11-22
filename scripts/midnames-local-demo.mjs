@@ -30,6 +30,8 @@ const lockDir = join(homedir(), '.local/share/midnight-passport');
 const lockPath = join(lockDir, 'midnames-local-demo.lock');
 const template = join(root, 'infra/localnet/docker-compose.ledger9.yml');
 const compatTemplate = join(root, 'infra/localnet/docker-compose.compat-prover.yml');
+const compatImage =
+  'midnightntwrk/proof-server@sha256:2666c7bd7b4517f8ad135565387f98d14347a9ac715c6c466d4a8a852b545ecf';
 const defaultProfile = join(
   root,
   'examples/midnames-local/evidence/shared-ledger9-paidfix-deposit-20261118.json',
@@ -560,12 +562,7 @@ async function startClaimHost(options, claim, env) {
 /** @param {string} stateDir */
 async function compatProver(stateDir) {
   const url = 'http://127.0.0.1:16320/version';
-  try {
-    const response = await fetch(url, { signal: AbortSignal.timeout(4_000) });
-    if (response.ok && (await response.text()) === '9.0.0-rc.8') return { started: false };
-  } catch {
-    /* absent */
-  }
+  // Never send a naming witness to an unrecorded listener, even if its version matches.
   await freePort(16320);
   const project = `${ownedProject(stateDir)}-compat`;
   const marker = join(stateDir, 'compat-prover.json');
@@ -600,6 +597,16 @@ async function compatProver(stateDir) {
     composeRun(target, ['up', '-d', 'proof-server']);
     const containerIds = projectContainerIds(project);
     assert.equal(containerIds.length, 1, 'Compatibility prover must own one container.');
+    const containerId = containerIds[0];
+    assert.ok(containerId);
+    const container = JSON.parse(run('docker', ['inspect', '--format', '{{json .}}', containerId]));
+    assert.equal(container.Id, containerId);
+    assert.equal(container.Config.Image, compatImage);
+    assert.equal(container.HostConfig.NetworkMode, 'bridge');
+    assert.deepEqual(container.HostConfig.PortBindings, {
+      '6300/tcp': [{ HostIp: '127.0.0.1', HostPort: '16320' }],
+    });
+    assert.equal(container.State.Running, true);
     recordContainers(marker, project, containerIds, compatTemplate);
     for (let attempt = 0; attempt < 30; attempt++) {
       try {

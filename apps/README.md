@@ -950,7 +950,8 @@ binding remains provisional, and the ordinary demo keeps `acc-s3r1.1`.
 The candidate ACC proves through the shared Ledger 9 release prover on port
 6300. The launcher's separately owned compatibility prover on port 16320
 serves the pinned Compact 0.35 standalone name registry's claim proof. The
-launcher stops only that owned prover container and keeps its volume.
+launcher stops only that owned prover container and leaves the shared stack's
+volumes untouched.
 
 The separate [named shielded deposit sender](../examples/midnames-local/README.md#review-the-named-deposit-in-the-sender-browser)
 can display a localhost browser review before preparing and dispatching its
