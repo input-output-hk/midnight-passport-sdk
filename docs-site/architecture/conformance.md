@@ -122,6 +122,16 @@ retains the old module/runtime. [ADR 0020](https://github.com/input-output-hk/mi
 records the separate key-generation identity required before declaring a
 supported binding or broader Passport value conformance.
 
+The newer [isolated candidate-binding receipt](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/candidate-acc-named-night-send-20261122.json)
+pins a complete Compact 0.36 ACC module, ZKIR and all 52 key pairs. A local
+root-owned `.night` record resolved to a candidate recipient ACC; a candidate
+sender completed one stable-prover NIGHT withdrawal and exact-output ACC
+deposit with 10/0 → 6/0 → 6/4 balances. Both on-chain verifier rosters,
+retired authority, original leg journal and exact-owned cleanup passed. This
+advances the local P2/P5/P8 subset, but the normal SDK/demo still refuse the
+provisional binding. Paid user-owned naming, browser credential custody,
+online provider substitution and the wider recovery matrix remain open.
+
 The signed `a20a9b9` isolated owner-browser refusal adds a narrow #318 negative
 result: after Chromium displayed the exact named NIGHT route and clicked
 **Decline**, both ACC balances remained 10/0, with no owner signature, payment

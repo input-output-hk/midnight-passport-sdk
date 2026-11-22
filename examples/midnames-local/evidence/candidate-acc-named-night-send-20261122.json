@@ -1,0 +1,72 @@
+{
+  "balances": {
+    "afterWithdrawal": {
+      "source": "6",
+      "target": "0"
+    },
+    "before": {
+      "source": "10",
+      "target": "0"
+    },
+    "final": {
+      "source": "6",
+      "target": "4"
+    }
+  },
+  "bothCandidateVerifierRostersChecked": true,
+  "candidateBinding": "acc-s3r1.1-zkir036",
+  "candidateManifestSha256": "590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f",
+  "claimTransactionId": "00377b2be2a97b9ae96a63863b22ea272e8bcd5d6bda16175bd43fcb9aba8cd12a",
+  "deposit": {
+    "actions": ["6a9341f038cfc3de7a8e4bc08c9bc1c2d14f1cd994939add39c295a569e1896a"],
+    "blockHash": "3190785418696ec23bad8f08f31b81b82e2d6d49cbe5d1b7a8330e84a290094e",
+    "blockHeight": 98,
+    "succeeded": true,
+    "txHash": "43b031557b870f5500b468d88b35a23289116a00609df82e6d944394a03eeff7"
+  },
+  "depositDispatches": 1,
+  "exactBridgeOutputConsumed": true,
+  "images": {
+    "indexer": "sha256:119f35db548ba1c390845f215bb1e928e73038bef7c315825aee0461bd54499d",
+    "node": "sha256:0c1ad548d523c1109aa1f16daab1bf72dcb78c7e17b8a8c6d97424ad0eba7b8a",
+    "proof-server": "sha256:787ef99db4b4706eb14d94ad389ca45f1c09bcdf740afecb01899bfbda63dc64"
+  },
+  "inputsUnchanged": true,
+  "kind": "candidate-acc-isolated-named-night-send",
+  "leaseReleased": true,
+  "limits": [
+    "The candidate binding is provisional and refused by the ordinary SDK and Passport demo.",
+    "The name was issued by the local registry root; paid user-owned registration and owner-control recovery were not qualified.",
+    "Owner approval was synthetic. No browser passkey, real provider, online mapping, or public passport.night namespace was qualified.",
+    "Only the circuits needed for deployment, activation, registry setup, funding, withdrawal and deposit were exercised."
+  ],
+  "maintenanceAuthorityRetired": true,
+  "name": "alice.night",
+  "nameAuthority": "root-owned local fixture",
+  "observedAt": "2026-11-22",
+  "originalTransactionCount": 28,
+  "ownedContainersStopped": 3,
+  "parentReceiptSha256": "8ca9f1167e99efdfa54eb27025630aa9c0422b94c85f163598553b00fc8b0967",
+  "profile": "fresh isolated Ledger 9 node, Indexer API v4, stable release prover; synthetic owner approval",
+  "recipientAccAddress": "6a9341f038cfc3de7a8e4bc08c9bc1c2d14f1cd994939add39c295a569e1896a",
+  "registryAddress": "87a53d77c8385592ffaad9554ad444a53d7fb5b94d045915eb3b0a4f135cb21d",
+  "registryProfile": "standalone-0.35",
+  "replayBroadcasts": 0,
+  "result": "PASS",
+  "retainedVolumes": true,
+  "schemaVersion": 1,
+  "senderAccAddress": "4bed86cbdf0711b40a7897088ea97ea56eca1ed61300b20183adc469fedcedf9",
+  "sourceHead": "c211cd9c0762e1aa24a421442a87e34e7c60ea3b",
+  "supportedBinding": false,
+  "unrelatedResourcesControlled": 0,
+  "verifiersPerAcc": 52,
+  "withdrawal": {
+    "actions": ["4bed86cbdf0711b40a7897088ea97ea56eca1ed61300b20183adc469fedcedf9"],
+    "blockHash": "8db52386385ba443b1f089efb077845b44367c889fcce126a7d1119b73066e96",
+    "blockHeight": 95,
+    "succeeded": true,
+    "txHash": "3e7610a763b87fbdd4ca953eac9ea3f2b6702b091b25d73e4e10095957ee08f1"
+  },
+  "withdrawalDispatches": 1,
+  "workerReceiptSha256": "e05adc58a3d6b5af18887bb5c86aa496186b4ac53179c7164fcc34552bca61d8"
+}

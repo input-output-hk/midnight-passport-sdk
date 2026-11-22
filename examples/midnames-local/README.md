@@ -1017,11 +1017,12 @@ nix develop -c env -u LD_DYLD_PATH \
   /absolute/path/to/acc-reference/contract
 ```
 
-Use a new output name for each attempt. A PASS proves only this candidate
-deployment and activation on the declared isolated chain. The binding stays
-provisional: name issuance, recipient resolution, NIGHT withdrawal/deposit,
-recovery, real passkey consent and online provider acceptance need their own
-gates before the SDK or demo admits it.
+Use a new output name for each attempt. The signed `830ebd7` run passed this
+candidate deployment and activation gate with all 52 on-chain verifier hashes
+and retired maintenance authority. The binding stays provisional: name
+issuance, recipient resolution, NIGHT withdrawal/deposit, recovery, real
+passkey consent and online provider acceptance need their own gates before the
+SDK or demo admits it.
 
 ### Provisional candidate named NIGHT qualification
 
@@ -1045,10 +1046,13 @@ nix develop -c env -u LD_DYLD_PATH \
 ```
 
 Choose a fresh output name and an unused subnet; inspect Docker networks first.
-The command refuses less than 50 GiB free disk. A passing root-assisted name
-fixture would establish only the isolated local candidate route. User-owned
-paid registration, browser consent, recovery and online admission remain
-separate gates.
+The command refuses less than 50 GiB free disk. The signed `c211cd9` isolated
+[run](evidence/candidate-acc-named-night-send-20261122.json) passed with two
+candidate ACCs, one root-owned `.night` name, one finalized withdrawal and one
+recipient ACC deposit. The retained intent recovered between legs, with 10/0
+→ 6/0 → 6/4 balances and no replay. This establishes only the isolated local
+candidate route. User-owned paid registration, browser consent, recovery and
+online admission remain separate gates.
 
 The signed `a20a9b9` negative run `midnames-night-browser-decline-20261116a`
 passed on isolated `undeployed`. Chromium displayed the same exact review and

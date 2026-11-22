@@ -827,4 +827,15 @@ used the 0.35 module/runtime/ZKIR, and the other ACC circuits and key
 restoration have not been qualified. [ADR 0020](../../docs/adr/0020-ledger9-acc-key-generation-binding.md)
 records the required separate version identity and admission gates.
 
+A newer [isolated candidate-binding run](../../examples/midnames-local/evidence/candidate-acc-named-night-send-20261122.json)
+used the complete pinned `acc-s3r1.1-zkir036` module, ZKIR, key tree and
+manifest for **both** ACCs. The root-owned `alice.night` registry record
+resolved to the recipient candidate ACC; a synthetic owner sent 4 NIGHT by
+one withdrawal and one exact-output recipient ACC deposit using stable prover
+`9.0.2`. Both 52-verifier rosters matched on chain, the intent resumed between
+legs, and balances moved 10/0 → 6/0 → 6/4 with no replay. The local
+qualification reader is an explicit fixture seam. The SDK and ordinary demo
+still refuse this provisional binding; paid user-owned claim, browser passkey
+approval, recovery matrix and online naming are unqualified.
+
 See the [standalone recipe](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local).
