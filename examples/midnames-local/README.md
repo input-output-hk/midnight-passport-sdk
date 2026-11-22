@@ -645,6 +645,33 @@ changed. Keep the current deletion-credit guard for all deployed fixture calls
 until an exact original 0.36 transaction passes its own native gate. Key-byte
 equality alone is not authorization to change the live profile.
 
+The later [0.36.1 native claim and owner-control receipt](evidence/compact0361-native-name-control-20261123.json)
+passes that write gate on an **isolated retained Ledger 9 chain**. The exact
+pinned registry source was recompiled with the 0.28 language pragma and its 13
+ZKIR and 26 key hashes matched the deployed 0.35 roster. With one physical
+Compact runtime 0.21 and Ledger v9 1.0.0 instance for Midnight.js 5.0.0, the
+release prover produced an owner proof. A distinct pinned Ledger v9 1.0.2
+wallet funded and balanced the sponsor through serialized transaction bytes.
+The prepared paid `create_domain` used the existing deletion-credit guard,
+passed the two-DUST admission, and its exact original finalized `SUCCESS` in
+canonical block 182. The name resolved to the activated ACC. The first naming
+owner then proved and sent `transfer_domain`; its original finalized `SUCCESS`
+in canonical block 248, changed the owner commitment, and preserved the ACC
+target. The private original bytes, witnesses, seeds, failed attempts and
+owned chain volumes were retained; all three owned containers stopped and the
+native lease was released. This does not authorize replacing deployed verifiers
+or silently relabeling the ordinary demo's `standalone-0.35` profile.
+
+The first private claim probe reported an unknown outcome after submission
+because its finality call expected protocol `2001000`; this isolated chain's
+Indexer API v4 returned `2001100`. Reconciliation compared the indexed raw
+bytes, identifiers and status to the preserved original and checked both
+original block hashes against the node before the owner transfer. The demo's
+configured claim path already supplies `2001100`. For another chain, pin the
+observed block protocol and reconcile the same original before any retry.
+This receipt does not qualify a combined Passport page-to-chain claim with
+0.36.1, an online registry/provider, or a physical passkey.
+
 For an operator-controlled local registry, a separate root-assisted fixture
 can issue the name without a paid claim. It proves `create_domain` under the
 root owner's existing witness, then proves `transfer_domain` to a distinct

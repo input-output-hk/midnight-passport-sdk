@@ -8,6 +8,18 @@ pageClass: comparison-page
 
 The milestone groups candidate work; it does not commit every Passport v1.0 promise to one SDK release. [Architecture conformance](/architecture/conformance) maps the implemented subset to the broader target. [The host guide](/guides/hosts#midnames-source-preview) links the local operator and demo recipes.
 
+**Later isolated evidence, 23 November 2026:** The
+[Compact 0.36.1 name-control receipt](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-native-name-control-20261123.json)
+records a paid, synthetic owner-proved `create_domain` and a separate
+owner-authorized `transfer_domain` against the same activated ACC. Both exact
+originals indexed `SUCCESS` at node-checked canonical blocks, and the
+registry retained the ACC target while the owner commitment changed. The
+newer compiler reproduced all 13 existing registry verifier keys. This
+closes #363's isolated write/control evidence gate locally; its operator and
+conformance documentation is part of this source change. The ordinary demo
+continues to use its separately pinned 0.35 registry profile, and the broader
+#316 browser/provider and online gates remain open.
+
 ## Current Midnames delivery
 
 | Journey | Current evidence and implementation | Remaining acceptance |
@@ -107,9 +119,9 @@ restoration path and host checks. #318 remains open.
 
 [PR #370](https://github.com/input-output-hk/midnight-passport-sdk/pull/370) merged the source preview. At signed `3de4da8`, the full local Nix gate, independent exact-head review, [20 hosted core jobs](https://github.com/input-output-hk/midnight-passport-sdk/actions/runs/44465556996), and both image checks passed. It adds exact-original local funding recovery, finalized and same-block local name-to-ACC checks, a [Compact 0.36 read-only registry probe](https://github.com/input-output-hk/midnight-passport-sdk/blob/fd8919e961a34ca0fbfae2387be78039a208040d/examples/midnames-local/evidence/compact036-readonly-20261119.json), browser-to-sponsor pre-proof quote and saved-claim reconciliation, busy-before-proof refusal, and release of an older quote only after exact sponsor proof that it never reached wallet balancing. A [Preprod indexer proxy](https://github.com/input-output-hk/midnight-passport-sdk/blob/3de4da88852ff885e3d597a6b1337aa84242f5ed/examples/midnames-online/README.md) keeps a Blockfrost project ID on the host for an optional read-only profile. A separate host check anchors two tokenless v4 indexer reads and one operator-supplied known mapping to the same node-finalized block. The proxy and checker have synthetic/local-browser evidence only; neither qualifies a live public provider, independent backend, or online name.
 
-All 13 Compact 0.36 ZKIR/prover/verifier key hashes match the pinned Compact 0.35 registry, and the 0.36 reader decoded an existing local name. No 0.36 proof, gas-balanced write or native 0.36 claim, second independent online indexer, or known online name-to-ACC mapping was qualified. The deployed 0.35 guard remains. Pending claim and funding operations require reconciliation of their original IDs; [#369](https://github.com/input-output-hk/midnight-passport-sdk/issues/369) tracks the legacy funding cases.
+At PR #370's head, all 13 Compact 0.36 ZKIR/prover/verifier key hashes matched the pinned Compact 0.35 registry and the generated reader decoded an existing local name. Proof and write were still open at that point; the later isolated 0.36.1 receipt above now qualifies one paid claim and owner transfer. A second independent online indexer and known online name-to-ACC mapping remain unqualified. The deployed 0.35 guard remains. Pending claim and funding operations require reconciliation of their original IDs; [#369](https://github.com/input-output-hk/midnight-passport-sdk/issues/369) tracks the legacy funding cases.
 
-[#363](https://github.com/input-output-hk/midnight-passport-sdk/issues/363) still tracks isolated reproduction of the recorded Compact 0.35 rejection and a fresh, separately pinned 0.36 native proof/write path if needed. [#334](https://github.com/input-output-hk/midnight-passport-sdk/issues/334) still tracks the complete failed-claim and browser-owned retry matrix. Legacy funding reservations remain pending under [#369](https://github.com/input-output-hk/midnight-passport-sdk/issues/369); missing ACC transaction IDs alone cannot prove non-submission. PR #370 adds a future pre-submit marker and exact-request release, but its real failure/recovery and those older records remain separate work. None of these open gates justifies replaying an uncertain original, clearing browser data, or resetting the shared chain.
+[#363](https://github.com/input-output-hk/midnight-passport-sdk/issues/363) now has the isolated 0.36.1 exact-write and owner-control evidence above; it remains open until that evidence and documentation are reviewed and merged. [#334](https://github.com/input-output-hk/midnight-passport-sdk/issues/334) still tracks the complete failed-claim and browser-owned retry matrix. Legacy funding reservations remain pending under [#369](https://github.com/input-output-hk/midnight-passport-sdk/issues/369); missing ACC transaction IDs alone cannot prove non-submission. PR #370 adds a future pre-submit marker and exact-request release, but its real failure/recovery and those older records remain separate work. None of these open gates justifies replaying an uncertain original, clearing browser data, or resetting the shared chain.
 
 A local source preview adds bounded sponsor archive lookup for the exact
 quote, owner-bound refusal of a sibling quote, and indexed-failure archival
@@ -124,8 +136,8 @@ sponsor HTTP fence, recovered after a lost response and browser restart, and
 confirmed indexed success to the same ACC. Quote issuance, owner proof, and
 balancing remained host-driven, with separate browser profiles for release and
 retry. Signed `e3ec3608` later qualified page release and successful retry in one profile after importing the fixture-prepared failed original. Signed `4a6c7642` then [qualified both preparations in one page profile](https://github.com/input-output-hk/midnight-passport-sdk/blob/7c9acc2bf9b6a9a996ff7a95b0b40954376689c8/examples/midnames-local/evidence/release-ledger9-page-two-originals-20261120.json), including exact indexed failure archival, retained browser history, fresh reviewed retry and canonical success to the same ACC. #334 remains open for combined ACC create/open,
-real-provider consent, and the negative native matrix; #363 still needs its
-separately pinned Compact 0.36 proof/write evaluation.
+real-provider consent, and the negative native matrix. The separate 0.36.1
+proof/write evaluation is recorded above for #363.
 
 ## Other open 0.2.0 work
 
@@ -142,7 +154,7 @@ separately pinned Compact 0.36 proof/write evaluation.
 
 ## Next qualification sequence
 
-1. Reproduce and diagnose the recorded Compact 0.35 rejection on an isolated chain, then qualify a fresh, separately pinned 0.36 proof/write path if needed. Keep the recorded originals and the running shared demo intact.
+1. Review and merge the isolated Compact 0.36.1 paid-claim and owner-control evidence, preserving the older 0.35 failure originals and separately pinned ordinary demo.
 2. Qualify combined ACC create/open followed by the page-owned claim. The current isolated native pass prepares both originals in one persistent page profile but supplies an already activated ACC through the fixture connector; retain both original IDs through each failure boundary.
 3. Qualify a known live online contract mapping with authenticated, replaceable Indexer API v4 providers before enabling any online profile. Treat MIP-0007's delegated resolver and public `passport.night` namespace as separate upstream dependencies.
 4. Recheck the five issue criteria at the exact merged source and close only the demonstrated subset or record the remaining acceptance explicitly. A local synthetic credential does not qualify a real provider or human approval.

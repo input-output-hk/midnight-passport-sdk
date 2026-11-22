@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "kind": "isolated-ledger9-compact0361-paid-name-and-owner-control",
+  "date": "2026-11-23",
+  "runnerCommit": "effbc17110500f3e392486952f9b691337909e11",
+  "scope": "Owned retained isolated Ledger 9 chain, Indexer API v4, release proof server; synthetic sponsor and name owner. The shared demo and chain were not modified by this run.",
+  "registry": {
+    "sourceSha256": "6958d01ee7873ffd7c502fa8a3e49d1a4f230ce137cc2f03433f8e4eae6eecea",
+    "change": "Only the Compact language pragma was adapted to 0.28 for compiler 0.36.1.",
+    "compiler": "0.36.1",
+    "runtime": "0.21.0",
+    "zkirAndKeyComparison": "All 13 ZKIR and 26 prover/verifier key hashes matched the pinned standalone-0.35 registry manifest; no verifier replacement was made.",
+    "manifestSha256": "af837e2cc51714aaf1112aaa38a72fc5d41020b94a6c9b2c78b4cb75d09b6f73",
+    "address": "3d0502ab6b226f12ad621fb6c4e5e9882c75b2df479545cd65d1325f7ad30591"
+  },
+  "client": {
+    "proofAndCall": "Compact.js 3.0.0, Midnight.js 5.0.0, one physical compact-runtime 0.21.0 and ledger-v9 1.0.0 instance",
+    "sponsorWallet": "Separate pinned reference wallet with ledger-v9 1.0.2; transactions crossed this boundary only as serialized bytes.",
+    "protocolVersion": 2001100,
+    "deletionCredit": "The existing standalone guard removed overclaimed storage-deletion credit before proving."
+  },
+  "account": "14c1181524e783ac7a11d225583cb33c842a144aa89294b765393a5e12794053",
+  "name": "v36claim23.night",
+  "paidClaim": {
+    "originalSha256": "3d1b8083e24a7c813b569e3322e131b7ad9641c7532201b06a845980fb20b58f",
+    "identifiers": [
+      "00025c8d0006fca297876deea483531c4ed5b374f6010a2c1d6a9d96ab9c9081a1",
+      "00d1eb12fa751b1a2a1b7f9f00e7e6502864fe6c0335384bad104d35892bdef65b"
+    ],
+    "indexedStatus": "SUCCESS",
+    "canonicalBlock": {
+      "height": 182,
+      "hash": "459e945391bebcb2c870873eef2f5afde42033f8324728d8a93c94cc093eb4f1"
+    },
+    "ownerCommitment": "9ffa2304dde2c389c16c0aef08b8b6046760de3ec47ffb5d5341bfc5e299855b",
+    "target": "ACC contract address above"
+  },
+  "ownerTransfer": {
+    "originalSha256": "f59f163a0dece5b1561d30a9a4ab1e7e7eff5e60d3799ba4d8ebff371bfefa26",
+    "identifiers": [
+      "00c596db92057413b8d46104bcb3a87c71dec82a3bca508ab3dd792798dbdf2e52",
+      "009ceda7cd01af02af6a819378defa62e3f6e234d6c846d9249c36d01ad5c8a9bd"
+    ],
+    "indexedStatus": "SUCCESS",
+    "canonicalBlock": {
+      "height": 248,
+      "hash": "0fb8190454485ce59475438174baf9d21f8630dada758f962b1673cc5f456dc5"
+    },
+    "newOwnerCommitment": "caed299d91c493df839fcb7420d9639fdd576e293bafc83c77ab64e7f03114a3",
+    "targetAfterTransfer": "Same ACC contract address"
+  },
+  "reconciliation": {
+    "note": "An initial private probe incorrectly expected protocol 2001000 and reported unknown after the node accepted the paid original. The original bytes, indexed SUCCESS, canonical block and name binding were reconciled before any further name operation. The production demo already pins 2001100.",
+    "privateReceiptSha256": {
+      "paidOriginal": "7cb8ba3f51acc2c384720f2aa6f72641c6510288dacc159675f675daaacef592",
+      "paidReconciliation": "232a470e997a41fdfe7d0c83999b27a7b43f9c559baeb7e1c0000c6f64985d16",
+      "ownerTransfer": "906d848a3c521b16b191e02389e6e10f1c3575bde8798b4c4f996639ec588330",
+      "canonicalBlockAudit": "c6235d0dcd9f22b7a7b183537ae89d331fe78bf7a490cecbd40a801e820c24c5"
+    }
+  },
+  "cleanup": "Both exact writes and the read-only audit stopped only their three recorded containers, preserved chain volumes and private seeds/witnesses/original bytes, and released their matching native leases. The shared demo was restored.",
+  "limits": "Isolated local chain, synthetic keys and sponsor, one self-hosted indexer/node, no full Passport page-to-chain test for this profile, no physical passkey, no online registry/provider or release claim. The ordinary demo remains on its separately pinned 0.35 registry profile."
+}

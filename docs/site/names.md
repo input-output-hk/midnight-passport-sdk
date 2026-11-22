@@ -326,6 +326,18 @@ does not qualify 0.36 proof, transaction gas, submission, browser registration,
 or a change to the deployed profile. The local 0.35 deletion-credit guard stays
 in place.
 
+A later [isolated Compact 0.36.1 native receipt](../../examples/midnames-local/evidence/compact0361-native-name-control-20261123.json)
+extends that result to a paid, owner-proved name claim and a separate
+owner-authorized transfer. Each exact original finalized `SUCCESS` at a
+node-checked canonical block; `v36claim23.night` resolved to the same activated
+ACC before and after its owner commitment changed. The generated 0.36.1
+registry used the same 13 verifier keys as the deployed standalone registry,
+the existing deletion-credit guard, Compact runtime 0.21 and one physical
+Midnight.js 5.0.0/Ledger v9 1.0.0 proof tree. A separate pinned Ledger v9
+1.0.2 wallet balanced sponsor fees through serialized bytes. This is an
+isolated local compatibility result, not a new ordinary demo profile or a
+qualification of online names, full browser issuance, or real passkeys.
+
 For an online deployment, the host must configure its actual registry address
 and a funded sponsor wallet through `PASSPORT_SPONSOR_SEED` in the service
 environment; the local genesis seed does not fund Preview or Preprod. The wallet
