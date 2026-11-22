@@ -854,12 +854,17 @@ isolated page harness. Combined ACC creation and claim in the ordinary demo,
 real passkey approval, the broader recovery matrix and online naming remain
 unqualified.
 
-The low-level `adapter-midnight-js` NIGHT deposit preflight now recognizes the
+The low-level `adapter-midnight-js` NIGHT deposit preflight recognizes the
 candidate manifest only with an explicit `provisionalLocal` opt-in and loopback
-Ledger 9 / Indexer API v4 endpoints. This checks the proposed request before
-chain I/O; it is not a candidate deposit proof or permission for the browser
-send page or funding service to move value. Both connected routes remain
-disabled until their exact generated module, adapter and native deposit are
-qualified together.
+Ledger 9 / Indexer API v4 endpoints. A separate
+[shared-chain proof-only diagnostic](../../examples/midnames-local/evidence/candidate-acc-shared-deposit-proof-20261122.json)
+checked the deployed candidate verifier, fetched the pinned deposit artifacts
+from an owned loopback key server, and proved one unbalanced 4 NIGHT deposit
+call with the shared 9.0.2 prover. It did not balance or submit a transaction
+and makes no ACC balance-change claim. The diagnostic composed the call using the
+adapter's measured-deposit helper; the exported candidate proving route still
+refuses before I/O. The browser send page and funding service remain disabled
+until the connected two-leg route, exact generated module, and native settlement
+are qualified together.
 
 See the [standalone recipe](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local).

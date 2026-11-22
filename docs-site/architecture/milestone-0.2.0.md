@@ -26,6 +26,15 @@ rosters matched on chain, and the retained two-leg intent completed with
 or demo admission. The full #316 user-owned claim, #318 browser/provider and
 recovery gates, and #315/#247 online mapping remain open.
 
+A shared Ledger 9 proof-only diagnostic at signed `2e53287d` then checked
+the previously created candidate ACC's deposit verifier, fetched pinned
+`deposit_unshielded` artifacts from an owned loopback key server, and obtained
+one unbalanced 4 NIGHT proof from release prover `9.0.2`. The redacted receipt
+is in `examples/midnames-local/evidence/candidate-acc-shared-deposit-proof-20261122.json`.
+The diagnostic submitted no transaction. The exported provisional adapter
+route and connected demo remain closed; this result does not qualify a funded
+deposit, browser send, or combined two-leg payment on the shared chain.
+
 A later isolated candidate
 [paid-claim retry](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/candidate-acc-page-paid-claim-retry-20261122.json)
 used one persistent Passport page profile to prepare two originals for a newly
