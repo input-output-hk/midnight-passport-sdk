@@ -8,6 +8,7 @@ import { tracedFetch, traceOperation } from '../operation-trace.js';
 import { byId } from '../ui-dom.js';
 import type { DevWallet } from '../wallet/contracts.js';
 import { createMidnamesIndexer, createMidnamesLedgerReads } from './ledger-reader.js';
+import { localCandidateAccount } from './candidate-account.js';
 import { createConnectedNightSend } from './night-send-host.js';
 import { validNightCredentialBytes } from './night-send-credential.js';
 import {
@@ -101,6 +102,11 @@ async function connectedPageSend(
     scope.networkId,
     BINDING_ID,
     registryProfile(import.meta.env.VITE_MIDNAMES_REGISTRY_PROFILE, scope.networkId),
+    localCandidateAccount(
+      BINDING_ID,
+      MANIFEST_SHA256,
+      import.meta.env.VITE_MIDNAMES_REGISTRY_PROFILE,
+    ),
   );
   if (requiresNewNightLegFee(active)) {
     const feeWallet = await wallet.descriptor.connect(scope.networkId);

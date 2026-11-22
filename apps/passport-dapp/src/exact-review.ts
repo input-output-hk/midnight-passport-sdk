@@ -6,6 +6,7 @@ import {
 import type { CallRequest } from '@input-output-hk/mn-passport-account/ports';
 import type { PassportAccount } from '@input-output-hk/mn-passport-protocol';
 import { NIGHT_SEND_OPERATIONS, type NightSendIntent } from './midnames/night-send.js';
+import { localNightBinding } from './midnames/local-binding.js';
 import { withdrawalRequest } from './withdrawal.js';
 
 interface ReviewContext {
@@ -61,7 +62,7 @@ function admitNamedNight(
 ): NamedNightReview {
   if (
     context.networkId !== 'undeployed' ||
-    context.bindingId !== 'acc-s3r1.1' ||
+    !localNightBinding(context.bindingId) ||
     context.scheme !== 'jubjub-schnorr' ||
     transfer.color !== '00'.repeat(32) ||
     outsideSession

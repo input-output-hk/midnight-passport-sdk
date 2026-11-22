@@ -22,3 +22,6 @@ declare const __PASSPORT_MANIFEST_SHA256__: string;
 
 /** The network id this build is bound to (PASSPORT_NETWORK_ID, default `undeployed`), injected by vite.config.ts. */
 declare const __PASSPORT_NETWORK_ID__: string;
+
+/** Exact ACC version admitted by the local page build. */
+declare const __PASSPORT_BINDING_ID__: string;

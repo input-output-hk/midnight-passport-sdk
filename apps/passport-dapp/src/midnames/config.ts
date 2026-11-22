@@ -9,6 +9,7 @@ import { registryProfile } from './registry-pins.js';
 import { requireMidnamesV4IndexerPair } from './indexer-endpoints.js';
 import { claimHex, claimName, type ClaimRecovery } from './claim-receipt.js';
 import type { ClaimPreparation } from './claim-quote.js';
+import type { CandidateAccountQualification } from './ledger-reader.js';
 
 export interface MidnamesConfig {
   readonly claimSponsor?: string | undefined;
@@ -120,12 +121,32 @@ function configuredIndexers(config: MidnamesConfig, networkId: string) {
   return { http, ws, verification };
 }
 
+function requireCandidateLocal(
+  candidate: CandidateAccountQualification | undefined,
+  profileId: string,
+  networkId: string,
+  http: string,
+  ws: string,
+  verification: unknown,
+): void {
+  if (
+    candidate &&
+    (profileId !== 'standalone-0.35' ||
+      networkId !== 'undeployed' ||
+      !loopback(http) ||
+      !loopback(ws) ||
+      verification !== undefined)
+  )
+    throw new Error('Candidate ACC naming requires one local standalone registry and indexer.');
+}
+
 /** Absence selects the demo mock. Partial or mismatched configuration refuses. */
 export function configureMidnames(
   config: MidnamesConfig,
   expectedNetwork: string,
   bindingId: string,
   preparation?: ClaimPreparation,
+  candidate?: CandidateAccountQualification,
 ): (PassportNameService & { readonly recovery?: ClaimRecovery }) | undefined {
   const { registryAddress, namespace, networkId, knownName, knownAccountAddress } = config;
   if (!preparation && Object.values(config).every((value) => value === undefined)) return undefined;
@@ -139,6 +160,7 @@ export function configureMidnames(
     throw new Error('Configure the registry, namespace, matching network, and both indexer URLs.');
   const profileId = registryProfile(config.registryProfile, networkId);
   const { http, ws, verification } = configuredIndexers(config, networkId);
+  requireCandidateLocal(candidate, profileId, networkId, http, ws, verification);
   const load = (readerHttp: string, readerWs: string) =>
     import('./ledger-reader.js').then(({ createMidnamesIndexer, createMidnamesLedgerReads }) =>
       createMidnamesLedgerReads(
@@ -146,6 +168,7 @@ export function configureMidnames(
         networkId,
         bindingId,
         profileId,
+        candidate,
       ),
     );
   const lazyReads = (readerHttp: string, readerWs: string) => {

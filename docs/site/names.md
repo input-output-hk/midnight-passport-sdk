@@ -99,6 +99,13 @@ published account package interface. The adapter is in
 `apps/passport-dapp/src/midnames/`. It loads the Midnames reader only when a
 configured lookup runs. The default demo still uses the synthetic provider.
 
+For a local Ledger 9 source preview, the
+[candidate demo profile](../../examples/midnames-local/README.md#provisional-acc-local-demo-profile)
+can explicitly pin `acc-s3r1.1-zkir036` with independently verified assets.
+Its naming reader accepts that provisional verifier roster only on the
+`undeployed` chain with the standalone registry and loopback indexer. This is
+not an online or published SDK binding.
+
 Set these public build inputs together. Use a registry and indexer for the same
 network as the Passport demo.
 

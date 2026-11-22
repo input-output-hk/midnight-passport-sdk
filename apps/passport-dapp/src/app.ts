@@ -45,6 +45,7 @@ import { createMockNameService } from './mock-name-service.js';
 import type { PassportNameService } from '@input-output-hk/mn-passport-account/names';
 import { showDemoNameService, showNameConfigurationError } from './name-service.js';
 import { configureMidnames } from './midnames/config.js';
+import { localCandidateAccount } from './midnames/candidate-account.js';
 import { createNamedNightPage } from './midnames/night-send-page.js';
 import { localNightEndpoint, localNightNetwork } from './midnames/night-send-page-state.js';
 import { demoClaimPreparation } from './midnames/claim-demo-owner.js';
@@ -249,6 +250,11 @@ let resetClaimRecovery: (() => void) | undefined;
 let namesForNight: PassportNameService | undefined;
 let namedNightPage: ReturnType<typeof createNamedNightPage> | undefined;
 try {
+  const candidateQualification = localCandidateAccount(
+    BINDING_ID,
+    MANIFEST_SHA256,
+    import.meta.env.VITE_MIDNAMES_REGISTRY_PROFILE,
+  );
   const naming = configureMidnames(
     {
       claimSponsor: import.meta.env.VITE_MIDNAMES_CLAIM_SPONSOR,
@@ -270,6 +276,7 @@ try {
       import.meta.env.VITE_MIDNAMES_CLAIM_PREPARATION,
       () => appState.primaryAccount,
     ),
+    candidateQualification,
   );
   showDemoNameService(naming ?? createMockNameService(network), network);
   if (

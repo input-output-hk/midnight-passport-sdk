@@ -107,6 +107,28 @@ test('public account record is restored with counter and credential bytes', asyn
   });
 });
 
+test('candidate account hints remain separate from stable account hints', async () => {
+  const local = storage();
+  const candidate = browserAccountRecords('undeployed', local, 'acc-s3r1.1-zkir036');
+  await candidate.write({
+    address: account,
+    bindingId: 'acc-s3r1.1-zkir036',
+    scheme: 'jubjub-schnorr',
+    localUseCounter: 1n,
+  });
+  assert.equal(await browserAccountRecords('undeployed', local).read(), undefined);
+  assert.equal((await candidate.read())?.bindingId, 'acc-s3r1.1-zkir036');
+  await assert.rejects(
+    candidate.write({
+      address: account,
+      bindingId: 'acc-s3r1.1',
+      scheme: 'jubjub-schnorr',
+      localUseCounter: 2n,
+    }),
+    /Invalid local account record/,
+  );
+});
+
 test('journal status tampering cannot hide a pending opening or republish a completed one', async () => {
   const local = storage();
   const journal = browserGrantJournal('undeployed', prf(7), local);

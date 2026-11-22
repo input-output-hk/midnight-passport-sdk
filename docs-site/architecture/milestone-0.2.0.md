@@ -26,6 +26,16 @@ rosters matched on chain, and the retained two-leg intent completed with
 or demo admission. The full #316 user-owned claim, #318 browser/provider and
 recovery gates, and #315/#247 online mapping remain open.
 
+A later isolated candidate
+[paid-claim retry](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/candidate-acc-page-paid-claim-retry-20261122.json)
+used one persistent Passport page profile to prepare two originals for a newly
+activated candidate ACC. The first indexed as failed and was archived; a fresh
+reviewed original recovered its success after a lost sponsor response. The
+page login connector was a fixture and the naming credential was virtual. A
+source-only local profile now pins the candidate in the browser and service,
+but the combined real account create/open → claim → named payment journey
+remains unqualified.
+
 The shared [local demo launcher](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local) attaches to a compatible Ledger 9 stack and does not start it again. [PR #367](https://github.com/input-output-hk/midnight-passport-sdk/pull/367) packaged that setup; [PR #368](https://github.com/input-output-hk/midnight-passport-sdk/pull/368) enabled optional registration and NIGHT funding with distinct sponsor and funding wallets. The browser must explicitly confirm the saved claim before sending. A prepared receipt is not an issued name.
 
 A [fresh isolated diagnostic](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/stable-withdrawal-036-key-probe-20261122.json)

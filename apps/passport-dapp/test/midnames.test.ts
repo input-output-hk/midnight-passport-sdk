@@ -6,6 +6,7 @@ import {
   type PassportNameErrorCode,
 } from '@input-output-hk/mn-passport-account/names';
 import { configureMidnames } from '../src/midnames/config.js';
+import type { CandidateAccountQualification } from '../src/midnames/ledger-reader.js';
 import {
   createMidnamesNameService,
   requireAgreeingMidnamesResolvers,
@@ -281,6 +282,44 @@ test('a remote indexer requires the known mapping even when labelled undeployed'
       'acc-s3r1.1',
     )?.provider.mode,
     'external',
+  );
+});
+
+test('provisional ACC reader is confined to the local standalone registry', () => {
+  const local = {
+    networkId: 'undeployed',
+    namespace: 'night',
+    registryAddress: profile.registryAddress,
+    registryProfile: 'standalone-0.35',
+    indexerUrl: 'http://127.0.0.1:18108/api/v4/graphql',
+    indexerWsUrl: 'ws://127.0.0.1:18108/api/v4/graphql/ws',
+  };
+  const candidate: CandidateAccountQualification = {
+    bindingId: 'acc-s3r1.1-zkir036',
+    manifestSha256: '590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f',
+    decodeState: () => {
+      throw new Error('No chain read in configuration test');
+    },
+  };
+  assert.ok(configureMidnames(local, 'undeployed', candidate.bindingId, undefined, candidate));
+  assert.throws(
+    () =>
+      configureMidnames(
+        {
+          ...local,
+          indexerUrl: 'https://remote.example.test/api/v4/graphql',
+          indexerWsUrl: 'wss://remote.example.test/api/v4/graphql/ws',
+          knownName: 'alice.night',
+          knownAccountAddress: account,
+          verificationIndexerUrl: 'https://witness.example.test/api/v4/graphql',
+          verificationIndexerWsUrl: 'wss://witness.example.test/api/v4/graphql/ws',
+        },
+        'undeployed',
+        candidate.bindingId,
+        undefined,
+        candidate,
+      ),
+    /local standalone registry/,
   );
 });
 

@@ -8,6 +8,13 @@ fallback project, verifies the claimed name and ACC, then opens the opt-in
 JubJub page. A fresh chain begins in account setup mode and needs a separate
 registry bootstrap and name claim.
 
+For the experimental Compact 0.36.1 key-generation ACC, use the
+[explicit local candidate profile](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/README.md#provisional-acc-local-demo-profile)
+with verified assets and a dedicated browser profile. Its build, reader and
+named NIGHT guards admit only the exact local candidate pin. The combined
+account creation, paid claim and named payment are not yet one qualified demo
+run; follow the separate evidence limits below.
+
 1. **Create an ACC:** choose a supported P-256 or JubJub route, review maintenance-authority retirement and the actual passkey request, then wait for a confirmed address. Note the binding and network.
    On the opt-in standalone Midnames profile, **Register a .night name** on Balances is optional after activation; you can return later. Enter a local name for this ACC and select **Continue registration** to see the four-minute quote. **Approve with passkey** prepares the claim and displays the payment terms; **Confirm payment and register** sends it. Continuing after an expired unsent or unprepared attempt runs the sponsor's safety checks and archives that original when safe. Receipts and manual recovery controls remain under **Receipt and recovery details**. Registration is complete only when the original transaction and registry binding match the ACC.
 2. **Reopen it:** use the enrolled credential and stored record, or a known address where the route is supported. Observe that login does not automatically connect a wallet or enroll a full owner.

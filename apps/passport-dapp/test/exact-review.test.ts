@@ -141,6 +141,16 @@ test('named NIGHT review refuses wrong route, target, provider and withdrawal br
     assert.throws(() => admitExactReview({ ...base, ...changed } as ExactReview));
 });
 
+test('named NIGHT review admits the exact provisional local binding', () => {
+  const admitted = admitExactReview({
+    ...intent,
+    bindingId: 'acc-s3r1.1-zkir036',
+    scheme: 'jubjub-schnorr',
+    namedNight,
+  });
+  assert.equal(admitted.bindingId, 'acc-s3r1.1-zkir036');
+});
+
 test('wrong action, context, route, human address or malformed value cannot stage a transfer', async () =>
   withUi(async () => {
     const changes = [

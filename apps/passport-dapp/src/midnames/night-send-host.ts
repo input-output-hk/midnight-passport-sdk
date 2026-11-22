@@ -6,6 +6,7 @@ import {
   type MidnightBinding,
 } from '@input-output-hk/mn-passport-adapter-midnight-js';
 import { exactNightBridgeOutput } from './night-bridge-output.js';
+import { localNightBinding } from './local-binding.js';
 import { validNightCredentialBytes } from './night-send-credential.js';
 import { readFinalizedNightLeg } from './night-finality.js';
 import {
@@ -64,7 +65,7 @@ function checkedSelection(options: ConnectedNightSendOptions) {
   const network = Object.freeze({ ...options.network });
   if (
     network.networkId !== 'undeployed' ||
-    network.bindingId !== 'acc-s3r1.1' ||
+    !localNightBinding(network.bindingId, network.manifestSha256) ||
     scope.networkId !== network.networkId ||
     scope.source !== account.address ||
     !validNightCredentialBytes(account.credentialId) ||

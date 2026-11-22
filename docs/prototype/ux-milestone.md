@@ -158,6 +158,15 @@ select a name; enter it again after a reload. The panel can save a standalone sp
 For a retained original, reopening also checks the sponsor's dispatch fence and
 shows **Prepared but never sent** when the sponsor confirms that state and the
 registry still shows the name available. It does not show registration success.
+
+For the provisional Ledger 9 `acc-s3r1.1-zkir036` source profile, the
+[local launcher](../../examples/midnames-local/README.md#provisional-acc-local-demo-profile)
+can open account creation and the standalone name panel in one browser
+session. It uses a separate deployment registry and claim journal and admits
+the candidate only with exact build pins and loopback Indexer API v4. This
+configuration route does not yet qualify the full combined journey; a fresh
+native page run is required before that claim.
+
 An unavailable indexer leaves the original receipt intact and reports the
 check as unavailable. Without claim preparation or sponsor dispatch, the panel
 is labelled read-only receipt inspection and offers no claim action.

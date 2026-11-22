@@ -38,7 +38,7 @@ const scope = { networkId: 'undeployed' as const, source, credentialId };
 const network: NetworkConfig = {
   networkId: 'undeployed',
   bindingId: 'acc-s3r1.1',
-  manifestSha256: '2'.repeat(64),
+  manifestSha256: '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f',
   indexerUrl: 'http://indexer',
   indexerWsUrl: 'ws://indexer',
   nodeUrl: 'http://node',

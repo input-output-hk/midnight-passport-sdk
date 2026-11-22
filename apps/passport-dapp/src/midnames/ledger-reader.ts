@@ -28,7 +28,7 @@ type RegistryProvider = Parameters<typeof getContractLedger>[0];
 type DomainRecord = Parameters<typeof getTargetFromDomainData>[0];
 type DomainTarget = NonNullable<Awaited<ReturnType<MidnamesReads['readTarget']>>>;
 
-/** Isolated local qualification only; never supplied by the demo configuration. */
+/** Explicit provisional local demo qualification; never a supported SDK binding. */
 export interface CandidateAccountQualification {
   readonly bindingId: string;
   readonly manifestSha256: string;

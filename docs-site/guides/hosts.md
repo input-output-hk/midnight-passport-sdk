@@ -27,6 +27,13 @@ Fresh chains need ACC creation, registry bootstrap and a confirmed name claim
 before the named control is enabled. The launcher never funds a sender merely
 by opening the page.
 
+The [provisional local ACC profile](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/README.md#provisional-acc-local-demo-profile)
+selects separately verified `acc-s3r1.1-zkir036` assets and the shared Ledger 9
+release prover. It keeps candidate deployments and claim originals in separate
+local journals. This is an explicit source opt-in: the ordinary demo and public
+SDK binding remain on `acc-s3r1.1`, and online candidate admission is refused.
+A fresh combined browser create, claim and named-send run is still required.
+
 The reference demo pins the published Midnames 2.1.0 reader for lookups. Its
 generated reader matches the pinned
 [`ledger-9-live` commit](https://github.com/midnames/ns-sdk/tree/f8f2edd425221b95c9158d74e7318d2fbb4f61b2),

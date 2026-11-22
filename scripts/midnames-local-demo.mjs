@@ -51,6 +51,7 @@ const usage = `Usage: nix develop -c node scripts/midnames-local-demo.mjs [check
   --claim             Enable registration against the verified local .night registry.
   --funding           Enable deposits with the separately funded demo wallet.
   --prepared-registry PATH  Pinned Compact 0.35 registry artifacts for --claim.
+  --candidate-assets PATH   Explicit provisional ACC assets on the local release prover.
   --open              Open the page in the default browser after it is ready.
 
 The fallback uses the repo's digest-pinned Ledger 9 Compose template and a
@@ -62,7 +63,7 @@ and private records are preserved.
 
 class CleanupUnconfirmedError extends Error {}
 
-/** @typedef {{command: 'check'|'stack'|'up'|'stop', profile: string, stateDir: string, passportRepo: string|undefined, contractDir: string|undefined, preparedRegistry: string|undefined, attachOnly: boolean, mockPasskey: boolean, setup: boolean, claim: boolean, funding: boolean, open: boolean, help: boolean}} DemoOptions */
+/** @typedef {{command: 'check'|'stack'|'up'|'stop', profile: string, stateDir: string, passportRepo: string|undefined, contractDir: string|undefined, preparedRegistry: string|undefined, candidateAssets: string|undefined, attachOnly: boolean, mockPasskey: boolean, setup: boolean, claim: boolean, funding: boolean, open: boolean, help: boolean}} DemoOptions */
 /** @typedef {{command: string, args: string[], env: NodeJS.ProcessEnv}} ComposeTarget */
 /** @typedef {{networkId: string, registryAddress: string, name: string, accountAddress: string, claimBlock: {height: number, hash: string}}} Claim */
 
@@ -80,6 +81,7 @@ export function parseArgs(argv) {
     passportRepo: process.env.PASSPORT_REPO,
     contractDir: process.env.PASSPORT_CONTRACT_DIR,
     preparedRegistry: process.env.PASSPORT_MIDNAMES_PREPARED_REGISTRY,
+    candidateAssets: undefined,
     attachOnly: false,
     mockPasskey: true,
     setup: false,
@@ -98,6 +100,7 @@ export function parseArgs(argv) {
         '--passport-repo',
         '--contract-dir',
         '--prepared-registry',
+        '--candidate-assets',
       ].includes(arg)
     ) {
       const value = args[++index];
@@ -106,6 +109,7 @@ export function parseArgs(argv) {
       else if (arg === '--state-dir') result.stateDir = resolve(value);
       else if (arg === '--passport-repo') result.passportRepo = resolve(value);
       else if (arg === '--prepared-registry') result.preparedRegistry = resolve(value);
+      else if (arg === '--candidate-assets') result.candidateAssets = resolve(value);
       else result.contractDir = resolve(value);
     } else if (arg === '--attach-only') result.attachOnly = true;
     else if (arg === '--real-passkey') result.mockPasskey = false;
@@ -475,7 +479,10 @@ async function startClaimHost(options, claim, env) {
     readFileSync(join(options.stateDir, 'claim-sponsor-wallet-provision.json'), 'utf8'),
   );
   assert.equal(provision.status, 'complete', 'Claim sponsor wallet funding is unresolved.');
-  const journal = join(options.stateDir, 'claim-journal');
+  const journal = join(
+    options.stateDir,
+    options.candidateAssets ? 'claim-journal-candidate' : 'claim-journal',
+  );
   privateState(journal);
   const args = [
     '--experimental-import-meta-resolve',
@@ -619,7 +626,9 @@ async function compatProver(stateDir) {
 /** @param {DemoOptions} options @param {Claim|undefined} claim */
 async function demo(options, claim) {
   privateState(options.stateDir);
-  const prover = await compatProver(options.stateDir);
+  const prover = options.candidateAssets
+    ? { started: false }
+    : await compatProver(options.stateDir);
   /** @type {Awaited<ReturnType<typeof startClaimHost>> | undefined} */
   let claimHost;
   try {
@@ -627,15 +636,33 @@ async function demo(options, claim) {
     const env = {
       ...process.env,
       MIDNIGHT_STACK: 'shared-ledger9',
-      PASSPORT_REGISTRY_FILE: join(options.stateDir, 'registry.json'),
-      PASSPORT_COMPAT_PROVER: '1',
-      PASSPORT_COMPAT_PROVER_PORT: '16320',
+      PASSPORT_REGISTRY_FILE: join(
+        options.stateDir,
+        options.candidateAssets ? 'registry-candidate.json' : 'registry.json',
+      ),
+      ...(options.candidateAssets
+        ? {
+            PASSPORT_BINDING_ID: 'acc-s3r1.1-zkir036',
+            PASSPORT_CANDIDATE_LOCAL: '1',
+            PASSPORT_ARTEFACT_DIR: options.candidateAssets,
+            PASSPORT_COMPAT_PROVER: '0',
+            PASSPORT_PUBLIC_PROOF_SERVER_URL: 'http://127.0.0.1:6300',
+          }
+        : {
+            PASSPORT_BINDING_ID: 'acc-s3r1.1',
+            PASSPORT_CANDIDATE_LOCAL: '0',
+            PASSPORT_COMPAT_PROVER: '1',
+            PASSPORT_COMPAT_PROVER_PORT: '16320',
+          }),
       MN_NETWORK_ID: 'undeployed',
       MN_NODE_URL: 'http://127.0.0.1:9944',
       MN_INDEXER_URL: 'http://127.0.0.1:8088/api/v4/graphql',
       MN_INDEXER_WS_URL: 'ws://127.0.0.1:8088/api/v4/graphql/ws',
-      MN_PROOF_SERVER_URL: 'http://127.0.0.1:16320',
+      MN_PROOF_SERVER_URL: options.candidateAssets
+        ? 'http://127.0.0.1:6300'
+        : 'http://127.0.0.1:16320',
     };
+    if (options.candidateAssets) delete env.PASSPORT_PUBLIC_ZK_BASE_URL;
     for (const key of Object.keys(env)) {
       if (key.startsWith('VITE_MIDNAMES_')) delete env[key];
     }
@@ -648,8 +675,10 @@ async function demo(options, claim) {
         VITE_MIDNAMES_NETWORK_ID: 'undeployed',
         VITE_MIDNAMES_INDEXER_URL: 'http://127.0.0.1:8088/api/v4/graphql',
         VITE_MIDNAMES_INDEXER_WS_URL: 'ws://127.0.0.1:8088/api/v4/graphql/ws',
-        VITE_MIDNAMES_KNOWN_NAME: claim.name,
-        VITE_MIDNAMES_KNOWN_ACC: claim.accountAddress,
+        ...(!options.candidateAssets && {
+          VITE_MIDNAMES_KNOWN_NAME: claim.name,
+          VITE_MIDNAMES_KNOWN_ACC: claim.accountAddress,
+        }),
         VITE_MIDNAMES_NIGHT_SEND: '1',
       });
     }
@@ -745,7 +774,7 @@ export async function main(argv = process.argv.slice(2)) {
     if (options.setup && options.command !== 'up') throw new Error('--setup applies only to up.');
     if ((options.claim || options.funding) && options.command !== 'up')
       throw new Error('--claim and --funding apply only to up.');
-    if (options.claim && options.setup)
+    if (options.claim && options.setup && !options.candidateAssets)
       throw new Error('--claim needs a verified local registry profile.');
     if (options.command === 'up' && !options.contractDir && !options.passportRepo)
       throw new Error('Pass --contract-dir or --passport-repo for the pinned ACC.');
@@ -760,8 +789,9 @@ export async function main(argv = process.argv.slice(2)) {
     console.log(JSON.stringify(selected.profile));
     if (options.command === 'stack') return;
     try {
-      if (!options.setup) ensureWorkspaceDependencies();
-      const claim = options.setup ? undefined : await verifyProfile(options.profile);
+      if (!options.setup || options.claim) ensureWorkspaceDependencies();
+      const claim =
+        options.setup && !options.claim ? undefined : await verifyProfile(options.profile);
       if (claim)
         console.log(`midnames-demo: live name pin verified at block ${claim.claimBlock.height}.`);
       if (options.command === 'up') await demo(options, claim);

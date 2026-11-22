@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fund, manifestStatus, parseArgs } from '../scripts/demo.mjs';
+import { parseArgs as parseMidnamesArgs } from '../scripts/midnames-local-demo.mjs';
 import binding from '../packages/contract/acc-binding-v2.generated.json' with { type: 'json' };
 
 test('demo CLI chooses up by default and parses explicit setup options', () => {
@@ -29,6 +30,22 @@ test('demo CLI chooses up by default and parses explicit setup options', () => {
   assert.throws(() => parseArgs(['up', '--contract-dir']), /needs a directory/);
   assert.equal(parseArgs(['-h']).help, true);
   assert.throws(() => parseArgs(['reset']), /unknown command/);
+});
+
+test('local Midnames candidate profile requires an explicit asset selection', () => {
+  const defaultOptions = parseMidnamesArgs(['up']);
+  assert.equal(defaultOptions.candidateAssets, undefined);
+  const selected = parseMidnamesArgs([
+    'up',
+    '--setup',
+    '--claim',
+    '--candidate-assets',
+    '/tmp/verified-candidate',
+  ]);
+  assert.equal(selected.candidateAssets, '/tmp/verified-candidate');
+  assert.equal(selected.setup, true);
+  assert.equal(selected.claim, true);
+  assert.throws(() => parseMidnamesArgs(['up', '--candidate-assets']), /needs a path/);
 });
 
 test('demo fund command sends a pinned authenticated request with the caller idempotency key', async () => {

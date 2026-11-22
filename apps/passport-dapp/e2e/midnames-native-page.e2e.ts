@@ -2,6 +2,7 @@
 // The deployed ACC is supplied by the native runner; only its login connector
 // is substituted. Quote, PRF owner proof, sponsor balance, send and recovery are live.
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -50,6 +51,10 @@ if (candidate) {
     resolve(output, '..', 'candidate-account-runtime/account.mjs'),
   );
   assert.ok(process.env.PASSPORT_MIDNAMES_CANDIDATE_ASSETS);
+  assert.equal(
+    createHash('sha256').update(readFileSync(candidate.modulePath)).digest('hex'),
+    '0ee002d3ac6eae8c048fbd9017ed2f1215e3961629f998221dd9b3e77d74bccf',
+  );
 } else assert.equal(process.env.PASSPORT_MIDNAMES_CANDIDATE_ASSETS, undefined);
 const sponsorPort = process.env.PASSPORT_MIDNAMES_SPONSOR_PORT;
 const ownerPort = process.env.PASSPORT_MIDNAMES_OWNER_PORT;
@@ -124,26 +129,9 @@ const vite = await createServer({
     {
       name: 'native-page-account-fixture',
       enforce: 'pre',
-      resolveId(id) {
-        if (candidate && id === 'virtual:native-candidate-account')
-          return '\0native-candidate-account';
-      },
       load(id) {
         const file = id.split('?')[0];
         if (file === resolve('src/connector.ts')) return connector;
-        if (!candidate) return;
-        if (id === '\0native-candidate-account') return readFileSync(candidate.modulePath, 'utf8');
-        if (file !== resolve('src/midnames/config.ts')) return;
-        const source = readFileSync(file, 'utf8');
-        const expected = '        bindingId,\n        profileId,\n';
-        assert.equal(source.split(expected).length, 2, 'Candidate reader injection point changed.');
-        return (
-          `import { ledger as candidateLedger } from 'virtual:native-candidate-account';\n` +
-          source.replace(
-            expected,
-            `        bindingId,\n        profileId,\n        { bindingId: ${JSON.stringify(candidate.bindingId)}, manifestSha256: ${JSON.stringify(candidate.manifestSha256)}, decodeState: (state) => candidateLedger(state.data) },\n`,
-          )
-        );
       },
     },
   ],

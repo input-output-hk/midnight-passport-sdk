@@ -939,6 +939,15 @@ mapping and authenticated host-controlled provider where required. Claim
 finality continues to use the primary path.
 The default remains the mock.
 
+The provisional `acc-s3r1.1-zkir036` profile is available only through the
+explicit local [Midnames launcher](../examples/midnames-local/README.md#provisional-acc-local-demo-profile).
+It requires a separately verified `PASSPORT_ARTEFACT_DIR`,
+`PASSPORT_CANDIDATE_LOCAL=1`, the exact candidate manifest pin, the
+`undeployed` network and the standalone registry with loopback Indexer API v4
+endpoints. Vite checks the candidate manifest and generated module before
+building; the service checks the full asset tree at startup. The public SDK
+binding remains provisional, and the ordinary demo keeps `acc-s3r1.1`.
+
 The separate [named shielded deposit sender](../examples/midnames-local/README.md#review-the-named-deposit-in-the-sender-browser)
 can display a localhost browser review before preparing and dispatching its
 payment. Its automated isolated `undeployed` run passed at signed source

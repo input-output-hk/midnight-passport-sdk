@@ -61,6 +61,35 @@ the launcher starts and later stops its own no-volume prover project. Ctrl-C
 drains only its demo services and stops only fallback containers that this
 invocation started. Receipts, browser state, and Docker volumes are retained.
 
+### Provisional ACC local demo profile
+
+Pass `--candidate-assets` with the separately staged, verified
+`acc-s3r1.1-zkir036` asset directory to exercise a newly created Ledger 9 ACC
+with the Compact 0.36.1 key-generation candidate. The launcher attaches to the
+shared release prover on port 6300, selects separate deployment and claim
+journals, and pins the candidate in both service and browser. The ordinary
+`acc-s3r1.1` demo and online binding policy remain unchanged. Use a dedicated
+browser profile for candidate accounts and their retained claim receipts.
+
+An existing live profile supplies the standalone registry address and chain
+anchor; its previously registered name is not used as a candidate ACC pin.
+With a funded claim sponsor and prepared registry, `--setup --claim` opens
+account creation and subsequent name registration in the same demo session:
+
+```sh
+nix develop -c node scripts/midnames-local-demo.mjs up \
+  --contract-dir /absolute/path/to/prepared/acc/contract \
+  --profile /absolute/path/to/current-local-registry-receipt.json \
+  --prepared-registry /absolute/path/to/prepared/registry \
+  --candidate-assets /absolute/path/to/verified/candidate-assets \
+  --setup --claim
+```
+
+The candidate build checks the exact manifest and generated module hashes.
+The service checks the complete candidate asset tree at startup. A successful
+build or page start does not qualify the combined create, claim, deposit and
+named-send journey; its native receipt must be recorded separately.
+
 ### Register a name and fund a Passport account
 
 The local demo can register a name **after** ACC activation. Stop the demo first,
@@ -1067,9 +1096,9 @@ admission by a registry policy change. The lane checks its exact indexed
 failure, archives that sponsor journal, releases the browser original, and
 reviews and sends a fresh claim after restoring the policy. It verifies the
 final binding at one canonical block. This qualification reader explicitly
-admits the candidate only for this run. The native page harness injects the
-same candidate ledger decoder into its Vite reader and connector; the ordinary
-demo still refuses it.
+admits the candidate only for this run. The native page harness substitutes
+the login connector, while the page's naming reader now uses the explicit
+local candidate route. Combined ACC creation still needs separate evidence.
 
 ```sh
 PASSPORT_MIDNAMES_CANDIDATE_ASSETS=/absolute/path/to/verified-candidate-assets \
