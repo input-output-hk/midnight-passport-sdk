@@ -228,7 +228,7 @@ authenticated proxy itself.
 
 A [22 November single-provider mainnet read](../../examples/midnames-online/evidence/mainnet-passport-name-v4-observation-20261122.json)
 reached Midnames' registry through its Indexer API v4 endpoint and observed
-`passport.night` with a shielded **default** target at one indexer-selected
+`passport.night` with a shielded **primary** target at one indexer-selected
 block. The name's existence is distinct from Passport control of its parent,
 delegated subdomains, or a contract-call route to an ACC. This read lacks an
 independent node-finality check and a second provider, so it cannot admit an

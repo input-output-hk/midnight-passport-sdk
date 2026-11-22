@@ -47,7 +47,7 @@ A [dated, single-provider mainnet observation](evidence/mainnet-passport-name-v4
 found the published Midnames registry through the explicitly configured
 `api.midnames.com` Indexer API v4 endpoint. At the indexer's selected block,
 `passport.night` resolved through `@midnames/sdk@2.1.0` with a **shielded
-default target**. This establishes neither Passport ownership of that name
+primary target**. This establishes neither Passport ownership of that name
 nor a contract-call target, delegated subdomain policy, or a known ACC mapping.
 It has no independent node-finality or second-provider check. Keep the
 online Passport profile disabled; the mainnet observation cannot substitute

@@ -14,14 +14,15 @@
   },
   "registryPresent": true,
   "name": "passport.night",
-  "defaultTargetType": "shielded",
+  "primaryTargetType": "shielded",
   "method": "@midnames/sdk@2.1.0 resolveDomain against the explicitly configured Indexer API v4 provider, with registry state read at the selected block hash",
+  "resolutionReference": "https://github.com/midnames/ns-sdk/blob/f8f2edd425221b95c9158d74e7318d2fbb4f61b2/src/core.ts",
   "sourceReference": "https://github.com/midnames/ns-sdk/blob/f8f2edd425221b95c9158d74e7318d2fbb4f61b2/src/provider.ts",
   "limits": [
     "One Midnames-hosted indexer; no independent node finality or state proof.",
-    "Target type is the name default, not proof of ownership, delegation, or a contract-call route.",
+    "The observed primary target type is not proof of ownership, delegation, or a contract-call route.",
     "No Passport ACC name-to-contract mapping is established.",
-    "The observed default shielded target does not establish absence of other operation-specific fields.",
+    "The observed primary shielded target does not establish absence of other operation-specific fields.",
     "The pinned SDK does not show a Passport-controlled parent, user-owned ACC name, or release-ready online profile."
   ]
 }
