@@ -10,10 +10,12 @@ import {
   fundingRoute,
   json,
   verifyArtefacts,
+  type FundingAccount,
   type FundingProgress,
 } from '@input-output-hk/mn-passport-service';
 import { loadFundingConfig } from './config.ts';
 import { loadFundingBinding } from './binding.ts';
+import { candidateFundingAccount } from './candidate-account.ts';
 import { deployedAddresses } from './deployments.ts';
 import { prepareLocalnetNight, type NightWallet } from './night-preparation.ts';
 import { submitMeasuredNightDeposit } from './measured-night-deposit.ts';
@@ -24,6 +26,9 @@ import type { createMidnightWalletPorts } from '@input-output-hk/mn-passport-ada
 const config = loadFundingConfig(process.env);
 verifyArtefacts(config.artefactDir, config.manifestSha256);
 const binding = await loadFundingBinding(config);
+const candidateRead = config.provisionalLocal
+  ? await candidateFundingAccount(config, binding)
+  : undefined;
 
 const root = (relative: string): string => join(config.contractDir, relative);
 const setup = (await import(pathToFileURL(root('src/node/setup.ts')).href)) as {
@@ -78,7 +83,15 @@ const wallet = (await setup.setupWallet(config.walletSeed)) as {
 const backend = createWalletFundingBackend({
   inventory: () => walletInventory(wallet.walletCtx.wallet),
   deployed: (address) => deployedAddresses(config.deploymentsFile, config.networkId).has(address),
-  connect: (address) => setup.connectAccount(wallet, address),
+  connect: (address): Promise<FundingAccount> =>
+    candidateRead
+      ? Promise.resolve({
+          ledgerState: () => candidateRead(address),
+          depositUnshielded: async () => {
+            throw new Error('Candidate funding accepts only the pinned NIGHT deposit route.');
+          },
+        })
+      : setup.connectAccount(wallet, address),
   ...(config.networkId === 'undeployed'
     ? {
         async depositNight(
@@ -86,7 +99,7 @@ const backend = createWalletFundingBackend({
           amount: bigint,
           recordProgress: (progress: FundingProgress) => Promise<void>,
         ) {
-          const service = process.env.PASSPORT_SERVICE_URL ?? 'http://127.0.0.1:8787';
+          const service = config.serviceUrl;
           const coin = await wallet.providers.walletProvider.getCoinPublicKey();
           const encryption = await wallet.providers.walletProvider.getEncryptionPublicKey();
           const asHex = (value: string | Uint8Array) =>
@@ -165,8 +178,9 @@ const server = createServer(config, [
       json(response, 403, { error: 'funding account is not eligible' });
       return true;
     }
-    const account = await setup.connectAccount(wallet, address);
-    const ledger = await account.ledgerState();
+    const ledger = candidateRead
+      ? await candidateRead(address)
+      : await (await setup.connectAccount(wallet, address)).ledgerState();
     if (ledger.spec_version !== 3n) {
       json(response, 409, { error: 'ACC binding changed' });
       return true;

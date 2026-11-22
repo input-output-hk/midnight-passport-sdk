@@ -86,7 +86,9 @@ before loading it, then routes NIGHT deposits through the pinned adapter. It
 requires `PASSPORT_CANDIDATE_LOCAL=1`, the exact candidate binding and manifest,
 an absolute canonical `PASSPORT_ARTEFACT_DIR`, a separately funded non-genesis
 seed file, explicit candidate reservation and deployment files, a NIGHT-only
-asset policy and loopback Ledger 9 / Indexer API v4 endpoints. Its
+asset policy and loopback Ledger 9 / Indexer API v4 and Passport service URLs.
+Candidate eligibility and balance reads check the complete pinned on-chain
+verifier roster before a reservation or wallet preparation. Its
 general value-call endpoint remains closed for candidate accounts. The Midnames
 demo launcher does not yet enable candidate funding: the funding-service route
 still needs an exact-head native reservation, submission and replay qualification.

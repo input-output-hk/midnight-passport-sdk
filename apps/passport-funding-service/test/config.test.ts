@@ -157,6 +157,7 @@ test('candidate funding admits only an explicit pinned local NIGHT profile', () 
     { PASSPORT_FUNDING_DEPLOYMENTS_FILE: '' },
     { MN_INDEXER_URL: 'http://example.com/api/v4/graphql' },
     { MN_INDEXER_URL: 'http://127.0.0.1:8088/api/v3/graphql' },
+    { PASSPORT_SERVICE_URL: 'http://example.com' },
     { PASSPORT_FUNDING_HOST: '0.0.0.0' },
     { MN_NETWORK_ID: 'testnet' },
   ])

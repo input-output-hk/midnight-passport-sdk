@@ -138,6 +138,9 @@ importers:
       '@input-output-hk/mn-passport-service':
         specifier: workspace:*
         version: link:../../packages/service
+      '@midnight-ntwrk/midnight-js-indexer-public-data-provider':
+        specifier: 5.0.0-rc.2
+        version: 5.0.0-rc.2(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@midnightntwrk/ledger-v9':
         specifier: 1.0.0
         version: 1.0.0

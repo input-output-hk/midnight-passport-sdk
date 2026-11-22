@@ -18,6 +18,7 @@ export interface FundingConfig {
   readonly indexerUri: string;
   readonly indexerWsUri: string;
   readonly proofServerUri: string;
+  readonly serviceUrl: string;
   readonly contractDir: string;
   readonly artefactDir: string;
   readonly bindingId: string;
@@ -164,6 +165,7 @@ function assertCandidateFundingProfile(
     | 'indexerUri'
     | 'indexerWsUri'
     | 'proofServerUri'
+    | 'serviceUrl'
     | 'contractDir'
     | 'artefactDir'
     | 'walletSeed'
@@ -178,6 +180,7 @@ function assertCandidateFundingProfile(
     !localUrl(selected.indexerUri, ['http:'], '/api/v4/graphql') ||
     !localUrl(selected.indexerWsUri, ['ws:'], '/api/v4/graphql/ws') ||
     !localUrl(selected.proofServerUri, ['http:'], '/') ||
+    !localUrl(selected.serviceUrl, ['http:'], '/') ||
     !isAbsolute(selected.artefactDir) ||
     realpathSync(selected.artefactDir) !== selected.artefactDir ||
     selected.artefactDir === join(selected.contractDir, 'contracts/managed/account') ||
@@ -220,6 +223,7 @@ export function loadFundingConfig(env: NodeJS.ProcessEnv): FundingConfig {
   const endpoints = fundingEndpoints(env, indexerPort);
   const host = env.PASSPORT_FUNDING_HOST ?? '127.0.0.1';
   const corsOrigin = env.PASSPORT_DAPP_ORIGIN ?? 'http://localhost:5173';
+  const serviceUrl = env.PASSPORT_SERVICE_URL ?? 'http://127.0.0.1:8787';
   const artefactDir = binding.provisional
     ? required(env, 'PASSPORT_ARTEFACT_DIR')
     : join(contractDir, 'contracts/managed/account');
@@ -229,6 +233,7 @@ export function loadFundingConfig(env: NodeJS.ProcessEnv): FundingConfig {
       host,
       corsOrigin,
       ...endpoints,
+      serviceUrl,
       contractDir,
       artefactDir,
       walletSeed,
@@ -242,6 +247,7 @@ export function loadFundingConfig(env: NodeJS.ProcessEnv): FundingConfig {
     corsOrigin,
     networkId,
     ...endpoints,
+    serviceUrl,
     contractDir,
     artefactDir,
     bindingId,
