@@ -294,7 +294,7 @@ export function createNamedNightPage(
       const submitted = await connected.send(request);
       host.stage('reconcile');
       if (submitted.phase === 'deposit-pending')
-        host.status('Both original NIGHT payment legs were sent. Waiting for their finality.');
+        host.status('Both original NIGHT payment IDs are saved. Checking their finality.');
       const result = await settleSubmittedDeposit(submitted, request, connected, checkScope);
       host.record('namedNightPayment', {
         requestId: request.requestId,
