@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 
-const { loadBundle } = await import(
+const { createKeyServer, loadBundle } = await import(
   new URL('../apps/passport-key-service/src/server.mjs', import.meta.url).href
 );
 
@@ -91,5 +91,42 @@ test('old and alternate key profiles restore their independently pinned bytes', 
     }
   } finally {
     rmSync(scratch, { recursive: true, force: true });
+  }
+});
+
+test('candidate key service serves only its versioned verifier route', async () => {
+  const candidate = manifest('acc-s3r1.1-zkir036');
+  const loaded = loadBundle(
+    join(packageRoot, `resources/${candidate.bindingId}.zkir.json.gz`),
+    candidate.bindingId,
+    candidate.compilerManifestSha256,
+    readFileSync(join(packageRoot, `resources/${candidate.bindingId}.key-manifest.json`)),
+  );
+  const server = createKeyServer({
+    bindingId: candidate.bindingId,
+    ...loaded,
+    keyManifestBytes: readFileSync(
+      join(packageRoot, `resources/${candidate.bindingId}.key-manifest.json`),
+    ),
+    keyDir: packageRoot,
+    profile: { name: 'test', circuits: [] },
+  });
+  try {
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const base = `http://127.0.0.1:${server.address().port}`;
+    const path = `/v1/zk/${candidate.bindingId}/keys/${circuit}.verifier`;
+    const response = await fetch(`${base}${path}`);
+    assert.equal(response.status, 200);
+    assert.equal(
+      createHash('sha256')
+        .update(Buffer.from(await response.arrayBuffer()))
+        .digest('hex'),
+      candidate.circuits[circuit].verifier.sha256,
+    );
+    assert.equal((await fetch(`${base}/v1/zk/acc-s3r1.1/keys/${circuit}.verifier`)).status, 404);
+    assert.equal((await fetch(`${base}/zk/acc/keys/${circuit}.verifier`)).status, 404);
+    assert.equal((await fetch(`${base}/v1/profile`)).status, 200);
+  } finally {
+    await new Promise((resolve) => server.close(() => resolve(undefined)));
   }
 });

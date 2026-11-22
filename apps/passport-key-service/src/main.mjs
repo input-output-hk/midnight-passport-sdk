@@ -5,7 +5,9 @@ import { fileURLToPath } from 'node:url';
 import { selectKeyProfile } from './profiles.mjs';
 import { createKeyServer, loadBundle } from './server.mjs';
 
-const bindingId = 'acc-s3r1.1';
+const bindingId = process.env.PASSPORT_KEY_BINDING_ID ?? 'acc-s3r1.1';
+if (!['acc-s3r1.1', 'acc-s3r1.1-zkir036'].includes(bindingId))
+  throw new Error(`unsupported key-service binding: ${bindingId}`);
 const manifestSha256 = '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const contract = join(root, 'packages/contract');

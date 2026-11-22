@@ -157,7 +157,7 @@ function corsHeaders(req, res, corsOrigins) {
 function keyPath(path, bindingId) {
   const prefix = path.startsWith(`/v1/zk/${bindingId}/`)
     ? `/v1/zk/${bindingId}/`
-    : path.startsWith('/zk/acc/')
+    : bindingId === 'acc-s3r1.1' && path.startsWith('/zk/acc/')
       ? '/zk/acc/'
       : undefined;
   return prefix && path.slice(prefix.length);
