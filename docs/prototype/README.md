@@ -24,6 +24,9 @@ in this guide remain in force.
 The local source after RC7 also has a read-only, app-owned mock naming adapter.
 See [naming-service interfaces, replacement and demo limits](../site/names.md).
 It is independent of onboarding and never authorizes or redirects a transfer.
+The opt-in Midnames source profile requires its two configured indexers to
+select the same node-finalized block before comparing a named ACC target; a
+lagging reader is unavailable, not a second vote for an older destination.
 
 For the current `acc-s3r1.1` setup, funding flow, audit status and operator handover, see the
 [engineering handover](../site/handover.md). The run evidence below is historical and names the

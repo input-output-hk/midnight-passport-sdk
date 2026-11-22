@@ -51,6 +51,30 @@ const hex = (value: Uint8Array): string =>
   Array.from(value, (byte) => byte.toString(16).padStart(2, '0')).join('');
 const ADDRESS = /^[a-f0-9]{64}$/;
 
+async function selectFinalizedBlock(
+  block: MidnamesIndexerBlock | null | undefined,
+  verify?: (block: MidnamesIndexerBlock) => Promise<void>,
+): Promise<MidnamesIndexerBlock> {
+  if (
+    !block ||
+    !ADDRESS.test(block.hash) ||
+    !Number.isSafeInteger(block.height) ||
+    block.height < 0
+  )
+    throw new PassportNameError('Unavailable');
+  const selected = Object.freeze({ height: block.height, hash: block.hash });
+  await verify?.(selected);
+  return selected;
+}
+
+function registryVerifierMap(profile: MidnamesRegistryProfile) {
+  return new Map(
+    Object.entries(
+      profile === 'standalone-0.35' ? STANDALONE_REGISTRY_VERIFIERS : MIDNAMES_REGISTRY_VERIFIERS,
+    ),
+  );
+}
+
 async function sha256(value: Uint8Array): Promise<string> {
   return hex(new Uint8Array(await crypto.subtle.digest('SHA-256', new Uint8Array(value))));
 }
@@ -123,6 +147,12 @@ export function createMidnamesLedgerReads(
   candidate?: CandidateAccountQualification,
   verifyFinalizedBlock?: (block: MidnamesIndexerBlock) => Promise<void>,
 ): MidnamesReads & {
+  readFinalizedBlock(): Promise<MidnamesIndexerBlock>;
+  readSupportedTargetAt(
+    name: string,
+    profile: Readonly<MidnamesProfile>,
+    block: MidnamesIndexerBlock,
+  ): Promise<DomainTarget | undefined>;
   readSupportedTarget(
     name: string,
     profile: Readonly<MidnamesProfile>,
@@ -135,13 +165,7 @@ export function createMidnamesLedgerReads(
   ): Promise<{ readonly ownerCommitment: string; readonly target: DomainTarget } | undefined>;
 } {
   const pinnedProfile = registryProfile(profileId, networkId);
-  const registryVerifiers = new Map(
-    Object.entries(
-      pinnedProfile === 'standalone-0.35'
-        ? STANDALONE_REGISTRY_VERIFIERS
-        : MIDNAMES_REGISTRY_VERIFIERS,
-    ),
-  );
+  const registryVerifiers = registryVerifierMap(pinnedProfile);
   if (candidate) {
     const pin = resolvePinnedBinding(candidate.bindingId);
     if (
@@ -209,37 +233,39 @@ export function createMidnamesLedgerReads(
       return undefined;
     }
   };
+  const readSupportedTargetAt = async (
+    name: string,
+    profile: Readonly<MidnamesProfile>,
+    block: MidnamesIndexerBlock | null | undefined,
+  ) => {
+    if (profile.networkId !== networkId) throw new PassportNameError('InvalidQuery');
+    const selected = await selectFinalizedBlock(block, verifyFinalizedBlock);
+    const source: RegistryProvider = {
+      ...provider,
+      queryContractState: (address) =>
+        provider.queryContractState(address, { type: 'blockHash', blockHash: selected.hash }),
+    };
+    const domain = await readDomain(name, profile, source);
+    if (domain === undefined) return undefined;
+    const target = readDomainTarget(domain);
+    if (target.kind === 'contract') {
+      if (!target.address || !ADDRESS.test(target.address))
+        throw new PassportNameError('InvalidRecord');
+      if (!(await supportedAccount(target.address, networkId, source)))
+        throw new PassportNameError('InvalidRecord');
+    }
+    return target;
+  };
   return {
     async readTarget(name, profile) {
       return (await readClaim(name, profile))?.target;
     },
     async readSupportedTarget(name, profile) {
-      if (profile.networkId !== networkId) throw new PassportNameError('InvalidQuery');
-      const block = await provider.queryBlock();
-      if (
-        !block ||
-        !ADDRESS.test(block.hash) ||
-        !Number.isSafeInteger(block.height) ||
-        block.height < 0
-      )
-        throw new PassportNameError('Unavailable');
-      await verifyFinalizedBlock?.(block);
-      const source: RegistryProvider = {
-        ...provider,
-        queryContractState: (address) =>
-          provider.queryContractState(address, { type: 'blockHash', blockHash: block.hash }),
-      };
-      const domain = await readDomain(name, profile, source);
-      if (domain === undefined) return undefined;
-      const target = readDomainTarget(domain);
-      if (target.kind === 'contract') {
-        if (!target.address || !ADDRESS.test(target.address))
-          throw new PassportNameError('InvalidRecord');
-        if (!(await supportedAccount(target.address, networkId, source)))
-          throw new PassportNameError('InvalidRecord');
-      }
-      return target;
+      return readSupportedTargetAt(name, profile, await provider.queryBlock());
     },
+    readFinalizedBlock: async () =>
+      selectFinalizedBlock(await provider.queryBlock(), verifyFinalizedBlock),
+    readSupportedTargetAt,
     readClaim,
     async hasDomain(name, profile) {
       return (await readDomain(name, profile)) !== undefined;

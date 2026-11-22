@@ -936,9 +936,12 @@ require a separately configured node origin and an independently confirmed
 non-genesis chain block. A
 non-`undeployed` network or non-loopback indexer also requires an independently
 observed, public known-name and ACC pin plus a second, distinct-origin indexer
-endpoint pair. Each lookup
-rechecks the known pair through both paths and refuses an absent, changed or
-divergent binding. Configure `VITE_MIDNAMES_VERIFICATION_INDEXER_URL` and
+endpoint pair. Each two-provider lookup first requires both indexers to select
+the same canonical finalized block, then reads both registry and target ACC
+at that block. A lagging or divergent indexer refuses before target display.
+The two-provider profile requires the separate node pin even on loopback.
+Each lookup rechecks the known pair through both paths and refuses an absent,
+changed or divergent binding. Configure `VITE_MIDNAMES_VERIFICATION_INDEXER_URL` and
 `VITE_MIDNAMES_VERIFICATION_INDEXER_WS_URL` together. Distinct origins do not
 prove independent chain state or state-byte authenticity; online qualification still needs a verified live
 mapping and authenticated host-controlled provider where required. Claim

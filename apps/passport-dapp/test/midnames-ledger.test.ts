@@ -457,8 +457,10 @@ test('installed Midnames v2.1 reads its generated registry over the Ledger 9 ind
   assert.equal(await reads.readSupportedNightBalance(target, 'other-network'), undefined);
   const blockHash = 'aa'.repeat(32);
   const offsets: Array<{ address: string; offset: unknown }> = [];
+  let blockReads = 0;
   const pinnedProvider = {
     async queryBlock() {
+      blockReads++;
       return { hash: blockHash, height: 100 };
     },
     async queryContractState(address: string, offset: unknown) {
@@ -485,6 +487,23 @@ test('installed Midnames v2.1 reads its generated registry over the Ledger 9 ind
   );
   assert.deepEqual(offsets, [], 'Do not read registry or ACC bytes before the node block check.');
   const atomic = createMidnamesLedgerReads(pinnedProvider, 'undeployed', 'acc-s3r1.1');
+  assert.deepEqual(await atomic.readFinalizedBlock(), { hash: blockHash, height: 100 });
+  const selectedReads = blockReads;
+  await assert.rejects(
+    atomic.readSupportedTargetAt('alice.night', profile, { hash: blockHash, height: 100 }),
+    { code: 'InvalidRecord' },
+  );
+  assert.equal(blockReads, selectedReads, 'A shared selected block must not be silently replaced.');
+  assert.deepEqual(offsets, [
+    { address: profile.registryAddress, offset: { type: 'blockHash', blockHash } },
+    { address: target, offset: { type: 'blockHash', blockHash } },
+  ]);
+  offsets.length = 0;
+  await assert.rejects(
+    atomic.readSupportedTargetAt('alice.night', profile, { hash: '0x' + blockHash, height: 100 }),
+    { code: 'Unavailable' },
+  );
+  assert.deepEqual(offsets, [], 'Malformed shared block must refuse before contract reads.');
   await assert.rejects(atomic.readSupportedTarget('alice.night', profile), {
     code: 'InvalidRecord',
   });

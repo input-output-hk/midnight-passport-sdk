@@ -201,6 +201,12 @@ checks its selected indexer block against the configured node's finalized
 canonical chain on each supported-target lookup. It still trusts indexer
 contract-state bytes at that block. Neither check qualifies an online provider
 or proves the returned state cryptographically.
+When two indexers are configured, each lookup requires them to select the
+same finalized canonical block before reading either target. Both reads use
+that block hash for the registry and ACC. A lagging provider refuses instead
+of making an older target appear to agree with a newer one. The separate
+node pin is required for a two-indexer profile, including local loopback.
+This source behavior has no qualified online mapping or independent backend receipt.
 
 As checked on 19 November 2026, the pinned SDK's historical Midnight-hosted
 preprod indexer endpoint returns HTTP 410. The [current network endpoint

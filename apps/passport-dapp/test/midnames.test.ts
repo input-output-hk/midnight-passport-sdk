@@ -11,6 +11,7 @@ import {
   createMidnamesNameService,
   requireAgreeingMidnamesResolvers,
   requireKnownMidnamesMapping,
+  requireMatchingFinalizedIndexerBlock,
   type MidnamesReads,
 } from '../src/midnames/resolver.js';
 
@@ -147,6 +148,43 @@ test('two verifier-checked readers must agree on every observed contract target'
   );
 });
 
+test('two finalized indexers must select one identical block before a shared read', async () => {
+  const first = { height: 120, hash: 'ab'.repeat(32) };
+  const second = { ...first };
+  const selected = await requireMatchingFinalizedIndexerBlock(
+    async () => first,
+    async () => second,
+  );
+  assert.deepEqual(selected, first);
+  assert.ok(Object.isFrozen(selected));
+  second.height++;
+  await assert.rejects(
+    requireMatchingFinalizedIndexerBlock(
+      async () => first,
+      async () => second,
+    ),
+    code('Unavailable'),
+  );
+  second.height = first.height;
+  second.hash = 'cd'.repeat(32);
+  await assert.rejects(
+    requireMatchingFinalizedIndexerBlock(
+      async () => first,
+      async () => second,
+    ),
+    code('Unavailable'),
+  );
+  await assert.rejects(
+    requireMatchingFinalizedIndexerBlock(
+      async () => first,
+      async () => {
+        throw new Error('private witness failure');
+      },
+    ),
+    code('Unavailable'),
+  );
+});
+
 test('configured name lookup requires an explicit matching network, registry and public indexer endpoints', () => {
   assert.equal(configureMidnames({}, profile.networkId, 'acc-s3r1.1'), undefined);
   const config = {
@@ -157,6 +195,19 @@ test('configured name lookup requires an explicit matching network, registry and
   assert.equal(
     configureMidnames(config, profile.networkId, 'acc-s3r1.1')?.provider.mode,
     'external',
+  );
+  assert.throws(
+    () =>
+      configureMidnames(
+        {
+          ...config,
+          verificationIndexerUrl: 'http://127.0.0.1:18089/api/v4/graphql',
+          verificationIndexerWsUrl: 'ws://127.0.0.1:18089/api/v4/graphql/ws',
+        },
+        profile.networkId,
+        'acc-s3r1.1',
+      ),
+    /separately pinned finalized node/,
   );
   assert.ok(
     configureMidnames(

@@ -17,6 +17,10 @@ chain. The local demo also checks each supported-target lookup against a
 separately pinned node's canonical finalized block. Neither check authenticates
 the indexer's contract-state bytes or establishes an online provider or the
 proposed MIP-0007 delegated resolver.
+With two configured indexers, the browser now requires a matching selected
+finalized block and reads both providers at that exact block hash; a lagging
+reader refuses. This guards the comparison's block scope but remains source
+behavior without an independently qualified online mapping.
 
 A later [independent local indexer read](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/independent-indexer-local-provenance-20261122.json)
 at signed `aa0d436d` used a second self-hosted Indexer API v4 instance with
