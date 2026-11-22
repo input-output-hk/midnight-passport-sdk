@@ -97,7 +97,11 @@ try {
     assert.equal(tx.version, 'v9');
     const ordinal = receipt.transactions.length + 1;
     const raw = tx.tx.serialize();
-    writeFileSync(join(output, `tx-${ordinal}.private.bin`), raw, { mode: 0o600, flag: 'wx' });
+    writeFileSync(join(output, `tx-${ordinal}.private.bin`), raw, {
+      mode: 0o600,
+      flag: 'wx',
+      flush: true,
+    });
     const original = { ordinal, sha256: sha256(raw) };
     receipt.transactions.push(original);
     save();

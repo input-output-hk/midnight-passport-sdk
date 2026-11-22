@@ -1013,7 +1013,7 @@ nix develop -c env -u LD_DYLD_PATH \
   PASSPORT_MIDNAMES_NATIVE=1 PASSPORT_RC_LOCALNET=1 \
   node examples/midnames-local/qualify-deposit.mjs \
   midnames-acc-candidate-fresh-run \
-  /absolute/path/to/prepared-registry \
+  - \
   /absolute/path/to/acc-reference/contract
 ```
 

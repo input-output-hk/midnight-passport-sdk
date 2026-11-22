@@ -43,7 +43,7 @@ assertIsolationOverrides(process.env);
 const interactive = interactiveReviewRequested();
 if (interactive) assertReviewTerminal();
 const [out, prepared, ref, subnet] = process.argv.slice(2);
-assert.ok(prepared && ref && isAbsolute(prepared) && isAbsolute(ref));
+assert.ok(ref && isAbsolute(ref));
 if (subnet !== undefined) {
   const [address, prefix] = subnet.split('/');
   assert.ok(address?.startsWith('10.') && isIPv4(address) && /^2[4-9]$/.test(prefix ?? ''));
@@ -65,6 +65,7 @@ assert.match(
   /^midnames-(?:acc-candidate|deposit|deposit-browser|night-send|night-browser|claim-handoff|claim-browser|claim-preproof|claim-owner-browser|claim-partial-probe|claim-retry|claim-page-retry)-[a-z0-9-]{1,48}$/,
 );
 const candidateAccount = out.startsWith('midnames-acc-candidate-');
+assert.ok(candidateAccount ? prepared === '-' : prepared && isAbsolute(prepared));
 const candidateAssets = process.env.PASSPORT_MIDNAMES_CANDIDATE_ASSETS;
 assert.equal(
   Boolean(candidateAssets),
@@ -246,7 +247,7 @@ try {
   };
   receipt.leasePin = pin;
   save();
-  await verifyPreparedRegistry(prepared, deadline.check);
+  if (!candidateAccount) await verifyPreparedRegistry(prepared, deadline.check);
   inputs = await isolatedInputs(root, ref, deadline.check);
   receipt.source = inputs.frozen.source;
   await Promise.all(Object.values(ISOLATED_PORTS).map(isolatedFreePort));
@@ -356,7 +357,7 @@ try {
     if (inputs) {
       const check = () => assert.ok(deadline.cleanupRemaining() > 0);
       await inputs.verify(check);
-      await verifyPreparedRegistry(prepared, check);
+      if (!candidateAccount) await verifyPreparedRegistry(prepared, check);
       verifyProbeKeys();
       if (candidateAccount) {
         assert.ok(candidateAssets);
