@@ -207,6 +207,10 @@ that block hash for the registry and ACC. A lagging provider refuses instead
 of making an older target appear to agree with a newer one. The separate
 node pin is required for a two-indexer profile, including local loopback.
 This source behavior has no qualified online mapping or independent backend receipt.
+The [matched-tip local receipt](../../examples/midnames-local/evidence/independent-indexer-matched-tip-20261122.json)
+at signed source `3a860393` exercises that configured resolver with two
+self-hosted indexers on the shared Ledger 9 node. The read was invoked from
+Node; it is not a physical-provider or online-profile qualification.
 
 As checked on 19 November 2026, the pinned SDK's historical Midnight-hosted
 preprod indexer endpoint returns HTTP 410. The [current network endpoint

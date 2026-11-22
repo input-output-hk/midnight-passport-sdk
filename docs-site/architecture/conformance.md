@@ -21,6 +21,10 @@ With two configured indexers, the browser now requires a matching selected
 finalized block and reads both providers at that exact block hash; a lagging
 reader refuses. This guards the comparison's block scope but remains source
 behavior without an independently qualified online mapping.
+The [matched-tip local receipt](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/independent-indexer-matched-tip-20261122.json)
+at signed source `3a860393` runs the configured resolver from Node against
+the two self-hosted local indexers. It does not qualify a browser credential
+or an online provider.
 
 A later [independent local indexer read](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/independent-indexer-local-provenance-20261122.json)
 at signed `aa0d436d` used a second self-hosted Indexer API v4 instance with

@@ -74,6 +74,11 @@ node/indexer origins and provider qualification.
 The [redacted local receipt](evidence/independent-indexer-local-provenance-20261122.json)
 records the matching selected tips, exact witness provenance, state hashes and
 known name target from this read-only qualification.
+The later [matched-tip app resolver receipt](evidence/independent-indexer-matched-tip-20261122.json)
+records both local indexers at one selected finalized tip, identical state
+bytes at the claim block, and a successful read through the configured app
+resolver at signed source `3a860393`. It was invoked from Node, not a passkey
+browser, and does not qualify independent online providers.
 
 ```sh
 nix develop -c node scripts/midnames-local-demo.mjs check

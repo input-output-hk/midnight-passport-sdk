@@ -953,6 +953,9 @@ attaches to the existing shared node with its own credentials and volume. The
 checks one exact registry/ACC block state on both indexers and exercises this
 dual-provider resolver. The witness does not start another node or prover, and
 two indexers on one node do not qualify online provider independence.
+The [matched-tip local receipt](../examples/midnames-local/evidence/independent-indexer-matched-tip-20261122.json)
+exercises the configured app resolver at signed source `3a860393`, from Node
+without a browser credential or transaction.
 The default remains the mock.
 
 The provisional `acc-s3r1.1-zkir036` profile is available only through the
