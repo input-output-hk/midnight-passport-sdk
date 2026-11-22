@@ -160,6 +160,20 @@ claiming online qualification. Claim availability and finality still read the
 primary path after the known-name gate; this slice does not qualify an online
 claim flow.
 
+For the local `undeployed` profile, a separately stored
+[Indexer API v4 witness](../../infra/localnet/README.md#independent-local-indexer-api-v4-read-witness)
+can attach to the existing shared node without starting another chain. The
+[read-only verifier](../../examples/midnames-local/README.md#check-an-independent-indexer-read-path)
+compares the serialized registry and activated ACC state at one pinned claim
+block hash across the primary and witness indexers, verifies both selected
+blocks against the canonical finalized node, then exercises the configured
+two-indexer resolver on the known `paidfix.night` → ACC pair. Its
+[redacted local receipt](../../examples/midnames-local/evidence/independent-indexer-local-20261122.json)
+records equal state hashes and a matching name resolution at signed source
+`7b24f180`. Both indexers use the same node and the historical claim-block
+pin; their agreement is a local replaceability check, not an authenticated
+state proof or online provider qualification.
+
 The reference demo pins the published Midnames 2.1.0 reader. Its generated
 reader matches the pinned
 [`ledger-9-live` commit](https://github.com/midnames/ns-sdk/tree/f8f2edd425221b95c9158d74e7318d2fbb4f61b2),

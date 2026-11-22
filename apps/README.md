@@ -943,6 +943,13 @@ divergent binding. Configure `VITE_MIDNAMES_VERIFICATION_INDEXER_URL` and
 prove independent chain state or state-byte authenticity; online qualification still needs a verified live
 mapping and authenticated host-controlled provider where required. Claim
 finality continues to use the primary path.
+For a repeatable **local** second read path, the
+[indexer-only witness](../infra/localnet/README.md#independent-local-indexer-api-v4-read-witness)
+attaches to the existing shared node with its own credentials and volume. The
+[read-only comparison](../examples/midnames-local/README.md#check-an-independent-indexer-read-path)
+checks one exact registry/ACC block state on both indexers and exercises this
+dual-provider resolver. The witness does not start another node or prover, and
+two indexers on one node do not qualify online provider independence.
 The default remains the mock.
 
 The provisional `acc-s3r1.1-zkir036` profile is available only through the
