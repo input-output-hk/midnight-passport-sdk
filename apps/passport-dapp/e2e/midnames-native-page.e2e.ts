@@ -41,7 +41,10 @@ assert.match(input.maximumDust, /^[0-9]+$/);
 const candidate = input.candidate;
 if (candidate) {
   assert.equal(candidate.bindingId, 'acc-s3r1.1-zkir036');
-  assert.match(candidate.manifestSha256, /^[0-9a-f]{64}$/);
+  assert.equal(
+    candidate.manifestSha256,
+    '590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f',
+  );
   assert.equal(
     candidate.modulePath,
     resolve(output, '..', 'candidate-account-runtime/account.mjs'),
@@ -55,8 +58,7 @@ assert.match(ownerPort ?? '', /^[1-9][0-9]{0,4}$/);
 assert.equal(process.env.MN_INDEXER_URL, 'http://127.0.0.1:18108/api/v4/graphql');
 assert.equal(process.env.MN_INDEXER_WS_URL, 'ws://127.0.0.1:18108/api/v4/graphql/ws');
 Object.assign(process.env, {
-  PASSPORT_MANIFEST_SHA256:
-    candidate?.manifestSha256 ?? '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f',
+  PASSPORT_MANIFEST_SHA256: '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f',
   PASSPORT_NETWORK_ID: 'undeployed',
   VITE_MIDNAMES_REGISTRY_PROFILE: 'standalone-0.35',
   VITE_MIDNAMES_REGISTRY_ADDRESS: input.registryAddress,
@@ -73,7 +75,7 @@ const connector = `
   export const ARM = 'p256', SIGNING_MODE = 'passkey', NETWORK_ID = 'undeployed';
   export const BINDING_ID = ${JSON.stringify(candidate?.bindingId ?? 'acc-s3r1.1')}, RP_ID = 'localhost';
   export const ORIGIN = location.origin, SERVICE_URL = location.origin;
-  export const MANIFEST_SHA256 = ${JSON.stringify(process.env.PASSPORT_MANIFEST_SHA256)};
+  export const MANIFEST_SHA256 = ${JSON.stringify(candidate?.manifestSha256 ?? process.env.PASSPORT_MANIFEST_SHA256)};
   export const ARTEFACT_URL = SERVICE_URL + '/v1/zk/' + BINDING_ID;
   export const exportDemoGrantOpening = async () => { throw Error('Outside claim fixture'); };
   const account = () => {
