@@ -1109,6 +1109,18 @@ online admission remain separate gates for that named payment run. A separate
 [candidate paid-claim run](evidence/candidate-acc-page-paid-claim-retry-20261122.json)
 now qualifies one local page-owned registration and failure retry.
 
+At signed `dfae8062`, a fresh isolated
+[adapter run](evidence/candidate-acc-adapter-named-night-send-20261122.json)
+repeated the two-leg payment with the exported `proveUnboundNightDeposit` path
+for the recipient. The wallet balanced its proof against the exact finalized
+bridge output. One withdrawal and one deposit finalized, the journal replayed
+neither, and the source/target balances again moved 10/0 → 6/0 → 6/4. The
+first attempt at `32978e76` failed at fixture pre-proof decoding after the
+withdrawal; its original and failed receipt remain retained. The passing run
+used a fresh chain and closed its exact owned resources. This does not yet
+qualify `createConnectedNightSend`, browser passkey consent, IndexedDB payment
+recovery or online name ownership.
+
 ### Provisional candidate paid name claim and retry
 
 The `midnames-claim-candidate-` lane uses the same complete candidate ACC

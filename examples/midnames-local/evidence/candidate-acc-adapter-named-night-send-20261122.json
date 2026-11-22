@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "kind": "candidate-acc-isolated-named-night-send-exported-adapter",
+  "result": "PASS",
+  "sourceHead": "dfae8062a603d527cadf4e324eab940b86c3c4b8",
+  "observedAt": "2026-11-22",
+  "candidateBinding": "acc-s3r1.1-zkir036",
+  "candidateManifestSha256": "590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f",
+  "profile": "fresh isolated Ledger 9 node, Indexer API v4, release prover; synthetic owner approval",
+  "name": "alice.night",
+  "nameAuthority": "root-owned local fixture",
+  "sourceAccAddress": "db59bce355f86520a9519a1a9980205ccb123f363c8e8566ee87b58e22701fa8",
+  "recipientAccAddress": "21b365bd66398a6df07a9342ee17d3fac386ef32146463db6777cb35eab41332",
+  "registryAddress": "d7c6fdd0ca9d3a055996254b46e3a07e6ce843d1be0ded2bb09c5f168c042e03",
+  "bothCandidateVerifierRostersChecked": true,
+  "originalTransactionCount": 28,
+  "balances": {
+    "before": { "source": "10", "target": "0" },
+    "afterWithdrawal": { "source": "6", "target": "0" },
+    "final": { "source": "6", "target": "4" }
+  },
+  "withdrawal": {
+    "txHash": "c49a551f29b6994d7fbd7746fef8c260adbbc4ebb58100c84c5f489c1a1206c4",
+    "blockHeight": 94,
+    "blockHash": "331ad44fd88987b04cfc960a774ba5933018d37c39e57b863565ab790c2c94f9",
+    "succeeded": true
+  },
+  "deposit": {
+    "txHash": "c1a4a95f437ca67ba434f638c61b49dfb0a682cbbb266def7d72bb6b7cde2d0e",
+    "blockHeight": 97,
+    "blockHash": "286c2e00a7c57fe3bf6f745d7ab1202abbe7c21e35a8ee7aca9d932e72238033",
+    "succeeded": true,
+    "provedWith": "proveUnboundNightDeposit"
+  },
+  "withdrawalDispatches": 1,
+  "depositDispatches": 1,
+  "exactBridgeOutputConsumed": true,
+  "replayBroadcasts": 0,
+  "inputsUnchanged": true,
+  "ownedContainersStopped": 3,
+  "retainedVolumes": true,
+  "leaseReleased": true,
+  "unrelatedResourcesControlled": 0,
+  "parentReceiptSha256": "f1996524ca69f7478e6c141cd3a6168e588ed9126bf0b31f12cd9cd5e330cf6c",
+  "workerReceiptSha256": "11902934082719d4b848441ee2e05a458c08e61f4e3a05130bf7dd1cceed53eb",
+  "priorFailedAttempt": {
+    "sourceHead": "32978e76",
+    "stage": "deposit proof preimage decode",
+    "ownedContainersStopped": 3,
+    "leaseReleased": true,
+    "receiptRetained": true
+  },
+  "limits": [
+    "This qualifies the isolated native core and exported deposit adapter, not createConnectedNightSend or the Passport browser page.",
+    "Owner approval was synthetic; no browser passkey, IndexedDB recovery, real provider or online name mapping was exercised.",
+    "The name was issued by the local registry root, not through user-owned paid registration in this run.",
+    "The provisional candidate binding remains disabled in the ordinary demo launcher."
+  ]
+}

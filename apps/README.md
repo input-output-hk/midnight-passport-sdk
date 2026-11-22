@@ -1243,5 +1243,8 @@ service and Indexer API v4. Its payment journal refuses a receipt from a
 different binding. The local demo launcher still sets
 `VITE_MIDNAMES_NIGHT_SEND=0` for candidate assets. The headless page check
 covers visibility and retained no-ID refusal; it does not establish an actual
-connected candidate payment. The isolated native two-leg fixture and direct
-candidate deposit have separate receipts and acceptance limits.
+connected candidate payment. A fresh isolated
+[native run](../examples/midnames-local/evidence/candidate-acc-adapter-named-night-send-20261122.json)
+settled both legs at one signed head, using the exported deposit adapter for
+the recipient. It did not exercise the connected browser host, passkey consent
+or IndexedDB payment recovery; those remain the launch gate.

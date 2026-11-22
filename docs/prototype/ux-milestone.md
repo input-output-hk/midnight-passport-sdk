@@ -180,9 +180,11 @@ owner review, host admission and deposit preflight. Its browser journal also
 pins the candidate profile so a stable or changed binding cannot resume its
 original. The launcher still sets `VITE_MIDNAMES_NIGHT_SEND=0` for candidate
 assets. Headless candidate checks cover visibility and the saved-original
-no-ID guard, while the host tests simulate its two legs. The isolated native
-fixture and settled direct deposit do not yet prove a connected browser
-withdrawal-to-deposit payment or recovery at this source head.
+no-ID guard, while the host tests simulate its two legs. A fresh isolated
+[native run](../../examples/midnames-local/evidence/candidate-acc-adapter-named-night-send-20261122.json)
+settled both legs with the exported recipient deposit adapter at one signed
+head. It does not prove a connected browser withdrawal-to-deposit payment or
+recovery; the launcher stays disabled for candidate assets.
 
 An unavailable indexer leaves the original receipt intact and reports the
 check as unavailable. Without claim preparation or sponsor dispatch, the panel
