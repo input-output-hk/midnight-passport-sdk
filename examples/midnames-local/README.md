@@ -976,6 +976,26 @@ deployed source verifier roster and refuses a mismatch before proof. It is
 restricted to isolated diagnostic qualification; do not use its hybrid ACC as
 an application or release binding.
 
+A subsequent [full-roster diagnostic](evidence/stable-full-roster-night-send-20261122.json)
+repeated the same reviewed two-leg payment after deploying a new source ACC
+with **all 52** 0.36-generated verifier keys. The release `9.0.2` prover
+finalized the withdrawal and recipient deposit, again moving 10/0 → 6/0 →
+6/4 with one dispatch per leg and no replay. The runner checked every on-chain
+verifier hash against the [complete inventory](evidence/compact036-acc-key-inventory-20261122.json)
+and verified authority retirement. This removes the one-circuit hybrid from
+the native diagnostic but does not create an SDK-supported binding: its
+module/runtime/ZKIR remain the 0.35 build, key restoration and registry
+versioning are still old, and the remaining ACC circuits have not been proved
+under the alternate keys. [ADR 0020](../../docs/adr/0020-ledger9-acc-key-generation-binding.md)
+sets the version-axis admission gate.
+
+The full-roster lane uses a fresh `midnames-night-browser-full036-` output
+name and a private `PASSPORT_MIDNAMES_DIAG_KEY_DIR` with exactly the 52
+inventory-matched `.verifier` files and the pinned JubJub withdrawal
+`.prover`. It refuses missing, extra, symlinked or mismatched files before
+creating the isolated stack. Use it only for a fresh isolated diagnostic;
+the existing retired ACC cannot accept this roster.
+
 The signed `a20a9b9` negative run `midnames-night-browser-decline-20261116a`
 passed on isolated `undeployed`. Chromium displayed the same exact review and
 clicked **Decline**. The source/target balances stayed 10/0 with zero owner

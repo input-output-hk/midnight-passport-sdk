@@ -113,6 +113,15 @@ unsupported diagnostic hybrid. An
 found 48 of 52 key pairs changed. A complete versioned 0.36 ACC binding and
 its native, online and real-provider gates remain open.
 
+A later [full-roster isolated run](https://github.com/input-output-hk/midnight-passport-sdk/blob/codex/midnames-036-binding/examples/midnames-local/evidence/stable-full-roster-night-send-20261122.json)
+deployed all 52 alternate verifier keys on a fresh source ACC and completed
+one stable-prover withdrawal and recipient deposit, with canonical indexed
+balances 10/0 → 6/0 → 6/4. This is still diagnostic: the SDK registry,
+restoration CLI and host routes serve the old binding, and the new source
+retains the old module/runtime. [ADR 0020](https://github.com/input-output-hk/midnight-passport-sdk/blob/codex/midnames-036-binding/docs/adr/0020-ledger9-acc-key-generation-binding.md)
+records the separate key-generation identity required before declaring a
+supported binding or broader Passport value conformance.
+
 The signed `a20a9b9` isolated owner-browser refusal adds a narrow #318 negative
 result: after Chromium displayed the exact named NIGHT route and clicked
 **Decline**, both ACC balances remained 10/0, with no owner signature, payment

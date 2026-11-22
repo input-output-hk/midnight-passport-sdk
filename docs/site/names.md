@@ -817,4 +817,14 @@ retired 0.35 ACC still has its old on-chain verifier. Full 0.36 artifact/key
 versioning and qualification, online naming and real-provider acceptance
 remain open.
 
+A later [full-roster isolated diagnostic](../../examples/midnames-local/evidence/stable-full-roster-night-send-20261122.json)
+deployed a fresh source with all 52 alternate on-chain verifier keys and
+completed the same indexed two-leg payment on stable `9.0.2`, with one
+dispatch per leg and 10/0 → 6/0 → 6/4 balances. The complete roster was
+checked against the pinned inventory and the maintenance authority was
+retired. The SDK still exposes only the old supported binding: the new source
+used the 0.35 module/runtime/ZKIR, and the other ACC circuits and key
+restoration have not been qualified. [ADR 0020](../../docs/adr/0020-ledger9-acc-key-generation-binding.md)
+records the required separate version identity and admission gates.
+
 See the [standalone recipe](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local).

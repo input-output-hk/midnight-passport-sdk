@@ -29,6 +29,16 @@ returned nonempty proof bytes. A later hybrid deployment with a matching
 withdrawal verifier completed a full indexed two-leg run on `9.0.2`, but
 #318 still needs a complete versioned binding and supported-profile gates.
 
+A [subsequent isolated full-roster diagnostic](https://github.com/input-output-hk/midnight-passport-sdk/blob/codex/midnames-036-binding/examples/midnames-local/evidence/stable-full-roster-night-send-20261122.json)
+deployed all 52 alternate verifier keys on a fresh source ACC and repeated
+the indexed 10/0 → 6/0 → 6/4 payment with stable `9.0.2`. This confirms the
+complete on-chain verifier roster for that route, but the current SDK cannot
+restore or select it as a supported binding. The old module/runtime and ZKIR
+were retained, and other ACC circuits are unqualified. The
+[version-axis decision](https://github.com/input-output-hk/midnight-passport-sdk/blob/codex/midnames-036-binding/docs/adr/0020-ledger9-acc-key-generation-binding.md)
+keeps the old binding intact while the candidate receives its own artifacts,
+restoration path and host checks. #318 remains open.
+
 ## Merged recovery slice and remaining gates
 
 [PR #370](https://github.com/input-output-hk/midnight-passport-sdk/pull/370) merged the source preview. At signed `3de4da8`, the full local Nix gate, independent exact-head review, [20 hosted core jobs](https://github.com/input-output-hk/midnight-passport-sdk/actions/runs/44465556996), and both image checks passed. It adds exact-original local funding recovery, finalized and same-block local name-to-ACC checks, a [Compact 0.36 read-only registry probe](https://github.com/input-output-hk/midnight-passport-sdk/blob/fd8919e961a34ca0fbfae2387be78039a208040d/examples/midnames-local/evidence/compact036-readonly-20261119.json), browser-to-sponsor pre-proof quote and saved-claim reconciliation, busy-before-proof refusal, and release of an older quote only after exact sponsor proof that it never reached wallet balancing. A [Preprod indexer proxy](https://github.com/input-output-hk/midnight-passport-sdk/blob/3de4da88852ff885e3d597a6b1337aa84242f5ed/examples/midnames-online/README.md) keeps a Blockfrost project ID on the host for an optional read-only profile. A separate host check anchors two tokenless v4 indexer reads and one operator-supplied known mapping to the same node-finalized block. The proxy and checker have synthetic/local-browser evidence only; neither qualifies a live public provider, independent backend, or online name.
