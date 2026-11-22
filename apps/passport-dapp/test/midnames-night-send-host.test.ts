@@ -68,29 +68,30 @@ test('provisional named NIGHT send refuses before wallet access or owner withdra
       },
     },
   } as unknown as DevWallet;
+  const options = {
+    account,
+    scope,
+    wallet,
+    names: {} as PassportNameService,
+    isSupportedRecipient: async () => true,
+    readSourceBalance: async () => 10n,
+    review: async () => true,
+    checkScope: () => {},
+    checkApproved: () => {},
+    network: candidate,
+    binding: accModule,
+    prover: {
+      proveTx: async () => {
+        throw new Error('No candidate proof.');
+      },
+    },
+  };
   await assert.rejects(
-    () =>
-      createConnectedNightSend(
-        {
-          account,
-          scope,
-          wallet,
-          names: {} as PassportNameService,
-          isSupportedRecipient: async () => true,
-          readSourceBalance: async () => 10n,
-          review: async () => true,
-          checkScope: () => {},
-          checkApproved: () => {},
-          network: candidate,
-          binding: accModule,
-          prover: {
-            proveTx: async () => {
-              throw new Error('No candidate proof.');
-            },
-          },
-        },
-        new IDBFactory(),
-      ),
+    () => createConnectedNightSend(options, new IDBFactory()),
+    /cannot send NIGHT by name/,
+  );
+  await assert.rejects(
+    () => createConnectedNightSend({ ...options, provisionalLocal: true }, new IDBFactory()),
     /cannot send NIGHT by name/,
   );
   assert.equal(walletTouched, false);
@@ -215,10 +216,13 @@ async function connectedJourney(network: NetworkConfig, provisionalLocal = false
       isSupportedAccount: async () => true,
     },
   );
+  const selectedScope = provisionalLocal
+    ? { ...scope, bindingId: network.bindingId, manifestSha256: network.manifestSha256 }
+    : scope;
   const host = await createConnectedNightSend(
     {
       account,
-      scope,
+      scope: selectedScope,
       wallet,
       names,
       isSupportedRecipient: async () => true,
@@ -276,7 +280,7 @@ async function connectedJourney(network: NetworkConfig, provisionalLocal = false
   finalized.add(deposit.hash);
   assert.equal((await host.send(request)).phase, 'completed');
   assert.equal(await host.readActive(), undefined);
-  const journal = await openBrowserNightSendJournal(factory, scope);
+  const journal = await openBrowserNightSendJournal(factory, selectedScope);
   assert.equal((await journal.readArchived(request.requestId))?.deposit?.hash, deposit.hash);
   journal.close();
   assert.deepEqual(calls, [
@@ -304,7 +308,7 @@ async function connectedJourney(network: NetworkConfig, provisionalLocal = false
       createConnectedNightSend(
         {
           account,
-          scope,
+          scope: selectedScope,
           wallet,
           names,
           isSupportedRecipient: async () => true,
@@ -331,7 +335,7 @@ async function connectedJourney(network: NetworkConfig, provisionalLocal = false
   const switched = await createConnectedNightSend(
     {
       account,
-      scope,
+      scope: selectedScope,
       wallet,
       names,
       isSupportedRecipient: async () => true,

@@ -23,6 +23,7 @@ import {
   newNamedNightRequest,
   requiresNewNightLegFee,
   sameLocalNightIndexer,
+  localNightService,
 } from './night-send-page-state.js';
 import { registryProfile } from './registry-pins.js';
 
@@ -48,6 +49,7 @@ function selectedScope(account: PassportAccount | undefined): BrowserNightSendSc
     networkId: 'undeployed',
     source: account.address,
     credentialId: hex(account.credentialId),
+    ...(candidate && { bindingId: BINDING_ID, manifestSha256: MANIFEST_SHA256 }),
   };
 }
 
@@ -80,6 +82,8 @@ async function connectedPageSend(
     MANIFEST_SHA256,
     import.meta.env.VITE_MIDNAMES_REGISTRY_PROFILE,
   );
+  if (candidate && !localNightService(SERVICE_URL))
+    throw new Error('The candidate NIGHT proof service must use an exact local origin.');
   const config = await fetchCheckedV1Config(
     SERVICE_URL,
     {

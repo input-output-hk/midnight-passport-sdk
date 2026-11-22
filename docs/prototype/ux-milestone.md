@@ -174,10 +174,15 @@ records one synthetic ACC creation, same-profile paid `.night` claim, exact
 indexed success and matching registry target. Those steps span signed source
 heads; the final head rechecked the saved registration without another send.
 One exact-head create-to-claim run and the combined named payment remain open.
-Candidate demo funding and connected named NIGHT sending are disabled until
-their generated ACC module and adapter pass an exact-head native qualification.
-The isolated named-send fixture and older stable funding receipt do not prove
-those connected candidate routes.
+Candidate demo funding remains disabled. The connected named NIGHT page source
+now checks the exact candidate binding and manifest through page selection,
+owner review, host admission and deposit preflight. Its browser journal also
+pins the candidate profile so a stable or changed binding cannot resume its
+original. The launcher still sets `VITE_MIDNAMES_NIGHT_SEND=0` for candidate
+assets. Headless candidate checks cover visibility and the saved-original
+no-ID guard, while the host tests simulate its two legs. The isolated native
+fixture and settled direct deposit do not yet prove a connected browser
+withdrawal-to-deposit payment or recovery at this source head.
 
 An unavailable indexer leaves the original receipt intact and reports the
 check as unavailable. Without claim preparation or sponsor dispatch, the panel

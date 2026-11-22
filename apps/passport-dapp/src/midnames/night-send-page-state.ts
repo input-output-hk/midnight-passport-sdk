@@ -19,6 +19,24 @@ export function localNightEndpoint(value: string | undefined, scheme: 'http' | '
   }
 }
 
+/** Candidate proof requests may use only an exact local service origin. */
+export function localNightService(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return (
+      (url.protocol === 'http:' || url.protocol === 'https:') &&
+      ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname) &&
+      url.pathname === '/' &&
+      !url.username &&
+      !url.password &&
+      !url.search &&
+      !url.hash
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function localNightChain(config: {
   readonly indexerUri: string;
   readonly indexerWsUri: string;

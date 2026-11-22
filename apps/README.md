@@ -1236,3 +1236,12 @@ The Node fixture demonstrates a named NIGHT payment using a controlled wallet
 and a durable two-leg journal. The reference browser withdrawal remains a
 separate wallet-address flow. See the
 [standalone recipe](../examples/midnames-local/README.md#run-the-named-acc-to-acc-night-payment).
+
+The provisional `acc-s3r1.1-zkir036` candidate has a source-only browser
+admission path pinned to the local manifest, standalone registry, loopback
+service and Indexer API v4. Its payment journal refuses a receipt from a
+different binding. The local demo launcher still sets
+`VITE_MIDNAMES_NIGHT_SEND=0` for candidate assets. The headless page check
+covers visibility and retained no-ID refusal; it does not establish an actual
+connected candidate payment. The isolated native two-leg fixture and direct
+candidate deposit have separate receipts and acceptance limits.

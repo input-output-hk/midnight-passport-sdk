@@ -105,7 +105,7 @@ try {
   assert.equal(await page.locator('#sendNamedNight').isEnabled(), true);
 
   await page.evaluate(
-    async ({ accountAddress, registryAddress }) => {
+    async ({ accountAddress, registryAddress, candidate, binding, manifest }) => {
       const scope = ['undeployed', accountAddress];
       const db = await new Promise<IDBDatabase>((resolve, reject) => {
         const request = indexedDB.open('mn-passport:night-send', 1);
@@ -131,6 +131,7 @@ try {
           {
             version: 1,
             credentialId: '01'.repeat(32),
+            ...(candidate && { bindingId: binding, manifestSha256: manifest }),
             intent,
             ownerStartedAt: new Date().toISOString(),
           },
@@ -141,7 +142,7 @@ try {
       });
       db.close();
     },
-    { accountAddress: account, registryAddress: registry },
+    { accountAddress: account, registryAddress: registry, candidate, binding, manifest },
   );
 
   await openAccount();

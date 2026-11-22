@@ -5,6 +5,7 @@ import {
   type NightSendLeg,
 } from './night-send.js';
 import { validNightCredentialHex } from './night-send-credential.js';
+import { localNightBinding } from './local-binding.js';
 
 const databaseName = 'mn-passport:night-send';
 const activeStore = 'active';
@@ -19,11 +20,16 @@ export interface BrowserNightSendScope {
   readonly source: string;
   /** Public credential identifier; never a passkey secret or PRF result. */
   readonly credentialId: string;
+  /** Candidate receipts carry the exact binding pin; legacy stable receipts remain readable. */
+  readonly bindingId?: string;
+  readonly manifestSha256?: string;
 }
 
 export interface BrowserNightSendRecord {
   readonly version: 1;
   readonly credentialId: string;
+  readonly bindingId?: string;
+  readonly manifestSha256?: string;
   readonly intent: NightSendIntent;
   readonly ownerStartedAt?: string;
   readonly withdrawal?: NightSendLeg;
@@ -99,6 +105,10 @@ function checkedLeg(value: unknown): NightSendLeg {
   return { hash: row.hash, identifiers: [...row.identifiers] };
 }
 
+function sameBindingProfile(row: Record<string, unknown>, scope: BrowserNightSendScope): boolean {
+  return row.bindingId === scope.bindingId && row.manifestSha256 === scope.manifestSha256;
+}
+
 function checkedRow(value: unknown, scope: BrowserNightSendScope): StoredNightSend | undefined {
   if (value === undefined) return undefined;
   if (!value || typeof value !== 'object' || Array.isArray(value))
@@ -113,6 +123,8 @@ function checkedRow(value: unknown, scope: BrowserNightSendScope): StoredNightSe
     throw new Error('Stored NIGHT owner attempt is invalid.');
   if (row.credentialId !== scope.credentialId)
     throw new Error('The original NIGHT payment belongs to another credential.');
+  if (!sameBindingProfile(row, scope))
+    throw new Error('The original NIGHT payment belongs to another binding.');
   const intent = checkedIntent(row.intent, scope);
   const withdrawal = row.withdrawal === undefined ? undefined : checkedLeg(row.withdrawal);
   const deposit = row.deposit === undefined ? undefined : checkedLeg(row.deposit);
@@ -121,6 +133,10 @@ function checkedRow(value: unknown, scope: BrowserNightSendScope): StoredNightSe
   return {
     version: 1,
     credentialId: scope.credentialId,
+    ...(scope.bindingId && {
+      bindingId: scope.bindingId,
+      manifestSha256: scope.manifestSha256,
+    }),
     intent,
     ...(row.ownerStartedAt && { ownerStartedAt: row.ownerStartedAt }),
     ...(withdrawal && { withdrawal }),
@@ -318,7 +334,11 @@ export async function openBrowserNightSendJournal(
   if (
     scope.networkId !== 'undeployed' ||
     !hex32(scope.source) ||
-    !validNightCredentialHex(scope.credentialId)
+    !validNightCredentialHex(scope.credentialId) ||
+    (scope.bindingId !== undefined &&
+      (scope.bindingId !== 'acc-s3r1.1-zkir036' ||
+        !localNightBinding(scope.bindingId, scope.manifestSha256, true))) ||
+    (scope.bindingId === undefined && scope.manifestSha256 !== undefined)
   )
     throw new Error('Invalid browser NIGHT payment scope.');
   const db = await openDatabase(factory);
@@ -374,7 +394,15 @@ export async function openBrowserNightSendJournal(
               return;
             }
             tx.objectStore(activeStore).add(
-              { version: 1, credentialId: scope.credentialId, intent },
+              {
+                version: 1,
+                credentialId: scope.credentialId,
+                ...(scope.bindingId && {
+                  bindingId: scope.bindingId,
+                  manifestSha256: scope.manifestSha256,
+                }),
+                intent,
+              },
               key,
             );
           };

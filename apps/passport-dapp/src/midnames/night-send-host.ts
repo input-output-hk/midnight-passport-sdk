@@ -62,6 +62,16 @@ const FENCE_PREFLIGHT_ERROR =
 const hex = (bytes: Uint8Array) =>
   Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
 
+function matchingCandidateJournalScope(
+  scope: BrowserNightSendScope,
+  network: NetworkConfig,
+): boolean {
+  return (
+    network.bindingId !== 'acc-s3r1.1-zkir036' ||
+    (scope.bindingId === network.bindingId && scope.manifestSha256 === network.manifestSha256)
+  );
+}
+
 function checkedSelection(options: ConnectedNightSendOptions) {
   const { account, wallet } = options;
   const scope = Object.freeze({ ...options.scope });
@@ -71,6 +81,7 @@ function checkedSelection(options: ConnectedNightSendOptions) {
     !localNightBinding(network.bindingId, network.manifestSha256, options.provisionalLocal) ||
     scope.networkId !== network.networkId ||
     scope.source !== account.address ||
+    !matchingCandidateJournalScope(scope, network) ||
     !validNightCredentialBytes(account.credentialId) ||
     hex(account.credentialId) !== scope.credentialId ||
     account.networkId !== network.networkId ||

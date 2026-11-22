@@ -6,6 +6,7 @@ import {
   localNightChain,
   localNightEndpoint,
   localNightNetwork,
+  localNightService,
   namedNightStatus,
   newNamedNightRequest,
   requiresNewNightLegFee,
@@ -45,6 +46,17 @@ test('opt-in named NIGHT payment accepts only local demo endpoints', () => {
   assert.equal(localNightEndpoint('ws://localhost:6300', 'ws'), true);
   assert.equal(localNightEndpoint('wss://localhost:6300', 'ws'), false);
   assert.equal(localNightEndpoint(undefined, 'ws'), false);
+  for (const endpoint of ['http://localhost:8787', 'http://127.0.0.1:8787/', 'https://[::1]:8787'])
+    assert.equal(localNightService(endpoint), true);
+  for (const endpoint of [
+    'https://proof.example',
+    'http://localhost:8787/proxy',
+    'http://user:pass@localhost:8787',
+    'http://localhost:8787/?token=x',
+    'http://localhost:8787/#fragment',
+    'not-a-url',
+  ])
+    assert.equal(localNightService(endpoint), false);
   const serviceConfig = {
     indexerUri: 'http://127.0.0.1:6300',
     indexerWsUri: 'ws://127.0.0.1:6300',

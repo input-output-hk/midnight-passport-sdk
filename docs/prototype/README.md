@@ -322,6 +322,14 @@ IDs for recovery. A connected local Ledger 9 browser run finalized both original
 legs of one named payment and recovered the same IDs after reload. It used a
 local mock JubJub credential; real-provider qualification remains open.
 
+For the separate provisional `acc-s3r1.1-zkir036` candidate, the source-only
+page path requires the exact local manifest, standalone registry profile,
+loopback service and Indexer API v4 endpoints. Its saved payment record carries
+that binding pin and cannot be resumed under the stable binding. The candidate
+launcher keeps the named-send control off while a same-head connected native
+payment and browser recovery are unqualified. The earlier isolated two-leg
+fixture and separately settled direct deposit establish narrower results.
+
 On the current shared Ledger 9 profile, the retained Compact 0.35 NIGHT
 deposit transcript overclaimed deleted-byte gas credit. The node rejected the
 prepared source-funding deposit before inclusion with error 104; its log named
