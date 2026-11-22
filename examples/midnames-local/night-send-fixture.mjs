@@ -105,6 +105,7 @@ export async function qualifyNightSend({
   priorSplitId,
   ref,
   probeKeyDirectory,
+  verifyHybridSource,
   step,
 }) {
   const [{ versionOfRecord }, rx, types] = await Promise.all([
@@ -307,6 +308,10 @@ export async function qualifyNightSend({
     journal: openJournal(directory),
     isSupportedRecipient: (address, network) => reads.isSupportedAccount(address, network),
     async readSourceBalance(address) {
+      if (verifyHybridSource && address === source) {
+        await verifyHybridSource();
+        return balance(address);
+      }
       return (await reads.isSupportedAccount(address, networkId)) ? balance(address) : undefined;
     },
     async review(intent) {

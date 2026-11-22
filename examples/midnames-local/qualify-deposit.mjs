@@ -66,11 +66,12 @@ assert.match(
 const browserReview =
   out.startsWith('midnames-deposit-browser-') || out.startsWith('midnames-night-browser-');
 const keyProbe = out.startsWith('midnames-night-browser-keyprobe-');
+const hybridVerifier = out.startsWith('midnames-night-browser-hybrid-');
 const keyProbeDirectory = process.env.PASSPORT_MIDNAMES_DIAG_KEY_DIR;
 assert.equal(
   Boolean(keyProbeDirectory),
-  keyProbe,
-  'Key probe input is limited to its diagnostic lane',
+  keyProbe || hybridVerifier,
+  'Alternate key input is limited to its diagnostic lanes',
 );
 if (keyProbeDirectory) assert.ok(isAbsolute(keyProbeDirectory));
 const browserDecline = out.startsWith('midnames-night-browser-decline-');
@@ -83,6 +84,7 @@ assert.ok(
 assert.ok(!manualBrowserReview || browserReview);
 assert.ok(!browserDecline || !manualBrowserReview);
 assert.ok(!browserRepoint || !manualBrowserReview);
+assert.ok(!hybridVerifier || (!manualBrowserReview && !browserRepoint));
 const fixtureMode = out.startsWith('midnames-claim-browser-')
   ? 'claim-browser'
   : out.startsWith('midnames-claim-preproof-')

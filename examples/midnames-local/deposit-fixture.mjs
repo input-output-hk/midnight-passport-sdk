@@ -87,6 +87,8 @@ const [
   import(pathToFileURL(join(ref, 'src/wallet/inbox.ts')).href),
 ]);
 const mode = process.env.PASSPORT_MIDNAMES_FIXTURE_MODE;
+const hybridVerifier = output.split('/').at(-1).startsWith('midnames-night-browser-hybrid-');
+assert.ok(!hybridVerifier || mode === 'named-night-send');
 assert.ok(
   [
     'named-shielded-deposit',
@@ -508,7 +510,79 @@ try {
     const { qualifyNightSend } = await import('./night-send-fixture.mjs');
     const { JubjubDevice, jubjubChallenges } = await getReferenceSigner();
     const device = JubjubDevice.generate();
+    let sourceForHybrid;
+    if (hybridVerifier) {
+      const diagnostic = process.env.PASSPORT_MIDNAMES_DIAG_KEY_DIR;
+      assert.ok(diagnostic, 'Missing pinned alternate withdrawal key pair');
+      const circuit = 'withdraw_unshielded_with_jubjub';
+      const newVerifier = new Uint8Array(readFileSync(join(diagnostic, circuit + '.verifier')));
+      const newProver = new Uint8Array(readFileSync(join(diagnostic, circuit + '.prover')));
+      assert.equal(
+        sha(newVerifier),
+        '0d379e75fc29bb44de21a263a1f3bd941658aed71ccaa41cf445b29b104715a4',
+      );
+      assert.equal(
+        sha(newProver),
+        'e4b273724feacdaacb4a842ac51ce4c0a9a51de96cc182fe67cc089fa05b33ab',
+      );
+      const originalZk = providers.zkConfigProvider;
+      providers.zkConfigProvider = Object.assign(Object.create(originalZk), {
+        getVerifierKey: (id) =>
+          id === circuit
+            ? Promise.resolve(new Uint8Array(newVerifier))
+            : originalZk.getVerifierKey(id),
+        getProverKey: (id) =>
+          id === circuit ? Promise.resolve(new Uint8Array(newProver)) : originalZk.getProverKey(id),
+      });
+      const alternateRegistry = await zk.nodeZkConfigRegistry(join(ref, 'contracts/managed'));
+      const oldResolve = alternateRegistry.resolveKeyLocation.bind(alternateRegistry);
+      const { parseContractKeyLocation } = await get('@midnight-ntwrk/midnight-js-types');
+      alternateRegistry.resolveKeyLocation = async (location) => {
+        const original = await oldResolve(location);
+        const parsed = parseContractKeyLocation(location);
+        return parsed?.circuitId === circuit && parsed.contractAddress === sourceForHybrid
+          ? { ...original, proverKey: newProver, verifierKey: newVerifier }
+          : original;
+      };
+      providers.proofProvider = proof.httpClientProofProvider(
+        process.env.MN_PROOF_SERVER_URL,
+        alternateRegistry,
+      );
+      step('select-isolated-hybrid-withdrawal-verifier');
+    }
     const source = await deployAccount('source', device.pk, inbox.generateEncKeyPair().publicKey);
+    sourceForHybrid = source;
+    const verifyHybridSource = hybridVerifier
+      ? async () => {
+          const account = key.deserialize(
+            (await providers.publicDataProvider.queryContractState(source)).serialize(),
+          );
+          const expected = JSON.parse(
+            readFileSync(
+              new URL(
+                '../../packages/contract/resources/acc-s3r1.1.key-manifest.json',
+                import.meta.url,
+              ),
+              'utf8',
+            ),
+          ).circuits;
+          assert.equal(account.operations().length, Object.keys(expected).length);
+          for (const [name, pin] of Object.entries(expected)) {
+            assert.equal(
+              sha(account.operation(name)?.verifierKey),
+              name === 'withdraw_unshielded_with_jubjub'
+                ? '0d379e75fc29bb44de21a263a1f3bd941658aed71ccaa41cf445b29b104715a4'
+                : pin.verifier.sha256,
+              `Isolated source verifier mismatch: ${name}`,
+            );
+          }
+          assert.deepEqual(account.maintenanceAuthority.committee, []);
+        }
+      : undefined;
+    if (verifyHybridSource) {
+      await verifyHybridSource();
+      assert.equal(await reads.isSupportedAccount(source, 'undeployed'), false);
+    }
     const browserRepoint = process.env.PASSPORT_MIDNAMES_BROWSER_REPOINT === '1';
     const repointTarget = browserRepoint
       ? await deployAccount('repoint', randomJubJubPoint(), inbox.generateEncKeyPair().publicKey)
@@ -559,7 +633,8 @@ try {
       repointName: browserRepoint ? repointName : undefined,
       defaultField,
       ref,
-      probeKeyDirectory: process.env.PASSPORT_MIDNAMES_DIAG_KEY_DIR,
+      probeKeyDirectory: hybridVerifier ? undefined : process.env.PASSPORT_MIDNAMES_DIAG_KEY_DIR,
+      verifyHybridSource,
       step,
     });
     if (process.env.PASSPORT_MIDNAMES_BROWSER_REVIEW === '1') {
@@ -591,9 +666,29 @@ try {
         assert.deepEqual(proofReceipt.sent, { withdraw: 0, deposit: 0 });
         assert.deepEqual(proofReceipt.final, { source: '10', target: '0' });
         step('verified-browser-review-before-withdrawal-key-probe');
-      } else step('verified-browser-owner-review-before-night-send');
+      } else {
+        if (hybridVerifier) {
+          await verifyHybridSource();
+          assert.deepEqual(proofReceipt.sent, { withdraw: 1, deposit: 1 });
+          assert.deepEqual(proofReceipt.final, { source: '6', target: '4' });
+          step('verified-isolated-hybrid-verifier-native-send');
+        } else step('verified-browser-owner-review-before-night-send');
+      }
     }
-    Object.assign(receipt, { ...proofReceipt, claimIdentifier, registryAddress, passed: true });
+    Object.assign(receipt, {
+      ...proofReceipt,
+      hybridVerifierDiagnostic: hybridVerifier
+        ? {
+            sourceOnly: true,
+            circuit: 'withdraw_unshielded_with_jubjub',
+            verifierSha256: '0d379e75fc29bb44de21a263a1f3bd941658aed71ccaa41cf445b29b104715a4',
+            supportedBinding: false,
+          }
+        : undefined,
+      claimIdentifier,
+      registryAddress,
+      passed: true,
+    });
     step(
       proofReceipt.declined
         ? 'verified-native-named-night-decline'
@@ -601,7 +696,9 @@ try {
           ? 'verified-native-named-night-repoint-refusal'
           : proofReceipt.keyProbe
             ? 'verified-stable-prover-withdrawal-key-response-without-send'
-            : 'verified-native-named-night-send',
+            : hybridVerifier
+              ? 'verified-stable-prover-hybrid-verifier-named-night-send'
+              : 'verified-native-named-night-send',
     );
   } else {
     await wallet.wallet.stop();
