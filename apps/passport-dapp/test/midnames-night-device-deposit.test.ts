@@ -2,6 +2,10 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ContractCall } from '@midnightntwrk/ledger-v9';
 import { WalletFacade } from '@midnightntwrk/wallet-sdk-facade';
+import { IDBFactory } from 'fake-indexeddb';
+import { openBrowserNightSendJournal } from '../src/midnames/night-send-journal.js';
+import { NIGHT_SEND_OPERATIONS } from '../src/midnames/night-send.js';
+import { exactFencedNightDeposit } from '../src/wallet/night-deposit-fence.js';
 import {
   checkedDeviceNightDepositRequest,
   checkedDeviceNightLeg,
@@ -61,6 +65,58 @@ test('the worker input parser owns the proof bytes and rejects a changed output'
       /Invalid NIGHT deposit request/,
     );
   }
+});
+
+test('candidate deposit keeps its binding pin through the worker journal fence', async () => {
+  const candidateScope = {
+    ...scope,
+    bindingId: 'acc-s3r1.1-zkir036',
+    manifestSha256: '590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f',
+  };
+  const parsed = checkedDeviceNightDepositRequest({ ...request, scope: candidateScope });
+  assert.deepEqual(parsed.scope, candidateScope);
+  assert.deepEqual(checkedDeviceNightDepositRequest(parsed).scope, candidateScope);
+  const factory = new IDBFactory();
+  const journal = await openBrowserNightSendJournal(factory, candidateScope);
+  try {
+    await journal.createIntent({
+      requestId: 'a1234567-a123-4123-8123-a123456789ab',
+      networkId: 'undeployed',
+      source: scope.source,
+      bridge,
+      asset: 'NIGHT',
+      amount: '4',
+      name: 'alice.night',
+      target,
+      providerId: `midnames:${'3'.repeat(64)}`,
+      namespace: 'night',
+      operations: NIGHT_SEND_OPERATIONS,
+    });
+    await journal.fenceLeg('withdraw', { hash, identifiers: ['00' + '4'.repeat(64)] });
+    await journal.fenceLeg('deposit', original);
+    assert.equal(
+      await exactFencedNightDeposit(parsed.scope, original, output, target, factory),
+      true,
+    );
+  } finally {
+    journal.close();
+  }
+  assert.throws(
+    () =>
+      checkedDeviceNightDepositRequest({
+        ...request,
+        scope: { ...candidateScope, manifestSha256: '0'.repeat(64) },
+      }),
+    /Invalid NIGHT deposit request/,
+  );
+  assert.throws(
+    () =>
+      checkedDeviceNightDepositRequest({
+        ...request,
+        scope: { ...candidateScope, manifestSha256: undefined },
+      }),
+    /Invalid NIGHT deposit request/,
+  );
 });
 
 test('the signer retains only one checked original and dispatches it once', async () => {

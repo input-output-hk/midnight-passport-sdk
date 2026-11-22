@@ -1248,3 +1248,7 @@ connected candidate payment. A fresh isolated
 settled both legs at one signed head, using the exported deposit adapter for
 the recipient. It did not exercise the connected browser host, passkey consent
 or IndexedDB payment recovery; those remain the launch gate.
+The candidate device deposit request now carries the binding and manifest pin
+through the wallet worker's parser and IndexedDB fence. A synthetic headless
+browser check covers that boundary and its saved-original refusal; it does not
+qualify a native connected payment.

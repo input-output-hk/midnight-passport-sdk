@@ -104,6 +104,95 @@ try {
     .waitFor();
   assert.equal(await page.locator('#sendNamedNight').isEnabled(), true);
 
+  if (candidate) {
+    const fencePage = await browser.newPage();
+    try {
+      await fencePage.goto(origin);
+      const fenced = await fencePage.evaluate(
+        async ({ accountAddress, registryAddress, bindingId, manifestSha256 }) => {
+          const depositUrl = '/src/wallet/night-deposit.ts';
+          const journalUrl = '/src/midnames/night-send-journal.ts';
+          const fenceUrl = '/src/wallet/night-deposit-fence.ts';
+          const { checkedDeviceNightDepositRequest } = (await import(
+            depositUrl
+          )) as typeof import('../src/wallet/night-deposit.js');
+          const { openBrowserNightSendJournal } = (await import(
+            journalUrl
+          )) as typeof import('../src/midnames/night-send-journal.js');
+          const { exactFencedNightDeposit } = (await import(
+            fenceUrl
+          )) as typeof import('../src/wallet/night-deposit-fence.js');
+          const scope = {
+            networkId: 'undeployed' as const,
+            source: accountAddress,
+            credentialId: '01'.repeat(32),
+            bindingId,
+            manifestSha256,
+          };
+          const bridge = '56'.repeat(32);
+          const target = '78'.repeat(32);
+          const withdrawal = { hash: 'ab'.repeat(32), identifiers: ['00' + 'cd'.repeat(32)] };
+          const deposit = { hash: 'ef'.repeat(32), identifiers: ['01' + '12'.repeat(32)] };
+          const output = {
+            transactionHash: withdrawal.hash,
+            intentHash: '34'.repeat(32),
+            outputNo: 0,
+            owner: bridge,
+            type: '00'.repeat(32),
+            value: 4n,
+          };
+          const parsed = checkedDeviceNightDepositRequest({
+            scope,
+            target,
+            output,
+            proven: Uint8Array.of(1),
+          });
+          const journal = await openBrowserNightSendJournal(indexedDB, scope);
+          try {
+            await journal.createIntent({
+              requestId: '12345678-1234-1234-1234-123456789abc',
+              networkId: 'undeployed',
+              source: accountAddress,
+              bridge,
+              target,
+              asset: 'NIGHT',
+              amount: '4',
+              name: 'alice.night',
+              providerId: `midnames:${registryAddress}`,
+              namespace: 'night',
+              operations: ['withdraw_unshielded_with_jubjub', 'deposit_unshielded'],
+            });
+            await journal.fenceLeg('withdraw', withdrawal);
+            await journal.fenceLeg('deposit', deposit);
+            return {
+              preserved:
+                parsed.scope.bindingId === bindingId &&
+                parsed.scope.manifestSha256 === manifestSha256,
+              fenced: await exactFencedNightDeposit(
+                parsed.scope,
+                deposit,
+                output,
+                target,
+                indexedDB,
+              ),
+            };
+          } finally {
+            journal.close();
+          }
+        },
+        {
+          accountAddress: account,
+          registryAddress: registry,
+          bindingId: binding,
+          manifestSha256: manifest,
+        },
+      );
+      assert.deepEqual(fenced, { preserved: true, fenced: true });
+    } finally {
+      await fencePage.close();
+    }
+  }
+
   await page.evaluate(
     async ({ accountAddress, registryAddress, candidate, binding, manifest }) => {
       const scope = ['undeployed', accountAddress];

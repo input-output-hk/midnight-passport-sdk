@@ -185,6 +185,9 @@ no-ID guard, while the host tests simulate its two legs. A fresh isolated
 settled both legs with the exported recipient deposit adapter at one signed
 head. It does not prove a connected browser withdrawal-to-deposit payment or
 recovery; the launcher stays disabled for candidate assets.
+The candidate worker now preserves its binding and manifest pin when it checks
+the finalized withdrawal and deposit fence. A headless browser checks the
+actual IndexedDB boundary; native connected browser payment remains pending.
 
 An unavailable indexer leaves the original receipt intact and reports the
 check as unavailable. Without claim preparation or sponsor dispatch, the panel

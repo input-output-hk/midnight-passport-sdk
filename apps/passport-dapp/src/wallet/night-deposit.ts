@@ -10,6 +10,7 @@ import { assertExactNightDeposit } from '../midnames/night-deposit-check.js';
 import type { NightSendLeg } from '../midnames/night-send.js';
 import type { BrowserNightSendScope } from '../midnames/night-send-journal.js';
 import { validNightCredentialHex } from '../midnames/night-send-credential.js';
+import { localNightBinding } from '../midnames/local-binding.js';
 
 const HEX = /^[a-f0-9]{64}$/;
 const ID = /^[a-f0-9]{66}$/;
@@ -29,6 +30,10 @@ export function checkedDeviceNightDepositRequest(value: unknown): DeviceNightDep
     throw new Error('Invalid NIGHT deposit request.');
   const row = value as Record<string, unknown>;
   const scope = row.scope as Record<string, unknown> | undefined;
+  const candidate =
+    scope?.bindingId === 'acc-s3r1.1-zkir036' &&
+    typeof scope.manifestSha256 === 'string' &&
+    localNightBinding(scope.bindingId, scope.manifestSha256, true);
   if (
     !scope ||
     scope.networkId !== 'undeployed' ||
@@ -39,7 +44,8 @@ export function checkedDeviceNightDepositRequest(value: unknown): DeviceNightDep
     !HEX.test(row.target) ||
     !(row.proven instanceof Uint8Array) ||
     row.proven.length === 0 ||
-    row.proven.length > MAX_PROVEN_BYTES
+    row.proven.length > MAX_PROVEN_BYTES ||
+    ((scope.bindingId !== undefined || scope.manifestSha256 !== undefined) && !candidate)
   )
     throw new Error('Invalid NIGHT deposit request.');
   return {
@@ -47,6 +53,10 @@ export function checkedDeviceNightDepositRequest(value: unknown): DeviceNightDep
       networkId: 'undeployed',
       source: scope.source,
       credentialId: scope.credentialId,
+      ...(candidate && {
+        bindingId: scope.bindingId as 'acc-s3r1.1-zkir036',
+        manifestSha256: scope.manifestSha256 as string,
+      }),
     },
     target: row.target,
     output: checkedNightBridgeOutput(row.output),
