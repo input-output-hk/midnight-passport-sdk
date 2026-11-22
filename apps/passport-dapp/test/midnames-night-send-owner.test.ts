@@ -86,13 +86,17 @@ test('the selected owner maps exactly NIGHT, amount and bridge and forwards the 
   ]);
 });
 
-test('the exact provisional local owner can enter the same fenced NIGHT route', async () => {
+test('the provisional owner refuses before entering the fenced NIGHT route', async () => {
   const { account, calls } = owner();
-  await createNightOwnerWithdrawal({ ...account, bindingId: 'acc-s3r1.1-zkir036' })(
-    intent,
-    async () => {},
+  await assert.rejects(
+    () =>
+      createNightOwnerWithdrawal({ ...account, bindingId: 'acc-s3r1.1-zkir036' })(
+        intent,
+        async () => {},
+      ),
+    /cannot fence this standalone NIGHT withdrawal/,
   );
-  assert.equal(calls.length, 1);
+  assert.equal(calls.length, 0);
 });
 
 test('the optional host approval check runs at the finalized owner callback before fencing', async () => {

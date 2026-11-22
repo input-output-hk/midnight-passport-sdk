@@ -330,7 +330,7 @@ if (mode === 'probe' || mode === 'inspect') {
 
 if (mode === 'host') {
   const config = loadConfig(process.env);
-  assertPinnedBinding(config);
+  assertPinnedBinding(config, process.env.PASSPORT_CANDIDATE_LOCAL === '1');
   const artifacts = pinnedZkRoute(config);
   const backend = await loadReferenceBackend(config);
   assert.ok(backend.hostMutations);

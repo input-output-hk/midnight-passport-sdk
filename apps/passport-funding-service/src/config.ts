@@ -1,11 +1,7 @@
-import { lstatSync, readFileSync, realpathSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { isAbsolute, join } from 'node:path';
-import {
-  BINDING_VERSION,
-  resolveBinding,
-  resolvePinnedBinding,
-} from '@input-output-hk/mn-passport-contract';
+import { join } from 'node:path';
+import { BINDING_VERSION, resolveBinding } from '@input-output-hk/mn-passport-contract';
 import type { FundingAssetPolicy } from '@input-output-hk/mn-passport-service';
 
 const ADDRESS = /^[0-9a-f]{64}$/;
@@ -124,29 +120,14 @@ function fundingEndpoints(
   };
 }
 
-function fundingBinding(env: NodeJS.ProcessEnv, networkId: string) {
+function fundingBinding(env: NodeJS.ProcessEnv) {
   const bindingId = env.PASSPORT_BINDING_ID ?? BINDING_VERSION;
-  const provisional = bindingId === 'acc-s3r1.1-zkir036';
-  if (!provisional && bindingId !== BINDING_VERSION)
+  if (bindingId !== BINDING_VERSION)
     throw new Error('passport-funding-service: binding differs from the package pin');
-  const binding = provisional ? resolvePinnedBinding(bindingId) : resolveBinding(bindingId);
+  const binding = resolveBinding(bindingId);
   if (env.PASSPORT_MANIFEST_SHA256 && env.PASSPORT_MANIFEST_SHA256 !== binding.manifestSha256)
     throw new Error('passport-funding-service: manifest differs from the package pin');
-  const candidateAssets = provisional ? env.PASSPORT_ARTEFACT_DIR : undefined;
-  if (
-    provisional &&
-    (networkId !== 'undeployed' ||
-      env.PASSPORT_CANDIDATE_LOCAL !== '1' ||
-      env.MIDNIGHT_STACK !== 'shared-ledger9' ||
-      env.PASSPORT_MANIFEST_SHA256 !== binding.manifestSha256 ||
-      !candidateAssets ||
-      !isAbsolute(candidateAssets) ||
-      !lstatSync(candidateAssets).isDirectory() ||
-      lstatSync(candidateAssets).isSymbolicLink() ||
-      realpathSync(candidateAssets) !== candidateAssets)
-  )
-    throw new Error('passport-funding-service: candidate needs exact local assets and manifest');
-  return { bindingId, binding, provisional, candidateAssets };
+  return { bindingId, binding };
 }
 
 export function loadFundingConfig(env: NodeJS.ProcessEnv): FundingConfig {
@@ -154,7 +135,7 @@ export function loadFundingConfig(env: NodeJS.ProcessEnv): FundingConfig {
   if (!/^[a-z0-9][a-z0-9-]*$/.test(networkId))
     throw new Error('passport-funding-service: invalid MN_NETWORK_ID');
   const contractDir = required(env, 'PASSPORT_CONTRACT_DIR');
-  const { bindingId, binding, provisional, candidateAssets } = fundingBinding(env, networkId);
+  const { bindingId, binding } = fundingBinding(env);
   if (networkId !== 'undeployed' && !env.PASSPORT_FUNDING_SEED_FILE)
     throw new Error('passport-funding-service: set PASSPORT_FUNDING_SEED_FILE');
   const walletSeed = env.PASSPORT_FUNDING_SEED_FILE
@@ -174,8 +155,6 @@ export function loadFundingConfig(env: NodeJS.ProcessEnv): FundingConfig {
       : required(env, 'PASSPORT_FUNDING_DEPLOYMENTS_FILE'));
   const indexerPort = env.MN_INDEXER_PORT ?? '18088';
   const allowedAssets = assets(required(env, 'PASSPORT_FUNDING_ASSETS_FILE'));
-  if (provisional && allowedAssets.some((asset) => asset.color !== '00'.repeat(32)))
-    throw new Error('passport-funding-service: candidate funding is limited to local NIGHT');
   if (networkId !== 'undeployed' && allowedAssets.some((asset) => asset.color === '00'.repeat(32)))
     throw new Error('passport-funding-service: NIGHT requires a node-backed network qualification');
   return {
@@ -185,7 +164,7 @@ export function loadFundingConfig(env: NodeJS.ProcessEnv): FundingConfig {
     networkId,
     ...fundingEndpoints(env, indexerPort),
     contractDir,
-    artefactDir: candidateAssets ?? join(contractDir, 'contracts/managed/account'),
+    artefactDir: join(contractDir, 'contracts/managed/account'),
     bindingId,
     manifestSha256: binding.manifestSha256,
     walletSeed,

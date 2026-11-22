@@ -10,6 +10,7 @@ import type { DevWallet } from '../wallet/contracts.js';
 import { createMidnamesIndexer, createMidnamesLedgerReads } from './ledger-reader.js';
 import { localCandidateAccount } from './candidate-account.js';
 import { createConnectedNightSend } from './night-send-host.js';
+import { localNightBinding } from './local-binding.js';
 import { validNightCredentialBytes } from './night-send-credential.js';
 import {
   openBrowserNightSendJournal,
@@ -32,6 +33,7 @@ function selectedScope(account: PassportAccount | undefined): BrowserNightSendSc
   if (
     account?.networkId !== 'undeployed' ||
     account.bindingId !== BINDING_ID ||
+    !localNightBinding(account.bindingId, MANIFEST_SHA256) ||
     account.scheme !== 'jubjub-schnorr' ||
     !/^[a-f0-9]{64}$/.test(account.address) ||
     !validNightCredentialBytes(account.credentialId)

@@ -101,9 +101,10 @@ The candidate build checks the exact manifest and generated module hashes.
 The service checks the complete candidate asset tree at startup. A successful
 build or page start does not qualify the combined create, claim, deposit and
 named-send journey; its native receipt must be recorded separately.
-`--funding` is optional after provisioning a dedicated funding wallet with a
-NIGHT-only policy. The candidate uses separate funding reservations and the
-candidate deployment log; no old stable-account reservation is reused.
+`--funding` is refused for this provisional profile until its generated ACC
+module and deposit adapter pass an exact-head native qualification. The
+candidate named NIGHT send is likewise disabled in the browser: its isolated
+native fixture does not qualify the connected withdrawal-to-deposit route.
 
 ### Register a name and fund a Passport account
 

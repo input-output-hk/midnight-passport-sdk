@@ -174,8 +174,10 @@ records one synthetic ACC creation, same-profile paid `.night` claim, exact
 indexed success and matching registry target. Those steps span signed source
 heads; the final head rechecked the saved registration without another send.
 One exact-head create-to-claim run and the combined named payment remain open.
-Candidate demo funding uses a separate NIGHT-only policy and reservation file;
-an older stable funding receipt is not evidence of a candidate deposit.
+Candidate demo funding and connected named NIGHT sending are disabled until
+their generated ACC module and adapter pass an exact-head native qualification.
+The isolated named-send fixture and older stable funding receipt do not prove
+those connected candidate routes.
 
 An unavailable indexer leaves the original receipt intact and reports the
 check as unavailable. Without claim preparation or sponsor dispatch, the panel

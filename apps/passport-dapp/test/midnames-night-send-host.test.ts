@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { IDBFactory } from 'fake-indexeddb';
 import type { PassportAccount } from '@input-output-hk/mn-passport-protocol';
+import type { PassportNameService } from '@input-output-hk/mn-passport-account/names';
 import type { NetworkConfig, Prover } from '@input-output-hk/mn-passport-account/ports';
 import { accModule } from '../src/acc-module.js';
 import { createMidnamesNameService } from '../src/midnames/resolver.js';
@@ -44,6 +45,56 @@ const network: NetworkConfig = {
   nodeUrl: 'http://node',
   artefactUrl: 'http://artefacts',
 };
+
+test('provisional named NIGHT send refuses before wallet access or owner withdrawal', async () => {
+  let walletTouched = false;
+  const candidate = {
+    ...network,
+    bindingId: 'acc-s3r1.1-zkir036',
+    manifestSha256: '590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f',
+  };
+  const account = {
+    address: source,
+    networkId: candidate.networkId,
+    bindingId: candidate.bindingId,
+    scheme: 'jubjub-schnorr',
+    credentialId: new Uint8Array(16).fill(0xdd),
+  } as PassportAccount;
+  const wallet = {
+    descriptor: {
+      async connect() {
+        walletTouched = true;
+        throw new Error('Candidate wallet must not be connected.');
+      },
+    },
+  } as unknown as DevWallet;
+  await assert.rejects(
+    () =>
+      createConnectedNightSend(
+        {
+          account,
+          scope,
+          wallet,
+          names: {} as PassportNameService,
+          isSupportedRecipient: async () => true,
+          readSourceBalance: async () => 10n,
+          review: async () => true,
+          checkScope: () => {},
+          checkApproved: () => {},
+          network: candidate,
+          binding: accModule,
+          prover: {
+            proveTx: async () => {
+              throw new Error('No candidate proof.');
+            },
+          },
+        },
+        new IDBFactory(),
+      ),
+    /cannot send NIGHT by name/,
+  );
+  assert.equal(walletTouched, false);
+});
 
 test('connected NIGHT host reopens the original journal through withdrawal, deposit and archive', async () => {
   const factory = new IDBFactory();

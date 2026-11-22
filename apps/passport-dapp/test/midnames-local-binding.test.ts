@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { localNightBinding } from '../src/midnames/local-binding.js';
 
-test('named NIGHT accepts only exact stable and provisional local pins', () => {
+test('connected named NIGHT requires the exact stable local pin', () => {
   assert.equal(
     localNightBinding(
       'acc-s3r1.1',
@@ -15,7 +15,7 @@ test('named NIGHT accepts only exact stable and provisional local pins', () => {
       'acc-s3r1.1-zkir036',
       '590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f',
     ),
-    true,
+    false,
   );
   assert.equal(localNightBinding('acc-s3r1.1-zkir036', '0'.repeat(64)), false);
   assert.equal(localNightBinding('acc-unknown'), false);

@@ -23,7 +23,7 @@ const sha256 = (file) => createHash('sha256').update(readFileSync(file)).digest(
 const manifest = (binding) =>
   JSON.parse(readFileSync(join(packageRoot, `resources/${binding}.key-manifest.json`), 'utf8'));
 
-test('old and alternate key profiles restore their independently pinned bytes', () => {
+test('old and alternate key profiles have independently pinned bytes', () => {
   const original = manifest('acc-s3r1.1');
   const alternate = manifest('acc-s3r1.1-zkir036');
   assert.equal(original.compilerManifestSha256, alternate.compilerManifestSha256);
@@ -67,35 +67,45 @@ test('old and alternate key profiles restore their independently pinned bytes', 
     original.circuits[circuit].verifier.sha256,
     alternate.circuits[circuit].verifier.sha256,
   );
-
-  const scratch = mkdtempSync(join(tmpdir(), 'passport-key-profiles-'));
-  try {
-    for (const [binding, pins] of [
-      ['acc-s3r1.1', original],
-      ['acc-s3r1.1-zkir036', alternate],
-    ]) {
-      const output = join(scratch, binding);
-      const args = [restore, '--binding', binding, '--output', output, '--circuit', circuit];
-      const first = spawnSync(process.execPath, args, { encoding: 'utf8', timeout: 120_000 });
-      assert.equal(first.status, 0, `${binding}: ${first.stderr}`);
-      for (const kind of ['prover', 'verifier']) {
-        const file = join(output, `${circuit}.${kind}`);
-        assert.equal(sha256(file), pins.circuits[circuit][kind].sha256);
-      }
-      const repeat = spawnSync(process.execPath, args, { encoding: 'utf8', timeout: 120_000 });
-      assert.equal(repeat.status, 0, `${binding}: ${repeat.stderr}`);
-      assert.match(repeat.stdout, /verified existing keys/);
-
-      const prover = join(output, `${circuit}.prover`);
-      writeFileSync(prover, Buffer.of(0xff));
-      const corrupt = spawnSync(process.execPath, args, { encoding: 'utf8', timeout: 120_000 });
-      assert.notEqual(corrupt.status, 0);
-      assert.match(corrupt.stderr, /existing key differs from the pinned manifest/);
-    }
-  } finally {
-    rmSync(scratch, { recursive: true, force: true });
-  }
 });
+
+test(
+  'old and alternate key profiles restore their independently pinned bytes',
+  {
+    skip: !process.env.COMPACT_DIRECTORY && 'requires the pinned Nix Compact toolchain',
+  },
+  () => {
+    const original = manifest('acc-s3r1.1');
+    const alternate = manifest('acc-s3r1.1-zkir036');
+    const scratch = mkdtempSync(join(tmpdir(), 'passport-key-profiles-'));
+    try {
+      for (const [binding, pins] of [
+        ['acc-s3r1.1', original],
+        ['acc-s3r1.1-zkir036', alternate],
+      ]) {
+        const output = join(scratch, binding);
+        const args = [restore, '--binding', binding, '--output', output, '--circuit', circuit];
+        const first = spawnSync(process.execPath, args, { encoding: 'utf8', timeout: 120_000 });
+        assert.equal(first.status, 0, `${binding}: ${first.stderr}`);
+        for (const kind of ['prover', 'verifier']) {
+          const file = join(output, `${circuit}.${kind}`);
+          assert.equal(sha256(file), pins.circuits[circuit][kind].sha256);
+        }
+        const repeat = spawnSync(process.execPath, args, { encoding: 'utf8', timeout: 120_000 });
+        assert.equal(repeat.status, 0, `${binding}: ${repeat.stderr}`);
+        assert.match(repeat.stdout, /verified existing keys/);
+
+        const prover = join(output, `${circuit}.prover`);
+        writeFileSync(prover, Buffer.of(0xff));
+        const corrupt = spawnSync(process.execPath, args, { encoding: 'utf8', timeout: 120_000 });
+        assert.notEqual(corrupt.status, 0);
+        assert.match(corrupt.stderr, /existing key differs from the pinned manifest/);
+      }
+    } finally {
+      rmSync(scratch, { recursive: true, force: true });
+    }
+  },
+);
 
 test('candidate key service serves only its versioned verifier route', async () => {
   const candidate = manifest('acc-s3r1.1-zkir036');

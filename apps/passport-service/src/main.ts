@@ -23,7 +23,7 @@ import {
 } from '@input-output-hk/mn-passport-service';
 
 const config = loadConfig(process.env);
-assertPinnedBinding(config);
+assertPinnedBinding(config, process.env.PASSPORT_CANDIDATE_LOCAL === '1');
 const artefactRoute = pinnedZkRoute(config);
 console.log(
   `passport-service: artefacts verified (${config.bindingId}, manifest ${config.manifestSha256.slice(0, 12)}…)`,
