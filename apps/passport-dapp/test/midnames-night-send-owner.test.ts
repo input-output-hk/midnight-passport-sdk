@@ -99,6 +99,25 @@ test('the provisional owner refuses before entering the fenced NIGHT route', asy
   assert.equal(calls.length, 0);
 });
 
+test('the candidate owner admits only an exact pinned local opt-in', async () => {
+  const { account, calls } = owner();
+  const candidate = { ...account, bindingId: 'acc-s3r1.1-zkir036' };
+  const pin = '590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f';
+  await createNightOwnerWithdrawal(candidate, undefined, {
+    manifestSha256: pin,
+    provisionalLocal: true,
+  })(intent, async () => {});
+  assert.equal(calls.length, 1);
+  await assert.rejects(
+    createNightOwnerWithdrawal(candidate, undefined, {
+      manifestSha256: '0'.repeat(64),
+      provisionalLocal: true,
+    })(intent, async () => {}),
+    /cannot fence/,
+  );
+  assert.equal(calls.length, 1);
+});
+
 test('the optional host approval check runs at the finalized owner callback before fencing', async () => {
   const { account } = owner();
   const order: string[] = [];

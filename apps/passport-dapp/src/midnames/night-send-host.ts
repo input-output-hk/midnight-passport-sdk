@@ -2,6 +2,7 @@ import type { PassportNameService } from '@input-output-hk/mn-passport-account/n
 import type { NetworkConfig, Prover } from '@input-output-hk/mn-passport-account/ports';
 import type { PassportAccount } from '@input-output-hk/mn-passport-protocol';
 import {
+  assertNightDepositPreflight,
   proveUnboundNightDeposit,
   type MidnightBinding,
 } from '@input-output-hk/mn-passport-adapter-midnight-js';
@@ -40,6 +41,8 @@ interface ConnectedNightSendOptions {
   readonly network: NetworkConfig;
   readonly binding: MidnightBinding;
   readonly prover: Prover;
+  /** Opt in only after the exact local candidate build and registry profile are checked. */
+  readonly provisionalLocal?: boolean;
 }
 
 interface ConnectedNightSendDeps {
@@ -65,7 +68,7 @@ function checkedSelection(options: ConnectedNightSendOptions) {
   const network = Object.freeze({ ...options.network });
   if (
     network.networkId !== 'undeployed' ||
-    !localNightBinding(network.bindingId, network.manifestSha256) ||
+    !localNightBinding(network.bindingId, network.manifestSha256, options.provisionalLocal) ||
     scope.networkId !== network.networkId ||
     scope.source !== account.address ||
     !validNightCredentialBytes(account.credentialId) ||
@@ -86,6 +89,18 @@ function checkedSelection(options: ConnectedNightSendOptions) {
     options.names.provider.namespace !== 'night'
   )
     throw new Error('The selected ACC, name service, or device wallet cannot send NIGHT by name.');
+  if (network.bindingId === 'acc-s3r1.1-zkir036')
+    // Structural preflight only. The resolved recipient and real wallet keys are
+    // checked again by the adapter after withdrawal finality, before proving.
+    assertNightDepositPreflight({
+      network,
+      binding: options.binding,
+      target: '0'.repeat(64),
+      amount: 1n,
+      walletKeys: { coinPublicKey: 'preflight', encryptionPublicKey: 'preflight' },
+      prover: options.prover,
+      provisionalLocal: !!options.provisionalLocal,
+    });
   const bridge = wallet.nightBridge;
   if (!bridge)
     throw new Error('The selected ACC, name service, or device wallet cannot send NIGHT by name.');
@@ -126,11 +141,15 @@ export async function createConnectedNightSend(
   if (!ADDRESS.test(rawBridge)) throw new Error('The device-held NIGHT bridge is invalid.');
   const finalized = async (original: NightSendLeg) =>
     deps.finalized(network.indexerUrl, network.nodeUrl, original);
-  const ownerWithdrawal = createNightOwnerWithdrawal(account, (intent) => {
-    checkSelected();
-    options.checkApproved(intent);
-    checkSelected();
-  });
+  const ownerWithdrawal = createNightOwnerWithdrawal(
+    account,
+    (intent) => {
+      checkSelected();
+      options.checkApproved(intent);
+      checkSelected();
+    },
+    { manifestSha256: network.manifestSha256, provisionalLocal: !!options.provisionalLocal },
+  );
   return {
     async send(request: NightSendRequest) {
       checkSelected();
@@ -179,6 +198,7 @@ export async function createConnectedNightSend(
                 encryptionPublicKey: addresses.shieldedEncryptionPublicKey,
               },
               prover: options.prover,
+              provisionalLocal: !!options.provisionalLocal,
             });
             checkSelected();
             const original = await bridge.prepareDeposit({

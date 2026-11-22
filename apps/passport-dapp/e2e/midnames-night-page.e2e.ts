@@ -5,12 +5,16 @@ import { join } from 'node:path';
 import { chromium } from 'playwright-core';
 import { createServer } from 'vite';
 
-const manifest = '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f';
+const candidate = process.env.PASSPORT_NIGHT_PAGE_CANDIDATE === '1';
+const binding = candidate ? 'acc-s3r1.1-zkir036' : 'acc-s3r1.1';
+const manifest = candidate
+  ? '590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f'
+  : '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f';
 const account = '34'.repeat(32);
 const registry = '12'.repeat(32);
 const connector = `
   export const ARM = 'jubjub', SIGNING_MODE = 'jubjub', NETWORK_ID = 'undeployed';
-  export const BINDING_ID = 'acc-s3r1.1', RP_ID = 'localhost';
+  export const BINDING_ID = ${JSON.stringify(binding)}, RP_ID = 'localhost';
   export const ORIGIN = location.origin, SERVICE_URL = location.origin;
   export const ARTEFACT_URL = SERVICE_URL + '/v1/zk/' + BINDING_ID;
   export const MANIFEST_SHA256 = ${JSON.stringify(manifest)};
@@ -40,6 +44,11 @@ const naming = `
 `;
 
 process.env.PASSPORT_MANIFEST_SHA256 = manifest;
+process.env.PASSPORT_BINDING_ID = binding;
+if (candidate) {
+  process.env.PASSPORT_CANDIDATE_LOCAL = '1';
+  assert.ok(process.env.PASSPORT_ARTEFACT_DIR, 'Candidate page test needs pinned local assets.');
+}
 process.env.VITE_MIDNAMES_NIGHT_SEND = '1';
 process.env.VITE_MIDNAMES_REGISTRY_PROFILE = 'standalone-0.35';
 process.env.VITE_MIDNAMES_INDEXER_URL = 'http://127.0.0.1:6300';
@@ -168,7 +177,7 @@ try {
     await page.locator('#named-night-status').screenshot({ path: join(screenshots, 'status.png') });
   }
   assert.deepEqual(errors, []);
-  console.log('Midnames named NIGHT page and no-ID recovery guard: PASS');
+  console.log(`Midnames named NIGHT ${binding} page and no-ID recovery guard: PASS`);
 } finally {
   await browser?.close();
   await server.close();

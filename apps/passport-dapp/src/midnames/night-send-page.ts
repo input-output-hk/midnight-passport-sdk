@@ -30,10 +30,15 @@ const hex = (bytes: Uint8Array) =>
   Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
 
 function selectedScope(account: PassportAccount | undefined): BrowserNightSendScope | undefined {
+  const candidate = localCandidateAccount(
+    BINDING_ID,
+    MANIFEST_SHA256,
+    import.meta.env.VITE_MIDNAMES_REGISTRY_PROFILE,
+  );
   if (
     account?.networkId !== 'undeployed' ||
     account.bindingId !== BINDING_ID ||
-    !localNightBinding(account.bindingId, MANIFEST_SHA256) ||
+    !localNightBinding(account.bindingId, MANIFEST_SHA256, !!candidate) ||
     account.scheme !== 'jubjub-schnorr' ||
     !/^[a-f0-9]{64}$/.test(account.address) ||
     !validNightCredentialBytes(account.credentialId)
@@ -57,8 +62,8 @@ async function readActive(
   }
 }
 
-function reviewText(intent: NightSendIntent, balance: bigint): string {
-  return `Send NIGHT to a Passport name?\n\nName: ${intent.name}\nNetwork: ${intent.networkId}\nRegistry: ${intent.providerId.slice('midnames:'.length)}\nSource Passport ACC: ${intent.source}\nRecipient Passport ACC: ${intent.target}\nDevice wallet bridge: ${intent.bridge}\nAmount: ${intent.amount} NIGHT smallest units\nFresh source balance: ${balance} NIGHT smallest units\nOperations: ${intent.operations.join(' → ')}\nRequest: ${intent.requestId}\n\nThe ACC signs withdrawal to the bridge. This app checks the named destination and deposits that exact output into the recipient ACC. The two legs can finish at different times.`;
+function reviewText(intent: NightSendIntent, balance: bigint, candidate: boolean): string {
+  return `Send NIGHT to a Passport name?\n\nName: ${intent.name}\nNetwork: ${intent.networkId}\nBinding: ${BINDING_ID}${candidate ? ` (local candidate ${MANIFEST_SHA256})` : ''}\nRegistry: ${intent.providerId.slice('midnames:'.length)}\nSource Passport ACC: ${intent.source}\nRecipient Passport ACC: ${intent.target}\nDevice wallet bridge: ${intent.bridge}\nAmount: ${intent.amount} NIGHT smallest units\nFresh source balance: ${balance} NIGHT smallest units\nOperations: ${intent.operations.join(' → ')}\nRequest: ${intent.requestId}\n\nThe ACC signs withdrawal to the bridge. This app checks the named destination and deposits that exact output into the recipient ACC. The two legs can finish at different times.`;
 }
 
 async function connectedPageSend(
@@ -70,6 +75,11 @@ async function connectedPageSend(
   checkScope: () => void,
   active: BrowserNightSendRecord | undefined,
 ) {
+  const candidate = localCandidateAccount(
+    BINDING_ID,
+    MANIFEST_SHA256,
+    import.meta.env.VITE_MIDNAMES_REGISTRY_PROFILE,
+  );
   const config = await fetchCheckedV1Config(
     SERVICE_URL,
     {
@@ -104,11 +114,7 @@ async function connectedPageSend(
     scope.networkId,
     BINDING_ID,
     registryProfile(import.meta.env.VITE_MIDNAMES_REGISTRY_PROFILE, scope.networkId),
-    localCandidateAccount(
-      BINDING_ID,
-      MANIFEST_SHA256,
-      import.meta.env.VITE_MIDNAMES_REGISTRY_PROFILE,
-    ),
+    candidate,
   );
   if (requiresNewNightLegFee(active)) {
     const feeWallet = await wallet.descriptor.connect(scope.networkId);
@@ -133,12 +139,17 @@ async function connectedPageSend(
     },
     async review(intent, balance) {
       host.stage('review');
-      if (!window.confirm(reviewText(intent, balance))) {
+      if (!window.confirm(reviewText(intent, balance, !!candidate))) {
         traceOperation('namedNight.cancelled', { requestId: intent.requestId });
         return false;
       }
       checkScope();
-      host.ownerReview.stageNamedNightWithdrawalReview(account, intent, balance.toString());
+      host.ownerReview.stageNamedNightWithdrawalReview(
+        account,
+        intent,
+        balance.toString(),
+        candidate ? { manifestSha256: MANIFEST_SHA256, provisionalLocal: true } : undefined,
+      );
       return true;
     },
     checkScope,
@@ -150,6 +161,7 @@ async function connectedPageSend(
     network,
     binding: accModule,
     prover: remoteV1Prover(SERVICE_URL, { fetch: tracedFetch }),
+    provisionalLocal: !!candidate,
   });
 }
 

@@ -41,6 +41,10 @@ export type ExactReview = ReviewContext &
         readonly balance: string;
         readonly outsideSession: boolean;
         readonly namedNight?: NamedNightReview;
+        readonly localCandidate?: {
+          readonly manifestSha256: string;
+          readonly provisionalLocal: true;
+        };
       }
     | { readonly kind: 'exportGrant'; readonly grantId: string }
   );
@@ -59,10 +63,15 @@ function admitNamedNight(
   context: ReviewContext,
   transfer: { readonly color: string; readonly amount: string; readonly recipient: string },
   outsideSession: boolean,
+  localCandidate?: { readonly manifestSha256: string; readonly provisionalLocal: true },
 ): NamedNightReview {
   if (
     context.networkId !== 'undeployed' ||
-    !localNightBinding(context.bindingId) ||
+    !localNightBinding(
+      context.bindingId,
+      localCandidate?.manifestSha256,
+      localCandidate?.provisionalLocal,
+    ) ||
     context.scheme !== 'jubjub-schnorr' ||
     transfer.color !== '00'.repeat(32) ||
     outsideSession
@@ -144,7 +153,8 @@ export function admitExactReview(input: ExactReview): ExactReview {
   );
   if (decoded.recipient !== transfer.recipient) return refuseExactReview();
   const namedNight =
-    input.namedNight && admitNamedNight(input.namedNight, shared, transfer, input.outsideSession);
+    input.namedNight &&
+    admitNamedNight(input.namedNight, shared, transfer, input.outsideSession, input.localCandidate);
   return Object.freeze({
     ...shared,
     ...transfer,
@@ -153,6 +163,8 @@ export function admitExactReview(input: ExactReview): ExactReview {
     balance: input.balance,
     outsideSession: input.outsideSession,
     ...(namedNight && { namedNight }),
+    ...(namedNight &&
+      input.localCandidate && { localCandidate: Object.freeze({ ...input.localCandidate }) }),
   });
 }
 
@@ -175,6 +187,9 @@ export function exactReviewText(intent: ExactReview): string {
         `Recipient Passport ACC: ${intent.namedNight.target}\n` +
         `Operations: ${intent.namedNight.operations.join(' → ')}\n` +
         `Request: ${intent.namedNight.requestId}\n` +
+        (intent.localCandidate
+          ? `Local candidate binding: ${intent.localCandidate.manifestSha256}\n`
+          : '') +
         'The ACC signs the withdrawal to the bridge. This app checks the name and recipient ACC before dispatch.'
       : '') +
     (intent.outsideSession

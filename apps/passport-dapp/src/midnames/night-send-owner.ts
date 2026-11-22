@@ -12,6 +12,7 @@ const ADDRESS = /^[a-f0-9]{64}$/;
 export function createNightOwnerWithdrawal(
   account: PassportAccount,
   checkApproved?: (intent: NightSendIntent) => void,
+  profile?: { readonly manifestSha256: string; readonly provisionalLocal: boolean },
 ) {
   const selected = {
     address: account.address,
@@ -41,7 +42,7 @@ export function createNightOwnerWithdrawal(
     });
     if (
       selected.networkId !== 'undeployed' ||
-      !localNightBinding(selected.bindingId) ||
+      !localNightBinding(selected.bindingId, profile?.manifestSha256, profile?.provisionalLocal) ||
       selected.scheme !== 'jubjub-schnorr' ||
       !ADDRESS.test(selected.address) ||
       account.address !== selected.address ||
