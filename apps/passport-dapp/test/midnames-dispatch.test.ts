@@ -172,7 +172,7 @@ test('a competing browser recovers its own archived no-intent quote after an unr
     registryPayee: 'a4'.repeat(32),
     night: '1',
     maximumDust: '10000',
-    expiresAt: Date.now() + 1500,
+    expiresAt: Date.now() + 60_000,
   });
   const competing = claimQuote({ ...base, id: 'b1'.repeat(32) });
   const ownerA = 'e1'.repeat(32);
@@ -224,10 +224,14 @@ test('a competing browser recovers its own archived no-intent quote after an unr
     JSON.stringify({ kind: 'intent', ...intent }),
   );
   createOnce(join(root, 'claim-prepare-intent.json'), JSON.stringify(intent));
-  await new Promise((resolve) => setTimeout(resolve, Math.max(0, base.expiresAt - Date.now() + 1)));
-  assert.deepEqual(await prep.retireExpiredUnprepared({ quote: base, ownerCommitment: ownerA }), {
-    status: 'retired',
-  });
+  t.mock.method(Date, 'now', () => base.expiresAt + 1);
+  try {
+    assert.deepEqual(await prep.retireExpiredUnprepared({ quote: base, ownerCommitment: ownerA }), {
+      status: 'retired',
+    });
+  } finally {
+    t.mock.restoreAll();
+  }
   const archive = join(parent, `claim-journal-unprepared-${base.id}`);
   const reopened = createClaimPreparationJournal(root, openClaimDispatch(root), ports);
   // The first caller is not the second browser's owner. It cannot bind the

@@ -518,6 +518,10 @@ commitment.
 The [synthetic Chromium recovery receipt](../../examples/midnames-local/evidence/archived-competing-quote-browser-20261122.json)
 checks two separate browser storage profiles, sponsor HTTP refusal, reload,
 exact local release and a distinct fresh quote. It sends no claim transaction.
+The [claim-screen harness](../../examples/midnames-local/evidence/archived-competing-quote-ui-20261122.json)
+also invokes the real preparation UI after reload: one Review action releases
+only the matching saved reservation and displays new terms, without a passkey
+proof or claim submission.
 
 If the preparation response is lost, reopen with the original credential and
 select **Continue registration**, then **Check saved claim** when offered. The host looks up the original preparation.

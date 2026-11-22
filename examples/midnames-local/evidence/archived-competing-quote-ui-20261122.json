@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "sourceHead": "ae0f4f2afa006f6e03762a386ff3c5423a658976",
+  "result": "PASS",
+  "tier": "isolated synthetic Chromium claim UI, IndexedDB, and local sponsor HTTP",
+  "scope": "Minimal claim-screen DOM harness calling the real showClaimPreparation flow; two separate browser profiles and one archived competing quote",
+  "observations": {
+    "firstUnrelatedLookup": "pre-intent refusal without assigning the owner",
+    "legitimateBrowserAfterReload": "one Review action released only its matching saved reservation and displayed a fresh quote",
+    "status": "Review the quote before preparing the claim.",
+    "occupyingBrowserReservation": "retained",
+    "passkeyProofRequests": 0,
+    "claimSubmissions": 0
+  },
+  "limits": [
+    "The harness exercises the actual claim preparation UI function but not full Passport account navigation or a physical passkey ceremony.",
+    "No native registry claim or name ownership change occurred in this check."
+  ]
+}
