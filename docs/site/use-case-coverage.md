@@ -67,6 +67,13 @@ separate account authorization. The claim, shielded receive and NIGHT payment
 fixtures cover those boundaries on `undeployed`. Production namespace and
 registrar policy, public registry substitution, binding transfers, and a
 native real-credential name-to-open flow still require separate evidence.
+The [candidate paid-claim receipt](../../examples/midnames-local/evidence/candidate-acc-page-paid-claim-retry-20261122.json)
+adds one local page-owned claim failure and same-profile retry against a full
+Compact 0.36 candidate ACC. Its exact indexed failure was archived before a
+second original was prepared; the successful retry bound the name to the same
+activated ACC at a canonical finalized block. The page used a virtual naming
+credential and a fixture-only candidate reader, so this does not establish
+public namespace ownership, ordinary demo admission or real-provider custody.
 
 Both payment paths were rerun on merged source `22ae4594` against fresh isolated
 chains. The shielded deposit finalized at block 68. The NIGHT withdrawal and

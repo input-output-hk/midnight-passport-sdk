@@ -9,6 +9,28 @@ import { settleWithCeremonyReviews } from './approve-ceremonies.ts';
 const baseUrl = process.env.PASSPORT_DEMO_URL ?? 'http://localhost:5173/';
 if (new URL(baseUrl).hostname !== 'localhost')
   throw new Error('the virtual authenticator requires the localhost passkey RP ID');
+const candidateBinding = process.env.PASSPORT_VIRTUAL_E2E_BINDING;
+if (candidateBinding) {
+  assert.equal(candidateBinding, 'acc-s3r1.1-zkir036');
+  assert.equal(
+    new URL(baseUrl).href,
+    'http://localhost:5173/',
+    'candidate qualification requires the pinned local Passport page',
+  );
+  const response = await fetch('http://127.0.0.1:8787/v1/config');
+  assert.equal(response.ok, true, 'candidate service must be ready before account creation');
+  const config = (await response.json()) as {
+    bindingId?: string;
+    manifestSha256?: string;
+    networkId?: string;
+  };
+  assert.equal(config.bindingId, candidateBinding);
+  assert.equal(
+    config.manifestSha256,
+    '590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f',
+  );
+  assert.equal(config.networkId, 'undeployed');
+}
 const browser = await chromium.launch({
   channel: 'chrome',
   headless: true,
@@ -27,15 +49,19 @@ async function approveAction(page: Page, name: string): Promise<void> {
       item.closest('[data-workspace-page]')?.getAttribute('aria-labelledby'),
     );
     if (!section) throw new Error(`No workspace for ${label}`);
-    if ((await page.locator('#main').getAttribute('data-landing')) === 'true') {
+    if (section === 'overview') {
+      await page.locator('#brand-home').click();
+    } else if ((await page.locator('#main').getAttribute('data-landing')) === 'true') {
       const tools = page.locator('#landing-demo-tools');
       if (!(await tools.evaluate((item) => (item as HTMLDetailsElement).open)))
         await tools.locator('summary').click();
       await page.locator('#landing-settings').click();
     }
-    if (await page.locator('#navigation-toggle').isVisible())
-      await page.locator('#navigation-toggle').click();
-    await page.locator(pageControl ? `#${pageControl}` : `#nav-${section}`).click();
+    if (section !== 'overview') {
+      if (await page.locator('#navigation-toggle').isVisible())
+        await page.locator('#navigation-toggle').click();
+      await page.locator(pageControl ? `#${pageControl}` : `#nav-${section}`).click();
+    }
   }
   await button.click();
   if (name === 'Create account') {
@@ -119,7 +145,10 @@ async function withAuthenticator(
     });
     await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
     if (process.env.PASSPORT_VIRTUAL_DEBUG === '1') console.log('navigated', hasPrf);
-    await page.locator('#status').filter({ hasText: /Ready/ }).waitFor({ timeout: 30_000 });
+    await page
+      .locator('#status')
+      .filter({ hasText: /Ready/ })
+      .waitFor({ state: 'attached', timeout: 30_000 });
     if (process.env.PASSPORT_VIRTUAL_DEBUG === '1') console.log('page ready', hasPrf);
     await use(page, context, events);
   } finally {
@@ -173,10 +202,12 @@ try {
       );
       await waitForStatus(page, /is created/, 900_000);
       assert.equal(events.added, 1, 'create stores one virtual credential');
-      assert.ok(
-        events.asserted >= 4,
-        'the probe, activation and sealed publications used real assertions',
-      );
+      const signingMode = await page.locator('#signing-mode-label').textContent();
+      if (!signingMode?.includes('JubJub'))
+        assert.ok(
+          events.asserted >= 4,
+          'P-256 probe, activation and sealed publications used real assertions',
+        );
       const afterCreateAssertions = events.asserted;
       const creationLog = await page.locator('#log').innerText();
       assert.match(creationLog, /Create and verify the passkey/);
@@ -188,6 +219,22 @@ try {
         .first()
         .getAttribute('title');
       assert.match(accountAddress ?? '', /^[0-9a-f]{64}$/);
+
+      if (candidateBinding) {
+        await page.reload();
+        await approveAction(page, 'Open with passkey');
+        await waitForStatus(page, /is reopened/, 120_000);
+        assert.ok(events.asserted > afterCreateAssertions, 'reopen used WebAuthn');
+        const reopenedAddress = await page
+          .locator('#account-facts dd span.value')
+          .first()
+          .getAttribute('title');
+        assert.equal(reopenedAddress, accountAddress, 'reopen must select the created ACC');
+        console.log(
+          `virtual authenticator: candidate create and reload/open passed; ${events.asserted} assertions; ACC ${accountAddress}`,
+        );
+        return;
+      }
 
       page.once('dialog', (dialog) => dialog.accept());
       await approveAction(page, 'Rotate sealed viewing key');

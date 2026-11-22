@@ -3,6 +3,7 @@ import type {
   PreparedValueSubmission,
 } from '@input-output-hk/mn-passport-protocol';
 import { NIGHT_SEND_OPERATIONS, type NightSendIntent } from './night-send.js';
+import { localNightBinding } from './local-binding.js';
 
 const NIGHT_COLOR = '00'.repeat(32);
 const ADDRESS = /^[a-f0-9]{64}$/;
@@ -11,6 +12,7 @@ const ADDRESS = /^[a-f0-9]{64}$/;
 export function createNightOwnerWithdrawal(
   account: PassportAccount,
   checkApproved?: (intent: NightSendIntent) => void,
+  profile?: { readonly manifestSha256: string; readonly provisionalLocal: boolean },
 ) {
   const selected = {
     address: account.address,
@@ -40,7 +42,7 @@ export function createNightOwnerWithdrawal(
     });
     if (
       selected.networkId !== 'undeployed' ||
-      selected.bindingId !== 'acc-s3r1.1' ||
+      !localNightBinding(selected.bindingId, profile?.manifestSha256, profile?.provisionalLocal) ||
       selected.scheme !== 'jubjub-schnorr' ||
       !ADDRESS.test(selected.address) ||
       account.address !== selected.address ||

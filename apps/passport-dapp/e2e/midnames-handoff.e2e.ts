@@ -234,6 +234,22 @@ try {
   assert.equal(await page.locator('#account-action-context').isVisible(), true);
   assert.equal(await page.evaluate(() => localStorage.getItem('handoff-fixture-creates')), '1');
 
+  await page.locator('#claim-suggest-name').click();
+  await page
+    .locator('#claim-recovery-status')
+    .getByText(/Suggestion only\. Continue registration/)
+    .waitFor();
+  const suggested = await page.locator('#claim-recovery-name').inputValue();
+  assert.match(suggested, /^demo-[a-f0-9]{24}\.night$/);
+  assert.equal(await page.evaluate(() => localStorage.getItem('handoff-quotes')), null);
+  assert.equal(await page.evaluate(() => localStorage.getItem('handoff-proofs')), null);
+  await page.locator('#claim-suggest-name').click();
+  await page
+    .locator('#claim-recovery-status')
+    .getByText(/Keep the current name/)
+    .waitFor();
+  assert.equal(await page.locator('#claim-recovery-name').inputValue(), suggested);
+
   await page.locator('#claim-recovery-name').fill(original.name);
   await page.locator('#claim-recovery-receipt').fill(JSON.stringify(original));
   await page.locator('#claim-recovery-retain').click();
@@ -496,6 +512,14 @@ try {
       /^Name registration\./,
     );
     assert.equal(await preparationPage.locator('#claim-recovery-name').inputValue(), original.name);
+    await preparationPage.locator('#claim-recovery-name').fill('');
+    await preparationPage.locator('#claim-suggest-name').click();
+    await preparationPage
+      .locator('#claim-recovery-status')
+      .getByText(/Your earlier selected name is restored/)
+      .waitFor();
+    assert.equal(await preparationPage.locator('#claim-recovery-name').inputValue(), original.name);
+    assert.deepEqual(await counts(), { quotes: 1, proofs: 1, preparations: 1, creates: 1 });
     await preparationPage.evaluate(() =>
       localStorage.setItem('handoff-sponsor-status', 'sent-or-unknown'),
     );

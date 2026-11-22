@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "kind": "candidate-acc-shared-ledger9-deposit-proof-only",
+  "result": "PASS_WITH_LIMITS",
+  "observedAt": "2026-11-22",
+  "sourceHead": "2e53287decc7273c8f690f90912e526ee5703680",
+  "privateScriptSha256": "5c1b41965757b7c680686be9570d628aa8d90b4bc5aff1ab4dfa119c534e916e",
+  "privateReceiptSha256": "4a02468a0a6d88a41f21f35499310a5f0fe6391fa329a4d02b6c3317eca72a4d",
+  "networkId": "undeployed",
+  "indexerApi": "v4",
+  "proofVersion": "9.0.2",
+  "candidateBinding": "acc-s3r1.1-zkir036",
+  "candidateManifestSha256": "590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f",
+  "syntheticRecipientAcc": "1bbba3a26618dc64720ad78fadc98d9b404eab7f983f7bf9c210f8c6c8b2e4c0",
+  "depositOperation": "deposit_unshielded",
+  "depositAmountNight": "4",
+  "deployedVerifierMatchedPin": true,
+  "candidateAssetHashesUnchanged": true,
+  "httpArtifactIntegrityVerified": true,
+  "httpArtifactRequests": [
+    "/v1/zk/acc-s3r1.1-zkir036/zkir/deposit_unshielded.bzkir",
+    "/v1/zk/acc-s3r1.1-zkir036/keys/deposit_unshielded.verifier",
+    "/v1/zk/acc-s3r1.1-zkir036/compiler/contract-manifest.json",
+    "/v1/zk/acc-s3r1.1-zkir036/keys/deposit_unshielded.prover"
+  ],
+  "unprovenSha256": "52e7e97c79a3e3f999e542662b1ee02a4c2cc70ae4c83ae5b6466808308dcb2c",
+  "provenSha256": "90f5a3cbf9f37bd39926f35ec2e8137bcd1e3f2e2bebad47ca4583e057bcf38d",
+  "provenBytes": 4711,
+  "transactionDispatches": 0,
+  "finalizedBlockBefore": 69039,
+  "finalizedBlockAfter": 69040,
+  "ownedKeyServerStopped": true,
+  "nativeLeaseReleased": true,
+  "sourceFrozen": true,
+  "limits": [
+    "The private diagnostic manually composed the call using the adapter measured-deposit helper. The exported proveUnboundNightDeposit still refuses this provisional binding before chain I/O.",
+    "HTTP artifact reads were explicit integrity checks against the owned key server. The deposit call builder did not itself request those artifacts; proof used the pinned local registry and shared 9.0.2 prover.",
+    "This proof was unbalanced and never submitted. It establishes neither an ACC balance change nor connected two-leg named-send acceptance.",
+    "The synthetic recipient was previously created on the shared Ledger 9 chain. No real passkey, online registry, public namespace, or hosted provider was qualified."
+  ]
+}

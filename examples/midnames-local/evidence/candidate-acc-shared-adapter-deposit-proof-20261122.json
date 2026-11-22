@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "kind": "candidate-acc-shared-ledger9-exported-deposit-adapter-proof-only",
+  "result": "PASS_WITH_LIMITS",
+  "observedAt": "2026-11-22",
+  "sourceHead": "a0617f038b3ee63b5061341cd9d908b64efc3171",
+  "privateScriptSha256": "65b34753b4dba921459a799010e90f73656c0d8df263f2e0bb8693852652d8fb",
+  "privateReceiptSha256": "723b2ef836eb3159c95677b74c7e2b75572343fcec464575c81c78b7fbd4aade",
+  "networkId": "undeployed",
+  "indexerApi": "v4",
+  "proofVersion": "9.0.2",
+  "candidateBinding": "acc-s3r1.1-zkir036",
+  "candidateManifestSha256": "590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f",
+  "syntheticRecipientAcc": "1bbba3a26618dc64720ad78fadc98d9b404eab7f983f7bf9c210f8c6c8b2e4c0",
+  "depositOperation": "deposit_unshielded",
+  "depositAmountNight": "4",
+  "deployedVerifierMatchedPin": true,
+  "exportedAdapterUsed": true,
+  "httpArtifactIntegrityVerified": true,
+  "httpArtifactRequests": [
+    "/v1/zk/acc-s3r1.1-zkir036/keys/deposit_unshielded.verifier",
+    "/v1/zk/acc-s3r1.1-zkir036/compiler/contract-manifest.json"
+  ],
+  "proverCalls": 1,
+  "unprovenSha256": "58f1c77fccf40f4b12c7832561ceac932b88c41d90ac6a0c5603f9de6b67304b",
+  "provenSha256": "4ea6e8ab7825fe1c1c192b106b5afebba1557b44972a5489c46e1b4f7e281048",
+  "provenBytes": 4711,
+  "transactionDispatches": 0,
+  "finalizedBlockBefore": 69266,
+  "finalizedBlockAfter": 69267,
+  "ownedKeyServerStopped": true,
+  "nativeLeaseReleased": true,
+  "sourceFrozen": true,
+  "candidateAssetHashesUnchanged": true,
+  "limits": [
+    "The exported adapter proved one unbound deposit call. The device wallet did not balance or sign it, and no transaction was submitted.",
+    "The adapter fetched the candidate verifier and manifest over loopback HTTP and compared the fetched and deployed verifier hashes with the pin. The proof port used the separately verified local key registry and shared release prover.",
+    "The synthetic recipient was previously created on the shared Ledger 9 chain. This run did not create or claim a name, withdraw NIGHT, settle an ACC deposit, or exercise the connected browser flow.",
+    "This does not qualify a real passkey, online resolver or provider, public passport.night namespace, or released SDK binding."
+  ]
+}

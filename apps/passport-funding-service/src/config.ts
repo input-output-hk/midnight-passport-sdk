@@ -1,7 +1,7 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
-import { BINDING_VERSION, resolveBinding } from '@input-output-hk/mn-passport-contract';
+import { isAbsolute, join } from 'node:path';
+import { BINDING_VERSION, resolvePinnedBinding } from '@input-output-hk/mn-passport-contract';
 import type { FundingAssetPolicy } from '@input-output-hk/mn-passport-service';
 
 const ADDRESS = /^[0-9a-f]{64}$/;
@@ -18,10 +18,12 @@ export interface FundingConfig {
   readonly indexerUri: string;
   readonly indexerWsUri: string;
   readonly proofServerUri: string;
+  readonly serviceUrl: string;
   readonly contractDir: string;
   readonly artefactDir: string;
   readonly bindingId: string;
   readonly manifestSha256: string;
+  readonly provisionalLocal: boolean;
   readonly walletSeed: string;
   readonly token: string;
   readonly assets: readonly FundingAssetPolicy[];
@@ -120,16 +122,85 @@ function fundingEndpoints(
   };
 }
 
+function fundingBinding(env: NodeJS.ProcessEnv) {
+  const bindingId = env.PASSPORT_BINDING_ID ?? BINDING_VERSION;
+  if (bindingId !== BINDING_VERSION && bindingId !== 'acc-s3r1.1-zkir036')
+    throw new Error('passport-funding-service: binding differs from the package pin');
+  const binding = resolvePinnedBinding(bindingId);
+  if (binding.provisional && env.PASSPORT_CANDIDATE_LOCAL !== '1')
+    throw new Error('passport-funding-service: candidate binding needs explicit local opt-in');
+  if (binding.provisional && env.PASSPORT_MANIFEST_SHA256 !== binding.manifestSha256)
+    throw new Error('passport-funding-service: candidate manifest differs from the package pin');
+  if (env.PASSPORT_MANIFEST_SHA256 && env.PASSPORT_MANIFEST_SHA256 !== binding.manifestSha256)
+    throw new Error('passport-funding-service: manifest differs from the package pin');
+  return { bindingId, binding };
+}
+
+const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]']);
+function localUrl(raw: string, protocols: readonly string[], path: string): boolean {
+  try {
+    const value = new URL(raw);
+    return (
+      protocols.includes(value.protocol) &&
+      LOOPBACK.has(value.hostname) &&
+      value.pathname === path &&
+      !value.username &&
+      !value.password &&
+      !value.search &&
+      !value.hash
+    );
+  } catch {
+    return false;
+  }
+}
+
+function assertCandidateFundingProfile(
+  env: NodeJS.ProcessEnv,
+  selected: Pick<
+    FundingConfig,
+    | 'networkId'
+    | 'host'
+    | 'corsOrigin'
+    | 'nodeUri'
+    | 'indexerUri'
+    | 'indexerWsUri'
+    | 'proofServerUri'
+    | 'serviceUrl'
+    | 'contractDir'
+    | 'artefactDir'
+    | 'walletSeed'
+    | 'assets'
+  >,
+): void {
+  if (
+    selected.networkId !== 'undeployed' ||
+    !LOOPBACK.has(selected.host) ||
+    !localUrl(selected.corsOrigin, ['http:'], '/') ||
+    !localUrl(selected.nodeUri, ['http:'], '/') ||
+    !localUrl(selected.indexerUri, ['http:'], '/api/v4/graphql') ||
+    !localUrl(selected.indexerWsUri, ['ws:'], '/api/v4/graphql/ws') ||
+    !localUrl(selected.proofServerUri, ['http:'], '/') ||
+    !localUrl(selected.serviceUrl, ['http:'], '/') ||
+    !isAbsolute(selected.artefactDir) ||
+    realpathSync(selected.artefactDir) !== selected.artefactDir ||
+    selected.artefactDir === join(selected.contractDir, 'contracts/managed/account') ||
+    !env.PASSPORT_FUNDING_SEED_FILE ||
+    selected.walletSeed === LOCALNET_SEED ||
+    !env.PASSPORT_FUNDING_RESERVATIONS_FILE ||
+    !env.PASSPORT_FUNDING_DEPLOYMENTS_FILE ||
+    selected.assets.some((asset) => asset.color !== '00'.repeat(32))
+  )
+    throw new Error(
+      'passport-funding-service: candidate NIGHT funding needs a pinned loopback-only profile',
+    );
+}
+
 export function loadFundingConfig(env: NodeJS.ProcessEnv): FundingConfig {
   const networkId = env.MN_NETWORK_ID ?? 'undeployed';
   if (!/^[a-z0-9][a-z0-9-]*$/.test(networkId))
     throw new Error('passport-funding-service: invalid MN_NETWORK_ID');
-  const binding = resolveBinding(BINDING_VERSION);
-  if (env.PASSPORT_BINDING_ID && env.PASSPORT_BINDING_ID !== BINDING_VERSION)
-    throw new Error('passport-funding-service: binding differs from the package pin');
-  if (env.PASSPORT_MANIFEST_SHA256 && env.PASSPORT_MANIFEST_SHA256 !== binding.manifestSha256)
-    throw new Error('passport-funding-service: manifest differs from the package pin');
   const contractDir = required(env, 'PASSPORT_CONTRACT_DIR');
+  const { bindingId, binding } = fundingBinding(env);
   if (networkId !== 'undeployed' && !env.PASSPORT_FUNDING_SEED_FILE)
     throw new Error('passport-funding-service: set PASSPORT_FUNDING_SEED_FILE');
   const walletSeed = env.PASSPORT_FUNDING_SEED_FILE
@@ -149,18 +220,39 @@ export function loadFundingConfig(env: NodeJS.ProcessEnv): FundingConfig {
       : required(env, 'PASSPORT_FUNDING_DEPLOYMENTS_FILE'));
   const indexerPort = env.MN_INDEXER_PORT ?? '18088';
   const allowedAssets = assets(required(env, 'PASSPORT_FUNDING_ASSETS_FILE'));
+  const endpoints = fundingEndpoints(env, indexerPort);
+  const host = env.PASSPORT_FUNDING_HOST ?? '127.0.0.1';
+  const corsOrigin = env.PASSPORT_DAPP_ORIGIN ?? 'http://localhost:5173';
+  const serviceUrl = env.PASSPORT_SERVICE_URL ?? 'http://127.0.0.1:8787';
+  const artefactDir = binding.provisional
+    ? required(env, 'PASSPORT_ARTEFACT_DIR')
+    : join(contractDir, 'contracts/managed/account');
+  if (binding.provisional)
+    assertCandidateFundingProfile(env, {
+      networkId,
+      host,
+      corsOrigin,
+      ...endpoints,
+      serviceUrl,
+      contractDir,
+      artefactDir,
+      walletSeed,
+      assets: allowedAssets,
+    });
   if (networkId !== 'undeployed' && allowedAssets.some((asset) => asset.color === '00'.repeat(32)))
     throw new Error('passport-funding-service: NIGHT requires a node-backed network qualification');
   return {
-    host: env.PASSPORT_FUNDING_HOST ?? '127.0.0.1',
+    host,
     port: port(env.PASSPORT_FUNDING_PORT ?? '8789'),
-    corsOrigin: env.PASSPORT_DAPP_ORIGIN ?? 'http://localhost:5173',
+    corsOrigin,
     networkId,
-    ...fundingEndpoints(env, indexerPort),
+    ...endpoints,
+    serviceUrl,
     contractDir,
-    artefactDir: join(contractDir, 'contracts/managed/account'),
-    bindingId: BINDING_VERSION,
+    artefactDir,
+    bindingId,
     manifestSha256: binding.manifestSha256,
+    provisionalLocal: binding.provisional,
     walletSeed,
     token,
     assets: allowedAssets,

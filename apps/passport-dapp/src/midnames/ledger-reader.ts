@@ -8,9 +8,16 @@ import { createDefaultProvider } from '@midnames/sdk/provider';
 import { requireMidnamesV4IndexerPair } from './indexer-endpoints.js';
 import { ContractState } from '@midnight-ntwrk/compact-runtime';
 import { PassportNameError } from '@input-output-hk/mn-passport-account/names';
-import { resolveBinding } from '@input-output-hk/mn-passport-contract';
+import {
+  ACC_REGISTRY,
+  detectDeployedVersionByCircuit,
+  resolveBinding,
+  resolvePinnedBinding,
+  type AccRegistry,
+} from '@input-output-hk/mn-passport-contract';
 import { ledger } from '#acc';
 import type { MidnamesProfile, MidnamesReads } from './resolver.js';
+import type { MidnamesIndexerBlock } from './chain-finality.js';
 import {
   MIDNAMES_REGISTRY_VERIFIERS,
   STANDALONE_REGISTRY_VERIFIERS,
@@ -21,6 +28,13 @@ import {
 type RegistryProvider = Parameters<typeof getContractLedger>[0];
 type DomainRecord = Parameters<typeof getTargetFromDomainData>[0];
 type DomainTarget = NonNullable<Awaited<ReturnType<MidnamesReads['readTarget']>>>;
+
+/** Explicit provisional local demo qualification; never a supported SDK binding. */
+export interface CandidateAccountQualification {
+  readonly bindingId: string;
+  readonly manifestSha256: string;
+  readonly decodeState: (state: InstanceType<typeof ContractState>) => ReturnType<typeof ledger>;
+}
 
 function readDomainTarget(domain: DomainRecord): DomainTarget {
   try {
@@ -36,6 +50,30 @@ function readDomainTarget(domain: DomainRecord): DomainTarget {
 const hex = (value: Uint8Array): string =>
   Array.from(value, (byte) => byte.toString(16).padStart(2, '0')).join('');
 const ADDRESS = /^[a-f0-9]{64}$/;
+
+async function selectFinalizedBlock(
+  block: MidnamesIndexerBlock | null | undefined,
+  verify?: (block: MidnamesIndexerBlock) => Promise<void>,
+): Promise<MidnamesIndexerBlock> {
+  if (
+    !block ||
+    !ADDRESS.test(block.hash) ||
+    !Number.isSafeInteger(block.height) ||
+    block.height < 0
+  )
+    throw new PassportNameError('Unavailable');
+  const selected = Object.freeze({ height: block.height, hash: block.hash });
+  await verify?.(selected);
+  return selected;
+}
+
+function registryVerifierMap(profile: MidnamesRegistryProfile) {
+  return new Map(
+    Object.entries(
+      profile === 'standalone-0.35' ? STANDALONE_REGISTRY_VERIFIERS : MIDNAMES_REGISTRY_VERIFIERS,
+    ),
+  );
+}
 
 async function sha256(value: Uint8Array): Promise<string> {
   return hex(new Uint8Array(await crypto.subtle.digest('SHA-256', new Uint8Array(value))));
@@ -58,12 +96,47 @@ async function matchesVerifiers(
   return true;
 }
 
-function compatibleVerifiers(bindingId: string): ReadonlyMap<string, string> {
-  return new Map(
-    Object.entries(resolveBinding(bindingId).circuits).flatMap(([name, circuit]) =>
-      circuit.proof && circuit.hashes ? [[name, circuit.hashes.verifierKey]] : [],
-    ),
-  );
+/** Identify a deployed ACC from its complete circuit-to-verifier assignment. */
+export async function detectAccBindingFromState(
+  state: VerifierState,
+  registry: AccRegistry = ACC_REGISTRY,
+): Promise<string | null> {
+  const observed: Record<string, string> = Object.create(null);
+  const rawNames = state.operations();
+  if (!rawNames.length) return null;
+  for (const raw of rawNames) {
+    let name: string;
+    try {
+      name =
+        typeof raw === 'string'
+          ? raw
+          : raw instanceof Uint8Array
+            ? new TextDecoder('utf-8', { fatal: true }).decode(raw)
+            : '';
+    } catch {
+      return null;
+    }
+    if (!/^[a-z][a-z0-9_]*$/.test(name) || Object.hasOwn(observed, name)) return null;
+    const verifier = state.operation(name)?.verifierKey;
+    if (!verifier) return null;
+    observed[name] = await sha256(verifier);
+  }
+  return detectDeployedVersionByCircuit(observed, registry);
+}
+
+/** A known provisional roster can be identified for diagnostics without admitting its account. */
+export async function admitAccBindingFromState(
+  state: VerifierState,
+  registry: AccRegistry = ACC_REGISTRY,
+): Promise<string | null> {
+  const version = await detectAccBindingFromState(state, registry);
+  if (!version) return null;
+  try {
+    resolveBinding(version, registry);
+    return version;
+  } catch {
+    return null;
+  }
 }
 
 export function createMidnamesLedgerReads(
@@ -71,7 +144,15 @@ export function createMidnamesLedgerReads(
   networkId: string,
   bindingId: string,
   profileId: MidnamesRegistryProfile = 'midnames-2.1.0',
+  candidate?: CandidateAccountQualification,
+  verifyFinalizedBlock?: (block: MidnamesIndexerBlock) => Promise<void>,
 ): MidnamesReads & {
+  readFinalizedBlock(): Promise<MidnamesIndexerBlock>;
+  readSupportedTargetAt(
+    name: string,
+    profile: Readonly<MidnamesProfile>,
+    block: MidnamesIndexerBlock,
+  ): Promise<DomainTarget | undefined>;
   readSupportedTarget(
     name: string,
     profile: Readonly<MidnamesProfile>,
@@ -84,14 +165,18 @@ export function createMidnamesLedgerReads(
   ): Promise<{ readonly ownerCommitment: string; readonly target: DomainTarget } | undefined>;
 } {
   const pinnedProfile = registryProfile(profileId, networkId);
-  const registryVerifiers = new Map(
-    Object.entries(
-      pinnedProfile === 'standalone-0.35'
-        ? STANDALONE_REGISTRY_VERIFIERS
-        : MIDNAMES_REGISTRY_VERIFIERS,
-    ),
-  );
-  const accVerifiers = compatibleVerifiers(bindingId);
+  const registryVerifiers = registryVerifierMap(pinnedProfile);
+  if (candidate) {
+    const pin = resolvePinnedBinding(candidate.bindingId);
+    if (
+      networkId !== 'undeployed' ||
+      pinnedProfile !== 'standalone-0.35' ||
+      candidate.bindingId !== bindingId ||
+      !pin.provisional ||
+      candidate.manifestSha256 !== pin.manifestSha256
+    )
+      throw new Error('Candidate ACC qualification requires the exact local provisional pin.');
+  } else resolveBinding(bindingId);
   const readDomain = async (
     name: string,
     profile: Readonly<MidnamesProfile>,
@@ -137,43 +222,50 @@ export function createMidnamesLedgerReads(
     if (!observed) return undefined;
     try {
       const account = observed.contractState.deserialize({ v9: ContractState });
-      if (!(await matchesVerifiers(account, accVerifiers))) return undefined;
-      const decoded = ledger(account.data);
-      return decoded.booted && decoded.spec_version === 3n ? decoded : undefined;
+      const detectedBinding = await detectAccBindingFromState(account);
+      if (!detectedBinding || detectedBinding !== bindingId) return undefined;
+      if (!candidate && !(await admitAccBindingFromState(account))) return undefined;
+      const decoded = candidate ? candidate.decodeState(account) : ledger(account.data);
+      return decoded.booted && decoded.spec_version === 3n
+        ? { bindingId: detectedBinding, ledger: decoded }
+        : undefined;
     } catch {
       return undefined;
     }
+  };
+  const readSupportedTargetAt = async (
+    name: string,
+    profile: Readonly<MidnamesProfile>,
+    block: MidnamesIndexerBlock | null | undefined,
+  ) => {
+    if (profile.networkId !== networkId) throw new PassportNameError('InvalidQuery');
+    const selected = await selectFinalizedBlock(block, verifyFinalizedBlock);
+    const source: RegistryProvider = {
+      ...provider,
+      queryContractState: (address) =>
+        provider.queryContractState(address, { type: 'blockHash', blockHash: selected.hash }),
+    };
+    const domain = await readDomain(name, profile, source);
+    if (domain === undefined) return undefined;
+    const target = readDomainTarget(domain);
+    if (target.kind === 'contract') {
+      if (!target.address || !ADDRESS.test(target.address))
+        throw new PassportNameError('InvalidRecord');
+      if (!(await supportedAccount(target.address, networkId, source)))
+        throw new PassportNameError('InvalidRecord');
+    }
+    return target;
   };
   return {
     async readTarget(name, profile) {
       return (await readClaim(name, profile))?.target;
     },
     async readSupportedTarget(name, profile) {
-      if (profile.networkId !== networkId) throw new PassportNameError('InvalidQuery');
-      const block = await provider.queryBlock();
-      if (
-        !block ||
-        !ADDRESS.test(block.hash) ||
-        !Number.isSafeInteger(block.height) ||
-        block.height < 0
-      )
-        throw new PassportNameError('Unavailable');
-      const source: RegistryProvider = {
-        ...provider,
-        queryContractState: (address) =>
-          provider.queryContractState(address, { type: 'blockHash', blockHash: block.hash }),
-      };
-      const domain = await readDomain(name, profile, source);
-      if (domain === undefined) return undefined;
-      const target = readDomainTarget(domain);
-      if (target.kind === 'contract') {
-        if (!target.address || !ADDRESS.test(target.address))
-          throw new PassportNameError('InvalidRecord');
-        if (!(await supportedAccount(target.address, networkId, source)))
-          throw new PassportNameError('InvalidRecord');
-      }
-      return target;
+      return readSupportedTargetAt(name, profile, await provider.queryBlock());
     },
+    readFinalizedBlock: async () =>
+      selectFinalizedBlock(await provider.queryBlock(), verifyFinalizedBlock),
+    readSupportedTargetAt,
     readClaim,
     async hasDomain(name, profile) {
       return (await readDomain(name, profile)) !== undefined;
@@ -185,8 +277,9 @@ export function createMidnamesLedgerReads(
       const account = await supportedAccount(address, requestedNetwork);
       if (!account) return undefined;
       const night = new Uint8Array(32);
-      return account.unshielded_balances.member(night)
-        ? account.unshielded_balances.lookup(night)
+      if (account.bindingId !== bindingId) return undefined;
+      return account.ledger.unshielded_balances.member(night)
+        ? account.ledger.unshielded_balances.lookup(night)
         : 0n;
     },
   };

@@ -8,6 +8,9 @@ interface ImportMetaEnv {
   readonly VITE_MIDNAMES_NETWORK_ID?: string;
   readonly VITE_MIDNAMES_INDEXER_URL?: string;
   readonly VITE_MIDNAMES_INDEXER_WS_URL?: string;
+  readonly VITE_MIDNAMES_NODE_URL?: string;
+  readonly VITE_MIDNAMES_CHAIN_ANCHOR_HEIGHT?: string;
+  readonly VITE_MIDNAMES_CHAIN_ANCHOR_HASH?: string;
   readonly VITE_MIDNAMES_KNOWN_NAME?: string;
   readonly VITE_MIDNAMES_KNOWN_ACC?: string;
   readonly VITE_PASSPORT_ARM?: string;
@@ -22,3 +25,6 @@ declare const __PASSPORT_MANIFEST_SHA256__: string;
 
 /** The network id this build is bound to (PASSPORT_NETWORK_ID, default `undeployed`), injected by vite.config.ts. */
 declare const __PASSPORT_NETWORK_ID__: string;
+
+/** Exact ACC version admitted by the local page build. */
+declare const __PASSPORT_BINDING_ID__: string;

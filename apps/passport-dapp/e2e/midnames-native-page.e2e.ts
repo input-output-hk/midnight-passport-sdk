@@ -2,6 +2,7 @@
 // The deployed ACC is supplied by the native runner; only its login connector
 // is substituted. Quote, PRF owner proof, sponsor balance, send and recovery are live.
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -29,6 +30,7 @@ const input = JSON.parse(readFileSync(resolve(output, 'page-claim-input.json'), 
   maximumDust: string;
   failedOriginal?: unknown;
   prepareFailedInPage?: boolean;
+  candidate?: { bindingId: string; manifestSha256: string; modulePath: string };
 };
 assert.match(input.registryAddress, /^[0-9a-f]{64}$/);
 assert.match(input.accountAddress, /^[0-9a-f]{64}$/);
@@ -37,6 +39,23 @@ assert.match(input.registryPayee, /^[0-9a-f]{64}$/);
 assert.match(input.sponsorPaymentAddress, /^[0-9a-f]{64}$/);
 assert.match(input.night, /^[0-9]+$/);
 assert.match(input.maximumDust, /^[0-9]+$/);
+const candidate = input.candidate;
+if (candidate) {
+  assert.equal(candidate.bindingId, 'acc-s3r1.1-zkir036');
+  assert.equal(
+    candidate.manifestSha256,
+    '590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f',
+  );
+  assert.equal(
+    candidate.modulePath,
+    resolve(output, '..', 'candidate-account-runtime/account.mjs'),
+  );
+  assert.ok(process.env.PASSPORT_MIDNAMES_CANDIDATE_ASSETS);
+  assert.equal(
+    createHash('sha256').update(readFileSync(candidate.modulePath)).digest('hex'),
+    '0ee002d3ac6eae8c048fbd9017ed2f1215e3961629f998221dd9b3e77d74bccf',
+  );
+} else assert.equal(process.env.PASSPORT_MIDNAMES_CANDIDATE_ASSETS, undefined);
 const sponsorPort = process.env.PASSPORT_MIDNAMES_SPONSOR_PORT;
 const ownerPort = process.env.PASSPORT_MIDNAMES_OWNER_PORT;
 assert.match(sponsorPort ?? '', /^[1-9][0-9]{0,4}$/);
@@ -59,9 +78,9 @@ Object.assign(process.env, {
 
 const connector = `
   export const ARM = 'p256', SIGNING_MODE = 'passkey', NETWORK_ID = 'undeployed';
-  export const BINDING_ID = 'acc-s3r1.1', RP_ID = 'localhost';
+  export const BINDING_ID = ${JSON.stringify(candidate?.bindingId ?? 'acc-s3r1.1')}, RP_ID = 'localhost';
   export const ORIGIN = location.origin, SERVICE_URL = location.origin;
-  export const MANIFEST_SHA256 = ${JSON.stringify(process.env.PASSPORT_MANIFEST_SHA256)};
+  export const MANIFEST_SHA256 = ${JSON.stringify(candidate?.manifestSha256 ?? process.env.PASSPORT_MANIFEST_SHA256)};
   export const ARTEFACT_URL = SERVICE_URL + '/v1/zk/' + BINDING_ID;
   export const exportDemoGrantOpening = async () => { throw Error('Outside claim fixture'); };
   const account = () => {
@@ -111,7 +130,8 @@ const vite = await createServer({
       name: 'native-page-account-fixture',
       enforce: 'pre',
       load(id) {
-        if (id.split('?')[0] === resolve('src/connector.ts')) return connector;
+        const file = id.split('?')[0];
+        if (file === resolve('src/connector.ts')) return connector;
       },
     },
   ],

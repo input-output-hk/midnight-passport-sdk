@@ -3,6 +3,7 @@ import {
   resolvePassportName,
   type PassportNameService,
 } from '@input-output-hk/mn-passport-account/names';
+import type { MidnamesIndexerBlock } from './chain-finality.js';
 
 export interface MidnamesProfile {
   readonly networkId: string;
@@ -129,6 +130,27 @@ export function requireAgreeingMidnamesResolvers(
       });
     },
   });
+}
+
+/** Bind two provider reads to one selected canonical finalized block. */
+export async function requireMatchingFinalizedIndexerBlock(
+  primary: () => Promise<MidnamesIndexerBlock>,
+  witness: () => Promise<MidnamesIndexerBlock>,
+): Promise<MidnamesIndexerBlock> {
+  try {
+    const [first, second] = await Promise.all([primary(), witness()]);
+    if (
+      !Number.isSafeInteger(first?.height) ||
+      first.height < 0 ||
+      !/^[a-f0-9]{64}$/.test(first.hash) ||
+      first.height !== second?.height ||
+      first.hash !== second.hash
+    )
+      throw new PassportNameError('Unavailable');
+    return Object.freeze({ height: first.height, hash: first.hash });
+  } catch {
+    throw new PassportNameError('Unavailable');
+  }
 }
 
 /** An operator-supplied public mapping gates every lookup before resolving its requested name. */

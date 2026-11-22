@@ -80,6 +80,49 @@ color, amount, transaction ID and confirmed ACC balances for NIGHT and the test 
 or when the Passport service is bound beyond loopback. The operator CLI remains available as
 `demo fund`.
 
+The funding service defaults to packaged `acc-s3r1.1`. An explicit source-only
+`acc-s3r1.1-zkir036` path verifies the candidate manifest and generated module
+before loading it, then routes NIGHT deposits through the pinned adapter. It
+requires `PASSPORT_CANDIDATE_LOCAL=1`, the exact candidate binding and manifest,
+an absolute canonical `PASSPORT_ARTEFACT_DIR`, a separately funded non-genesis
+seed file, explicit candidate reservation and deployment files, a NIGHT-only
+asset policy and loopback Ledger 9 / Indexer API v4 and Passport service URLs.
+Candidate eligibility and balance reads check the complete pinned on-chain
+verifier roster before a reservation or wallet preparation. Its
+general value-call endpoint remains closed for candidate accounts. A
+[shared-chain native run](../../examples/midnames-local/evidence/candidate-funding-native-20261122.json)
+confirmed candidate NIGHT credit, finalized indexed action and same-ID replay
+at signed source `c009ed3f`. The Midnames demo launcher admits this candidate
+funding route only with explicit `--candidate-assets --funding` and a complete
+dedicated wallet provision receipt. The connected browser funding action is a
+separate acceptance step: a
+[headless page run](../../examples/midnames-local/evidence/candidate-funding-browser-20261122.json)
+now confirms the live funding button, a 14-to-24-unit credit, finalized chain
+action and reload without a duplicate request. Its existing-account connector
+was a fixture; the full passkey/worker journey remains open.
+
+For that qualification on the shared local stack, prepare a **separate** candidate
+funding wallet after the candidate registry and chain anchor have been recorded:
+
+```sh
+nix develop -c node --experimental-import-meta-resolve scripts/midnames-demo-wallets.mjs \
+  /absolute/path/to/private/local-demo-state \
+  /absolute/path/to/pinned/acc-reference/contract \
+  --candidate-funding-only
+```
+
+The command checks the live chain anchor, claims the shared sponsor lease, and
+records each transfer before submitting it. It creates private
+`candidate-funding-*` seed, token, policy and provision receipts alongside the
+existing demo state. Candidate wallet proofs use the shared release prover on
+port 6300. It never opens the ordinary funding wallet. If a receipt is
+unfinished, reconcile that exact transfer before rerunning; do not delete the
+receipt or change the seed to force a new attempt. The provisioner fences each
+node submission with its transaction hash in the receipt. A documented
+pre-submit proving failure may be retried under the same wallet seed while the
+failed attempt remains in the receipt history; any fenced submission stays
+pending for exact transaction reconciliation.
+
 The reference reservation store is safe for one host sharing one file. It creates
 `<reservations-file>.lock` during updates. If the process dies with the lock present, inspect
 pending requests, wallet transactions and ACC balances before removing it. Use a transactional

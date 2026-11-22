@@ -171,27 +171,7 @@ if [ "$stack" = shared-ledger9 ]; then
 fi
 
 "$root/experiments/acc-0.35/guard.sh"
-: "${PASSPORT_CONTRACT_DIR:?set PASSPORT_CONTRACT_DIR to the fetch-acc.sh output}"
-: "${PASSPORT_MANIFEST_SHA256:?set PASSPORT_MANIFEST_SHA256 to the SHA-256 of the artefact contract-manifest.json}"
-[[ "$PASSPORT_MANIFEST_SHA256" =~ ^[0-9a-fA-F]{64}$ ]] || {
-  echo "prototype-up: PASSPORT_MANIFEST_SHA256 must be 64 hex characters." >&2
-  exit 1
-}
-manifest="$PASSPORT_CONTRACT_DIR/contracts/managed/account/compiler/contract-manifest.json"
-[ -f "$manifest" ] || {
-  echo "prototype-up: $manifest not found; run compile.sh <dir> full first." >&2
-  exit 1
-}
-actual=$(shasum -a 256 "$manifest" | cut -d' ' -f1)
-[ "$actual" = "$(printf '%s' "$PASSPORT_MANIFEST_SHA256" | tr 'A-F' 'a-f')" ] || {
-  echo "prototype-up: PASSPORT_MANIFEST_SHA256 does not match $manifest ($actual)." >&2
-  exit 1
-}
-release_manifest=$(node -p "require('$root/packages/contract/acc-binding-v2.generated.json').manifestSha256")
-[ "$actual" = "$release_manifest" ] || {
-  echo "prototype-up: the dapp uses acc-s3r1.1; select its compiled artefacts (manifest $release_manifest)." >&2
-  exit 1
-}
+node "$root/scripts/demo-artifact-pin.mjs"
 
 # The service imports the reference client and its pinned midnight-js packages from the contract
 # tree at run time, so that tree needs its own node_modules (no lifecycle scripts, as run.sh does).

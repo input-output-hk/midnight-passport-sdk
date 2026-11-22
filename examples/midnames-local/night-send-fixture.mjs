@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
+import { createServer } from 'node:http';
 import { setTimeout as delay } from 'node:timers/promises';
+import { proveUnboundNightDeposit } from '../../packages/adapter-midnight-js/src/night-deposit.ts';
 import {
   NightPaymentDeclined,
   sendNightByName,
@@ -32,6 +34,43 @@ function openJournal(directory) {
     readLeg: async (leg) => read(leg),
     fenceLeg: async (leg, original) => write(leg, original),
   };
+}
+
+async function withCandidateArtifacts(assets, run) {
+  const prefix = '/v1/zk/acc-s3r1.1-zkir036/';
+  const server = createServer((request, response) => {
+    const path = new URL(request.url ?? '/', 'http://127.0.0.1').pathname;
+    const file = path.startsWith(prefix) ? path.slice(prefix.length) : '';
+    if (
+      request.method !== 'GET' ||
+      !/^(?:compiler\/contract-manifest\.json|(?:zkir|keys)\/[a-z][a-z0-9_]*\.(?:zkir|bzkir|prover|verifier))$/.test(
+        file,
+      )
+    ) {
+      response.writeHead(404).end();
+      return;
+    }
+    try {
+      const bytes = readFileSync(join(assets, file));
+      response.writeHead(200, { 'content-type': 'application/octet-stream' });
+      response.end(bytes);
+    } catch {
+      response.writeHead(404).end();
+    }
+  });
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
+  });
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address !== 'string');
+    return await run(`http://127.0.0.1:${address.port}${prefix.slice(0, -1)}`);
+  } finally {
+    await new Promise((resolve, reject) =>
+      server.close((error) => (error ? reject(error) : resolve())),
+    );
+  }
 }
 
 async function until(read, timeout = 120_000) {
@@ -103,6 +142,11 @@ export async function qualifyNightSend({
   repointName,
   defaultField,
   priorSplitId,
+  ref,
+  probeKeyDirectory,
+  verifyHybridSource,
+  candidateAssets,
+  candidateManifestSha256,
   step,
 }) {
   const [{ versionOfRecord }, rx, types] = await Promise.all([
@@ -120,6 +164,7 @@ export async function qualifyNightSend({
   const color = new Uint8Array(32);
   const bridgeBytes = walletModule.userAddressBytes(wallet);
   const bridge = Buffer.from(bridgeBytes).toString('hex');
+  const encodedBridge = wallet.unshieldedKeystore.getBech32Address().asString();
   const fund = 10n,
     amount = 4n;
   const state = async (address) =>
@@ -127,6 +172,81 @@ export async function qualifyNightSend({
   const balance = async (address) => {
     const { unshielded_balances: holdings } = await state(address);
     return holdings.member(color) ? holdings.lookup(color) : 0n;
+  };
+  class AlternateKeyProofReturned extends Error {}
+  const probeWithdrawal = async (unprovenTx, address) => {
+    const [zk, proof, types] = await Promise.all([
+      get('@midnight-ntwrk/midnight-js-node-zk-config-provider'),
+      get('@midnight-ntwrk/midnight-js-http-client-proof-provider'),
+      get('@midnight-ntwrk/midnight-js-types'),
+    ]);
+    const ordinaryRegistry = await zk.nodeZkConfigRegistry(join(ref, 'contracts/managed'));
+    const alternateRegistry = await zk.nodeZkConfigRegistry(join(ref, 'contracts/managed'));
+    const ordinary = proof.httpClientProvingProvider(
+      process.env.MN_PROOF_SERVER_URL,
+      ordinaryRegistry,
+    );
+    const oldResolve = alternateRegistry.resolveKeyLocation.bind(alternateRegistry);
+    const alternateKeys = {
+      proverKey: new Uint8Array(
+        readFileSync(join(probeKeyDirectory, 'withdraw_unshielded_with_jubjub.prover')),
+      ),
+      verifierKey: new Uint8Array(
+        readFileSync(join(probeKeyDirectory, 'withdraw_unshielded_with_jubjub.verifier')),
+      ),
+    };
+    alternateRegistry.resolveKeyLocation = async (location) => {
+      const resolved = await oldResolve(location);
+      const parsed = types.parseContractKeyLocation(location);
+      return parsed?.circuitId === 'withdraw_unshielded_with_jubjub' &&
+        parsed.contractAddress === address
+        ? { ...resolved, ...alternateKeys }
+        : resolved;
+    };
+    const alternate = proof.httpClientProvingProvider(
+      process.env.MN_PROOF_SERVER_URL,
+      alternateRegistry,
+    );
+    let targetProofReturned = false;
+    let oldKeyRefused = false;
+    const proving = {
+      check: (...args) => ordinary.check(...args),
+      lookupKey: (...args) => ordinary.lookupKey(...args),
+      async prove(...args) {
+        const parsed = types.parseContractKeyLocation(args[1]);
+        if (
+          parsed?.circuitId === 'withdraw_unshielded_with_jubjub' &&
+          parsed.contractAddress === address
+        ) {
+          const preimage = Uint8Array.from(args[0]);
+          const proofArgs = () => [Uint8Array.from(preimage), args[1], args[2]];
+          try {
+            await ordinary.prove(...proofArgs());
+          } catch (error) {
+            assert.match(String(error), /code="400"/);
+            oldKeyRefused = true;
+          }
+          assert.ok(oldKeyRefused, 'The old-key control unexpectedly returned a proof');
+          // Both requests use the same serialized preimage, key location and
+          // binding input. The next call changes only the key pair.
+          const result = await alternate.prove(...proofArgs());
+          assert.ok(result.length > 0, 'Stable prover returned an empty proof');
+          targetProofReturned = true;
+          throw new AlternateKeyProofReturned('Diagnostic proof returned; do not submit');
+        }
+        return ordinary.prove(...args);
+      },
+    };
+    try {
+      await unprovenTx.prove(proving, ledger.CostModel.initialCostModel());
+    } catch (error) {
+      // The ledger wraps callback errors. Only a returned proof from the exact
+      // withdrawal can turn the diagnostic stop into a passing observation.
+      if (oldKeyRefused && targetProofReturned)
+        throw new AlternateKeyProofReturned('Same-witness old-key refusal and new-key response');
+      throw error;
+    }
+    throw new Error('The diagnostic withdrawal proof was not requested');
   };
   const makeCall = async (address, circuitId, args) => {
     const { privateStateProvider, ...publicProviders } = providers;
@@ -165,6 +285,8 @@ export async function qualifyNightSend({
         address,
       );
     }
+    if (probeKeyDirectory && circuitId === 'withdraw_unshielded_with_jubjub')
+      await probeWithdrawal(unprovenTx, address);
     const proven = await providers.proofProvider.proveTx({ version: 'v9', tx: unprovenTx });
     assert.equal(proven.version, 'v9');
     const balanced = await providers.walletProvider.balanceTx(proven);
@@ -227,6 +349,10 @@ export async function qualifyNightSend({
     journal: openJournal(directory),
     isSupportedRecipient: (address, network) => reads.isSupportedAccount(address, network),
     async readSourceBalance(address) {
+      if (verifyHybridSource && address === source) {
+        await verifyHybridSource();
+        return balance(address);
+      }
       return (await reads.isSupportedAccount(address, networkId)) ? balance(address) : undefined;
     },
     async review(intent) {
@@ -306,8 +432,53 @@ export async function qualifyNightSend({
         readFileSync(join(directory, 'withdraw-' + withdrawal.hash + '.private.bin')),
       );
       const expected = exactNightBridgeOutput(intent, withdrawal, original);
-      assert.ok(await until(async () => hasExactNightBridgeCoin(await availableNight(), expected)));
-      const balanced = await makeCall(target, intent.operations[1], [color, BigInt(intent.amount)]);
+      assert.ok(
+        await until(async () =>
+          hasExactNightBridgeCoin(await availableNight(), expected, encodedBridge),
+        ),
+      );
+      const balanced = candidateAssets
+        ? await withCandidateArtifacts(candidateAssets, async (artefactUrl) => {
+            const proven = await proveUnboundNightDeposit({
+              network: {
+                networkId,
+                bindingId: 'acc-s3r1.1-zkir036',
+                manifestSha256: candidateManifestSha256,
+                nodeUrl: process.env.MN_NODE_URL + '/',
+                indexerUrl: process.env.MN_INDEXER_URL,
+                indexerWsUrl: process.env.MN_INDEXER_WS_URL,
+                artefactUrl,
+              },
+              binding,
+              target,
+              amount: BigInt(intent.amount),
+              walletKeys: {
+                coinPublicKey: providers.walletProvider.getCoinPublicKey(),
+                encryptionPublicKey: providers.walletProvider.getEncryptionPublicKey(),
+              },
+              prover: {
+                async proveTx(bytes) {
+                  const tx = ledger.Transaction.deserialize(
+                    'signature',
+                    'pre-proof',
+                    'pre-binding',
+                    bytes,
+                  );
+                  const result = await providers.proofProvider.proveTx({ version: 'v9', tx });
+                  assert.equal(result.version, 'v9');
+                  return { tx: result.tx.serialize() };
+                },
+              },
+              provisionalLocal: true,
+            });
+            const result = await providers.walletProvider.balanceTx({
+              version: 'v9',
+              tx: ledger.Transaction.deserialize('signature', 'proof', 'pre-binding', proven),
+            });
+            assert.equal(result.version, 'v9');
+            return result;
+          })
+        : await makeCall(target, intent.operations[1], [color, BigInt(intent.amount)]);
       assertExactNightBridgeSpend(balanced.tx, expected, ledger.addressFromKey);
       return prepared('deposit', balanced);
     },
@@ -380,6 +551,30 @@ export async function qualifyNightSend({
     };
   }
   if (browserDecline) assert.fail('The browser decline did not stop the named payment.');
+  if (probeKeyDirectory) {
+    assert.ok(failure instanceof AlternateKeyProofReturned, String(failure));
+    assert.equal(approvals, 1);
+    assert.equal(signatures, 1);
+    assert.deepEqual(sent, { withdraw: 0, deposit: 0 });
+    assert.equal((await openJournal(directory).readIntent())?.target, target);
+    assert.equal(await openJournal(directory).readLeg('withdraw'), undefined);
+    assert.equal(await openJournal(directory).readLeg('deposit'), undefined);
+    const final = { source: String(await balance(source)), target: String(await balance(target)) };
+    assert.deepEqual(final, { source: '10', target: '0' });
+    return {
+      keyProbe: true,
+      sameWitnessOldKeyRefused: true,
+      sameWitnessNewKeyReturnedProof: true,
+      source,
+      target,
+      name: request.name,
+      approvals,
+      signatures,
+      sent,
+      final,
+      browserReview,
+    };
+  }
   if (browserRepoint) {
     assert.match(String(failure), /The original payment scope changed/);
     assert.equal(approvals, 1);
@@ -427,7 +622,7 @@ export async function qualifyNightSend({
     };
   }
   assert.ok(failure instanceof Error);
-  assert.equal(failure.cause, interrupted);
+  assert.equal(failure.cause, interrupted, `Unexpected withdrawal failure: ${String(failure)}`);
   const intermediate = {
     source: String(await balance(source)),
     target: String(await balance(target)),
@@ -481,6 +676,7 @@ export async function qualifyNightSend({
     withdrawal,
     deposit,
     exactBridgeOutputConsumed: true,
+    candidateAdapterDeposit: Boolean(candidateAssets),
     replayBroadcasts: 0,
   };
 }

@@ -1,0 +1,30 @@
+# An independent read-only Indexer API v4 witness for the designated shared
+# Ledger 9 node. This project never starts or manages that node or its prover.
+# Use a fresh private env file and this project's own indexer-data volume.
+name: ${PASSPORT_VERIFICATION_PROJECT:-midnight-passport-read-witness}
+
+services:
+  read-witness-indexer:
+    image: ghcr.io/midnight-ntwrk/indexer-standalone@sha256:119f35db548ba1c390845f215bb1e928e73038bef7c315825aee0461bd54499d
+    platform: linux/arm64
+    restart: 'no'
+    ports:
+      - '127.0.0.1:${MN_VERIFICATION_INDEXER_PORT:-18089}:8088'
+    volumes:
+      - indexer-data:/data
+    env_file: ${PASSPORT_VERIFICATION_INDEXER_ENV_FILE:?Set the private witness indexer env file}
+    environment:
+      APP__APPLICATION__NETWORK_ID: undeployed
+      APP__INFRA__NODE__URL: ws://node:9944
+      APP__INFRA__SPO_NODE__URL: ws://node:9944
+      APP__INFRA__SPO_NODE__BLOCKFROST_ID: dummy-not-using-spo
+    networks:
+      - shared-node
+
+volumes:
+  indexer-data:
+
+networks:
+  shared-node:
+    external: true
+    name: ${PASSPORT_SHARED_NETWORK:-midnight-network_default}

@@ -8,19 +8,26 @@ import { tracedFetch, traceOperation } from '../operation-trace.js';
 import { byId } from '../ui-dom.js';
 import type { DevWallet } from '../wallet/contracts.js';
 import { createMidnamesIndexer, createMidnamesLedgerReads } from './ledger-reader.js';
+import { localCandidateAccount } from './candidate-account.js';
 import { createConnectedNightSend } from './night-send-host.js';
+import { localNightBinding } from './local-binding.js';
 import { validNightCredentialBytes } from './night-send-credential.js';
 import {
   openBrowserNightSendJournal,
   type BrowserNightSendRecord,
   type BrowserNightSendScope,
 } from './night-send-journal.js';
-import { NightDepositInterrupted, type NightSendIntent } from './night-send.js';
+import {
+  NightDepositInterrupted,
+  type NightSendIntent,
+  type NightSendRequest,
+} from './night-send.js';
 import {
   namedNightStatus,
   newNamedNightRequest,
   requiresNewNightLegFee,
   sameLocalNightIndexer,
+  localNightService,
 } from './night-send-page-state.js';
 import { registryProfile } from './registry-pins.js';
 
@@ -28,9 +35,15 @@ const hex = (bytes: Uint8Array) =>
   Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
 
 function selectedScope(account: PassportAccount | undefined): BrowserNightSendScope | undefined {
+  const candidate = localCandidateAccount(
+    BINDING_ID,
+    MANIFEST_SHA256,
+    import.meta.env.VITE_MIDNAMES_REGISTRY_PROFILE,
+  );
   if (
     account?.networkId !== 'undeployed' ||
     account.bindingId !== BINDING_ID ||
+    !localNightBinding(account.bindingId, MANIFEST_SHA256, !!candidate) ||
     account.scheme !== 'jubjub-schnorr' ||
     !/^[a-f0-9]{64}$/.test(account.address) ||
     !validNightCredentialBytes(account.credentialId)
@@ -40,6 +53,7 @@ function selectedScope(account: PassportAccount | undefined): BrowserNightSendSc
     networkId: 'undeployed',
     source: account.address,
     credentialId: hex(account.credentialId),
+    ...(candidate && { bindingId: BINDING_ID, manifestSha256: MANIFEST_SHA256 }),
   };
 }
 
@@ -54,8 +68,8 @@ async function readActive(
   }
 }
 
-function reviewText(intent: NightSendIntent, balance: bigint): string {
-  return `Send NIGHT to a Passport name?\n\nName: ${intent.name}\nNetwork: ${intent.networkId}\nRegistry: ${intent.providerId.slice('midnames:'.length)}\nSource Passport ACC: ${intent.source}\nRecipient Passport ACC: ${intent.target}\nDevice wallet bridge: ${intent.bridge}\nAmount: ${intent.amount} NIGHT smallest units\nFresh source balance: ${balance} NIGHT smallest units\nOperations: ${intent.operations.join(' → ')}\nRequest: ${intent.requestId}\n\nThe ACC signs withdrawal to the bridge. This app checks the named destination and deposits that exact output into the recipient ACC. The two legs can finish at different times.`;
+function reviewText(intent: NightSendIntent, balance: bigint, candidate: boolean): string {
+  return `Send NIGHT to a Passport name?\n\nName: ${intent.name}\nNetwork: ${intent.networkId}\nBinding: ${BINDING_ID}${candidate ? ` (local candidate ${MANIFEST_SHA256})` : ''}\nRegistry: ${intent.providerId.slice('midnames:'.length)}\nSource Passport ACC: ${intent.source}\nRecipient Passport ACC: ${intent.target}\nDevice wallet bridge: ${intent.bridge}\nAmount: ${intent.amount} NIGHT smallest units\nFresh source balance: ${balance} NIGHT smallest units\nOperations: ${intent.operations.join(' → ')}\nRequest: ${intent.requestId}\n\nThe ACC signs withdrawal to the bridge. This app checks the named destination and deposits that exact output into the recipient ACC. The two legs can finish at different times.`;
 }
 
 async function connectedPageSend(
@@ -67,6 +81,13 @@ async function connectedPageSend(
   checkScope: () => void,
   active: BrowserNightSendRecord | undefined,
 ) {
+  const candidate = localCandidateAccount(
+    BINDING_ID,
+    MANIFEST_SHA256,
+    import.meta.env.VITE_MIDNAMES_REGISTRY_PROFILE,
+  );
+  if (candidate && !localNightService(SERVICE_URL))
+    throw new Error('The candidate NIGHT proof service must use an exact local origin.');
   const config = await fetchCheckedV1Config(
     SERVICE_URL,
     {
@@ -101,6 +122,7 @@ async function connectedPageSend(
     scope.networkId,
     BINDING_ID,
     registryProfile(import.meta.env.VITE_MIDNAMES_REGISTRY_PROFILE, scope.networkId),
+    candidate,
   );
   if (requiresNewNightLegFee(active)) {
     const feeWallet = await wallet.descriptor.connect(scope.networkId);
@@ -125,12 +147,17 @@ async function connectedPageSend(
     },
     async review(intent, balance) {
       host.stage('review');
-      if (!window.confirm(reviewText(intent, balance))) {
+      if (!window.confirm(reviewText(intent, balance, !!candidate))) {
         traceOperation('namedNight.cancelled', { requestId: intent.requestId });
         return false;
       }
       checkScope();
-      host.ownerReview.stageNamedNightWithdrawalReview(account, intent, balance.toString());
+      host.ownerReview.stageNamedNightWithdrawalReview(
+        account,
+        intent,
+        balance.toString(),
+        candidate ? { manifestSha256: MANIFEST_SHA256, provisionalLocal: true } : undefined,
+      );
       return true;
     },
     checkScope,
@@ -142,7 +169,40 @@ async function connectedPageSend(
     network,
     binding: accModule,
     prover: remoteV1Prover(SERVICE_URL, { fetch: tracedFetch }),
+    provisionalLocal: !!candidate,
   });
+}
+
+type ConnectedNightResult = Awaited<
+  ReturnType<Awaited<ReturnType<typeof connectedPageSend>>['send']>
+>;
+
+async function settleSubmittedDeposit(
+  initial: ConnectedNightResult,
+  request: NightSendRequest,
+  connected: Awaited<ReturnType<typeof connectedPageSend>>,
+  checkScope: () => void,
+) {
+  if (initial.phase !== 'deposit-pending') return initial;
+  const withdrawalHash = initial.withdrawal.hash;
+  const depositHash = initial.deposit.hash;
+  const deadline = Date.now() + 10 * 60_000;
+  let result: ConnectedNightResult = initial;
+  while (Date.now() < deadline && result.phase === 'deposit-pending') {
+    await new Promise<void>((resolve) => window.setTimeout(resolve, 5_000));
+    checkScope();
+    const retained = await connected.readActive();
+    if (
+      retained?.intent.requestId !== request.requestId ||
+      retained.withdrawal?.hash !== withdrawalHash ||
+      retained.deposit?.hash !== depositHash
+    )
+      throw new Error('The saved NIGHT payment changed while awaiting finality.');
+    result = await connected.send(request);
+    if (result.withdrawal.hash !== withdrawalHash || result.deposit?.hash !== depositHash)
+      throw new Error('The reconciled NIGHT payment differs from its original IDs.');
+  }
+  return result;
 }
 
 /** Reference-page action; the journal, wallet and owner remain separate authorities. */
@@ -231,8 +291,11 @@ export function createNamedNightPage(
       active,
     );
     try {
-      const result = await connected.send(request);
+      const submitted = await connected.send(request);
       host.stage('reconcile');
+      if (submitted.phase === 'deposit-pending')
+        host.status('Both original NIGHT payment IDs are saved. Checking their finality.');
+      const result = await settleSubmittedDeposit(submitted, request, connected, checkScope);
       host.record('namedNightPayment', {
         requestId: request.requestId,
         phase: result.phase,

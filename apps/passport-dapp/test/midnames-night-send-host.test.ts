@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { IDBFactory } from 'fake-indexeddb';
 import type { PassportAccount } from '@input-output-hk/mn-passport-protocol';
+import type { PassportNameService } from '@input-output-hk/mn-passport-account/names';
 import type { NetworkConfig, Prover } from '@input-output-hk/mn-passport-account/ports';
 import { accModule } from '../src/acc-module.js';
 import { createMidnamesNameService } from '../src/midnames/resolver.js';
@@ -38,19 +39,119 @@ const scope = { networkId: 'undeployed' as const, source, credentialId };
 const network: NetworkConfig = {
   networkId: 'undeployed',
   bindingId: 'acc-s3r1.1',
-  manifestSha256: '2'.repeat(64),
+  manifestSha256: '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f',
   indexerUrl: 'http://indexer',
   indexerWsUrl: 'ws://indexer',
   nodeUrl: 'http://node',
   artefactUrl: 'http://artefacts',
 };
 
-test('connected NIGHT host reopens the original journal through withdrawal, deposit and archive', async () => {
+test('provisional named NIGHT send refuses before wallet access or owner withdrawal', async () => {
+  let walletTouched = false;
+  const candidate = {
+    ...network,
+    bindingId: 'acc-s3r1.1-zkir036',
+    manifestSha256: '590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f',
+  };
+  const account = {
+    address: source,
+    networkId: candidate.networkId,
+    bindingId: candidate.bindingId,
+    scheme: 'jubjub-schnorr',
+    credentialId: new Uint8Array(16).fill(0xdd),
+  } as PassportAccount;
+  const wallet = {
+    descriptor: {
+      async connect() {
+        walletTouched = true;
+        throw new Error('Candidate wallet must not be connected.');
+      },
+    },
+  } as unknown as DevWallet;
+  const options = {
+    account,
+    scope,
+    wallet,
+    names: {} as PassportNameService,
+    isSupportedRecipient: async () => true,
+    readSourceBalance: async () => 10n,
+    review: async () => true,
+    checkScope: () => {},
+    checkApproved: () => {},
+    network: candidate,
+    binding: accModule,
+    prover: {
+      proveTx: async () => {
+        throw new Error('No candidate proof.');
+      },
+    },
+  };
+  await assert.rejects(
+    () => createConnectedNightSend(options, new IDBFactory()),
+    /cannot send NIGHT by name/,
+  );
+  await assert.rejects(
+    () => createConnectedNightSend({ ...options, provisionalLocal: true }, new IDBFactory()),
+    /cannot send NIGHT by name/,
+  );
+  assert.equal(walletTouched, false);
+});
+
+test('stable NIGHT host refuses a candidate-pinned journal scope before wallet access', async () => {
+  let walletTouched = false;
+  const account = {
+    address: source,
+    networkId: 'undeployed',
+    bindingId: network.bindingId,
+    scheme: 'jubjub-schnorr',
+    credentialId: new Uint8Array(16).fill(0xdd),
+  } as PassportAccount;
+  const wallet = {
+    descriptor: {
+      async connect() {
+        walletTouched = true;
+        throw new Error('The wallet must not be connected.');
+      },
+    },
+  } as unknown as DevWallet;
+  await assert.rejects(
+    () =>
+      createConnectedNightSend(
+        {
+          account,
+          scope: {
+            ...scope,
+            bindingId: 'acc-s3r1.1-zkir036',
+            manifestSha256: '590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f',
+          },
+          wallet,
+          names: {} as PassportNameService,
+          isSupportedRecipient: async () => true,
+          readSourceBalance: async () => 10n,
+          review: async () => true,
+          checkScope: () => {},
+          checkApproved: () => {},
+          network,
+          binding: accModule,
+          prover: {
+            proveTx: async () => {
+              throw new Error('No proof');
+            },
+          },
+        },
+        new IDBFactory(),
+      ),
+    /cannot send NIGHT by name/,
+  );
+  assert.equal(walletTouched, false);
+});
+
+async function connectedJourney(network: NetworkConfig, provisionalLocal = false) {
   const factory = new IDBFactory();
   const finalized = new Set<string>();
   const calls: string[] = [];
   let address = bridgeAddress;
-  let indexerUri = 'http://indexer';
+  let indexerUri = network.indexerUrl;
   let failProof = true;
   let selected = true;
   let switchAt: 'review' | 'withdrawal' | undefined;
@@ -73,7 +174,7 @@ test('connected NIGHT host reopens the original journal through withdrawal, depo
   const account: PassportAccount = {
     address: source,
     networkId: 'undeployed',
-    bindingId: 'acc-s3r1.1',
+    bindingId: network.bindingId,
     scheme: 'jubjub-schnorr',
     credentialId: new Uint8Array(16).fill(0xdd),
     state: async () => ({
@@ -108,8 +209,8 @@ test('connected NIGHT host reopens the original journal through withdrawal, depo
         return {
           getConfiguration: async () => ({
             indexerUri,
-            indexerWsUri: 'ws://indexer',
-            substrateNodeUri: 'http://node',
+            indexerWsUri: network.indexerWsUrl,
+            substrateNodeUri: network.nodeUrl,
             networkId: 'undeployed',
           }),
           getConnectionStatus: async () => ({ status: 'connected', networkId: 'undeployed' }),
@@ -164,10 +265,13 @@ test('connected NIGHT host reopens the original journal through withdrawal, depo
       isSupportedAccount: async () => true,
     },
   );
+  const selectedScope = provisionalLocal
+    ? { ...scope, bindingId: network.bindingId, manifestSha256: network.manifestSha256 }
+    : scope;
   const host = await createConnectedNightSend(
     {
       account,
-      scope,
+      scope: selectedScope,
       wallet,
       names,
       isSupportedRecipient: async () => true,
@@ -179,6 +283,7 @@ test('connected NIGHT host reopens the original journal through withdrawal, depo
       checkScope: () => {},
       checkApproved: () => calls.push('approved'),
       network,
+      provisionalLocal,
       binding: accModule,
       prover: {
         proveTx: async () => {
@@ -196,6 +301,7 @@ test('connected NIGHT host reopens the original journal through withdrawal, depo
       prove: async (value) => {
         assert.equal(value.target, target);
         assert.equal(value.amount, 4n);
+        assert.equal(value.provisionalLocal, provisionalLocal);
         calls.push('prove-deposit');
         if (failProof) throw new Error('proof unavailable');
         return Uint8Array.of(7);
@@ -223,7 +329,7 @@ test('connected NIGHT host reopens the original journal through withdrawal, depo
   finalized.add(deposit.hash);
   assert.equal((await host.send(request)).phase, 'completed');
   assert.equal(await host.readActive(), undefined);
-  const journal = await openBrowserNightSendJournal(factory, scope);
+  const journal = await openBrowserNightSendJournal(factory, selectedScope);
   assert.equal((await journal.readArchived(request.requestId))?.deposit?.hash, deposit.hash);
   journal.close();
   assert.deepEqual(calls, [
@@ -251,7 +357,7 @@ test('connected NIGHT host reopens the original journal through withdrawal, depo
       createConnectedNightSend(
         {
           account,
-          scope,
+          scope: selectedScope,
           wallet,
           names,
           isSupportedRecipient: async () => true,
@@ -260,6 +366,7 @@ test('connected NIGHT host reopens the original journal through withdrawal, depo
           checkScope: () => {},
           checkApproved: () => {},
           network,
+          provisionalLocal,
           binding: accModule,
           prover: {
             proveTx: async () => {
@@ -277,7 +384,7 @@ test('connected NIGHT host reopens the original journal through withdrawal, depo
   const switched = await createConnectedNightSend(
     {
       account,
-      scope,
+      scope: selectedScope,
       wallet,
       names,
       isSupportedRecipient: async () => true,
@@ -291,6 +398,7 @@ test('connected NIGHT host reopens the original journal through withdrawal, depo
       },
       checkApproved: () => calls.push('approved'),
       network,
+      provisionalLocal,
       binding: accModule,
       prover: {
         proveTx: async () => {
@@ -312,4 +420,25 @@ test('connected NIGHT host reopens the original journal through withdrawal, depo
   assert.equal(calls.filter((call) => call === 'owner').length, ownerCalls + 1);
   selected = true;
   assert.equal((await switched.readActive())?.withdrawal, undefined);
+}
+
+test('connected NIGHT host reopens the original journal through withdrawal, deposit and archive', async () => {
+  await connectedJourney(network);
+});
+
+test('pinned local candidate reopens the same two-leg original and rejects a nonlocal endpoint', async () => {
+  const candidate = {
+    ...network,
+    bindingId: 'acc-s3r1.1-zkir036',
+    manifestSha256: '590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f',
+    indexerUrl: 'http://127.0.0.1:8088/api/v4/graphql',
+    indexerWsUrl: 'ws://127.0.0.1:8088/api/v4/graphql/ws',
+    nodeUrl: 'http://127.0.0.1:9944/',
+    artefactUrl: 'http://127.0.0.1:3000/v1/zk/acc-s3r1.1-zkir036',
+  };
+  await connectedJourney(candidate, true);
+  await assert.rejects(
+    () => connectedJourney({ ...candidate, indexerUrl: 'http://remote/api/v4/graphql' }, true),
+    /Unsupported pinned NIGHT deposit request/,
+  );
 });

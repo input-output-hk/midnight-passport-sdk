@@ -22,8 +22,31 @@ import {
 import { createHeldCoinWitness, type MidnightBinding } from './chain.js';
 
 const ADDRESS = /^[a-f0-9]{64}$/;
-const MANIFEST = /^[a-f0-9]{64}$/;
 const MAX_PROVEN_BYTES = 4 * 1024 * 1024;
+const NIGHT_DEPOSIT_PINS = Object.freeze({
+  'acc-s3r1.1': '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f',
+  'acc-s3r1.1-zkir036': '590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f',
+});
+const CANDIDATE_DEPOSIT_VERIFIER_SHA256 =
+  'bb4421a5909564377d15f0756299bef99740089b842e8d9796ad2d3d75831de9';
+const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]']);
+
+function localEndpoint(value: string, protocols: readonly string[], pathname: string): boolean {
+  try {
+    const url = new URL(value);
+    return (
+      protocols.includes(url.protocol) &&
+      LOOPBACK.has(url.hostname) &&
+      url.pathname === pathname &&
+      !url.username &&
+      !url.password &&
+      !url.search &&
+      !url.hash
+    );
+  } catch {
+    return false;
+  }
+}
 
 export interface UnboundNightDepositRequest {
   readonly network: NetworkConfig;
@@ -35,6 +58,44 @@ export interface UnboundNightDepositRequest {
     readonly encryptionPublicKey: string;
   };
   readonly prover: Prover;
+  /** Explicit local proof-only opt-in; the host separately controls balancing and dispatch. */
+  readonly provisionalLocal?: boolean;
+}
+
+/** Validate the deposit binding before reading chain state or asking the device wallet to sign. */
+export function assertNightDepositPreflight(request: UnboundNightDepositRequest): void {
+  const { network, binding, target, amount, walletKeys, prover, provisionalLocal } = request;
+  const manifest = NIGHT_DEPOSIT_PINS[network.bindingId as keyof typeof NIGHT_DEPOSIT_PINS];
+  if (
+    network.networkId !== 'undeployed' ||
+    !manifest ||
+    network.manifestSha256 !== manifest ||
+    (network.bindingId === 'acc-s3r1.1-zkir036' &&
+      (!provisionalLocal ||
+        !localEndpoint(network.nodeUrl, ['http:', 'https:'], '/') ||
+        !localEndpoint(network.indexerUrl, ['http:', 'https:'], '/api/v4/graphql') ||
+        !localEndpoint(network.indexerWsUrl, ['ws:', 'wss:'], '/api/v4/graphql/ws') ||
+        !localEndpoint(network.artefactUrl, ['http:', 'https:'], '/v1/zk/acc-s3r1.1-zkir036'))) ||
+    !ADDRESS.test(target) ||
+    typeof amount !== 'bigint' ||
+    amount <= 0n ||
+    amount >= 1n << 128n ||
+    typeof walletKeys.coinPublicKey !== 'string' ||
+    !walletKeys.coinPublicKey ||
+    typeof walletKeys.encryptionPublicKey !== 'string' ||
+    !walletKeys.encryptionPublicKey ||
+    typeof binding.Contract !== 'function' ||
+    typeof binding.ledger !== 'function' ||
+    typeof prover.proveTx !== 'function'
+  )
+    throw new Error('Unsupported pinned NIGHT deposit request.');
+}
+
+async function sha256(value: Uint8Array): Promise<string> {
+  if (!(value instanceof Uint8Array) || value.length === 0)
+    throw new Error('The pinned NIGHT deposit verifier is missing.');
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', Uint8Array.from(value)));
+  return Array.from(digest, (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
 /** Replace Compact 0.35's padded or short deletion credit with the measured value. */
@@ -61,12 +122,21 @@ export function measuredAccNightDeletionCredit(
 
 type UnsubmittedDeposit = Awaited<ReturnType<typeof createUnprovenCallTx>>;
 
+function matchesCallPartition(existing: unknown, guaranteed: unknown, fallible: unknown): boolean {
+  return (
+    existing instanceof ContractCall &&
+    Boolean(existing.guaranteedTranscript) === Boolean(guaranteed) &&
+    Boolean(existing.fallibleTranscript) === Boolean(fallible)
+  );
+}
+
 function pinnedDepositCall(callData: UnsubmittedDeposit, target: string) {
   const original = callData.private.unprovenTx;
   const intents = [...(original.intents?.values() ?? [])];
   const oldIntent = intents[0];
   const [call] = callData.calls;
   const [guaranteed, fallible] = call?.public.partitionedTranscript ?? [];
+  const transcript = guaranteed ?? fallible;
   const [existing] = oldIntent?.actions ?? [];
   const entry =
     existing instanceof ContractCall && typeof existing.entryPoint === 'string'
@@ -85,39 +155,35 @@ function pinnedDepositCall(callData: UnsubmittedDeposit, target: string) {
     !(existing instanceof ContractCall) ||
     existing.address !== target ||
     entry !== 'deposit_unshielded' ||
-    !guaranteed ||
-    fallible ||
-    guaranteed.gas.bytesDeleted <= 0n ||
+    !transcript ||
+    Boolean(guaranteed) === Boolean(fallible) ||
+    !matchesCallPartition(existing, guaranteed, fallible) ||
     original.guaranteedOffer ||
     original.fallibleOffer?.size
   )
-    throw new Error('The pinned NIGHT deposit is not one supported guaranteed call.');
-  return { oldIntent, call, guaranteed };
+    throw new Error('The pinned NIGHT deposit is not one supported call.');
+  return { oldIntent, call, guaranteed, fallible, transcript };
 }
 
-function rebuildMeasuredDeposit(
+export function rebuildMeasuredDeposit(
   callData: UnsubmittedDeposit,
   state: ContractState,
   parameters: LedgerParameters,
   target: string,
   networkId: string,
+  keyLocation: string,
 ): ReturnType<typeof Transaction.fromPartsRandomized> {
-  const { oldIntent, call, guaranteed } = pinnedDepositCall(callData, target);
+  const { oldIntent, call, guaranteed, fallible, transcript } = pinnedDepositCall(callData, target);
   const operation = ContractState.deserialize(state.serialize()).operation('deposit_unshielded');
   if (!operation) throw new Error('The named NIGHT recipient lacks the pinned deposit operation.');
-  const keyLocation = encodeContractKeyLocation({
-    contractAddress: target,
-    circuitId: 'deposit_unshielded',
-    verifierKeyHash: hashVerifierKey(operation.verifierKey),
-  });
-  const credit = measuredAccNightDeletionCredit(guaranteed, state, parameters, target);
-  const safe = { ...guaranteed, gas: { ...guaranteed.gas, bytesDeleted: credit } };
+  const credit = measuredAccNightDeletionCredit(transcript, state, parameters, target);
+  const safe = { ...transcript, gas: { ...transcript.gas, bytesDeleted: credit } };
   const prototype = new ContractCallPrototype(
     target,
     'deposit_unshielded',
     operation,
-    safe,
-    undefined,
+    guaranteed ? safe : undefined,
+    fallible ? safe : undefined,
     call.private.privateTranscriptOutputs,
     call.private.input,
     call.private.output,
@@ -131,8 +197,12 @@ function rebuildMeasuredDeposit(
   const [action] = [...(adjusted.intents?.values() ?? [])].flatMap((part) => part.actions);
   if (
     !(action instanceof ContractCall) ||
-    action.guaranteedTranscript?.gas.bytesDeleted !== credit ||
-    action.guaranteedTranscript.program.length !== guaranteed.program.length
+    (guaranteed ? action.guaranteedTranscript : action.fallibleTranscript)?.gas.bytesDeleted !==
+      credit ||
+    (guaranteed ? action.guaranteedTranscript : action.fallibleTranscript)?.program.length !==
+      transcript.program.length ||
+    Boolean(action.guaranteedTranscript) !== Boolean(guaranteed) ||
+    Boolean(action.fallibleTranscript) !== Boolean(fallible)
   )
     throw new Error('The pinned NIGHT deposit gas correction changed the call.');
   return adjusted;
@@ -143,17 +213,7 @@ export async function proveUnboundNightDeposit(
   request: UnboundNightDepositRequest,
 ): Promise<Uint8Array> {
   const { network, binding, target, amount, walletKeys, prover } = request;
-  if (
-    network.networkId !== 'undeployed' ||
-    network.bindingId !== 'acc-s3r1.1' ||
-    !MANIFEST.test(network.manifestSha256) ||
-    !ADDRESS.test(target) ||
-    amount <= 0n ||
-    amount >= 1n << 128n ||
-    !walletKeys.coinPublicKey ||
-    !walletKeys.encryptionPublicKey
-  )
-    throw new Error('Unsupported pinned NIGHT deposit request.');
+  assertNightDepositPreflight(request);
   setNetworkId(network.networkId);
   const publicDataProvider = indexerPublicDataProvider({
     queryURL: network.indexerUrl,
@@ -162,6 +222,9 @@ export async function proveUnboundNightDeposit(
   const zkConfigProvider = new FetchZkConfigProvider<string>(network.artefactUrl, {
     verify: 'require',
     expectedManifestHash: network.manifestSha256,
+    // The provider's default ponyfill may call a detached native browser fetch.
+    // Bind through the active global so Chrome can fetch the pinned verifier.
+    fetchFunc: (url, init) => globalThis.fetch(url, init),
   });
   const walletProvider = createWalletProvider({
     getCoinPublicKey: () => walletKeys.coinPublicKey,
@@ -199,10 +262,37 @@ export async function proveUnboundNightDeposit(
   );
   if (!captured.snapshot) throw new Error('The named NIGHT recipient ACC is absent.');
   const [, state, parameters] = captured.snapshot;
+  const operation = ContractState.deserialize(state.serialize()).operation('deposit_unshielded');
+  if (!operation) throw new Error('The named NIGHT recipient lacks the pinned deposit operation.');
+  if (network.bindingId === 'acc-s3r1.1-zkir036') {
+    // The provisional profile must agree at the chain and HTTP artifact boundaries
+    // before its isolated proof port sees a deposit call.
+    const [chainVerifier, artifactVerifier] = await Promise.all([
+      sha256(operation.verifierKey),
+      zkConfigProvider.getVerifierKey('deposit_unshielded').then(sha256),
+    ]);
+    if (
+      chainVerifier !== CANDIDATE_DEPOSIT_VERIFIER_SHA256 ||
+      artifactVerifier !== CANDIDATE_DEPOSIT_VERIFIER_SHA256
+    )
+      throw new Error('The provisional NIGHT deposit verifier differs from its pin.');
+  }
+  const keyLocation = encodeContractKeyLocation({
+    contractAddress: target,
+    circuitId: 'deposit_unshielded',
+    verifierKeyHash: hashVerifierKey(operation.verifierKey),
+  });
   // Compact 0.35 can pad or understate deleted bytes on this Ledger 9 profile.
   // The ACC NIGHT deposit needs its earned credit, so measure it against the same indexed
   // state and cost model before proving the exact call.
-  const unprovenTx = rebuildMeasuredDeposit(callData, state, parameters, target, network.networkId);
+  const unprovenTx = rebuildMeasuredDeposit(
+    callData,
+    state,
+    parameters,
+    target,
+    network.networkId,
+    keyLocation,
+  );
   const proven = await prover.proveTx(unprovenTx.serialize(), {
     networkId: network.networkId,
     bindingId: network.bindingId,

@@ -18,7 +18,7 @@ function deepFreeze<T>(value: T): T {
 }
 
 /**
- * The supported-versions registry, deep-frozen at initialisation. The
+ * The pinned-version registry, deep-frozen at initialisation. The
  * freeze is not incidental: this data is the integrity anchor the loader
  * (T3) verifies artefact bytes against, so it must be immutable before any
  * consumer can hold a reference — `readonly` types are compile-time only.
@@ -33,9 +33,11 @@ export const ACC_REGISTRY: AccRegistry = deepFreeze(GENERATED_REGISTRY);
 export const BINDING_VERSION: string = ACC_REGISTRY.current;
 
 /** Every binding version this SDK release can serve (architecture §8 decision 2's supported range). */
-export const SUPPORTED_BINDINGS: readonly string[] = Object.freeze(
-  Object.keys(ACC_REGISTRY.versions),
-);
+const supportedBindings = (registry: AccRegistry): string[] =>
+  Object.entries(registry.versions)
+    .filter(([, binding]) => !binding.provisional)
+    .map(([version]) => version);
+export const SUPPORTED_BINDINGS: readonly string[] = Object.freeze(supportedBindings(ACC_REGISTRY));
 
 /**
  * Thrown when a version outside the supported set is resolved (FS-0.2 D-8).
@@ -58,23 +60,34 @@ export class UnsupportedBindingError extends Error {
 }
 
 /**
- * The full pinned entry for a supported version; throws
- * {@link UnsupportedBindingError} otherwise (own properties only — prototype
- * keys such as "__proto__" are rejected, not resolved). The returned entry
+ * The full pinned entry, including provisional source candidates; throws
+ * {@link UnsupportedBindingError} for unknown IDs (own properties only —
+ * prototype keys such as "__proto__" are rejected). A pin is not SDK
+ * admission; normal consumers use {@link resolveBinding}. The returned entry
  * is frozen and shared.
  */
-export function resolveBinding(version: string, registry: AccRegistry = ACC_REGISTRY): AccBinding {
+export function resolvePinnedBinding(
+  version: string,
+  registry: AccRegistry = ACC_REGISTRY,
+): AccBinding {
   const binding = Object.hasOwn(registry.versions, version)
     ? registry.versions[version]
     : undefined;
-  if (!binding) throw new UnsupportedBindingError(version, Object.keys(registry.versions));
+  if (!binding) throw new UnsupportedBindingError(version, supportedBindings(registry));
+  return binding;
+}
+
+/** Resolve a supported binding; provisional pins remain available only to explicit host qualification. */
+export function resolveBinding(version: string, registry: AccRegistry = ACC_REGISTRY): AccBinding {
+  const binding = resolvePinnedBinding(version, registry);
+  if (binding.provisional) throw new UnsupportedBindingError(version, supportedBindings(registry));
   return binding;
 }
 
 const normaliseHash = (hash: string) => hash.toLowerCase().replace(/^0x/, '');
 
 /**
- * Matches a deployed contract's verifier-key hashes against every supported
+ * Matches a deployed contract's verifier-key hashes against every pinned
  * version — the chain-derived answer to "which version is this account?"
  * while the ACC carries no on-chain version marker (FS-0.2 OQ-7). Input
  * hashes are normalised (lowercased, `0x` prefix stripped) and compared as
@@ -82,7 +95,8 @@ const normaliseHash = (hash: string) => hash.toLowerCase().replace(/^0x/, '');
  * null. Limits, recorded in the security register: versions differing only
  * in pure circuits or module bytes are indistinguishable, and the
  * circuit-to-key assignment is not checked. Ties prefer `current`, then
- * the lexicographically first supported version.
+ * the lexicographically first pinned version. Use {@link resolveBinding} after
+ * detection before admitting an account.
  */
 export function detectDeployedVersion(
   onChainVerifierKeyHashes: readonly string[],
@@ -100,6 +114,41 @@ export function detectDeployedVersion(
         ),
       ].sort();
       return known.length === observed.length && known.every((h, i) => h === observed[i]);
+    })
+    .map(([version]) => version);
+  if (matches.length === 0) return null;
+  return matches.includes(registry.current) ? registry.current : (matches[0] ?? null);
+}
+
+/**
+ * Detect a binding from the complete on-chain circuit-to-verifier assignment.
+ * Use this for account admission when more than one key-generation profile may
+ * have the same hash set: a permutation of verifier keys is not a valid ACC
+ * binding even if {@link detectDeployedVersion} matches the unordered set.
+ */
+export function detectDeployedVersionByCircuit(
+  onChainVerifierKeyHashes: Readonly<Record<string, string>>,
+  registry: AccRegistry = ACC_REGISTRY,
+): string | null {
+  const observed = Object.entries(onChainVerifierKeyHashes)
+    .map(([name, hash]) => [name, typeof hash === 'string' ? normaliseHash(hash) : ''] as const)
+    .sort(([a], [b]) => a.localeCompare(b));
+  if (
+    observed.length === 0 ||
+    observed.some(([name, hash]) => !/^[a-z][a-z0-9_]*$/.test(name) || !/^[a-f0-9]{64}$/.test(hash))
+  )
+    return null;
+  const matches = Object.entries(registry.versions)
+    .filter(([, binding]) => {
+      const expected = Object.entries(binding.circuits)
+        .flatMap(([name, pin]) => (pin.hashes ? [[name, pin.hashes.verifierKey] as const] : []))
+        .sort(([a], [b]) => a.localeCompare(b));
+      return (
+        expected.length === observed.length &&
+        expected.every(
+          ([name, hash], index) => name === observed[index]?.[0] && hash === observed[index]?.[1],
+        )
+      );
     })
     .map(([version]) => version);
   if (matches.length === 0) return null;

@@ -161,6 +161,7 @@ pnpm install && pnpm build
 | -------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
 | `PASSPORT_CONTRACT_DIR`    | required                       | The `fetch-acc.sh` output, the directory holding `contracts/managed`.                                                    |
 | `PASSPORT_MANIFEST_SHA256` | required                       | SHA-256 of `compiler/contract-manifest.json`, 64 hex characters (see the manifest pin).                                  |
+| `PASSPORT_ARTEFACT_DIR`    | `PASSPORT_CONTRACT_DIR/contracts/managed/account` | Optional absolute real ACC asset directory. The service verifies its complete manifest and selects its compiled-contract, verifier and proof providers together. The supported binding and manifest pins still apply. |
 | `MIDNIGHT_NETWORK`         | `local` (set by `prototype:up`) | Selects `CONFIG.local` in the reference wave-deploy code the service reuses; `patch-endpoints.sh` makes that read the `MN_*` variables below. |
 | `MN_NETWORK_ID`            | `undeployed`                   | The Midnight network id: lower-case letters, digits and hyphens.                                                         |
 | `MN_NODE_URL`              | `http://localhost:$MN_NODE_PORT` (19944) | Node, `http` or `https`.                                                                                        |
@@ -926,17 +927,58 @@ The demo's optional Midnames reader uses the existing **Name service** panel.
 Set the base build inputs in the [naming adapter guide](../docs/site/names.md#source-preview-midnames-210).
 A configured lookup reads the registry's contract target and verifies the
 deployed ACC binding at the same indexer block before displaying it. The
-indexer is still trusted for the block and contract-state bytes. A
+indexer is still trusted for contract-state bytes. With a configured node pin,
+the lookup first checks that the selected indexer block is canonical and
+finalized on that node. Configure `VITE_MIDNAMES_NODE_URL` and the recorded
+`VITE_MIDNAMES_CHAIN_ANCHOR_HEIGHT` and `VITE_MIDNAMES_CHAIN_ANCHOR_HASH`
+together. The local launcher supplies the shipped claim block; online profiles
+require a separately configured node origin and an independently confirmed
+non-genesis chain block. A
 non-`undeployed` network or non-loopback indexer also requires an independently
 observed, public known-name and ACC pin plus a second, distinct-origin indexer
-endpoint pair. Each lookup
-rechecks the known pair through both paths and refuses an absent, changed or
-divergent binding. Configure `VITE_MIDNAMES_VERIFICATION_INDEXER_URL` and
+endpoint pair. Each two-provider lookup first requires both indexers to select
+the same canonical finalized block, then reads both registry and target ACC
+at that block. A lagging or divergent indexer refuses before target display.
+The two-provider profile requires the separate node pin even on loopback.
+When a known mapping pin is configured, its recheck and the requested name
+share that selected block for one resolution. An absent, changed or divergent
+binding refuses. Configure `VITE_MIDNAMES_VERIFICATION_INDEXER_URL` and
 `VITE_MIDNAMES_VERIFICATION_INDEXER_WS_URL` together. Distinct origins do not
-prove independent chain state; online qualification still needs a verified live
+prove independent chain state or state-byte authenticity; online qualification still needs a verified live
 mapping and authenticated host-controlled provider where required. Claim
 finality continues to use the primary path.
+For a repeatable **local** second read path, the
+[indexer-only witness](../infra/localnet/README.md#independent-local-indexer-api-v4-read-witness)
+attaches to the existing shared node with its own credentials and volume. The
+[read-only comparison](../examples/midnames-local/README.md#check-an-independent-indexer-read-path)
+checks one exact registry/ACC block state on both indexers and exercises this
+dual-provider resolver. The witness does not start another node or prover, and
+two indexers on one node do not qualify online provider independence.
+The [matched-tip local receipt](../examples/midnames-local/evidence/independent-indexer-matched-tip-20261122.json)
+exercises the configured app resolver at signed source `3a860393`, from Node
+without a browser credential or transaction.
 The default remains the mock.
+
+The provisional `acc-s3r1.1-zkir036` profile is available only through the
+explicit local [Midnames launcher](../examples/midnames-local/README.md#provisional-acc-local-demo-profile).
+It requires a separately verified `PASSPORT_ARTEFACT_DIR`,
+`PASSPORT_CANDIDATE_LOCAL=1`, the exact candidate manifest pin, the
+`undeployed` network and the standalone registry with loopback Indexer API v4
+endpoints. Vite checks the candidate manifest and generated module before
+building; the service checks the full asset tree at startup. The public SDK
+binding remains provisional, and the ordinary demo keeps `acc-s3r1.1`.
+Candidate funding is separately provisioned. Candidate named NIGHT sending
+requires the local launcher's explicit `--night-send` with `--claim --funding`;
+it does not activate for an ordinary demo or online binding.
+The candidate ACC proves through the shared Ledger 9 release prover on port
+6300. The launcher's separately owned compatibility prover on port 16320
+serves the pinned Compact 0.35 standalone name registry's claim proof. The
+launcher stops only that owned prover container and leaves the shared stack's
+volumes untouched.
+The [local candidate claim receipt](../examples/midnames-local/evidence/candidate-acc-combined-local-claim-20261122.json)
+records a same-profile synthetic account creation and paid name claim across
+signed heads, followed by a read-only final-head registration check. It does
+not qualify a real passkey provider or a single-head named payment journey.
 
 The separate [named shielded deposit sender](../examples/midnames-local/README.md#review-the-named-deposit-in-the-sender-browser)
 can display a localhost browser review before preparing and dispatching its
@@ -993,7 +1035,15 @@ a durable marker keeps any no-ID outcome blocked, including a callback refusal.
 A separate source helper maps the reviewed amount and bridge address to
 the selected JubJub account's unshielded NIGHT withdrawal. The reference demo
 now has an opt-in local named-send page and connected bridge/finality adapter.
-This path has no native/provider qualification.
+The [connected browser receipt](../examples/midnames-local/evidence/candidate-connected-browser-night-send-20261122.json)
+qualifies one local candidate payment across signed heads. Physical-provider
+and online qualification remain open.
+The [one-head local receipt](../examples/midnames-local/evidence/candidate-onehead-create-claim-pay-20261122.json)
+adds fresh ACC creation, post-activation name claim, and a named NIGHT payment
+in one persistent synthetic-passkey profile. Its first payment needed one
+original-only finality check after the chain completed. The page now waits for
+finality when both payment legs are fenced; a separate native follow-up
+completed automatically and archived those exact IDs without another click.
 
 The source-only owner review model can now stage a named NIGHT route for the
 actual credential ceremony. It shows the exact name, pinned registry, full
@@ -1002,8 +1052,9 @@ withdrawal callback, an opt-in host check requires that same named intent to
 remain approved before the journal fence. The ACC signature itself authorizes
 the withdrawal to the bridge; the name and destination ACC are checked by the
 host and are not fields signed by this ACC circuit. The opt-in local send
-control now stages this review for the actual owner credential call. A
-provider/browser payment is not qualified yet.
+control now stages this review for the actual owner credential call. The local
+candidate run exercised a synthetic passkey; physical-provider and online
+acceptance remain open.
 
 The local NIGHT deposit recipe and browser wallet share a source bridge guard
 for the decoded fenced withdrawal. It requires one exact controlled NIGHT
@@ -1012,8 +1063,9 @@ using another or additional unshielded input. The browser worker can now
 balance, sign and dispatch one prepared `deposit_unshielded` original after the
 host journals it. The worker independently reads the exact committed IndexedDB
 fence before dispatch. It refuses another ACC action, unshielded change, a different
-original or a second dispatch. The opt-in demo send control uses this worker;
-native browser deposit qualification is still needed.
+original or a second dispatch. The opt-in demo send control uses this worker.
+The local candidate browser deposit finalized with the exact original
+withdrawal output; physical-provider and online qualification remain open.
 
 The built-in wallet now offers a separate internal NIGHT bridge observation port
 for the demo host. It returns the device-held wallet's raw bridge address and
@@ -1023,13 +1075,13 @@ It also exposes the guarded internal deposit methods; the public DApp Connector
 remains read-only. Wallet connection now checks the pinned v1 service binding,
 manifest and artefact URL before using its proof-server endpoint.
 
-The next source-only host composition joins that worker to the selected JubJub
+The source-only host composition joins that worker to the selected JubJub
 account, configured name resolver, original-only browser journal and finality
 reader. It prepares an unbound `deposit_unshielded` call for the device wallet to
 balance and sign, then fences the original before dispatch. Each attempt opens a
 fresh journal handle, retaining the withdrawal through proof failure and later
-resume. The opt-in demo button uses this host. Native proof, connected browser
-payment and real-provider acceptance remain open.
+resume. The opt-in demo button uses this host. The connected local candidate
+payment finalized across signed heads; real-provider acceptance remains open.
 
 The retained Compact 0.35 `deposit_unshielded` call can misstate deletion
 credit against the current Ledger 9 cost model. A shared-chain predecessor was
@@ -1055,6 +1107,9 @@ name and a positive amount in NIGHT smallest units. The page checks a deployed
 compatible recipient and source balance, then shows the full route, registry,
 target, bridge and both ACC operations before the owner's combined credential
 review. A declined or changed route does not start the payment.
+Before that review, the page explains an absent name, self-recipient, unsupported
+ACC or insufficient balance separately. A naming provider outage is not treated
+as an absent name. These refusals start no owner ceremony or transaction.
 
 The selected account's original intent and each transaction ID stay in the
 browser journal. A pending withdrawal or deposit is displayed under the same
@@ -1071,6 +1126,10 @@ browser check covers control visibility and the no-ID recovery refusal with a
 synthetic connector and registry; it does not perform a payment.
 
 ### Standalone Midnames claim recovery
+
+After a reload, the landing controls become available only when the account
+actions are ready. Open with the same passkey to inspect a retained claim; this
+does not prepare or send another claim.
 
 Standalone claim reconciliation requires an explicit
 `VITE_MIDNAMES_CLAIM_PROTOCOL_VERSION` alongside the Indexer API v4 URLs.
@@ -1106,6 +1165,11 @@ busy result **before** naming proof or preparation. The page explains that no ne
 claim was started by that request; reconcile or retire the original through its
 own browser flow before another account asks for a quote. A busy refusal does not
 authorize clearing the sponsor journal or the other browser's site data.
+After a claim is confirmed, an operator can launch a separate local candidate
+claim with `--claim-journal-id LABEL`. It retains the previous journal and
+selects another private directory under the same demo state. Reuse the label
+to recover that exact original; do not choose a different label to retry an
+uncertain claim. Only one claim host and sponsor wallet may run at a time.
 
 For online Preprod reads, the optional
 [host-controlled indexer proxy](../examples/midnames-online/README.md) keeps a
@@ -1128,7 +1192,12 @@ shows **Register a .night name** on the Passport account's Balances page after
 creation or passkey-based opening. Reviewing a valid quote for the already
 deployed ACC retains the selected `.night` name per registry, ACC, and
 credential. It restores that choice after reopening with the same credential
-and reconciles a retained original receipt. Availability and imported-receipt
+and reconciles a retained original receipt. If the user has not chosen a name,
+**Suggest a local .night name** fills a random `demo-<24 hex characters>.night` candidate only
+after checking for an earlier selection under that credential. It does not
+reserve, claim, fund or send; **Continue registration** still checks the
+registry and presents the quote before owner approval and payment confirmation.
+Availability and imported-receipt
 checks leave the name unselected; enter it again after a reload. A pending claim stays visibly
 pending until the original transaction and current registry binding agree.
 On reopen, a retained original also checks the sponsor's dispatch fence: if it is
@@ -1215,3 +1284,31 @@ The Node fixture demonstrates a named NIGHT payment using a controlled wallet
 and a durable two-leg journal. The reference browser withdrawal remains a
 separate wallet-address flow. See the
 [standalone recipe](../examples/midnames-local/README.md#run-the-named-acc-to-acc-night-payment).
+
+The provisional `acc-s3r1.1-zkir036` candidate has a source-only browser
+admission path pinned to the local manifest, standalone registry, loopback
+service and Indexer API v4. Its payment journal refuses a receipt from a
+different binding. The local demo launcher defaults to
+`VITE_MIDNAMES_NIGHT_SEND=0` for candidate assets and sets it to `1` only with
+explicit `--night-send --claim --funding` and `--candidate-assets`. The headless
+page check covers visibility and retained no-ID refusal; it does not establish an actual
+connected candidate payment. A fresh isolated
+[native run](../examples/midnames-local/evidence/candidate-acc-adapter-named-night-send-20261122.json)
+settled both legs at one signed head, using the exported deposit adapter for
+the recipient. It did not exercise the connected browser host, passkey consent
+or IndexedDB payment recovery; those remain the launch gate.
+The candidate device deposit request now carries the binding and manifest pin
+through the wallet worker's parser and IndexedDB fence. A synthetic headless
+browser check covers that boundary and its saved-original refusal; it does not
+qualify a native connected payment.
+The funding service has a separate source-only candidate NIGHT deposit path
+with a verified generated module and loopback API v4 guards. The demo launcher
+now selects its dedicated candidate funding seed, policy, reservations and
+deployment log when `--candidate-assets --funding` is explicit. Its funding
+wallet uses loopback port 18789, so a stable demo on 8789 can stay running. A
+[shared-chain native run](../examples/midnames-local/evidence/candidate-funding-native-20261122.json)
+confirmed a 10-unit deposit, indexed finality and same-ID replay. A
+[headless Passport page run](../examples/midnames-local/evidence/candidate-funding-browser-20261122.json)
+then confirmed another 10-unit NIGHT deposit, finalized Indexer API v4 action
+and reload without resubmission. It used an existing-account connector fixture;
+the full passkey/worker path and named payment remain separate acceptance work.

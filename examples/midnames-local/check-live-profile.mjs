@@ -6,6 +6,7 @@ import {
   createMidnamesIndexer,
   createMidnamesLedgerReads,
 } from '../../apps/passport-dapp/src/midnames/ledger-reader.ts';
+import { createMidnamesNodeFinality } from '../../apps/passport-dapp/src/midnames/chain-finality.ts';
 import { waitForFinalizedIndexerBlock } from './finalized-indexer.mjs';
 
 const [file] = process.argv.slice(2);
@@ -96,6 +97,26 @@ try {
   assert.equal(claim?.target.kind, 'contract', 'The name has no contract target.');
   assert.equal(claim.target.address, profile.recipient.address, 'The name target changed.');
   assert.ok(await reader.isSupportedAccount(profile.recipient.address, 'undeployed'));
+  const interactiveReader = createMidnamesLedgerReads(
+    indexer,
+    'undeployed',
+    profile.recipient.bindingId ?? 'acc-s3r1.1',
+    'standalone-0.35',
+    undefined,
+    createMidnamesNodeFinality({
+      nodeUrl,
+      anchorHeight: profile.registry.claimBlock.height,
+      anchorHash: profile.registry.claimBlock.hash,
+    }),
+  );
+  const interactiveTarget = await interactiveReader.readSupportedTarget(
+    profile.registry.name,
+    scope,
+  );
+  assert.deepEqual(interactiveTarget, {
+    kind: 'contract',
+    address: profile.recipient.address,
+  });
   assert.equal(
     await rpc('chain_getBlockHash', [finalizedHeight]),
     finalizedHash,
@@ -109,6 +130,7 @@ try {
       accountAddress: profile.recipient.address,
       claimBlock: profile.registry.claimBlock,
       finalizedRead: { hash: blockHash, height: block.height },
+      interactiveRead: 'finalized canonical indexer block and supported ACC',
     }),
   );
 } finally {

@@ -420,7 +420,29 @@ const HINTS: Readonly<Record<string, string>> = {
   NightDepositInterrupted:
     'The withdrawal has an original transaction ID. Keep this site data and resume only its deposit after finality; do not withdraw again.',
   NightPaymentDeclined: 'The named payment was declined before either transaction started.',
+  NightUnsupportedRoute:
+    'This local demo can send only a positive NIGHT amount to another Passport ACC by name. No payment was started.',
+  NightNameUnavailable:
+    'This name has no supported Passport ACC contract target on the configured registry. No payment was started.',
+  NightSelfRecipient:
+    'This name resolves to the open Passport ACC. Choose a different recipient. No payment was started.',
+  NightRecipientUnsupported:
+    'The named contract is not an activated ACC with this supported binding. No payment was started.',
+  NightSourceUnsupported:
+    'The open Passport ACC is not available for this NIGHT route. No payment was started.',
+  NightInsufficientBalance:
+    'The open Passport ACC does not hold enough NIGHT for this amount. No payment was started.',
   InternalError: 'Something went wrong inside the connector.',
+};
+
+const NAME_HINTS: Readonly<Record<string, string>> = {
+  InvalidQuery:
+    'Check the exact .night name, network and registry before sending. No payment was started.',
+  InvalidRecord:
+    'The naming record or its ACC binding is invalid for this route. No payment was started.',
+  Expired: 'The naming record expired. Resolve it again before sending; no payment was started.',
+  Unavailable:
+    'The naming provider could not be checked. This does not mean the name is free; no payment was started.',
 };
 
 /** Reject malformed addresses before opening a passkey ceremony. */
@@ -465,7 +487,9 @@ export function plainError(e: unknown, serviceUrl: string): PlainError {
         ? message
         : unreachable
           ? `Could not reach the Passport service at ${serviceUrl}. Is it running, and is this page at http://localhost:5173?`
-          : (HINTS[code] ?? 'Unexpected error; see the message below.');
+          : ((err.name === 'PassportNameError' ? NAME_HINTS[code] : undefined) ??
+            HINTS[code] ??
+            'Unexpected error; see the message below.');
   return { code, message, hint, ...(submission && { submission }) };
 }
 

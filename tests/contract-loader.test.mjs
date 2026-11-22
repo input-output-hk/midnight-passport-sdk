@@ -33,6 +33,11 @@ test('loadArtefact must reject an unsupported version before fetching anything',
     UnsupportedBindingError,
     'the supported-set gate must fire first',
   );
+  await assert.rejects(
+    loadArtefact(spy, { version: 'acc-s3r1.1-zkir036' }),
+    UnsupportedBindingError,
+    'a provisional registry pin must not become a supported SDK load',
+  );
   assert.equal(fetched, 0, 'nothing must be fetched for an unsupported version');
 });
 
@@ -66,7 +71,7 @@ test('loadArtefact must verify against an injected registry (runs everywhere)', 
     current: 'v-test',
     versions: {
       'v-test': {
-        provisional: true,
+        provisional: false,
         source: { path: 'account.compact', sha256: goodHash },
         toolchain: {},
         moduleHashes: /** @type {Record<string, string>} */ ({
@@ -108,7 +113,7 @@ test('loadArtefact must stop between fetches when the signal aborts', async () =
     current: 'v-test',
     versions: {
       'v-test': {
-        provisional: true,
+        provisional: false,
         source: { path: 'account.compact', sha256: goodHash },
         toolchain: {},
         moduleHashes: { 'contract/index.js': goodHash },

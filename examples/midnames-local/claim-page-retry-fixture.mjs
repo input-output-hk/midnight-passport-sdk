@@ -30,6 +30,7 @@ export async function qualifyPageRetry(input) {
     contracts,
     providers,
     reads,
+    candidateQualification,
     profile,
     step,
     sponsorPaymentAddress,
@@ -140,8 +141,9 @@ export async function qualifyPageRetry(input) {
               const reader = createMidnamesLedgerReads(
                 pinned,
                 'undeployed',
-                'acc-s3r1.1',
+                candidateQualification?.bindingId ?? 'acc-s3r1.1',
                 'standalone-0.35',
+                candidateQualification,
               );
               const claim = await reader.readClaim(quoteName, profile);
               return (

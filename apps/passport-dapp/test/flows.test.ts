@@ -331,6 +331,27 @@ test('an error with an unknown code, a name only, or no shape at all still reads
   assert.equal(plainError({ message: 5 }, 'u').message, '[object Object]');
 });
 
+test('named payment refusals and provider outage have actionable, fixed hints', () => {
+  for (const code of [
+    'NightUnsupportedRoute',
+    'NightNameUnavailable',
+    'NightSelfRecipient',
+    'NightRecipientUnsupported',
+    'NightSourceUnsupported',
+    'NightInsufficientBalance',
+  ]) {
+    const result = plainError({ code, message: 'private detail' }, 'http://svc');
+    assert.match(result.hint, /No payment was started/);
+    assert.doesNotMatch(result.hint, /private detail|Unexpected/);
+  }
+  const outage = plainError(
+    { name: 'PassportNameError', code: 'Unavailable', message: 'untrusted provider detail' },
+    'http://svc',
+  );
+  assert.match(outage.hint, /could not be checked/);
+  assert.doesNotMatch(outage.hint, /untrusted provider detail|free name/);
+});
+
 test('an unreachable service is explained with its address, whatever the code and the browser', () => {
   for (const message of [
     'Failed to fetch',

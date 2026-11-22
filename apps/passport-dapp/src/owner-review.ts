@@ -92,6 +92,7 @@ export function createOwnerReview(ports: OwnerReviewPorts) {
       current: PassportAccount,
       intent: NightSendIntent,
       freshBalance: string,
+      localCandidate?: { readonly manifestSha256: string; readonly provisionalLocal: true },
     ): void {
       const { context, check } = captureOwnerReview(ports, current);
       if (!/^[a-f0-9]{64}$/.test(intent.bridge))
@@ -116,6 +117,7 @@ export function createOwnerReview(ports: OwnerReviewPorts) {
           balance: freshBalance,
           outsideSession: false,
           namedNight: intent,
+          ...(localCandidate && { localCandidate }),
         },
         check,
       );

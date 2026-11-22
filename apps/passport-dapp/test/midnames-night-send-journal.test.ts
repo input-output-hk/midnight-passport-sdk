@@ -7,6 +7,11 @@ import { NIGHT_SEND_OPERATIONS, type NightSendIntent } from '../src/midnames/nig
 const source = 'a'.repeat(64);
 const credentialId = '1'.repeat(32);
 const scope = { networkId: 'undeployed' as const, source, credentialId };
+const candidateScope = {
+  ...scope,
+  bindingId: 'acc-s3r1.1-zkir036',
+  manifestSha256: '590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f',
+};
 const intent: NightSendIntent = {
   requestId: 'a1234567-a123-4123-8123-a123456789ab',
   name: 'alice.night',
@@ -22,6 +27,35 @@ const intent: NightSendIntent = {
 };
 const withdrawal = { hash: 'e'.repeat(64), identifiers: ['0'.repeat(66)] };
 const deposit = { hash: 'f'.repeat(64), identifiers: ['1'.repeat(66)] };
+
+test('candidate originals retain their binding pin and cannot cross a stable or changed profile', async () => {
+  const factory = new IDBFactory();
+  const candidate = await openBrowserNightSendJournal(factory, candidateScope);
+  await candidate.createIntent(intent);
+  assert.equal((await candidate.readActive())?.bindingId, candidateScope.bindingId);
+  assert.equal((await candidate.readActive())?.manifestSha256, candidateScope.manifestSha256);
+  candidate.close();
+  const stable = await openBrowserNightSendJournal(factory, scope);
+  await assert.rejects(stable.readIntent(), /another binding/);
+  await assert.rejects(stable.createIntent(intent), /another binding/);
+  stable.close();
+  await assert.rejects(
+    openBrowserNightSendJournal(factory, { ...candidateScope, manifestSha256: '0'.repeat(64) }),
+    /Invalid browser NIGHT payment scope/,
+  );
+  const reopened = await openBrowserNightSendJournal(factory, candidateScope);
+  assert.deepEqual(await reopened.readIntent(), intent);
+  reopened.close();
+
+  const legacyFactory = new IDBFactory();
+  const legacy = await openBrowserNightSendJournal(legacyFactory, scope);
+  await legacy.createIntent(intent);
+  legacy.close();
+  const afterUpgrade = await openBrowserNightSendJournal(legacyFactory, candidateScope);
+  await assert.rejects(afterUpgrade.readIntent(), /another binding/);
+  await assert.rejects(afterUpgrade.createIntent(intent), /another binding/);
+  afterUpgrade.close();
+});
 
 test('one source ACC keeps one active intent across tabs, reload and credential changes', async () => {
   const factory = new IDBFactory();

@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-11-22",
+  "profile": "read-only, offline ACC artifact comparison; no chain, proof, or transaction",
+  "source": {
+    "accountCompactSha256": "a5a05eef67399856dc9d25ae9989a3972b4695f1f2fe6a25bfd68ee51669d3d5",
+    "accountP256CompactSha256": "50aca789d611fab99292725a64a8231e0a6509ca726fdb1e23babf96e0ad9fd4",
+    "webauthnCompactSha256": "04e84a53c6ffd2701a7f07820ef6becf2ffee06e05de9ca9dfd9e2b33ce7dedb",
+    "copiedSourcesByteIdentical": true
+  },
+  "pinnedBuild": {
+    "compiler": "0.35.0",
+    "compilerCommit": "debb05f9414b9d1e176741c2be289bb32233f0fc",
+    "runtime": "0.20.0",
+    "zkirTool": "3.1.0-rc.1"
+  },
+  "probeBuild": {
+    "compiler": "0.36.0",
+    "compilerCommit": "b5d9e4dfc532fe47011c4f6296e254f4853eb469",
+    "runtime": "0.21.0",
+    "zkirTool": "3.2.0-rc.2"
+  },
+  "zkirComparison": {
+    "commonCircuits": 52,
+    "byteIdenticalCircuits": 52,
+    "canonicalSortedFilenameHashMapSha256": "b1b5152e7defa42872bc5149e9d6af4d5591c7bbaab178a94c439afcc27a22f6",
+    "withdrawUnshieldedWithJubjubSha256": "5f17d3c2335ce77121a9b5dede0cf9c16b5f5aa3bb8ede55118cebc4796a6299",
+    "depositUnshieldedSha256": "e1384ddb55763bd0a3226bbad3337b83a4e076087f212dbe0281e6db671dce1d"
+  },
+  "keyComparison": {
+    "withdrawUnshieldedWithJubjub": {
+      "oldZkirToolReproducedPinnedKeys": true,
+      "newZkirToolRepeatedKeysByteIdentically": true,
+      "oldProverSha256": "246a2c3278ea1744527449aab5f099f9a0856b1d0dcfdbd9335352d4c87f982e",
+      "newProverSha256": "e4b273724feacdaacb4a842ac51ce4c0a9a51de96cc182fe67cc089fa05b33ab",
+      "oldVerifierSha256": "265a64198c2baf14b79ffdc57362c173cd0e13257e1627acae55c6cc821118c4",
+      "newVerifierSha256": "0d379e75fc29bb44de21a263a1f3bd941658aed71ccaa41cf445b29b104715a4",
+      "oldAndNewKeyFormat": "v7",
+      "oldAndNewKeyByteLengths": {
+        "prover": 49292614,
+        "verifier": 2313
+      }
+    },
+    "depositUnshieldedControl": {
+      "oldAndNewProverSha256": "d8409e37efa3f142a8c9fb44a7a4c25397312317f9cf28f1243c1bba887f56a3",
+      "oldAndNewVerifierSha256": "bb4421a5909564377d15f0756299bef99740089b842e8d9796ad2d3d75831de9",
+      "byteIdentical": true
+    }
+  },
+  "limits": [
+    "Identical Compact source and ZKIR produced different, reproducible JubJub withdrawal keys under the two ZKIR tool versions; this does not prove that the changed keys caused the stable proof-server refusal.",
+    "No proof was attempted with the new key pair, and no new verifier key was installed in a deployed ACC. The maintenance-retired 0.35 account must not be changed by replacing local key files.",
+    "The Compact 0.36 generated runtime is 0.21.0 and requires a separate binding and native qualification before use."
+  ]
+}

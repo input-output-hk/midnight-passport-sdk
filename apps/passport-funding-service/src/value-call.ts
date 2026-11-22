@@ -129,6 +129,7 @@ export function valueCallRoute(
     if (!authorized(req.headers.authorization)) throw new HttpError(403, 'funding caller refused');
     if (
       config.networkId !== 'undeployed' ||
+      config.provisionalLocal ||
       !['127.0.0.1', 'localhost', '::1'].includes(config.host)
     )
       throw new HttpError(403, 'demo value calls require the loopback localnet');
@@ -138,7 +139,7 @@ export function valueCallRoute(
     const args = fields.args.map((value) => decodeValueArg(value));
     checkAssetPolicy(args, config);
     const result = await runExclusive(async () => {
-      const service = process.env.PASSPORT_SERVICE_URL ?? 'http://127.0.0.1:8787';
+      const service = config.serviceUrl;
       const chain = createMidnightChain({
         network: {
           networkId: config.networkId,

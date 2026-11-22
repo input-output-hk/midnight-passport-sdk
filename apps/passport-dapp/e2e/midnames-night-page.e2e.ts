@@ -5,12 +5,16 @@ import { join } from 'node:path';
 import { chromium } from 'playwright-core';
 import { createServer } from 'vite';
 
-const manifest = '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f';
+const candidate = process.env.PASSPORT_NIGHT_PAGE_CANDIDATE === '1';
+const binding = candidate ? 'acc-s3r1.1-zkir036' : 'acc-s3r1.1';
+const manifest = candidate
+  ? '590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f'
+  : '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f';
 const account = '34'.repeat(32);
 const registry = '12'.repeat(32);
 const connector = `
   export const ARM = 'jubjub', SIGNING_MODE = 'jubjub', NETWORK_ID = 'undeployed';
-  export const BINDING_ID = 'acc-s3r1.1', RP_ID = 'localhost';
+  export const BINDING_ID = ${JSON.stringify(binding)}, RP_ID = 'localhost';
   export const ORIGIN = location.origin, SERVICE_URL = location.origin;
   export const ARTEFACT_URL = SERVICE_URL + '/v1/zk/' + BINDING_ID;
   export const MANIFEST_SHA256 = ${JSON.stringify(manifest)};
@@ -40,6 +44,11 @@ const naming = `
 `;
 
 process.env.PASSPORT_MANIFEST_SHA256 = manifest;
+process.env.PASSPORT_BINDING_ID = binding;
+if (candidate) {
+  process.env.PASSPORT_CANDIDATE_LOCAL = '1';
+  assert.ok(process.env.PASSPORT_ARTEFACT_DIR, 'Candidate page test needs pinned local assets.');
+}
 process.env.VITE_MIDNAMES_NIGHT_SEND = '1';
 process.env.VITE_MIDNAMES_REGISTRY_PROFILE = 'standalone-0.35';
 process.env.VITE_MIDNAMES_INDEXER_URL = 'http://127.0.0.1:6300';
@@ -95,8 +104,97 @@ try {
     .waitFor();
   assert.equal(await page.locator('#sendNamedNight').isEnabled(), true);
 
+  if (candidate) {
+    const fencePage = await browser.newPage();
+    try {
+      await fencePage.goto(origin);
+      const fenced = await fencePage.evaluate(
+        async ({ accountAddress, registryAddress, bindingId, manifestSha256 }) => {
+          const depositUrl = '/src/wallet/night-deposit.ts';
+          const journalUrl = '/src/midnames/night-send-journal.ts';
+          const fenceUrl = '/src/wallet/night-deposit-fence.ts';
+          const { checkedDeviceNightDepositRequest } = (await import(
+            depositUrl
+          )) as typeof import('../src/wallet/night-deposit.js');
+          const { openBrowserNightSendJournal } = (await import(
+            journalUrl
+          )) as typeof import('../src/midnames/night-send-journal.js');
+          const { exactFencedNightDeposit } = (await import(
+            fenceUrl
+          )) as typeof import('../src/wallet/night-deposit-fence.js');
+          const scope = {
+            networkId: 'undeployed' as const,
+            source: accountAddress,
+            credentialId: '01'.repeat(32),
+            bindingId,
+            manifestSha256,
+          };
+          const bridge = '56'.repeat(32);
+          const target = '78'.repeat(32);
+          const withdrawal = { hash: 'ab'.repeat(32), identifiers: ['00' + 'cd'.repeat(32)] };
+          const deposit = { hash: 'ef'.repeat(32), identifiers: ['01' + '12'.repeat(32)] };
+          const output = {
+            transactionHash: withdrawal.hash,
+            intentHash: '34'.repeat(32),
+            outputNo: 0,
+            owner: bridge,
+            type: '00'.repeat(32),
+            value: 4n,
+          };
+          const parsed = checkedDeviceNightDepositRequest({
+            scope,
+            target,
+            output,
+            proven: Uint8Array.of(1),
+          });
+          const journal = await openBrowserNightSendJournal(indexedDB, scope);
+          try {
+            await journal.createIntent({
+              requestId: '12345678-1234-1234-1234-123456789abc',
+              networkId: 'undeployed',
+              source: accountAddress,
+              bridge,
+              target,
+              asset: 'NIGHT',
+              amount: '4',
+              name: 'alice.night',
+              providerId: `midnames:${registryAddress}`,
+              namespace: 'night',
+              operations: ['withdraw_unshielded_with_jubjub', 'deposit_unshielded'],
+            });
+            await journal.fenceLeg('withdraw', withdrawal);
+            await journal.fenceLeg('deposit', deposit);
+            return {
+              preserved:
+                parsed.scope.bindingId === bindingId &&
+                parsed.scope.manifestSha256 === manifestSha256,
+              fenced: await exactFencedNightDeposit(
+                parsed.scope,
+                deposit,
+                output,
+                target,
+                indexedDB,
+              ),
+            };
+          } finally {
+            journal.close();
+          }
+        },
+        {
+          accountAddress: account,
+          registryAddress: registry,
+          bindingId: binding,
+          manifestSha256: manifest,
+        },
+      );
+      assert.deepEqual(fenced, { preserved: true, fenced: true });
+    } finally {
+      await fencePage.close();
+    }
+  }
+
   await page.evaluate(
-    async ({ accountAddress, registryAddress }) => {
+    async ({ accountAddress, registryAddress, candidate, binding, manifest }) => {
       const scope = ['undeployed', accountAddress];
       const db = await new Promise<IDBDatabase>((resolve, reject) => {
         const request = indexedDB.open('mn-passport:night-send', 1);
@@ -122,6 +220,7 @@ try {
           {
             version: 1,
             credentialId: '01'.repeat(32),
+            ...(candidate && { bindingId: binding, manifestSha256: manifest }),
             intent,
             ownerStartedAt: new Date().toISOString(),
           },
@@ -132,7 +231,7 @@ try {
       });
       db.close();
     },
-    { accountAddress: account, registryAddress: registry },
+    { accountAddress: account, registryAddress: registry, candidate, binding, manifest },
   );
 
   await openAccount();
@@ -168,7 +267,7 @@ try {
     await page.locator('#named-night-status').screenshot({ path: join(screenshots, 'status.png') });
   }
   assert.deepEqual(errors, []);
-  console.log('Midnames named NIGHT page and no-ID recovery guard: PASS');
+  console.log(`Midnames named NIGHT ${binding} page and no-ID recovery guard: PASS`);
 } finally {
   await browser?.close();
   await server.close();

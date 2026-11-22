@@ -5,11 +5,14 @@ import {
   resolvePassportName,
   type PassportNameErrorCode,
 } from '@input-output-hk/mn-passport-account/names';
-import { configureMidnames } from '../src/midnames/config.js';
+import { configureMidnames, configuredNameService } from '../src/midnames/config.js';
+import type { MidnamesIndexerBlock } from '../src/midnames/chain-finality.js';
+import type { CandidateAccountQualification } from '../src/midnames/ledger-reader.js';
 import {
   createMidnamesNameService,
   requireAgreeingMidnamesResolvers,
   requireKnownMidnamesMapping,
+  requireMatchingFinalizedIndexerBlock,
   type MidnamesReads,
 } from '../src/midnames/resolver.js';
 
@@ -146,6 +149,94 @@ test('two verifier-checked readers must agree on every observed contract target'
   );
 });
 
+test('two finalized indexers must select one identical block before a shared read', async () => {
+  const first = { height: 120, hash: 'ab'.repeat(32) };
+  const second = { ...first };
+  const selected = await requireMatchingFinalizedIndexerBlock(
+    async () => first,
+    async () => second,
+  );
+  assert.deepEqual(selected, first);
+  assert.ok(Object.isFrozen(selected));
+  second.height++;
+  await assert.rejects(
+    requireMatchingFinalizedIndexerBlock(
+      async () => first,
+      async () => second,
+    ),
+    code('Unavailable'),
+  );
+  second.height = first.height;
+  second.hash = 'cd'.repeat(32);
+  await assert.rejects(
+    requireMatchingFinalizedIndexerBlock(
+      async () => first,
+      async () => second,
+    ),
+    code('Unavailable'),
+  );
+  await assert.rejects(
+    requireMatchingFinalizedIndexerBlock(
+      async () => first,
+      async () => {
+        throw new Error('private witness failure');
+      },
+    ),
+    code('Unavailable'),
+  );
+});
+
+test('known mapping and requested name use one matched block per resolution', async () => {
+  const reads: Array<{ path: string; name: string; block: MidnamesIndexerBlock }> = [];
+  const selections = { primary: 0, witness: 0 };
+  let witnessHeight = 120;
+  const block = (height: number) => ({ height, hash: 'ab'.repeat(32) });
+  const loader =
+    (path: 'primary' | 'witness'): Parameters<typeof configuredNameService>[1] =>
+    async () => ({
+      async readFinalizedBlock() {
+        selections[path]++;
+        return block(path === 'primary' ? 120 : witnessHeight);
+      },
+      async readSupportedTargetAt(name, _scope, selected) {
+        reads.push({ path, name, block: selected });
+        return { kind: 'contract' as const, address: name === query.name ? account : repointed };
+      },
+      async readSupportedTarget() {
+        assert.fail('The matched-block path must not select a fresh tip per name.');
+      },
+      async readTarget() {
+        assert.fail('The unchecked target path must not run.');
+      },
+      async isSupportedAccount() {
+        assert.fail('The separate account read must not run.');
+      },
+    });
+  const service = configuredNameService(
+    profile,
+    loader('primary'),
+    loader('witness'),
+    query.name,
+    account,
+  );
+  const other = { ...query, name: 'bob.passport.night' };
+  assert.equal((await resolvePassportName(service, other))?.accountAddress, repointed);
+  assert.deepEqual(selections, { primary: 1, witness: 1 });
+  assert.deepEqual(
+    reads.map((read) => `${read.path}:${read.name}:${read.block.height}`),
+    [
+      `primary:${query.name}:120`,
+      `witness:${query.name}:120`,
+      `primary:${other.name}:120`,
+      `witness:${other.name}:120`,
+    ],
+  );
+  witnessHeight = 121;
+  await assert.rejects(resolvePassportName(service, other), code('Unavailable'));
+  assert.deepEqual(selections, { primary: 2, witness: 2 });
+  assert.equal(reads.length, 4, 'Divergent tips refuse before either name is read.');
+});
+
 test('configured name lookup requires an explicit matching network, registry and public indexer endpoints', () => {
   assert.equal(configureMidnames({}, profile.networkId, 'acc-s3r1.1'), undefined);
   const config = {
@@ -156,6 +247,19 @@ test('configured name lookup requires an explicit matching network, registry and
   assert.equal(
     configureMidnames(config, profile.networkId, 'acc-s3r1.1')?.provider.mode,
     'external',
+  );
+  assert.throws(
+    () =>
+      configureMidnames(
+        {
+          ...config,
+          verificationIndexerUrl: 'http://127.0.0.1:18089/api/v4/graphql',
+          verificationIndexerWsUrl: 'ws://127.0.0.1:18089/api/v4/graphql/ws',
+        },
+        profile.networkId,
+        'acc-s3r1.1',
+      ),
+    /separately pinned finalized node/,
   );
   assert.ok(
     configureMidnames(
@@ -235,6 +339,9 @@ test('an online profile requires a complete known name-to-ACC pin before lookup'
     indexerWsUrl: 'wss://indexer.preview.midnight.network/api/v4/graphql/ws',
     verificationIndexerUrl: 'https://witness.preview.example.test/api/v4/graphql',
     verificationIndexerWsUrl: 'wss://witness.preview.example.test/api/v4/graphql/ws',
+    nodeUrl: 'https://node.preview.example.test/rpc',
+    anchorBlockHeight: '42',
+    anchorBlockHash: 'ab'.repeat(32),
   };
   for (const missing of [
     {},
@@ -258,6 +365,14 @@ test('an online profile requires a complete known name-to-ACC pin before lookup'
     { verificationIndexerUrl: undefined },
     { verificationIndexerUrl: config.indexerUrl },
     { verificationIndexerWsUrl: 'wss://user:password@witness.preview.example.test/graphql' },
+    { nodeUrl: undefined },
+    { anchorBlockHeight: undefined },
+    { anchorBlockHash: undefined },
+    { nodeUrl: config.indexerUrl },
+    { nodeUrl: config.verificationIndexerUrl },
+    { anchorBlockHash: '0x' + config.anchorBlockHash },
+    { anchorBlockHeight: '0' },
+    { anchorBlockHeight: '1e2' },
   ])
     assert.throws(() => configureMidnames({ ...config, ...invalid }, 'preview', 'acc-s3r1.1'));
 });
@@ -269,6 +384,9 @@ test('a remote indexer requires the known mapping even when labelled undeployed'
     indexerWsUrl: 'wss://example.test/api/v4/graphql/ws',
     verificationIndexerUrl: 'https://witness.example.test/api/v4/graphql',
     verificationIndexerWsUrl: 'wss://witness.example.test/api/v4/graphql/ws',
+    nodeUrl: 'https://node.example.test/rpc',
+    anchorBlockHeight: '42',
+    anchorBlockHash: 'ab'.repeat(32),
   };
   assert.throws(
     () => configureMidnames(remote, 'undeployed', 'acc-s3r1.1'),
@@ -281,6 +399,44 @@ test('a remote indexer requires the known mapping even when labelled undeployed'
       'acc-s3r1.1',
     )?.provider.mode,
     'external',
+  );
+});
+
+test('provisional ACC reader is confined to the local standalone registry', () => {
+  const local = {
+    networkId: 'undeployed',
+    namespace: 'night',
+    registryAddress: profile.registryAddress,
+    registryProfile: 'standalone-0.35',
+    indexerUrl: 'http://127.0.0.1:18108/api/v4/graphql',
+    indexerWsUrl: 'ws://127.0.0.1:18108/api/v4/graphql/ws',
+  };
+  const candidate: CandidateAccountQualification = {
+    bindingId: 'acc-s3r1.1-zkir036',
+    manifestSha256: '590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f',
+    decodeState: () => {
+      throw new Error('No chain read in configuration test');
+    },
+  };
+  assert.ok(configureMidnames(local, 'undeployed', candidate.bindingId, undefined, candidate));
+  assert.throws(
+    () =>
+      configureMidnames(
+        {
+          ...local,
+          indexerUrl: 'https://remote.example.test/api/v4/graphql',
+          indexerWsUrl: 'wss://remote.example.test/api/v4/graphql/ws',
+          knownName: 'alice.night',
+          knownAccountAddress: account,
+          verificationIndexerUrl: 'https://witness.example.test/api/v4/graphql',
+          verificationIndexerWsUrl: 'wss://witness.example.test/api/v4/graphql/ws',
+        },
+        'undeployed',
+        candidate.bindingId,
+        undefined,
+        candidate,
+      ),
+    /local standalone registry/,
   );
 });
 

@@ -3,12 +3,19 @@ import {
   createMidnamesNameService,
   requireAgreeingMidnamesResolvers,
   requireKnownMidnamesMapping,
+  requireMatchingFinalizedIndexerBlock,
 } from './resolver.js';
 import { isClaimSponsorOrigin, requestClaimDispatch } from './claim-dispatch.js';
 import { registryProfile } from './registry-pins.js';
 import { requireMidnamesV4IndexerPair } from './indexer-endpoints.js';
+import {
+  createMidnamesNodeFinality,
+  type MidnamesIndexerBlock,
+  type MidnamesNodePin,
+} from './chain-finality.js';
 import { claimHex, claimName, type ClaimRecovery } from './claim-receipt.js';
 import type { ClaimPreparation } from './claim-quote.js';
+import type { CandidateAccountQualification, createMidnamesLedgerReads } from './ledger-reader.js';
 
 export interface MidnamesConfig {
   readonly claimSponsor?: string | undefined;
@@ -22,6 +29,9 @@ export interface MidnamesConfig {
   readonly indexerWsUrl?: string | undefined;
   readonly verificationIndexerUrl?: string | undefined;
   readonly verificationIndexerWsUrl?: string | undefined;
+  readonly nodeUrl?: string | undefined;
+  readonly anchorBlockHeight?: string | undefined;
+  readonly anchorBlockHash?: string | undefined;
   readonly knownName?: string | undefined;
   readonly knownAccountAddress?: string | undefined;
 }
@@ -77,6 +87,37 @@ function selectedClaimProtocolVersion(
   return claimProtocolVersion(config.claimProtocolVersion);
 }
 
+function configuredNodePin(
+  config: MidnamesConfig,
+  online: boolean,
+  indexerHttp: string,
+  verificationHttp: string | undefined,
+): MidnamesNodePin | undefined {
+  const { nodeUrl, anchorBlockHeight, anchorBlockHash } = config;
+  const hasNodePin =
+    nodeUrl !== undefined || anchorBlockHeight !== undefined || anchorBlockHash !== undefined;
+  if (online && !hasNodePin)
+    throw new Error('Online naming requires a separately pinned finalized node.');
+  if (!hasNodePin) return undefined;
+  if (!nodeUrl || !anchorBlockHeight || !anchorBlockHash)
+    throw new Error('Naming node finality requires a complete node URL and chain block pin.');
+  if (!/^[1-9][0-9]*$/.test(anchorBlockHeight))
+    throw new Error('Naming chain anchor height must be a positive decimal integer.');
+  const pin = {
+    nodeUrl: endpoint(nodeUrl, 'https:', 'http:'),
+    anchorHeight: Number(anchorBlockHeight),
+    anchorHash: anchorBlockHash,
+  };
+  createMidnamesNodeFinality(pin);
+  if (
+    online &&
+    (new URL(pin.nodeUrl).origin === new URL(indexerHttp).origin ||
+      (verificationHttp && new URL(pin.nodeUrl).origin === new URL(verificationHttp).origin))
+  )
+    throw new Error('Online naming needs a node origin separate from both indexers.');
+  return pin;
+}
+
 function configuredIndexers(config: MidnamesConfig, networkId: string) {
   const {
     indexerUrl,
@@ -117,7 +158,93 @@ function configuredIndexers(config: MidnamesConfig, networkId: string) {
       new URL(verification.ws).origin === new URL(ws).origin)
   )
     throw new Error('Naming verification must use a distinct indexer origin.');
-  return { http, ws, verification };
+  return { http, ws, verification, online };
+}
+
+function requireCandidateLocal(
+  candidate: CandidateAccountQualification | undefined,
+  profileId: string,
+  networkId: string,
+  http: string,
+  ws: string,
+  verification: unknown,
+): void {
+  if (
+    candidate &&
+    (profileId !== 'standalone-0.35' ||
+      networkId !== 'undeployed' ||
+      !loopback(http) ||
+      !loopback(ws) ||
+      verification !== undefined)
+  )
+    throw new Error('Candidate ACC naming requires one local standalone registry and indexer.');
+}
+
+function requirePairNodePin(verification: unknown, nodePin: MidnamesNodePin | undefined): void {
+  if (verification && !nodePin)
+    throw new Error('Two-provider naming requires a separately pinned finalized node.');
+}
+
+type MidnamesReader = Pick<
+  ReturnType<typeof createMidnamesLedgerReads>,
+  | 'readTarget'
+  | 'isSupportedAccount'
+  | 'readSupportedTarget'
+  | 'readFinalizedBlock'
+  | 'readSupportedTargetAt'
+>;
+type LoadMidnamesReader = () => Promise<MidnamesReader>;
+
+/** Keep a known mapping and its requested name within one provider snapshot. */
+export function configuredNameService(
+  profile: {
+    readonly registryAddress: string;
+    readonly namespace: string;
+    readonly networkId: string;
+  },
+  reads: LoadMidnamesReader,
+  verificationReads: LoadMidnamesReader | undefined,
+  knownName: string | undefined,
+  knownAccountAddress: string | undefined,
+): PassportNameService {
+  const serviceFor = (
+    source: LoadMidnamesReader,
+    selectedBlock?: () => Promise<MidnamesIndexerBlock>,
+  ) =>
+    createMidnamesNameService(profile, {
+      readTarget: async (...args) => (await source()).readTarget(...args),
+      isSupportedAccount: async (...args) => (await source()).isSupportedAccount(...args),
+      readSupportedTarget: async (...args) => {
+        const reader = await source();
+        return selectedBlock
+          ? reader.readSupportedTargetAt(...args, await selectedBlock())
+          : reader.readSupportedTarget(...args);
+      },
+    });
+  const known = (service: PassportNameService) =>
+    knownName === undefined || knownAccountAddress === undefined
+      ? service
+      : requireKnownMidnamesMapping(service, profile.networkId, knownName, knownAccountAddress);
+  const primary = serviceFor(reads);
+  const validated = known(primary);
+  if (!verificationReads) return validated;
+  return Object.freeze({
+    provider: primary.provider,
+    async resolve(query: Parameters<PassportNameService['resolve']>[0]) {
+      let selected: Promise<MidnamesIndexerBlock> | undefined;
+      const select = () =>
+        (selected ??= requireMatchingFinalizedIndexerBlock(
+          async () => (await reads()).readFinalizedBlock(),
+          async () => (await verificationReads()).readFinalizedBlock(),
+        ));
+      const scoped = requireAgreeingMidnamesResolvers(
+        serviceFor(reads, select),
+        serviceFor(verificationReads, select),
+      );
+      // Known mapping and requested name share this one selected block.
+      return known(scoped).resolve(query);
+    },
+  });
 }
 
 /** Absence selects the demo mock. Partial or mismatched configuration refuses. */
@@ -126,6 +253,7 @@ export function configureMidnames(
   expectedNetwork: string,
   bindingId: string,
   preparation?: ClaimPreparation,
+  candidate?: CandidateAccountQualification,
 ): (PassportNameService & { readonly recovery?: ClaimRecovery }) | undefined {
   const { registryAddress, namespace, networkId, knownName, knownAccountAddress } = config;
   if (!preparation && Object.values(config).every((value) => value === undefined)) return undefined;
@@ -138,7 +266,11 @@ export function configureMidnames(
   )
     throw new Error('Configure the registry, namespace, matching network, and both indexer URLs.');
   const profileId = registryProfile(config.registryProfile, networkId);
-  const { http, ws, verification } = configuredIndexers(config, networkId);
+  const { http, ws, verification, online } = configuredIndexers(config, networkId);
+  requireCandidateLocal(candidate, profileId, networkId, http, ws, verification);
+  const nodePin = configuredNodePin(config, online, http, verification?.http);
+  requirePairNodePin(verification, nodePin);
+  const verifyFinalizedBlock = nodePin && createMidnamesNodeFinality(nodePin);
   const load = (readerHttp: string, readerWs: string) =>
     import('./ledger-reader.js').then(({ createMidnamesIndexer, createMidnamesLedgerReads }) =>
       createMidnamesLedgerReads(
@@ -146,6 +278,8 @@ export function configureMidnames(
         networkId,
         bindingId,
         profileId,
+        candidate,
+        verifyFinalizedBlock,
       ),
     );
   const lazyReads = (readerHttp: string, readerWs: string) => {
@@ -159,20 +293,13 @@ export function configureMidnames(
   const reads = lazyReads(http, ws);
   const verificationReads = verification && lazyReads(verification.http, verification.ws);
   const profile = { registryAddress, namespace, networkId };
-  const serviceFor = (source: typeof reads) =>
-    createMidnamesNameService(profile, {
-      readTarget: async (...args) => (await source()).readTarget(...args),
-      isSupportedAccount: async (...args) => (await source()).isSupportedAccount(...args),
-      readSupportedTarget: async (...args) => (await source()).readSupportedTarget(...args),
-    });
-  const readerService = serviceFor(reads);
-  const checkedService = verificationReads
-    ? requireAgreeingMidnamesResolvers(readerService, serviceFor(verificationReads))
-    : readerService;
-  const service =
-    knownName === undefined || knownAccountAddress === undefined
-      ? checkedService
-      : requireKnownMidnamesMapping(checkedService, networkId, knownName, knownAccountAddress);
+  const service = configuredNameService(
+    profile,
+    reads,
+    verificationReads,
+    knownName,
+    knownAccountAddress,
+  );
   const guardKnown = async () => {
     if (knownName !== undefined) await service.resolve({ name: knownName, networkId });
   };

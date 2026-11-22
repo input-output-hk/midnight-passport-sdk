@@ -1,0 +1,13 @@
+import { ledger } from '#acc';
+import type { CandidateAccountQualification } from './ledger-reader.js';
+
+/** Browser candidate admission is possible only after Vite's exact local build pin. */
+export function localCandidateAccount(
+  bindingId: string,
+  manifestSha256: string,
+  profile: string | undefined,
+): CandidateAccountQualification | undefined {
+  return bindingId === 'acc-s3r1.1-zkir036' && profile === 'standalone-0.35'
+    ? { bindingId, manifestSha256, decodeState: (state) => ledger(state.data) }
+    : undefined;
+}

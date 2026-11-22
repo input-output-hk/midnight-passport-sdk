@@ -32,6 +32,53 @@ contracts at that canonical block hash, and checks it again. An older indexer
 tip refuses rather than making a moved name look current. This is a local chain-state
 observation through one indexer, not an authenticated online provider or a
 guarantee that the binding will remain unchanged after the read.
+It also exercises the interactive resolver's node-pin check on the indexer's
+selected block and verifies the supported ACC target. The launcher passes the
+same claim-block pin and shared node URL into the browser. If the indexer tip
+is not finalized on the node yet, the browser refuses that lookup until the
+two catch up; it does not silently use an unfinalized record.
+
+### Check an independent indexer read path
+
+After attaching to the shared stack, start the [indexer-only witness](../../infra/localnet/README.md#independent-local-indexer-api-v4-read-witness)
+in its own Docker project, volume and credential directory. It attaches to
+the existing node; it does not start a second chain. Wait for its block height
+to pass the recorded `paidfix.night` claim block (3696), then run:
+
+```sh
+nix develop -c pnpm --filter passport-dapp exec node --import tsx \
+  ../../examples/midnames-local/verify-independent-indexer.mjs \
+  ../../examples/midnames-local/evidence/shared-ledger9-paidfix-deposit-20261118.json \
+  http://127.0.0.1:8088/api/v4/graphql \
+  ws://127.0.0.1:8088/api/v4/graphql/ws \
+  http://127.0.0.1:18089/api/v4/graphql \
+  ws://127.0.0.1:18089/api/v4/graphql/ws \
+  http://127.0.0.1:9944 \
+  midnight-passport-read-witness \
+  "$HOME/.local/share/midnight-passport/read-witness/.midnight-indexer.env"
+```
+
+The read-only command verifies the receipt's genesis against the node and
+requires both indexers to select the same canonical finalized tip. It inspects
+the exact witness container, unique network alias, image digest, separate
+volume and private credential file without printing credential values. It
+compares the serialized registry and target ACC state at the **same recorded
+block hash**, then exercises the app's
+two-indexer resolver and exact known name-to-ACC pin. It fails on missing,
+divergent or incompatible records and on a block that is not canonical and
+finalized. This demonstrates a replaceable,
+self-hosted local indexer read. The two indexers share the same node, so their
+agreement is not independent node consensus or a cryptographic state proof.
+Online naming still requires its own independently observed mapping, separate
+node/indexer origins and provider qualification.
+The [redacted local receipt](evidence/independent-indexer-local-provenance-20261122.json)
+records the matching selected tips, exact witness provenance, state hashes and
+known name target from this read-only qualification.
+The later [matched-tip app resolver receipt](evidence/independent-indexer-matched-tip-20261122.json)
+records both local indexers at one selected finalized tip, identical state
+bytes at the claim block, and a successful read through the configured app
+resolver at signed source `3a860393`. It was invoked from Node, not a passkey
+browser, and does not qualify independent online providers.
 
 ```sh
 nix develop -c node scripts/midnames-local-demo.mjs check
@@ -60,6 +107,105 @@ compatible prover already listens on port 16320, it is only read; otherwise
 the launcher starts and later stops its own no-volume prover project. Ctrl-C
 drains only its demo services and stops only fallback containers that this
 invocation started. Receipts, browser state, and Docker volumes are retained.
+
+### Provisional ACC local demo profile
+
+Pass `--candidate-assets` with the separately staged, verified
+`acc-s3r1.1-zkir036` asset directory to exercise a newly created Ledger 9 ACC
+with the Compact 0.36.1 key-generation candidate. The launcher attaches to the
+shared release prover on port 6300, selects separate deployment and claim
+journals, and pins the candidate in both service and browser. The ordinary
+`acc-s3r1.1` demo and online binding policy remain unchanged. Use a dedicated
+browser profile for candidate accounts and their retained claim receipts.
+The prepared Compact 0.35 standalone registry still uses an owned compatibility
+prover on port 16320 for name-claim proofs; the candidate ACC uses the shared
+release prover on port 6300. The launcher records and stops only its own
+compatibility container, leaving the shared stack and its volumes untouched.
+The candidate launcher requires `--claim` and a verified standalone registry profile.
+
+The [synthetic shared-chain receipt](evidence/candidate-acc-combined-local-claim-20261122.json)
+shows one candidate ACC created in the Passport page and a same-profile paid
+`.night` claim with indexed success and a matching on-chain contract target.
+The creation, claim and post-fix readback used separate signed heads. The final
+head rejects an unowned prover listener and reopens the confirmed name, but a
+single-head combined journey and named NIGHT send in that profile remain open.
+
+An existing live profile supplies the standalone registry address and chain
+anchor; its previously registered name is not used as a candidate ACC pin.
+With a funded claim sponsor and prepared registry, `--setup --claim` opens
+account creation and subsequent name registration in the same demo session:
+
+```sh
+nix develop -c node scripts/midnames-local-demo.mjs up \
+  --contract-dir /absolute/path/to/prepared/acc/contract \
+  --profile /absolute/path/to/current-local-registry-receipt.json \
+  --prepared-registry /absolute/path/to/prepared/registry \
+  --candidate-assets /absolute/path/to/verified/candidate-assets \
+  --setup --claim
+```
+
+The candidate build checks the exact manifest and generated module hashes.
+The service checks the complete candidate asset tree at startup. A successful
+build or page start does not qualify the combined create, claim, deposit and
+named-send journey; its native receipt must be recorded separately.
+To enable candidate NIGHT deposits, first run the one-time
+[`--candidate-funding-only` wallet provisioner](../../apps/passport-funding-service/README.md),
+then add `--funding` to the candidate `up` command. It selects the separate
+candidate wallet, asset policy, reservation journal and deployment log, and
+uses loopback port 18789 while the stable demo may continue on 8789. The
+candidate named NIGHT control is a separate opt-in: add `--night-send` together
+with `--candidate-assets --claim --funding` only after both source and recipient
+ACCs are activated, the source has a confirmed NIGHT balance, and a `.night`
+name resolves to the intended recipient contract. The control keeps the
+withdrawal and deposit as one recoverable browser intent. Preserve the same
+browser profile if either leg becomes uncertain; do not initiate a new send.
+The launcher rejects `--night-send` outside this candidate local profile.
+The sponsor's single claim journal may still be occupied by a completed earlier
+name; named sending can use that confirmed name without requesting a new claim.
+For a **new** account/name on the same chain, select a new, explicit
+`--claim-journal-id` when starting the demo. The launcher retains the earlier
+journal and uses a separate private directory under `--state-dir`; restart with
+the same ID to recover an uncertain original. Do not select a new ID to retry
+an uncertain claim. The host checks every earlier active journal's exact
+original against a canonical node-finalized block and the name/ACC binding at
+that block before it admits a separate journal. Only one claim host runs at a
+time, and the shared sponsor lease must be free before switching journals. The
+default journal remains unchanged when the flag is omitted.
+The [connected browser receipt](evidence/candidate-connected-browser-night-send-20261122.json)
+shows this opt-in control completing a 4 NIGHT payment to an already registered
+name. It preserved the original withdrawal through a deposit preparation failure,
+then reconciled both finalized legs without resending either. That run used a
+synthetic passkey and crossed signed source heads.
+A later [one-head browser receipt](evidence/candidate-onehead-create-claim-pay-20261122.json)
+records a new ACC, a name claimed after activation, independent device-wallet
+funding and DUST, and both canonically finalized legs of a 4 NIGHT payment to a
+named recipient ACC. The browser archived only those original IDs after one
+explicit finality check. A separate 1 NIGHT follow-up on a later signed head
+completed automatically after submission, without another click or leg.
+Both runs used a synthetic passkey on the local provisional binding; online
+and physical-provider qualification remain open.
+
+The [concurrent launch check](evidence/candidate-concurrent-funding-launch-20261122.json)
+verified both pinned services, a headless page smoke and clean owned shutdown
+on the shared stack. It sent no transaction. The
+[native funding receipt](evidence/candidate-funding-native-20261122.json)
+confirms 10 base units credited and a same-ID replay on shared Ledger 9. A
+[headless Passport page run](evidence/candidate-funding-browser-20261122.json)
+then credited another 10 units through the live candidate services, reopened
+at 24 units without resending, and checked finalized Indexer API v4 state. It
+used a fixture to select the existing ACC, so a fresh passkey and actual account
+connector remain part of the combined browser journey. An
+[exact-head exported-adapter proof-only run](evidence/candidate-acc-shared-adapter-deposit-proof-20261122.json)
+validated the generated module, candidate deposit verifier and unbound proof,
+and a later [native settlement](evidence/candidate-acc-shared-adapter-settled-deposit-20261122.json)
+used a separately funded synthetic wallet to consume a reconciled exact
+4 NIGHT output. The recipient ACC balance moved from 0 to 4. The candidate
+demo launcher still disables named NIGHT sending by default. The page admits
+only the exact candidate pin with an explicit local profile, loopback
+service/chain endpoints, fresh owner review and a binding-pinned original
+journal. Headless checks cover page admission and no-ID refusal; the connected
+browser receipts above add local two-leg payment, original-only recovery and
+one-head claim-to-payment evidence.
 
 ### Register a name and fund a Passport account
 
@@ -97,7 +243,10 @@ nix develop -c node scripts/midnames-local-demo.mjs up \
 
 Open the activated ACC with its passkey, go to **Passport account → Balances →
 Register a .night name**, enter an unregistered name such as `yurii.night`, and
-click **Continue registration**. Review the exact quote and click **Approve with
+click **Continue registration**. If you have not chosen a label, **Suggest a
+local .night name** fills a random `demo-<24 hex characters>.night` candidate
+after checking for an earlier credential-scoped selection; it does not claim
+or reserve that name. Review the exact quote and click **Approve with
 passkey**. The page then displays the saved payment terms without sending; click
 **Confirm payment and register** after reviewing them. The page checks the
 original claim after dispatch. Raw receipts and manual checks remain under
@@ -895,6 +1044,217 @@ inputs, stopped its three exact owned containers, retained volumes and
 released the lease. This is a synthetic local owner and automated click; it
 does not qualify passkey consent, a Passport demo send page, public
 `passport.night`, online providers or MIP-0007 delegated routing.
+
+The [22 November Ledger 9 comparison](evidence/ledger9-night-by-name-prover-comparison-20261122.json)
+retested this route on a fresh release node and Indexer API v4. The release
+prover `9.0.2` refused the Compact 0.35 JubJub withdrawal proof with HTTP 400
+(`The constraint system is not satisfied`) before a withdrawal original was
+created. A second isolated run at signed `880f14c8` held the release node,
+indexer, reference client and contract artifacts fixed and selected the first
+stable `9.0.0` prover. It reached the same withdrawal and received the same
+HTTP 400 before an original was created. This places the observed
+incompatibility at or before the first stable release; it does not establish
+the cause. The [ledger release notes](https://github.com/midnightntwrk/midnight-ledger/blob/proof-server-9.0.0/.github/release-notes/ledger-9.1.0.0.md#breaking-changes-or-required-actions-for-developers)
+describe changed proof and verifier-key material, but the effect on this
+exact circuit needs separate verification. Selecting the pinned `9.0.0-rc.8`
+prover on the same release node/indexer, signed `3ae84d13`,
+completed the automated browser review, one finalized withdrawal, durable
+restart, exact bridge-coin deposit, and indexed 10/0 → 6/0 → 6/4 ACC balances.
+For this isolated comparison only, set `PASSPORT_MIDNAMES_DIAG_RC_PROVER=1` in
+the inner `env` list of the native command above; the default remains the
+`9.0.2` release prover. `PASSPORT_MIDNAMES_DIAG_PROVER=9.0.0` selects the
+digest-pinned first stable prover and `9.0.1` selects the next stable candidate
+for further isolated diagnosis; neither is a supported demo profile. The
+shared-stack demo has a separate, already documented
+[`PASSPORT_COMPAT_PROVER=1`](../../infra/localnet/README.md#isolated-prover-for-the-pinned-compact-035-acc)
+option. The release prover still needs a compatible withdrawal proof before
+this route can be claimed as release-stack qualified. The RC-prover PASS uses
+a synthetic owner and automated click, not a real passkey-provider ceremony.
+
+A separate [offline Compact 0.36 ACC probe](evidence/compact036-acc-withdrawal-key-probe-20261122.json)
+copied the exact pinned source without editing it. All 52 generated ZKIR files
+matched the 0.35 artifacts byte for byte. Recompiling the same JubJub
+withdrawal ZKIR with the pinned 0.35 ZKIR tool reproduced the deployed key
+pair; the 0.36 tool's newer ZKIR generator deterministically produced a
+different prover and verifier key pair of the same format and lengths. The
+`deposit_unshielded` control keys stayed byte-identical. This is a concrete
+key-generation compatibility lead. A subsequent
+[isolated stable-prover probe](evidence/stable-withdrawal-036-key-probe-20261122.json)
+used the exact source-withdrawal witness, supplied the 0.36-generated
+withdrawal key pair to release proof server `9.0.2`, and received nonempty
+proof bytes. The diagnostic stopped at that response. The deployed ACC still
+had its 0.35 verifier key; no full transaction was proved or submitted and
+both ACC balances stayed 10/0. A second, signed
+[same-witness control](evidence/stable-withdrawal-036-key-probe-20261122.json)
+sent one exact serialized withdrawal preimage to that prover twice. The
+deployed 0.35 key pair returned HTTP 400; changing only to the 0.36 pair
+returned nonempty proof bytes. This isolates the key-material difference at
+the prover request boundary. The retired 0.35 ACC cannot be repaired by
+replacing local files.
+
+The [complete offline key inventory](evidence/compact036-acc-key-inventory-20261122.json)
+compared all 52 pinned ACC ZKIR circuits against keys regenerated with the
+Compact 0.36 tool: 48 prover and 48 verifier pairs changed; four stayed
+identical. A later [isolated hybrid diagnostic](evidence/stable-hybrid-night-send-20261122.json)
+deployed an ordinary recipient ACC and a source ACC with only its JubJub
+withdrawal verifier replaced by the 0.36-generated key. The source retained
+the old runtime, ZKIR and other 51 verifier keys, so it is not a supported SDK
+binding. With release proof server `9.0.2`, an automated browser review and
+one owner signature preceded exactly one withdrawal and one deposit dispatch.
+Both transactions finalized and indexed; ACC balances moved 10/0 → 6/0 →
+6/4, consuming the exact withdrawal output with no replay broadcast. The
+fresh parent confirmed unchanged inputs, three stopped owned containers,
+retained volumes and a released lease. This proves a chain-valid two-leg
+payment for this **diagnostic hybrid deployment**, not compatibility of an
+already deployed 0.35 ACC. A separately versioned complete artifact/binding,
+all matching keys, and its native and provider qualification remain required
+for a supported release route. The browser owner was synthetic.
+
+The diagnostic lane uses a fresh `midnames-night-browser-keyprobe-` output
+name and `PASSPORT_MIDNAMES_DIAG_KEY_DIR` pointing to a private directory
+containing only the regenerated `withdraw_unshielded_with_jubjub.prover` and
+`.verifier`. The parent pins their published SHA-256 values before creating
+resources and after cleanup. It runs the normal synthetic browser review and
+compares both key pairs against the same proof preimage. It stops on the
+alternate proof response, before balancing or dispatch. This lane
+is a prover compatibility test, not an operator payment route.
+
+The hybrid lane uses a fresh `midnames-night-browser-hybrid-` output name and
+the same private `PASSPORT_MIDNAMES_DIAG_KEY_DIR`. It verifies the entire
+deployed source verifier roster and refuses a mismatch before proof. It is
+restricted to isolated diagnostic qualification; do not use its hybrid ACC as
+an application or release binding.
+
+A subsequent [full-roster diagnostic](evidence/stable-full-roster-night-send-20261122.json)
+repeated the same reviewed two-leg payment after deploying a new source ACC
+with **all 52** 0.36-generated verifier keys. The release `9.0.2` prover
+finalized the withdrawal and recipient deposit, again moving 10/0 → 6/0 →
+6/4 with one dispatch per leg and no replay. The runner checked every on-chain
+verifier hash against the [complete inventory](evidence/compact036-acc-key-inventory-20261122.json)
+and verified authority retirement. This removes the one-circuit hybrid from
+the native diagnostic but does not create an SDK-supported binding: its
+module/runtime/ZKIR remain the 0.35 build, key restoration and registry
+versioning are still old, and the remaining ACC circuits have not been proved
+under the alternate keys. [ADR 0020](../../docs/adr/0020-ledger9-acc-key-generation-binding.md)
+sets the version-axis admission gate.
+
+The full-roster lane uses a fresh `midnames-night-browser-full036-` output
+name and a private `PASSPORT_MIDNAMES_DIAG_KEY_DIR` with exactly the 52
+inventory-matched `.verifier` files and the pinned JubJub withdrawal
+`.prover`. It refuses missing, extra, symlinked or mismatched files before
+creating the isolated stack. Use it only for a fresh isolated diagnostic;
+the existing retired ACC cannot accept this roster.
+
+### Provisional candidate ACC native gate
+
+The `midnames-acc-candidate-` lane uses the separately staged, complete
+`acc-s3r1.1-zkir036` asset tree. It verifies every file against the derived
+manifest before claiming the native lease, selects that same tree for the
+compiled contract, verifier reads and transaction proving, then deploys and
+activates a fresh JubJub ACC on an isolated Ledger 9 stack. It checks all 52
+on-chain verifier assignments and retired maintenance authority. The parent
+checks the physical inputs again, stops only its recorded containers and
+releases its exact lease. It requires 50 GiB free and 24 GiB Docker memory.
+
+```sh
+PASSPORT_MIDNAMES_CANDIDATE_ASSETS=/absolute/path/to/verified-candidate-assets \
+nix develop -c env -u LD_DYLD_PATH \
+  PASSPORT_MIDNAMES_NATIVE=1 PASSPORT_RC_LOCALNET=1 \
+  node examples/midnames-local/qualify-deposit.mjs \
+  midnames-acc-candidate-fresh-run \
+  - \
+  /absolute/path/to/acc-reference/contract
+```
+
+Use a new output name for each attempt. The signed `830ebd7` run passed this
+candidate deployment and activation gate with all 52 on-chain verifier hashes
+and retired maintenance authority. The binding stays provisional: name
+issuance, recipient resolution, NIGHT withdrawal/deposit, recovery, real
+passkey consent and online provider acceptance need their own gates before the
+SDK or demo admits it.
+
+### Provisional candidate named NIGHT qualification
+
+The `midnames-night-candidate-` lane reuses the frozen candidate ACC assets and
+the separately verified standalone registry tree. It deploys two fresh candidate
+ACCs and a registry on a fresh isolated chain, issues a root-owned `.night` name
+to the recipient, checks the complete verifier roster on both accounts, then
+exercises the named NIGHT withdrawal and ACC deposit with a retained two-leg
+journal. Its explicit local qualification reader does not enable provisional
+bindings in the ordinary Passport demo or online profiles.
+
+```sh
+PASSPORT_MIDNAMES_CANDIDATE_ASSETS=/absolute/path/to/verified-candidate-assets \
+nix develop -c env -u LD_DYLD_PATH \
+  PASSPORT_MIDNAMES_NATIVE=1 PASSPORT_RC_LOCALNET=1 \
+  node examples/midnames-local/qualify-deposit.mjs \
+  midnames-night-candidate-fresh-run \
+  /absolute/path/to/prepared-standalone-registry \
+  /absolute/path/to/acc-reference/contract \
+  10.254.84.0/28
+```
+
+Choose a fresh output name and an unused subnet; inspect Docker networks first.
+The command refuses less than 50 GiB free disk. The signed `c211cd9` isolated
+[run](evidence/candidate-acc-named-night-send-20261122.json) passed with two
+candidate ACCs, one root-owned `.night` name, one finalized withdrawal and one
+recipient ACC deposit. The retained intent recovered between legs, with 10/0
+→ 6/0 → 6/4 balances and no replay. This establishes only the isolated local
+candidate route. User-owned paid registration, browser consent, recovery and
+online admission remain separate gates for that named payment run. A separate
+[candidate paid-claim run](evidence/candidate-acc-page-paid-claim-retry-20261122.json)
+now qualifies one local page-owned registration and failure retry.
+
+At signed `dfae8062`, a fresh isolated
+[adapter run](evidence/candidate-acc-adapter-named-night-send-20261122.json)
+repeated the two-leg payment with the exported `proveUnboundNightDeposit` path
+for the recipient. The wallet balanced its proof against the exact finalized
+bridge output. One withdrawal and one deposit finalized, the journal replayed
+neither, and the source/target balances again moved 10/0 → 6/0 → 6/4. The
+first attempt at `32978e76` failed at fixture pre-proof decoding after the
+withdrawal; its original and failed receipt remain retained. The passing run
+used a fresh chain and closed its exact owned resources. This does not yet
+qualify `createConnectedNightSend`, browser passkey consent, IndexedDB payment
+recovery or online name ownership.
+
+### Provisional candidate paid name claim and retry
+
+The `midnames-claim-candidate-` lane uses the same complete candidate ACC
+assets and prepared standalone registry on a fresh isolated chain. It deploys
+and activates a candidate ACC, verifies its full on-chain verifier roster and
+retired maintenance authority, then runs two page-owned paid claim originals
+in one headless Passport browser profile. The first is forced to fail after
+admission by a registry policy change. The lane checks its exact indexed
+failure, archives that sponsor journal, releases the browser original, and
+reviews and sends a fresh claim after restoring the policy. It verifies the
+final binding at one canonical block. This qualification reader explicitly
+admits the candidate only for this run. The native page harness substitutes
+the login connector, while the page's naming reader now uses the explicit
+local candidate route. Combined ACC creation still needs separate evidence.
+
+```sh
+PASSPORT_MIDNAMES_CANDIDATE_ASSETS=/absolute/path/to/verified-candidate-assets \
+nix develop -c env -u LD_DYLD_PATH \
+  PASSPORT_MIDNAMES_NATIVE=1 PASSPORT_RC_LOCALNET=1 \
+  node examples/midnames-local/qualify-deposit.mjs \
+  midnames-claim-candidate-fresh-run \
+  /absolute/path/to/prepared-standalone-registry \
+  /absolute/path/to/acc-reference/contract \
+  10.254.85.0/28
+```
+
+Choose a new output name and unused subnet after inspecting Docker networks.
+The lane requires at least 50 GiB free disk and 24 GiB Docker memory, preserves
+all originals and failed receipts, and stops only its recorded containers.
+The signed `f1309da` [native run](evidence/candidate-acc-page-paid-claim-retry-20261122.json)
+passed with two page-prepared paid originals in one persistent browser profile.
+The first had an indexed claim failure, an exact sponsor archive and browser
+release after reload. The fresh retry dispatched once, then recovered its
+indexed success and same-ACC binding after a lost sponsor response. The runner
+deployed the candidate ACC before opening the page; its login connector was a
+fixture and its naming credential was virtual. Combined ACC creation and
+claim, real passkey-provider consent, and online service admission need
+separate evidence.
 
 The signed `a20a9b9` negative run `midnames-night-browser-decline-20261116a`
 passed on isolated `undeployed`. Chromium displayed the same exact review and

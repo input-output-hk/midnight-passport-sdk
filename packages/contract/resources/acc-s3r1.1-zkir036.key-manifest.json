@@ -1,0 +1,960 @@
+{
+  "schemaVersion": 1,
+  "bindingId": "acc-s3r1.1-zkir036",
+  "compilerManifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+  "compiler": {
+    "version": "0.35.0",
+    "commit": "debb05f9414b9d1e176741c2be289bb32233f0fc",
+    "languageVersion": "0.27.0",
+    "runtimeVersion": "0.20.0"
+  },
+  "regeneration": {
+    "tool": "zkir-v3",
+    "command": "zkir-v3 compile <circuit>.zkir <circuit>.prover <circuit>.verifier",
+    "toolchainVersion": "0.36.1",
+    "nix": {
+      "command": "nix develop",
+      "compactRecipe": "nix/packages/compact.nix",
+      "compactRecipeSha256": "44c8522e72c9429a4de5a563ba29bccb600b5ba25bde88b5ecaac4d9730c2efe",
+      "flakeLockSha256": "4ced94e994377b976e35cf509e219f423e9bf1f846f7e0248831af0e437767a3"
+    }
+  },
+  "circuits": {
+    "activate_initial_device_with_jubjub": {
+      "zkir": {
+        "size": 6789,
+        "sha256": "aa57039b114151e1889e8ae86afcc3aa2ca0e5929275bcc75061b28088eb868b"
+      },
+      "bzkir": {
+        "size": 1993,
+        "sha256": "18a73910ac9c1db1ae52a8c48abcbd891838d75206c5da48eb1338fd0db622ce"
+      },
+      "prover": {
+        "size": 24648297,
+        "sha256": "6b9571e641ff826dd381550d14e3c445f28efad59890c1cd8a50b27a9517995a"
+      },
+      "verifier": {
+        "size": 2313,
+        "sha256": "b33fa139d34231f6ba1144a4ac3e947b35e679e8e91d31b554d7ff916932931e"
+      }
+    },
+    "activate_initial_device_with_k256": {
+      "zkir": {
+        "size": 8639,
+        "sha256": "b197e27eaa0b96c3e320a65c238ff662ce3e6cb0be7d56a5e1dabba0e7db8662"
+      },
+      "bzkir": {
+        "size": 2509,
+        "sha256": "7f4bc97ce74a9bd5a67c20353a88bead7991b6c3407941ab4e3deb40cf169fa7"
+      },
+      "prover": {
+        "size": 29368305,
+        "sha256": "2edd2dc726595643bdb58ead28332c769045be9bc81db85492eb9623ecb2c3bb"
+      },
+      "verifier": {
+        "size": 2745,
+        "sha256": "6de7d8e483e89b8894b651cd0d860620771b4fa532206c0ba7c08295a5095395"
+      }
+    },
+    "activate_initial_device_with_p256": {
+      "zkir": {
+        "size": 7891,
+        "sha256": "a6c4420309515190f2f93ff5ceb3caf8faf32c1a277c249456a7db6520cf8510"
+      },
+      "bzkir": {
+        "size": 2280,
+        "sha256": "12f725bccb2efa1e7efee56a6167a150464604e4ef7bc28bf4a11e5ea8e868d9"
+      },
+      "prover": {
+        "size": 29368076,
+        "sha256": "c5f640112df733a15259a2e970d2d3cb157f7414d2cb2cb79e5d06b6d86f9926"
+      },
+      "verifier": {
+        "size": 2745,
+        "sha256": "e24d797882118f6d1e33c6e756e361fa7f0b405d658cbcaaa45b4602a19dde7e"
+      }
+    },
+    "add_device_with_jubjub": {
+      "zkir": {
+        "size": 12609,
+        "sha256": "d6086a4bcd2f3d6c0c891657121df7ad753f4b5c52f9843c68e9c927471e6c5f"
+      },
+      "bzkir": {
+        "size": 3788,
+        "sha256": "7f5029b616e9be3fc37aa47d64c89b90cdb96860cec0b6e1b07ac5c7534945eb"
+      },
+      "prover": {
+        "size": 49291628,
+        "sha256": "ed2751985656838f6c626e0316e000e6eba33698763dc60f4e1a9793079faa06"
+      },
+      "verifier": {
+        "size": 2313,
+        "sha256": "f0233186ae0eb772cc40ef20f35cac0fc8984fcce5934b699f331af12a885a38"
+      }
+    },
+    "add_device_with_k256": {
+      "zkir": {
+        "size": 23394,
+        "sha256": "86bdb1c8b2106d8c484efd67f3f68e851fccce96a1d4f3ad50c7cbc88216db5e"
+      },
+      "bzkir": {
+        "size": 6817,
+        "sha256": "18c1a452542d3a2ed869f2deaec360712d65924d66e7eb9950777808492b9118"
+      },
+      "prover": {
+        "size": 234893509,
+        "sha256": "c79e44100b7aa2775897f21010e9a84910bdb8e51bb663dcba941257be33669b"
+      },
+      "verifier": {
+        "size": 2745,
+        "sha256": "f2bd6b0c7747d18aef84cf2209b65ca6eae9958d0375a2b99324ee7bc4db2f5d"
+      }
+    },
+    "add_device_with_p256": {
+      "zkir": {
+        "size": 270860,
+        "sha256": "a8fdf50e4fc80b7b5f6faf7fafda911aeeee9ceb9513677ccbfc4a86cabb8ce9"
+      },
+      "bzkir": {
+        "size": 87664,
+        "sha256": "9078244a60503e1e0d20c22184e065d406804d68a5b1b7cf899d97555056349f"
+      },
+      "prover": {
+        "size": 469855382,
+        "sha256": "76b6fb7dfac70a932423bd56b315a7831d3d8c741d68766aead58478abe9cdc2"
+      },
+      "verifier": {
+        "size": 2745,
+        "sha256": "405776ff9d1aace108c47438336b6e39a09ce5826ceeaf0f1656e74b7a604bba"
+      }
+    },
+    "append_inbox_with_jubjub": {
+      "zkir": {
+        "size": 13045,
+        "sha256": "7eabd8bcd3ef27e69937e8f84b3e2b280d38c2b2b6cb0c341f296fdc1b6b0135"
+      },
+      "bzkir": {
+        "size": 3907,
+        "sha256": "5f3085f9669fbc3ce6eba0aaacd8fa1fd3cb9ccdacbb1210955c9a736a192c56"
+      },
+      "prover": {
+        "size": 98574819,
+        "sha256": "c95e4062690f30d94a17c22f1359f6ec462663d9c7088a420d4f6e63c8db96ee"
+      },
+      "verifier": {
+        "size": 2313,
+        "sha256": "5f08b03fe48e8cbc718915cc4fff1b7f1e64196054afef2f9ea727e03de26016"
+      }
+    },
+    "append_inbox_with_k256": {
+      "zkir": {
+        "size": 23841,
+        "sha256": "803210bd546868494b8f990eb1af15a2b9b64bc43839b49aa8fef9efee131f48"
+      },
+      "bzkir": {
+        "size": 6947,
+        "sha256": "b11b97b050ba5e3265479be6d6a53083b54f5f664d47f3b19446daaf2e7dbf23"
+      },
+      "prover": {
+        "size": 234893639,
+        "sha256": "93fae362b580935c95a1627a4297a91e1d01fe7b3abd0ff1f38d15dc1bbbe3dd"
+      },
+      "verifier": {
+        "size": 2745,
+        "sha256": "1ea3fd2fc1275ff49b78f91912b0b5ac9c2153d3b9e5986e122cba9828ec4a21"
+      }
+    },
+    "append_inbox_with_p256": {
+      "zkir": {
+        "size": 271417,
+        "sha256": "23402cf8b906d819acea7514c7fea8963e2f47faf2334b975cbc1c9f00c3a3f0"
+      },
+      "bzkir": {
+        "size": 87904,
+        "sha256": "5216deac0c2d865f57cceec0527a8ead88ff8805565d07d35ec4cb544f76d92c"
+      },
+      "prover": {
+        "size": 469855622,
+        "sha256": "8b70e5ba246a51c874317a2c04044177c40f169ff11afc0babcdf2941ee02965"
+      },
+      "verifier": {
+        "size": 2745,
+        "sha256": "e6479314509ec00e8e7543ff012e69b2f26b894260fe65fd71dbaf5236aa5130"
+      }
+    },
+    "deposit_shielded": {
+      "zkir": {
+        "size": 5871,
+        "sha256": "9b4af24b42dce2987835aa08b517835015e5e08db893c783088e6f0ffe7943cc"
+      },
+      "bzkir": {
+        "size": 1652,
+        "sha256": "e61e8dd6f86999518f5d9dfe5d09f63c172f989e8eed3ccf5d90e43a7ab81951"
+      },
+      "prover": {
+        "size": 11278212,
+        "sha256": "0c63768a2206101b86d8bfc49f7a55d3cdd230afa6a28f61964f160082a519cb"
+      },
+      "verifier": {
+        "size": 2121,
+        "sha256": "18caf9ffc1ea3271c340f97ee5433598b796a64fadcc1fb7bb5c65868574d328"
+      }
+    },
+    "deposit_unshielded": {
+      "zkir": {
+        "size": 4975,
+        "sha256": "e1384ddb55763bd0a3226bbad3337b83a4e076087f212dbe0281e6db671dce1d"
+      },
+      "bzkir": {
+        "size": 1654,
+        "sha256": "b64d5d0243053a4b383493835a3a2412e09c89248d351076c5097f528eb7e2f8"
+      },
+      "prover": {
+        "size": 446790,
+        "sha256": "d8409e37efa3f142a8c9fb44a7a4c25397312317f9cf28f1243c1bba887f56a3"
+      },
+      "verifier": {
+        "size": 1353,
+        "sha256": "bb4421a5909564377d15f0756299bef99740089b842e8d9796ad2d3d75831de9"
+      }
+    },
+    "issue_grant_with_jubjub": {
+      "zkir": {
+        "size": 31716,
+        "sha256": "5a375421790a8e1e2c7ee2a6a04bc45b59af6d3e5fd39ceac047605178bed0e8"
+      },
+      "bzkir": {
+        "size": 10152,
+        "sha256": "19887b86c759417a93ff30f90830e479ef987f5df2785a2ff9f42668cf8b0a99"
+      },
+      "prover": {
+        "size": 98581064,
+        "sha256": "56ce0cdd0e0df49156bf523842f3b4040f3d5de7df4d773df28d54570d74f54e"
+      },
+      "verifier": {
+        "size": 2313,
+        "sha256": "41982739ecf0f0df2ccda4b316bf9d5852fca0138802b44e80ce84bcd5f0faa6"
+      }
+    },
+    "issue_grant_with_k256": {
+      "zkir": {
+        "size": 42586,
+        "sha256": "4c7bf5878f4a389ddc72e6795d486b6914161b80abea9010df2b4a6daa533a49"
+      },
+      "bzkir": {
+        "size": 13266,
+        "sha256": "9e2689714f3714684806997559279f6c16f06f39c0d2e8d5c2363f66595d9cfa"
+      },
+      "prover": {
+        "size": 234899958,
+        "sha256": "24e4b7468e31a727e2ad7d6d483f04173a220353316950a1afcca6bd6f240e20"
+      },
+      "verifier": {
+        "size": 2745,
+        "sha256": "4384814c9d95b0d400fc2b7e798a96b862bf222523498204827dc5f6ac27fc0d"
+      }
+    },
+    "issue_grant_with_p256": {
+      "zkir": {
+        "size": 290436,
+        "sha256": "bd368d086c56105ed3cd3d06a42818d268bba419ccc7c9b11f307a0d4c5caa6b"
+      },
+      "bzkir": {
+        "size": 94497,
+        "sha256": "1291bf1fd25ec9960392ec3a92c2679961244209df19447fe18a19f021433754"
+      },
+      "prover": {
+        "size": 469862215,
+        "sha256": "99ae64933200c8cc60ac824f9944ded65f6b1e53d47ee0181afe556a00018d6d"
+      },
+      "verifier": {
+        "size": 2745,
+        "sha256": "0d2c106295b78e387d8369ac3d5f6ac9186fe283b942079e95527e2652ef0c9a"
+      }
+    },
+    "publish_recovery_session_with_jubjub": {
+      "zkir": {
+        "size": 20252,
+        "sha256": "b3c9ba85558a6114552f1ccf3a0a8f5a3ad2931be27ec588ba8a80768500a23b"
+      },
+      "bzkir": {
+        "size": 6717,
+        "sha256": "dca9f2a33349f5d2968230c754f17b24141d0f91fc1cac2cef26a239546de22c"
+      },
+      "prover": {
+        "size": 98577629,
+        "sha256": "cf89d635a2c3f6ac003a5ad66b79672650dea0046eddb0785beadab773bd955d"
+      },
+      "verifier": {
+        "size": 2313,
+        "sha256": "7ccab5f6b494e5639d3abfca482fb99b2d5a9d23884b81930c57e78ded1c537d"
+      }
+    },
+    "publish_recovery_session_with_k256": {
+      "zkir": {
+        "size": 31285,
+        "sha256": "280b5f54ba806fa04e5ebdc405462e7e169dd2bb6a8a8a86ee2dbf986134dc6a"
+      },
+      "bzkir": {
+        "size": 9860,
+        "sha256": "932442839907973dfb6fd445ce4f5ac031cfc620757ebaabe3d6e4373f93e94c"
+      },
+      "prover": {
+        "size": 247479764,
+        "sha256": "e9b8d8e702807227a875f59d4537de816e739cce93795569caad056cb34f4247"
+      },
+      "verifier": {
+        "size": 2889,
+        "sha256": "439eed8aab0d9d13cd50e67caedcb085937ef07d4cff532793fa7ccd7c607244"
+      }
+    },
+    "publish_recovery_session_with_p256": {
+      "zkir": {
+        "size": 278946,
+        "sha256": "7ce074fcc26434cec22780ded4504d8b739a58740a08b78dc2afe174cdd190e1"
+      },
+      "bzkir": {
+        "size": 90902,
+        "sha256": "384ba77a406a4637e1dde0a263c121942e8c158b53b609e26c1adbebac1c25f4"
+      },
+      "prover": {
+        "size": 495024744,
+        "sha256": "bd4ec80d255c2451f4ee2d9fabda408a49aaada8d2f9477d3f667971901b97dc"
+      },
+      "verifier": {
+        "size": 2889,
+        "sha256": "97bb9e32a0419d9a9bcaa8312f2a8c2851e7eaacb69604a6179619844ed256b9"
+      }
+    },
+    "recover_cancel_with_jubjub": {
+      "zkir": {
+        "size": 12846,
+        "sha256": "e1f31a71a6cacf62ccfca7becddec9b606bf64a0260606992de763d1bd4043ef"
+      },
+      "bzkir": {
+        "size": 4163,
+        "sha256": "c57abd77a80ed4e621b34443af26db53fafdbd7a49096b16d1546660bfc6c809"
+      },
+      "prover": {
+        "size": 49292003,
+        "sha256": "aa49c352cd59bd5357e6cff155f7dac06c764b2a163c2f201df1e64cdd008262"
+      },
+      "verifier": {
+        "size": 2313,
+        "sha256": "ef6f2193f9bc8125ee8603374f51d62ed685494c5c5bededfc21b3c027fe1d34"
+      }
+    },
+    "recover_cancel_with_k256": {
+      "zkir": {
+        "size": 23712,
+        "sha256": "8b9f8ff7f7d407ea073da725f140390a58ecd73d6d25ac794ed516b49798edfc"
+      },
+      "bzkir": {
+        "size": 7206,
+        "sha256": "524168d4ebb34e98a0ee4dea5ee608da7a0247203468502650b71316eb1ed318"
+      },
+      "prover": {
+        "size": 247477110,
+        "sha256": "12a5d3b93393f7d70c4450e314a0f54b64d65efeb104b3494875f1fe89241140"
+      },
+      "verifier": {
+        "size": 2889,
+        "sha256": "5225477cf2899e4d6604f0926a480b9cf7dd2761c16ff621f66dc3bc746f349e"
+      }
+    },
+    "recover_cancel_with_p256": {
+      "zkir": {
+        "size": 271218,
+        "sha256": "e4e5883325e7baf0fee2915fe3fb5feb6fe31899ee35f2d2557244267eb2f394"
+      },
+      "bzkir": {
+        "size": 88093,
+        "sha256": "9ce7f3ba9478294146afea1d7e6b410813c80e212207a0c6ebcc3a366c25f1c7"
+      },
+      "prover": {
+        "size": 495021935,
+        "sha256": "f7f18813885f845259c53b38963d2d36f8c4f0fb612e303504271405ac3c3bb2"
+      },
+      "verifier": {
+        "size": 2889,
+        "sha256": "caf17f69425b04aec466d8ea0c306eb74da035cd5298dd2c6bafa5f5ec8d44c1"
+      }
+    },
+    "recover_finalise": {
+      "zkir": {
+        "size": 10283,
+        "sha256": "502d5a6e375ef497c2c2f85e5efebb99fc017d0e0724784da31f40b392dd5845"
+      },
+      "bzkir": {
+        "size": 3875,
+        "sha256": "1bd74678470e6b946c6f53f49b7ab4c0bf99edd90cc1cf11c48d29c24655b64c"
+      },
+      "prover": {
+        "size": 4201447,
+        "sha256": "4b8c4135800571ecf50f88684de4030195567e823553ff0273d2e0330b4173bd"
+      },
+      "verifier": {
+        "size": 1593,
+        "sha256": "67cdf364b9ae2905ca8b73cccd6a987eaa4cab83786da19065df88940c9999d2"
+      }
+    },
+    "recover_submit": {
+      "zkir": {
+        "size": 16102,
+        "sha256": "383f701d09f5c763f17b5821c41944f3f5681a5b9cf9e39e525dded79e13e6d3"
+      },
+      "bzkir": {
+        "size": 5513,
+        "sha256": "079c73ba2e7314e580e73204d965c1d047c63776d01252918fa902eb8b776a3a"
+      },
+      "prover": {
+        "size": 49293353,
+        "sha256": "6f068fb42f21697ed3ba5165e1325ea2ebd0271f06dd593fdc7d2cdae9e68549"
+      },
+      "verifier": {
+        "size": 2313,
+        "sha256": "ae78e27b3cfdb4981279b4b24f14b533863d7e3b738a07ab6f72d68512478746"
+      }
+    },
+    "remove_device_with_jubjub": {
+      "zkir": {
+        "size": 15016,
+        "sha256": "a282b7f98e02086266f95257eec57ef6b10b6d6810a5d0b85bdca1d0a8790622"
+      },
+      "bzkir": {
+        "size": 4497,
+        "sha256": "1a7f288bd9606663e82416fa38f6ba3aa29d3631a1b24b0879ee095cde9d337e"
+      },
+      "prover": {
+        "size": 98575409,
+        "sha256": "ddd78ce3ab45be49f8df1523416f3d82289c8b7ebb72d13c1d9847ce88916aa4"
+      },
+      "verifier": {
+        "size": 2313,
+        "sha256": "d1a6495369e5047c0c25dd928f4494566b91fbf905866e9214513eaa450b1120"
+      }
+    },
+    "remove_device_with_k256": {
+      "zkir": {
+        "size": 26380,
+        "sha256": "399cb57558a9ff9b23992a39c3c00c33ebed22ce6198aee1762c5ea2d171832e"
+      },
+      "bzkir": {
+        "size": 7713,
+        "sha256": "c318aa19e102c73eee1dc650e53d79f24dba9c98945f4263a06f1fd465832378"
+      },
+      "prover": {
+        "size": 234894405,
+        "sha256": "19be4dbf026346a2fc2f02878ca24f2867ae3da0abe1c006af1fdb64ebbb205c"
+      },
+      "verifier": {
+        "size": 2745,
+        "sha256": "bff3d5f98b0a5b787dfc7f999a8137d9d2d79e7e7e1d8304097ea5ed590dbcf3"
+      }
+    },
+    "remove_device_with_p256": {
+      "zkir": {
+        "size": 274021,
+        "sha256": "7be3cc6ce957fd54c76f2e0f896aaa65a9e0d5294fc813f3a64b0c2b4bc0ccf0"
+      },
+      "bzkir": {
+        "size": 88670,
+        "sha256": "b6b22e9c8f44e8719ce3f5f01350de57d121b2e892eec72a333fc23de1cdd5bb"
+      },
+      "prover": {
+        "size": 469856388,
+        "sha256": "fb3c4b3d46eb3bf0a2b319da9540d6ec6673e85781ca8fa80b41f1e9d712bbc3"
+      },
+      "verifier": {
+        "size": 2745,
+        "sha256": "08968f5263b58b6818e9ee3c7091847d337fb3241530d3cc6b00d389ae02d08c"
+      }
+    },
+    "revoke_all_grants_with_jubjub": {
+      "zkir": {
+        "size": 11564,
+        "sha256": "59995aa084d8c21882a925db6ea6f7978e657dc2d55a583935046cb618aba5ff"
+      },
+      "bzkir": {
+        "size": 3453,
+        "sha256": "bf4cde37c13b4a36cac999909154703cf2c05259c88f8b8cfe073cb49e60ce38"
+      },
+      "prover": {
+        "size": 49291293,
+        "sha256": "dadfcd35aada4ee8862afca05b7e958e60aeadc6adb1ad7453e167c0aed2f07d"
+      },
+      "verifier": {
+        "size": 2313,
+        "sha256": "c0ea02c1aee94ace6281f2d7e36c4c028d8acad743b1dfe320bf98e0b2b68aca"
+      }
+    },
+    "revoke_all_grants_with_k256": {
+      "zkir": {
+        "size": 22340,
+        "sha256": "219e152e58f3159486f53f068867b6a3e85953a474acac7253a7916013de61d4"
+      },
+      "bzkir": {
+        "size": 6473,
+        "sha256": "25280f9de6e654a4cc25d7f729c8e7ca075e50714d3653370ceeb29b03876cf1"
+      },
+      "prover": {
+        "size": 234893165,
+        "sha256": "b3dcd2a35bfe12c276bd33f6d0e49a3b816d2ff52d763eda3f32764cce0ccdfa"
+      },
+      "verifier": {
+        "size": 2745,
+        "sha256": "2b126817325d31e8fc18adaf0caa5572fb862516373888db08752e4e37adf908"
+      }
+    },
+    "revoke_all_grants_with_p256": {
+      "zkir": {
+        "size": 269836,
+        "sha256": "1f5ec1f0f70f683313292e6985521d399bf31ede611a376df60d3cc9c487306e"
+      },
+      "bzkir": {
+        "size": 87350,
+        "sha256": "f4c7b3cb7cb36d97bfe8b65b371f0f288179939d41d03f8112ea5b121d7068a2"
+      },
+      "prover": {
+        "size": 469855068,
+        "sha256": "b256bbdb9ee908e3e01bcf814268e49e9a7e095c7b47df7603d5d40efabedc99"
+      },
+      "verifier": {
+        "size": 2745,
+        "sha256": "931888c65ae1a45ffac3bf88f489654a06501495a3c36328f8d8fb46cb76ba24"
+      }
+    },
+    "revoke_grant_with_jubjub": {
+      "zkir": {
+        "size": 15355,
+        "sha256": "003661371a42bef348e1545ddd6cd0ee39cff090cfe5c992219f564d3f09f75d"
+      },
+      "bzkir": {
+        "size": 4621,
+        "sha256": "5bd4be3866cc3ecd94dbebb041813ecb3d9612f2de67b5f6fc4dc614303cdd0a"
+      },
+      "prover": {
+        "size": 49292461,
+        "sha256": "8477f9f464bfddfd77d22749d9451405e04193670e87cd3f68e43c761e8448d7"
+      },
+      "verifier": {
+        "size": 2313,
+        "sha256": "6e335c3a0da9eab85cc8c72a0337b8145ed9afbdcaa278582b5cd3e6b12b1628"
+      }
+    },
+    "revoke_grant_with_k256": {
+      "zkir": {
+        "size": 26208,
+        "sha256": "db75ac6df522d542403ac4618eeb49bc83b62889f4ea5a2b3b18e7eeaca0ed6e"
+      },
+      "bzkir": {
+        "size": 7718,
+        "sha256": "e26652047875e884c4a3bb9bb84a4093d1df48bbca7f95593e3e746d0a6aaf76"
+      },
+      "prover": {
+        "size": 234894410,
+        "sha256": "e92886def575b054d4e6108f35b30c58edc8b6280a878e202e305aded363cb24"
+      },
+      "verifier": {
+        "size": 2745,
+        "sha256": "2dea5fbf3c80e651d64dd28837f1c72ac0cff30fa3fe31d92eadfb61fc077e20"
+      }
+    },
+    "revoke_grant_with_p256": {
+      "zkir": {
+        "size": 273782,
+        "sha256": "8be1da5093d66c9369b71df71cb620c5aeeeee8ddbc0a3878a1ab0fa98035aa5"
+      },
+      "bzkir": {
+        "size": 88673,
+        "sha256": "a317336fafb5befff3a31da0c0f768821f1fafa0b7345997c524716e59314622"
+      },
+      "prover": {
+        "size": 469856391,
+        "sha256": "5b5a47e339b966dc23e62d39795d2c39cc3cae1cfb138143a9b1e8b4a7eb7a3a"
+      },
+      "verifier": {
+        "size": 2745,
+        "sha256": "cdb1be457cc105b5036d0d15d6558049c04e2268562e37e8532563547f8c22d7"
+      }
+    },
+    "rotate_enc_key_with_jubjub": {
+      "zkir": {
+        "size": 11013,
+        "sha256": "c9e1e5f58c19179f290face9c90935a20c28938c4c8db2bbf0bf1fc0d10999ab"
+      },
+      "bzkir": {
+        "size": 3276,
+        "sha256": "6dbbbdf1d7a82c04ede1104a0e21b9685c821217ced445033c8c25d62ce79fec"
+      },
+      "prover": {
+        "size": 49291116,
+        "sha256": "58296306704657577349863b22467a9f583e9571e7b2a43c5d64753a98d2fba1"
+      },
+      "verifier": {
+        "size": 2313,
+        "sha256": "b6c2c439b3380e5098debce1d8adc628ff56b10647cf30f9c58768b8ec49e0ff"
+      }
+    },
+    "rotate_enc_key_with_k256": {
+      "zkir": {
+        "size": 21785,
+        "sha256": "7f22b917111f9de789a5da7d7b2c1182c8c5578b9d06bb7c11b5339ac829052f"
+      },
+      "bzkir": {
+        "size": 6292,
+        "sha256": "0a51fb926fac2cf86840912f226b48d2e5b8e8955c281f78ea67be8c6b0eb71c"
+      },
+      "prover": {
+        "size": 234892984,
+        "sha256": "8fe4a70808655e6854cb8c77f8792d4079a3190b0e6262a3fa21621a3d464e3a"
+      },
+      "verifier": {
+        "size": 2745,
+        "sha256": "83a3f2225df981fb57c3119e818accadfce3a9b9370dd4300ecb05c2a3008619"
+      }
+    },
+    "rotate_enc_key_with_p256": {
+      "zkir": {
+        "size": 269246,
+        "sha256": "2b056dde43dc3e75a651b3f19f48abf8d0fe48c6a167a561b58c5a8ee714ea5f"
+      },
+      "bzkir": {
+        "size": 87134,
+        "sha256": "2f4bf0b5bce44c87d23de6e33276bc0dd6db19c6547e37bb4b53d81b574d1a83"
+      },
+      "prover": {
+        "size": 469854852,
+        "sha256": "61067ef6c143880ec675ce34ac79a60ce2c4ad57a1d9f46ce4764049d9314d05"
+      },
+      "verifier": {
+        "size": 2745,
+        "sha256": "c5e0ac7fcc2e26c46bfd7ca2d280c39d988dcb85ec0cf7eddcc0d82080d5335b"
+      }
+    },
+    "withdraw_shielded_to_contract_with_grant_jubjub": {
+      "zkir": {
+        "size": 35780,
+        "sha256": "4fc97af5c50876b4bd0ea47a2123979fc4ce41ddea9c765d6443d0ef5e476a6a"
+      },
+      "bzkir": {
+        "size": 10875,
+        "sha256": "268482cdcce97012f709257a44511e136598fc035660b6dbba397cfadbf0ba8a"
+      },
+      "prover": {
+        "size": 197147931,
+        "sha256": "59d4ad8747800c5f826095cff8dfb884b8736a37473fbdb3c0ab507f0426950b"
+      },
+      "verifier": {
+        "size": 2313,
+        "sha256": "34af72b618ce88f25aa6880af18fe79fe1e47edbc551ce595f332f35e0ab7f18"
+      }
+    },
+    "withdraw_shielded_to_contract_with_grant_k256": {
+      "zkir": {
+        "size": 46246,
+        "sha256": "c6bc89a91a74236892fccbf1674edc5e66fc6e7c45859f0ad7e5d627fbf0f35d"
+      },
+      "bzkir": {
+        "size": 13895,
+        "sha256": "455fa1f9feef6028d10a27f3b345bdf02c5bd7d11fb6139aef0be96fa00cecb2"
+      },
+      "prover": {
+        "size": 234900587,
+        "sha256": "7a061d36b4214a7265999925dd61a10229cf37845a2e8e64dc1b5702cec39a24"
+      },
+      "verifier": {
+        "size": 2745,
+        "sha256": "d03efae858007baad9f4a5662da80d2a74cdddf8956fc66612d0eccb865e42bf"
+      }
+    },
+    "withdraw_shielded_to_contract_with_grant_p256": {
+      "zkir": {
+        "size": 295349,
+        "sha256": "864271c1dff6c132d1290cda1abd8e29fa856e31d6dc0cd9a4a3e59a9351ea9c"
+      },
+      "bzkir": {
+        "size": 95671,
+        "sha256": "7603b29a6ce8e23662c1d239695cd26dcb5c7224bd0d1862a9c1cef72ef0d259"
+      },
+      "prover": {
+        "size": 469863389,
+        "sha256": "91478c123243abaa33495e5fb432a8b58bcc506dc74775b076496f147c14ca89"
+      },
+      "verifier": {
+        "size": 2745,
+        "sha256": "fde90b5d05cc5f2b4a02dff671b27de71b567807f28ea4fc1b09b4a98ed68e4f"
+      }
+    },
+    "withdraw_shielded_to_contract_with_jubjub": {
+      "zkir": {
+        "size": 20347,
+        "sha256": "c087bf65963c03672d68c11eff432bac02c912d089855f0c9c8664b45c67076e"
+      },
+      "bzkir": {
+        "size": 5898,
+        "sha256": "7affd1c494c23a69ae89393741ef018d98bdd241950412f405a9358d5f683b8f"
+      },
+      "prover": {
+        "size": 98576810,
+        "sha256": "ad4011ff928fe432cb32dfa7fe7c54d55ae0b1073572fe9dd847e8b3389b619c"
+      },
+      "verifier": {
+        "size": 2313,
+        "sha256": "ce412f6f580a8a1c00ec4d6f38ccc0738a89a75392eaf052fb30d0354231ba35"
+      }
+    },
+    "withdraw_shielded_to_contract_with_k256": {
+      "zkir": {
+        "size": 31239,
+        "sha256": "0db43b367e679e53477200c9ab5576baa640ede5b0ddaf9da89b866a1c423daa"
+      },
+      "bzkir": {
+        "size": 9034,
+        "sha256": "9818e67b1ebde1b70cb4cbbcb000de963d8894ca05ca5f3d63e625315d948b4a"
+      },
+      "prover": {
+        "size": 234895726,
+        "sha256": "b93e48798cea50fdd2751a463510ee267857681f8ba8e8b9a84644902782bdd0"
+      },
+      "verifier": {
+        "size": 2745,
+        "sha256": "909e19c3b737a6c86e69f02c3dbbf28e95da064421b67489ead3bb718094c12a"
+      }
+    },
+    "withdraw_shielded_to_contract_with_p256": {
+      "zkir": {
+        "size": 278899,
+        "sha256": "3b89edcabbc56d04da38ab0e4c268b692769d482158ed1ed3799e487bb9642f0"
+      },
+      "bzkir": {
+        "size": 90075,
+        "sha256": "c122aa2a0cf0cac904c4a7ca7e1260ecf755bc4bac03993a8ffc80d9a03d619a"
+      },
+      "prover": {
+        "size": 469857793,
+        "sha256": "67d7102319b0fe988cb92a1b21fcc1940125cee2b2f04e26c1af7e9c6ecc2a33"
+      },
+      "verifier": {
+        "size": 2745,
+        "sha256": "5606bb235fba70eb2a99aad4def34a2dde625ef8bc7fed5eb0f437749b3f68c3"
+      }
+    },
+    "withdraw_shielded_with_grant_jubjub": {
+      "zkir": {
+        "size": 34150,
+        "sha256": "c7c7fb70f44d9a1400ac80884fe5b49bfab2b3c89ddc481bc3cc999db612ebec"
+      },
+      "bzkir": {
+        "size": 10355,
+        "sha256": "adceb619d744cc08024186eb502a6de6a5a97d6db85a2fecbb9ae7dd75b7e79c"
+      },
+      "prover": {
+        "size": 197147411,
+        "sha256": "f3630af1d48b43d174ed88b12e5513b47cd35fc76ab65c44e8ce8e302ad53f75"
+      },
+      "verifier": {
+        "size": 2313,
+        "sha256": "ef5b5dc1849a48ed0a628f53eed5ba4d218ed59a53f61f6e9a5e2e413c88b3cc"
+      }
+    },
+    "withdraw_shielded_with_grant_k256": {
+      "zkir": {
+        "size": 44618,
+        "sha256": "767cc78b0c8b62f95b4d340061620868607807af57051446f5597751aa569878"
+      },
+      "bzkir": {
+        "size": 13376,
+        "sha256": "706e37884fb0936704135bf07a96759ef1b1f2fe34d8a20da83d7ef8775ba089"
+      },
+      "prover": {
+        "size": 234900068,
+        "sha256": "538ecdf598f918d44b1926f36baa6f7b1666e1934d7debef941332fd8174b2a0"
+      },
+      "verifier": {
+        "size": 2745,
+        "sha256": "e86ff0c442b4dff27bd987781b65e39efb1b2a20da00eb6766625d84150a150e"
+      }
+    },
+    "withdraw_shielded_with_grant_p256": {
+      "zkir": {
+        "size": 293698,
+        "sha256": "ac49dda9ef732a9a7dc526baf775bb7572f92d1ed69f8982c5dac61522af288a"
+      },
+      "bzkir": {
+        "size": 95129,
+        "sha256": "da0b8e38224d29ba333a4e3535a5e893d47405cc54d610790a94f726d3b66fb2"
+      },
+      "prover": {
+        "size": 469862847,
+        "sha256": "3a55f3ccbfb3b37e306750cd26eab9ae57f4cda4166da78254899f13a77420c1"
+      },
+      "verifier": {
+        "size": 2745,
+        "sha256": "04c24b43c7dbc33432fdbe482f0e9732216440126f274e1e307606925ca1280b"
+      }
+    },
+    "withdraw_shielded_with_jubjub": {
+      "zkir": {
+        "size": 18730,
+        "sha256": "7f5f16ce5a776c531d6edffb65c129d2291ced12a4bbc76223905e11d468c48b"
+      },
+      "bzkir": {
+        "size": 5391,
+        "sha256": "3adddc4067d19ab9809caaa3c64b227ccad8d04cbe162fba8403b2c2728e9e5c"
+      },
+      "prover": {
+        "size": 98576303,
+        "sha256": "a630fdabe5e8153e6f5d84ff6a4eb5d1566f346d2953e7a53b55434f9122245e"
+      },
+      "verifier": {
+        "size": 2313,
+        "sha256": "8119afbced2b7d1a53aca787b43fced064f131120bdc366202ee43e26fcf3a45"
+      }
+    },
+    "withdraw_shielded_with_k256": {
+      "zkir": {
+        "size": 29609,
+        "sha256": "88c323da596cb4d463159a1b25c30eedffef0106729dec657b03bdd0ad020535"
+      },
+      "bzkir": {
+        "size": 8514,
+        "sha256": "524b55567b0f3e8e6996da23258825c643367956b9932ca59ee0240e94b61fe4"
+      },
+      "prover": {
+        "size": 234895206,
+        "sha256": "a3287252e192e0fd5172c91c34e41ee703468b8ef393327235dd160ed75afd9e"
+      },
+      "verifier": {
+        "size": 2745,
+        "sha256": "dbb6418ecdd1ab5bfab1aeecf34fa467c187baedbddda2d9112662584f435397"
+      }
+    },
+    "withdraw_shielded_with_p256": {
+      "zkir": {
+        "size": 277246,
+        "sha256": "5224abbbbc4a1adc0c77365d8e9a0b9c1077d12f2a78c9ff93bb82f543242f23"
+      },
+      "bzkir": {
+        "size": 89532,
+        "sha256": "4f261b83715f9314de02ba5d47e24a55df4086709ff9dafff765321d590790bd"
+      },
+      "prover": {
+        "size": 469857250,
+        "sha256": "72a30f8adb4a5de03c58b57e2678eec8d5c789821254fc6880a69ad69b1868d9"
+      },
+      "verifier": {
+        "size": 2745,
+        "sha256": "1ba05b6aa2dced8466c4568e5135c8b84b220c5df4398681cb3e2847c39309bc"
+      }
+    },
+    "withdraw_unshielded_with_grant_jubjub": {
+      "zkir": {
+        "size": 26036,
+        "sha256": "c3694f8f2c42693d9b3ab45605194d4a3dc31ba6664985902c1e64fa3b5c5f40"
+      },
+      "bzkir": {
+        "size": 8019,
+        "sha256": "17415c24728d9ad48acc37becd15faaca3ee900bfc63f11849cfc9d587324d57"
+      },
+      "prover": {
+        "size": 98578931,
+        "sha256": "d9bcfd0a31df6644d87c425a70b91fda418718ad677c88f08f5bc0c0e0db4a05"
+      },
+      "verifier": {
+        "size": 2313,
+        "sha256": "8a77e12e64fea27a38bf192e1b2cd1287f9d468f4e0ad3988b9369b1e6cb6cc5"
+      }
+    },
+    "withdraw_unshielded_with_grant_k256": {
+      "zkir": {
+        "size": 36467,
+        "sha256": "b0ec72d2b80131da5caa38715865048ca6d27938b85263f2afff0670c9ef6328"
+      },
+      "bzkir": {
+        "size": 11003,
+        "sha256": "2dcc73fa099dc3e2363dddbb8e499a3ca76e2d9e7ac735a7bff64ab5bfe19171"
+      },
+      "prover": {
+        "size": 234897695,
+        "sha256": "8d0109903f6555e9f3546b229783220849c8d4ed9c2aadb0ddc86a253ba8f3a7"
+      },
+      "verifier": {
+        "size": 2745,
+        "sha256": "4e1f0ff0d6468afac7d0867acfe6a14ec7beaad9da8a3168442f70368a111e18"
+      }
+    },
+    "withdraw_unshielded_with_grant_p256": {
+      "zkir": {
+        "size": 285379,
+        "sha256": "0a02e65b7f4a34e93f62c92604394a2352a42090b34fd965078ab8d49602c683"
+      },
+      "bzkir": {
+        "size": 92588,
+        "sha256": "e7b394a60fe6deb93b52bd109b48005e861fbedb40d3da03587a37f94044cb9e"
+      },
+      "prover": {
+        "size": 469860306,
+        "sha256": "55e87b326c0dfe3c98b9d3440bc8cb7033b11f179821cbd2d2df9f25174de634"
+      },
+      "verifier": {
+        "size": 2745,
+        "sha256": "f9593073cc18210e047bc4f207a129acf6305c408fe5a6e92d1ab8ea9ca6e471"
+      }
+    },
+    "withdraw_unshielded_with_jubjub": {
+      "zkir": {
+        "size": 15368,
+        "sha256": "5f17d3c2335ce77121a9b5dede0cf9c16b5f5aa3bb8ede55118cebc4796a6299"
+      },
+      "bzkir": {
+        "size": 4774,
+        "sha256": "8a8213796ff2816a8eb30bdfec3b28e825f689180ae37663853a7c3b8c2cb4bd"
+      },
+      "prover": {
+        "size": 49292614,
+        "sha256": "e4b273724feacdaacb4a842ac51ce4c0a9a51de96cc182fe67cc089fa05b33ab"
+      },
+      "verifier": {
+        "size": 2313,
+        "sha256": "0d379e75fc29bb44de21a263a1f3bd941658aed71ccaa41cf445b29b104715a4"
+      }
+    },
+    "withdraw_unshielded_with_k256": {
+      "zkir": {
+        "size": 26162,
+        "sha256": "86687ed1b92a4ac33ab7d72e7eb14fe1e01e701ef99f46677d408103018a5688"
+      },
+      "bzkir": {
+        "size": 7812,
+        "sha256": "78dc9adfd0b54adb66bb56f293df151a05ea2406418bee02856ec407763775cb"
+      },
+      "prover": {
+        "size": 234894504,
+        "sha256": "a88e9da782049045f12791eb8006d789eba4949d2c700fc1c86465fccfbec914"
+      },
+      "verifier": {
+        "size": 2745,
+        "sha256": "1c2b2c30f62d3186b37f93ba32350761f09296e95da335a3dcab939ade943caa"
+      }
+    },
+    "withdraw_unshielded_with_p256": {
+      "zkir": {
+        "size": 273717,
+        "sha256": "841c15cbb978a8b63e90a9d1501ce37233445b0a2150ceca3133ed82b28b29d4"
+      },
+      "bzkir": {
+        "size": 88748,
+        "sha256": "f99341a19a55a5d384ac4eb8e308b31ebd01b999fcfb4f5b52c002b9f50a2a79"
+      },
+      "prover": {
+        "size": 469856466,
+        "sha256": "e4dc3f7169e1626654ac5ffb56a9df81a8fe6b8d5dafd5f3a77bf22a8b5092db"
+      },
+      "verifier": {
+        "size": 2745,
+        "sha256": "281d483a9ebec0993f41093ea63bf2d3a66a5015b1f87040c32c9b502577f6a2"
+      }
+    }
+  }
+}

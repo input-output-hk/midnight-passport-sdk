@@ -2,7 +2,7 @@ import { prepareHostMutation } from './host-preparation.ts';
 import { readHostConfirmation } from './host-confirmation.ts';
 export { readHostConfirmation } from './host-confirmation.ts';
 import { createHash } from 'node:crypto';
-import { resolveBinding } from '@input-output-hk/mn-passport-contract';
+import type { AccBinding } from '@input-output-hk/mn-passport-contract';
 import {
   hostFailure,
   type HostMutationDriver,
@@ -19,7 +19,10 @@ import type { ReferenceHostRuntime } from './reference-runtime.ts';
 export type { ReferenceHostRuntime } from './reference-runtime.ts';
 import { callContext, deploymentContext, requireHostPlan } from './host-context.ts';
 import { bytes, hex, same, operation, intents } from './host-ledger.ts';
-export function createReferenceHostDriver(r: ReferenceHostRuntime): HostMutationDriver {
+export function createReferenceHostDriver(
+  r: ReferenceHostRuntime,
+  pins: AccBinding,
+): HostMutationDriver {
   const L = r.ledger;
   const decode = (tx: string) =>
     L.Transaction.deserialize<Ledger.SignatureEnabled, Ledger.Proof, Ledger.Binding>(
@@ -38,7 +41,6 @@ export function createReferenceHostDriver(r: ReferenceHostRuntime): HostMutation
     const v = await r.providers.publicDataProvider.queryContractState(address);
     return v ? L.ContractState.deserialize(v.serialize()) : undefined;
   };
-  const pins = resolveBinding('acc-s3r1.1');
   const names = Object.entries(pins.circuits)
     .filter(([, v]) => v.proof)
     .map(([k]) => k)

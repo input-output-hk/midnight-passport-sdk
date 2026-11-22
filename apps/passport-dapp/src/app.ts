@@ -45,6 +45,7 @@ import { createMockNameService } from './mock-name-service.js';
 import type { PassportNameService } from '@input-output-hk/mn-passport-account/names';
 import { showDemoNameService, showNameConfigurationError } from './name-service.js';
 import { configureMidnames } from './midnames/config.js';
+import { localCandidateAccount } from './midnames/candidate-account.js';
 import { createNamedNightPage } from './midnames/night-send-page.js';
 import { localNightEndpoint, localNightNetwork } from './midnames/night-send-page-state.js';
 import { demoClaimPreparation } from './midnames/claim-demo-owner.js';
@@ -163,6 +164,7 @@ const ui = createUi(
     },
   },
 );
+ui.setReady(false);
 ActivityPanel(
   workspace.activityRoot,
   ui.activity,
@@ -249,6 +251,11 @@ let resetClaimRecovery: (() => void) | undefined;
 let namesForNight: PassportNameService | undefined;
 let namedNightPage: ReturnType<typeof createNamedNightPage> | undefined;
 try {
+  const candidateQualification = localCandidateAccount(
+    BINDING_ID,
+    MANIFEST_SHA256,
+    import.meta.env.VITE_MIDNAMES_REGISTRY_PROFILE,
+  );
   const naming = configureMidnames(
     {
       claimSponsor: import.meta.env.VITE_MIDNAMES_CLAIM_SPONSOR,
@@ -261,6 +268,9 @@ try {
       indexerWsUrl: import.meta.env.VITE_MIDNAMES_INDEXER_WS_URL,
       verificationIndexerUrl: import.meta.env.VITE_MIDNAMES_VERIFICATION_INDEXER_URL,
       verificationIndexerWsUrl: import.meta.env.VITE_MIDNAMES_VERIFICATION_INDEXER_WS_URL,
+      nodeUrl: import.meta.env.VITE_MIDNAMES_NODE_URL,
+      anchorBlockHeight: import.meta.env.VITE_MIDNAMES_CHAIN_ANCHOR_HEIGHT,
+      anchorBlockHash: import.meta.env.VITE_MIDNAMES_CHAIN_ANCHOR_HASH,
       knownName: import.meta.env.VITE_MIDNAMES_KNOWN_NAME,
       knownAccountAddress: import.meta.env.VITE_MIDNAMES_KNOWN_ACC,
     },
@@ -270,6 +280,7 @@ try {
       import.meta.env.VITE_MIDNAMES_CLAIM_PREPARATION,
       () => appState.primaryAccount,
     ),
+    candidateQualification,
   );
   showDemoNameService(naming ?? createMockNameService(network), network);
   if (
@@ -494,13 +505,6 @@ const opened = async (a: PassportAccount, how: string, lastTx?: PassportTxResult
     });
 };
 
-if (injected()) {
-  status('Ready. Create a Passport account, or open one with your passkey.');
-} else {
-  ui.setReady(false);
-  status('The Passport connector is not injected (window.midnight.passport).');
-}
-
 const actionHost: DemoActionHost = {
   state: appState,
   ui,
@@ -555,3 +559,9 @@ ui.on('sendNamedNight', namedNightPage.send);
 ui.on('wallet', walletActions.connect);
 ui.on('walletRefresh', walletActions.walletRefresh);
 ui.on('walletDust', walletActions.walletDust);
+if (injected()) {
+  ui.setReady(true);
+  status('Ready. Create a Passport account, or open one with your passkey.');
+} else {
+  status('The Passport connector is not injected (window.midnight.passport).');
+}

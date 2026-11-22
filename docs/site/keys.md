@@ -42,7 +42,36 @@ nix develop -c node packages/contract/bin/restore-acc-keys.mjs \
 
 Consumers can invoke `mn-passport-restore-keys` from the installed contract package. `--circuit deposit_unshielded` restores only one circuit; `--circuits deposit_unshielded,deposit_shielded` restores an explicit subset. `--source /path/to/managed/account` or `--bundle /path/to/bundle` selects another input and may be combined with an independent `--manifest-sha256` pin. Re-running the command verifies cached files and skips compilation when they match. The service should refuse to start if its key cache and the package's manifest disagree.
 
-The [bundle builder](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/scripts/build-acc-key-bundle.mjs) verifies every input against the compiler manifest before compressing it. The restore CLI verifies the full bundle against an independent manifest pin. The [regeneration check](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/experiments/acc-0.35/regen-check.sh) rebuilt all 52 circuits for `acc-s3r1.1` and compared both keys byte for byte with the original Compact output. A later compiler or binding needs its own full check before publication.
+### Ledger 9 key-generation candidate
+
+The source candidate `acc-s3r1.1-zkir036` pins the original Compact 0.35
+compiler manifest, generated module and ZKIR, but independently pins a Compact
+0.36.1 `zkir-v3` key generator and all 52 resulting prover/verifier hashes.
+Forty-eight pairs differ from `acc-s3r1.1`; the 0.36.1 hashes match the complete
+0.36.0 diagnostic inventory. The contract package includes a separate readable
+key manifest and small ZKIR/verifier bundle, while `.prover` bytes remain outside
+the package. The restore CLI selects the versioned generator, verifies its
+package-pinned manifest and exact output bytes, and refuses a mismatched cache:
+
+```sh
+nix develop -c node packages/contract/bin/restore-acc-keys.mjs \
+  --binding acc-s3r1.1-zkir036 \
+  --output /isolated/cache/acc-s3r1.1-zkir036
+```
+
+This is an artifact candidate, **not a supported account binding**. The source
+registry carries its provisional pins for explicit host qualification, while
+`resolveBinding` and `SUPPORTED_BINDINGS` still admit only `acc-s3r1.1`.
+The source account service can explicitly select the candidate with a separate
+verified asset tree; the demo account admission still refuses it. The published
+key service image and default account service continue to select `acc-s3r1.1`.
+A deployed ACC whose maintenance authority was retired cannot
+have its verifier keys replaced; the candidate requires a fresh contract and
+separate operation/provider acceptance. Keep the two key caches isolated.
+The [version-axis decision](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/adr/0020-ledger9-acc-key-generation-binding.md)
+lists the gates before support is advertised.
+
+The [bundle builder](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/scripts/build-acc-key-bundle.mjs) verifies the ZKIR against the compiler manifest and each verifier against its selected key-generation manifest before compressing it. The restore CLI verifies the full bundle against independent package pins. The [regeneration check](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/experiments/acc-0.35/regen-check.sh) rebuilt all 52 circuits for `acc-s3r1.1` and compared both keys byte for byte with the original Compact output. A later compiler or binding needs its own full check before publication.
 
 ### Release constraints
 

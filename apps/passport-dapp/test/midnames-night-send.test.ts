@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import {
   NightDepositInterrupted,
   NightPaymentDeclined,
+  NightSendPreflightError,
   sendNightByName,
   type NightSendIntent,
   type NightSendLeg,
@@ -29,7 +30,8 @@ function fixture() {
     address: target,
     validTarget: true,
     supportedTarget: true,
-    balance: 10n,
+    balance: 10n as bigint | undefined,
+    absent: false,
     stopBeforeDeposit: false,
     dropDepositReply: false,
     finalized: new Set<string>(),
@@ -44,6 +46,7 @@ function fixture() {
     { networkId: request.networkId, namespace: 'night', registryAddress: 'd'.repeat(64) },
     {
       async readTarget() {
+        if (state.absent) return undefined;
         return state.validTarget ? { kind: 'contract', address: state.address } : { kind: 'other' };
       },
       async isSupportedAccount() {
@@ -127,6 +130,33 @@ test('unsupported routes, target type and insufficient balance refuse before own
   state.balance = 3n;
   await assert.rejects(sendNightByName(request, ports()), /insufficient/);
   assert.deepEqual(calls, []);
+});
+
+test('preflight refusals have distinct public codes without owner approval or dispatch', async () => {
+  const { state, calls, ports, legs } = fixture();
+  const refused = async (input: NightSendRequest, code: NightSendPreflightError['code']) => {
+    await assert.rejects(sendNightByName(input, ports()), (error) => {
+      assert.ok(error instanceof NightSendPreflightError);
+      assert.equal(error.code, code);
+      return true;
+    });
+  };
+  await refused({ ...request, asset: 'shielded' }, 'NightUnsupportedRoute');
+  state.absent = true;
+  await refused(request, 'NightNameUnavailable');
+  state.absent = false;
+  state.address = request.source;
+  await refused(request, 'NightSelfRecipient');
+  state.address = target;
+  state.supportedTarget = false;
+  await refused(request, 'NightRecipientUnsupported');
+  state.supportedTarget = true;
+  state.balance = undefined;
+  await refused(request, 'NightSourceUnsupported');
+  state.balance = 3n;
+  await refused(request, 'NightInsufficientBalance');
+  assert.deepEqual(calls, []);
+  assert.equal(legs.size, 0);
 });
 
 test('an operator decline is typed and cannot sign or dispatch either leg', async () => {

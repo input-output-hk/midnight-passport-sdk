@@ -10,7 +10,12 @@ import {
   assertExactNamedNight,
   assertExactGrantExport,
 } from '../src/consent.ts';
-import { admitExactReview, withdrawalFromCall, type ExactReview } from '../src/exact-review.ts';
+import {
+  admitExactReview,
+  exactReviewText,
+  withdrawalFromCall,
+  type ExactReview,
+} from '../src/exact-review.ts';
 import { NIGHT_SEND_OPERATIONS, type NightSendIntent } from '../src/midnames/night-send.ts';
 import { reviewedOwnerValueCall } from '../src/reviewed-value-call.ts';
 import { withUi, control, approve } from './fixtures/consent-ui.ts';
@@ -139,6 +144,43 @@ test('named NIGHT review refuses wrong route, target, provider and withdrawal br
     { namedNight: { ...namedNight, operations: ['deposit_unshielded'] as never } },
   ])
     assert.throws(() => admitExactReview({ ...base, ...changed } as ExactReview));
+});
+
+test('named NIGHT review refuses the provisional binding before consent', () => {
+  assert.throws(
+    () =>
+      admitExactReview({
+        ...intent,
+        bindingId: 'acc-s3r1.1-zkir036',
+        scheme: 'jubjub-schnorr',
+        namedNight,
+      }),
+    { code: 'UserCancelled' },
+  );
+});
+
+test('named NIGHT review admits only the exact local candidate pin with an explicit opt-in', () => {
+  const candidate = {
+    ...intent,
+    bindingId: 'acc-s3r1.1-zkir036',
+    scheme: 'jubjub-schnorr' as const,
+    namedNight,
+  };
+  const pin = '590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f';
+  assert.throws(
+    () =>
+      admitExactReview({
+        ...candidate,
+        localCandidate: { manifestSha256: '0'.repeat(64), provisionalLocal: true },
+      }),
+    { code: 'UserCancelled' },
+  );
+  const reviewed = admitExactReview({
+    ...candidate,
+    localCandidate: { manifestSha256: pin, provisionalLocal: true },
+  });
+  assert.equal(reviewed.kind, 'withdraw');
+  assert.match(exactReviewText(reviewed), new RegExp(pin));
 });
 
 test('wrong action, context, route, human address or malformed value cannot stage a transfer', async () =>

@@ -6,6 +6,9 @@ name: ${PASSPORT_COMPAT_PROVER_PROJECT:?set a unique isolated project name}
 services:
   proof-server:
     image: midnightntwrk/proof-server@sha256:2666c7bd7b4517f8ad135565387f98d14347a9ac715c6c466d4a8a852b545ecf
+    # The sidecar only serves a loopback host port; reuse Docker's existing
+    # bridge so a crowded Desktop subnet pool cannot block local claims.
+    network_mode: bridge
     ports:
       - '127.0.0.1:${PASSPORT_COMPAT_PROVER_PORT:-16301}:6300'
     cap_drop:

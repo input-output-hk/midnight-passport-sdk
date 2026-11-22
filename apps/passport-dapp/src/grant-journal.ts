@@ -196,8 +196,11 @@ export function browserGrantJournal(
 export function browserAccountRecords(
   networkId: string,
   storage: StoragePort = localStorage,
+  bindingId = 'acc-s3r1.1',
 ): AccountRecordStore {
-  const key = `mn-passport:account-record:v1:${networkId}`;
+  if (bindingId !== 'acc-s3r1.1' && bindingId !== 'acc-s3r1.1-zkir036')
+    throw new Error('Unsupported local account record binding.');
+  const key = `mn-passport:account-record:v1:${networkId}${bindingId === 'acc-s3r1.1' ? '' : `:${bindingId}`}`;
   const read: AccountRecordStore['read'] = async () => {
     const raw = storage.getItem(key);
     if (!raw) return undefined;
@@ -213,7 +216,7 @@ export function browserAccountRecords(
     if (
       typeof entry.address !== 'string' ||
       !HEX32.test(entry.address) ||
-      entry.bindingId !== 'acc-s3r1.1' ||
+      entry.bindingId !== bindingId ||
       (entry.scheme !== 'p256-webauthn' && entry.scheme !== 'jubjub-schnorr') ||
       typeof entry.localUseCounter !== 'string' ||
       !/^\d+$/.test(entry.localUseCounter) ||
@@ -223,7 +226,7 @@ export function browserAccountRecords(
       throw new Error('The local account record is corrupt.');
     return {
       address: entry.address,
-      bindingId: entry.bindingId,
+      bindingId,
       scheme: entry.scheme,
       localUseCounter: BigInt(entry.localUseCounter),
       ...(typeof entry.credentialId === 'string' && { credentialId: bytes(entry.credentialId) }),
@@ -232,7 +235,7 @@ export function browserAccountRecords(
   return {
     read,
     async write(record) {
-      if (!HEX32.test(record.address) || record.bindingId !== 'acc-s3r1.1')
+      if (!HEX32.test(record.address) || record.bindingId !== bindingId)
         throw new Error('Invalid local account record.');
       storage.setItem(
         key,

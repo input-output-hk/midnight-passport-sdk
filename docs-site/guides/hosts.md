@@ -27,6 +27,16 @@ Fresh chains need ACC creation, registry bootstrap and a confirmed name claim
 before the named control is enabled. The launcher never funds a sender merely
 by opening the page.
 
+The [provisional local ACC profile](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/README.md#provisional-acc-local-demo-profile)
+selects separately verified `acc-s3r1.1-zkir036` assets and the shared Ledger 9
+release prover. It keeps candidate deployments and claim originals in separate
+local journals. This is an explicit source opt-in: the ordinary demo and public
+SDK binding remain on `acc-s3r1.1`, and online candidate admission is refused.
+A [one-head local browser receipt](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/candidate-onehead-create-claim-pay-20261122.json)
+covers fresh ACC creation, name claim, funding, device-wallet DUST, and named
+two-leg payments with original-only recovery. It uses a synthetic passkey and
+the shared local chain; human-provider and online qualification remain separate.
+
 The reference demo pins the published Midnames 2.1.0 reader for lookups. Its
 generated reader matches the pinned
 [`ledger-9-live` commit](https://github.com/midnames/ns-sdk/tree/f8f2edd425221b95c9158d74e7318d2fbb4f61b2),
@@ -37,6 +47,12 @@ paths even though the upstream package still contains older defaults.
 The adapter reads the registry's contract target and checks the deployed ACC
 verifier roster before displaying the result. On the pinned standalone registry,
 the demo checks name availability and reconciles retained sponsor receipts.
+For supported-target lookups, the local launcher supplies a confirmed claim
+block and node URL. The browser checks that the indexer's selected block is
+canonical and finalized on that node before reading the registry or ACC.
+Online configuration requires a separate node origin and a confirmed non-genesis
+chain pin. The indexer still supplies trusted contract-state bytes at that
+block; this is not a state proof or an online qualification.
 To create that registry on a healthy local stack after activating an ACC, use
 the [pinned local bootstrap recipe](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/README.md#bootstrap-the-registry-on-an-existing-local-stack).
 It records the deployment waves and keeps root naming authority private; the
@@ -79,6 +95,7 @@ At signed `ec83ce9`, the local named NIGHT fixture showed one owner-browser
 review of the source, resolved recipient, bridge wallet and two ACC operations
 before any synthetic owner signature. An automated approval led to one
 withdrawal and one deposit after durable original-intent recovery, with 6/4
-final ACC balances. Human passkey consent, an owner send page in the reference
-demo and online naming remain separate qualification gates.
+final ACC balances. The reference demo now has an opt-in owner send page and a
+connected local candidate payment receipt. Human passkey consent and online
+naming remain separate qualification gates.
 See the [demo configuration and evidence](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/site/names.md#source-preview-midnames-210).

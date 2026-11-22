@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "scope": "source-only candidate NIGHT funding service on shared Ledger 9",
+  "sourceHead": "c009ed3f",
+  "bindingId": "acc-s3r1.1-zkir036",
+  "manifestSha256": "590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f",
+  "accountAddress": "1bbba3a26618dc64720ad78fadc98d9b404eab7f983f7bf9c210f8c6c8b2e4c0",
+  "requestId": "33bbff19-c201-45f1-a75c-c96932531c0d",
+  "asset": "NIGHT",
+  "amountBaseUnits": "10",
+  "balanceBefore": "4",
+  "balanceAfter": "14",
+  "preparationTxId": "00710f643d18b8e313d74ab4e838e6aa071c87505f78118840d2631ae03200b5e6",
+  "depositTxId": "44293ff0a96fb209359d91f55c7a0bf050d19a81ae5041f3ee61bb05c9186306",
+  "depositBlock": {
+    "height": 71013,
+    "hash": "e0e6d657c6e8c66399947761b5c8d8d929423d5f1297a8d6a77bd0a06a08feef",
+    "status": "SUCCESS",
+    "contractActions": ["1bbba3a26618dc64720ad78fadc98d9b404eab7f983f7bf9c210f8c6c8b2e4c0"],
+    "canonical": true,
+    "finalized": true
+  },
+  "sameRequestReplay": "same original transaction and credited balance",
+  "reservationState": "complete; zero pending",
+  "walletProvision": "separate non-genesis wallet; two DUST inputs confirmed; first pre-submit proving failure retained in private history",
+  "services": "candidate Passport and funding processes stopped; stable funding process and shared stack untouched",
+  "limits": [
+    "No connected browser funding action or full named payment journey was exercised.",
+    "The candidate binding remains local and provisional; no hosted-provider acceptance is implied."
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "result": "PASS_LOCAL_READ_ONLY",
+  "sourceCommit": "7b24f180af1a5c4d0a57d6f8a35ab45582597739",
+  "chain": {
+    "networkId": "undeployed",
+    "genesisHash": "0x823383ec0302be8417cfcbcc62f21df08f4047bca37aaea89e3f54b550ebae1d"
+  },
+  "anchor": {
+    "hash": "7916985f801111e7320f2a54225dad05a9a7e6ad44cb36977b7f1a232218a369",
+    "height": 3696
+  },
+  "indexers": [
+    {
+      "id": "primary",
+      "height": 74873,
+      "hash": "d6aa13b467fa6dfc7b8332c568329c7994748b89621aafabe3992c2b0e42b5b0"
+    },
+    {
+      "id": "witness",
+      "height": 74873,
+      "hash": "d6aa13b467fa6dfc7b8332c568329c7994748b89621aafabe3992c2b0e42b5b0"
+    }
+  ],
+  "stateSha256": [
+    {
+      "kind": "registry",
+      "bytes": 28560,
+      "sha256": "bc1ebd99d29e02da8357693d03e83d97b3ff524595927c212d6be817fe39e95a"
+    },
+    {
+      "kind": "account",
+      "bytes": 137610,
+      "sha256": "0c34ae82552404e12d8d68c0478a6047acd152065cc7041c0e472a1dac8980fb"
+    }
+  ],
+  "name": "paidfix.night",
+  "registryAddress": "90e8734cc3ddc8aaf649b969ecfb61828f75d580725670a0718ed19a8f4a8fe0",
+  "accountAddress": "efc52cee363c11201b4e9ae7854050f734987d54e01b576a17e3300f24e27f47",
+  "bindingId": "acc-s3r1.1",
+  "limits": [
+    "Both indexers attach to one shared node; this is not independent node consensus.",
+    "Matching indexer state bytes do not establish a cryptographic contract-state proof.",
+    "The local transitional .night registry is not public passport.night or MIP-0007 delegation."
+  ]
+}

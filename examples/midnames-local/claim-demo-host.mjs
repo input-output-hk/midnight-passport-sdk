@@ -12,15 +12,26 @@ import {
 } from '../../apps/passport-dapp/src/midnames/ledger-reader.ts';
 import { claimDestination } from '../../apps/passport-dapp/src/midnames/claim-quote.ts';
 import { readClaimFinality } from '../../apps/passport-dapp/src/midnames/claim-finality.ts';
-import { verifyIndexedClaimFailure } from './claim-indexed-failure.mjs';
+import { verifyIndexedClaimFailure, verifyIndexedClaimSuccess } from './claim-indexed-failure.mjs';
 import { createClaimSponsorHandler } from './claim-sponsor-http.mts';
 import { startDemoOwnerBundle } from './claim-owner-browser-host.mjs';
 import { verifyPreparedRegistry } from './verify-prepared.mjs';
+import { verifyDemoArtefacts } from '../../scripts/demo-artifact-pin.mjs';
+import { assertOtherClaimJournalsSettled } from './claim-journal-selection.mts';
 
 const networkId = 'undeployed';
 const indexerUrl = 'http://127.0.0.1:8088/api/v4/graphql';
 const indexerWsUrl = 'ws://127.0.0.1:8088/api/v4/graphql/ws';
 const nodeUrl = 'http://127.0.0.1:9944';
+const candidateBinding = process.env.PASSPORT_BINDING_ID === 'acc-s3r1.1-zkir036';
+if (candidateBinding) verifyDemoArtefacts(process.env);
+else
+  assert.ok(
+    !process.env.PASSPORT_BINDING_ID || process.env.PASSPORT_BINDING_ID === 'acc-s3r1.1',
+    'Unknown local claim ACC binding.',
+  );
+// This pinned Compact 0.35 registry proves through its owned compatibility
+// sidecar. The candidate ACC itself uses the shared release prover separately.
 const proverUrl = 'http://127.0.0.1:16320';
 const origin = 'http://localhost:5173';
 const claimProtocolVersion = Number(process.env.VITE_MIDNAMES_CLAIM_PROTOCOL_VERSION);
@@ -73,6 +84,8 @@ const [prepared, reference, registryAddress, seedPath, journalDir, rawPort, rawO
   process.argv.slice(2);
 assert.ok(process.env.IN_NIX_SHELL && process.env.COMPACT_DIRECTORY, 'Use the pinned Nix shell.');
 assert.ok([prepared, reference, seedPath, journalDir].every((path) => path && isAbsolute(path)));
+if (candidateBinding)
+  assert.equal(process.env.PASSPORT_CONTRACT_DIR, reference, 'Candidate reference path changed.');
 assert.match(registryAddress ?? '', address);
 const port = Number(rawPort);
 assert.ok(Number.isInteger(port) && port > 0 && port < 65536 && port !== 5173);
@@ -97,11 +110,13 @@ assert.deepEqual(walletModule.CONFIG, {
 });
 const get = (name) =>
   import(import.meta.resolve(name, pathToFileURL(join(reference, 'package.json')).href));
-const [{ Transaction }, { getContractLedger }, { firstValueFrom }] = await Promise.all([
-  get('@midnightntwrk/ledger-v9'),
-  appImport('@midnames/sdk/core'),
-  get('rxjs'),
-]);
+const [{ Transaction }, { getContractLedger }, { firstValueFrom }, { ledger: accountLedger }] =
+  await Promise.all([
+    get('@midnightntwrk/ledger-v9'),
+    appImport('@midnames/sdk/core'),
+    get('rxjs'),
+    appImport('@input-output-hk/mn-passport-contract/bindings/acc-s3r1.1'),
+  ]);
 const wallet = await walletModule.createWallet(seed);
 let owner;
 let server;
@@ -116,13 +131,46 @@ try {
     coin: hex(await providers.walletProvider.getCoinPublicKey()),
     encryption: hex(await providers.walletProvider.getEncryptionPublicKey()),
   };
-  const reader = createMidnamesLedgerReads(
-    createMidnamesIndexer(networkId, indexerUrl, indexerWsUrl),
-    networkId,
-    'acc-s3r1.1',
-    'standalone-0.35',
-  );
+  const indexer = createMidnamesIndexer(networkId, indexerUrl, indexerWsUrl);
+  const makeReader = (source) =>
+    createMidnamesLedgerReads(
+      source,
+      networkId,
+      candidateBinding ? 'acc-s3r1.1-zkir036' : 'acc-s3r1.1',
+      'standalone-0.35',
+      candidateBinding
+        ? {
+            bindingId: 'acc-s3r1.1-zkir036',
+            manifestSha256: process.env.PASSPORT_MANIFEST_SHA256,
+            decodeState: (state) => accountLedger(state.data),
+          }
+        : undefined,
+    );
+  const reader = makeReader(indexer);
   const profile = { networkId, registryAddress, namespace: 'night' };
+  await assertOtherClaimJournalsSettled(journalDir, async (receipt) => {
+    if (receipt.networkId !== networkId || receipt.registryAddress !== registryAddress)
+      return false;
+    await verifyIndexedClaimSuccess({
+      receipt,
+      nodeUrl,
+      indexerUrl,
+      protocolVersion: claimProtocolVersion,
+      readBindingAt: async (hash) => {
+        const at = makeReader({
+          ...indexer,
+          queryContractState: (address) =>
+            indexer.queryContractState(address, { type: 'blockHash', blockHash: hash }),
+        });
+        const claim = await at.readClaim(receipt.name, profile);
+        return {
+          ...claim,
+          supportedAccount: await at.isSupportedAccount(receipt.accountAddress, networkId),
+        };
+      },
+    });
+    return true;
+  });
   async function live(destination) {
     const selected = claimDestination(destination);
     if (selected.registryAddress !== registryAddress)

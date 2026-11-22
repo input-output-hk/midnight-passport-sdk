@@ -19,7 +19,9 @@ const {
   SUPPORTED_BINDINGS,
   UnsupportedBindingError,
   detectDeployedVersion,
+  detectDeployedVersionByCircuit,
   resolveBinding,
+  resolvePinnedBinding,
 } = await import(new URL('../packages/contract/dist/index.js', import.meta.url).href);
 
 test('the registry is well-formed and current is a supported version', () => {
@@ -82,6 +84,21 @@ test('resolveBinding must reject versions outside the supported set', () => {
     'an unknown version must throw UnsupportedBindingError',
   );
   assert.equal(resolveBinding(BINDING_VERSION), ACC_REGISTRY.versions[BINDING_VERSION]);
+  assert.throws(() => resolveBinding('acc-s3r1.1-zkir036'), UnsupportedBindingError);
+  const custom = {
+    current: 'custom-supported',
+    versions: {
+      'custom-supported': resolveBinding(BINDING_VERSION),
+      'custom-candidate': resolvePinnedBinding('acc-s3r1.1-zkir036'),
+    },
+  };
+  assert.throws(
+    () => resolveBinding('custom-candidate', custom),
+    (error) =>
+      error instanceof Error &&
+      error.name === 'UnsupportedBindingError' &&
+      error.message.includes('supported: custom-supported'),
+  );
 });
 
 test('detectDeployedVersion must recover a version from its verifier-key hashes', () => {
@@ -93,6 +110,26 @@ test('detectDeployedVersion must recover a version from its verifier-key hashes'
   assert.equal(detectDeployedVersion([]), null, 'no evidence must detect nothing');
   const tampered = ['0'.repeat(64), ...verifierHashes.slice(1)];
   assert.equal(detectDeployedVersion(tampered), null, 'a foreign key set must detect nothing');
+});
+
+test('binding detection rejects a permuted or incomplete circuit-to-verifier assignment', () => {
+  const binding = resolveBinding(BINDING_VERSION);
+  const assigned = Object.fromEntries(
+    Object.entries(binding.circuits).flatMap(([name, pin]) =>
+      pin.hashes ? [[name, pin.hashes.verifierKey]] : [],
+    ),
+  );
+  assert.equal(detectDeployedVersionByCircuit(assigned), BINDING_VERSION);
+  const [first, second] = Object.keys(assigned);
+  assert.ok(first && second);
+  const permuted = { ...assigned, [first]: assigned[second], [second]: assigned[first] };
+  assert.equal(detectDeployedVersionByCircuit(permuted), null);
+  assert.equal(detectDeployedVersionByCircuit({ ...assigned, [first]: undefined }), null);
+  assert.equal(detectDeployedVersionByCircuit({ ...assigned, extra: 'f'.repeat(64) }), null);
+  const normalised = Object.fromEntries(
+    Object.entries(assigned).map(([name, hash]) => [name, `0x${hash.toUpperCase()}`]),
+  );
+  assert.equal(detectDeployedVersionByCircuit(normalised), BINDING_VERSION);
 });
 
 test('the release pure circuits the passkey caller needs must be present', () => {
@@ -127,6 +164,64 @@ test('the grants release binding matches the pinned compiler metadata', () => {
   for (const name of metadata.pureCircuits) {
     assert.deepEqual(binding.circuits[name], { pure: true, proof: false });
   }
+});
+
+test('the provisional Ledger 9 profile pins the independent 0.36.1 keys without changing the old binding', () => {
+  const original = resolveBinding('acc-s3r1.1');
+  const candidate = resolvePinnedBinding('acc-s3r1.1-zkir036');
+  const profile = JSON.parse(
+    readFileSync(
+      new URL(
+        '../packages/contract/resources/acc-s3r1.1-zkir036.key-manifest.json',
+        import.meta.url,
+      ),
+      'utf8',
+    ),
+  );
+  assert.equal(ACC_REGISTRY.current, 'acc-s3r1.1');
+  assert.equal(original.provisional, false);
+  assert.equal(candidate.provisional, true);
+  assert.equal(
+    candidate.manifestSha256,
+    '590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f',
+  );
+  assert.deepEqual(candidate.source, original.source);
+  assert.deepEqual(candidate.moduleHashes, original.moduleHashes);
+  assert.equal(candidate.toolchain.compilerVersion, original.toolchain.compilerVersion);
+  assert.equal(candidate.toolchain.runtimeVersion, original.toolchain.runtimeVersion);
+  assert.match(candidate.toolchain.cliVersion, /zkir-v3 0\.36\.1/);
+  let changed = 0;
+  for (const [name, old] of Object.entries(original.circuits)) {
+    const next = candidate.circuits[name];
+    assert.ok(next);
+    if (!old.proof) {
+      assert.deepEqual(next, old);
+      continue;
+    }
+    const pin = profile.circuits[name];
+    assert.equal(next.keyLocation, `acc/acc-s3r1.1-zkir036/${name}`);
+    assert.deepEqual(next.hashes, {
+      zkir: old.hashes.zkir,
+      bzkir: old.hashes.bzkir,
+      verifierKey: pin.verifier.sha256,
+      proverKey: pin.prover.sha256,
+    });
+    if (next.hashes.verifierKey !== old.hashes.verifierKey) changed++;
+  }
+  assert.equal(changed, 48);
+  const assignment = Object.fromEntries(
+    Object.entries(candidate.circuits).flatMap(([name, pin]) =>
+      pin.hashes ? [[name, pin.hashes.verifierKey]] : [],
+    ),
+  );
+  assert.equal(detectDeployedVersionByCircuit(assignment), 'acc-s3r1.1-zkir036');
+  assignment.withdraw_unshielded_with_jubjub =
+    original.circuits.withdraw_unshielded_with_jubjub.hashes.verifierKey;
+  assert.equal(
+    detectDeployedVersionByCircuit(assignment),
+    null,
+    'one old verifier in the candidate roster must refuse',
+  );
 });
 
 test('every locally built artefact version must match its committed hashes', (t) => {

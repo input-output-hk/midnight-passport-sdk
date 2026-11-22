@@ -1,9 +1,11 @@
 # Passport key service image
 
-`passport-key-service` is a Node application dedicated to the pinned
-`acc-s3r1.1` proving artefacts. It carries the contract package's small ZKIR
-bundle and the Compact 0.35.0 `zkir-v3` compiler. It carries **no sponsor wallet
-or seed** and no prebuilt 12 GB prover-key set.
+`passport-key-service` is a Node application for pinned ACC proving artefacts.
+The published RC9 image serves `acc-s3r1.1`. Current source defaults to that
+binding and can explicitly select the separate Ledger 9 key profile described
+below. The source image carries both small ZKIR bundles and the Compact 0.35.0
+and 0.36.1 `zkir-v3` generators. It carries **no sponsor wallet or seed** and no
+prebuilt 12 GB prover-key set.
 
 At startup the pinned `mn-passport-restore-keys` command regenerates missing
 prover keys in `/data/keys` and checks every cached file against the compiler
@@ -36,14 +38,30 @@ The process runs as UID/GID `10001`. A bind-mounted cache must be writable by
 that identity. Keep the HTTP port on a private network or behind an authenticated
 ingress; the files are public proving material, but `.prover` downloads are
 large. The image accepts `PASSPORT_KEY_DIR`, `PASSPORT_KEY_HOST` and
-`PASSPORT_KEY_PORT`; the binding and manifest hash are pinned in the image.
+`PASSPORT_KEY_PORT`. The default binding remains `acc-s3r1.1`. Current source
+also packages the separate Ledger 9 candidate `acc-s3r1.1-zkir036`; set
+`PASSPORT_KEY_BINDING_ID=acc-s3r1.1-zkir036` to restore and serve that exact
+profile in an isolated evaluation. Its original Compact 0.35.0 compiler manifest
+and 0.36.1 key-generation manifest are verified separately; the service derives
+and pins a distinct artifact manifest for the new key hashes before readiness.
+That candidate artifact manifest has SHA-256
+`590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f`.
+Use a
+**separate persistent key cache or volume** for each binding: the two profiles
+have different key bytes, and a mismatched existing cache is refused. This
+source option is not present in the published RC9 image and does not by itself
+make the candidate an SDK-supported account binding. Unknown binding IDs fail
+before the service opens a socket.
 
 For a browser consumer such as Lace, set `PASSPORT_KEY_CORS_ORIGINS` to a
 comma-separated list of exact `http://` or `https://` origins and set the
 consumer's `artefactUrl` to `https://<key-host>/v1/zk/acc-s3r1.1`. Set the same
 exact URL as `PASSPORT_PUBLIC_ZK_BASE_URL` on the Passport service; the browser
 connector must pin it independently (the demo uses `VITE_PASSPORT_ARTEFACT_URL`).
-The existing `/zk/acc` route remains for the legacy and proof-server clients. Browser reads and
+The existing `/zk/acc` route remains only for the legacy binding and its
+proof-server clients. The candidate requires
+`/v1/zk/acc-s3r1.1-zkir036`; its service returns 404 for `/zk/acc` so an old
+client cannot consume candidate key bytes through that generic alias. Browser reads and
 single-range downloads receive CORS headers only for those origins. The
 default list is empty. Keep the service behind a private or controlled ingress.
 
@@ -62,17 +80,21 @@ its image. For the older RC5 image, keep the `all` profile.
 | Endpoint | Response |
 | --- | --- |
 | `GET /healthz` | Ready only after all keys pass verification. |
-| `GET /v1/manifest` | Readable key manifest with per-file SHA-256 and toolchain. |
+| `GET /v1/manifest` | Readable key-generation manifest with per-file SHA-256 and toolchain. |
 | `GET /v1/profile` | Active proving profile (`circuits`) and all bundled `verifierCircuits`. |
 | `GET /zk/acc/compiler/contract-manifest.json` | Pinned compiler manifest. |
 | `GET /zk/acc/zkir/<circuit>.{zkir,bzkir}` | Verified bundled ZKIR. |
 | `GET /zk/acc/keys/<circuit>.verifier` | Verified bundled verifier key. |
 | `GET /zk/acc/keys/<circuit>.prover` | Streamed, restored prover key. |
 | `GET /v1/zk/acc-s3r1.1/{compiler,zkir,keys}/...` | Binding-specific alias for the same pinned bytes. |
+| `GET /v1/zk/acc-s3r1.1-zkir036/{compiler,zkir,keys}/...` | Candidate-only route; `compiler/contract-manifest.json` is the derived artifact manifest with new key hashes. |
 
 `GET` and `HEAD` accept single `Range: bytes=...` requests so a proof server can
 resume large key downloads. Clients must pin the manifest hash independently:
-`77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f`.
+`77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f`
+for the old profile, or the candidate artifact hash above when explicitly
+evaluating the candidate. The original compiler manifest hash remains a
+separate source pin for both.
 The service itself verifies the bundled inputs; its cache verification takes
 place before readiness.
 

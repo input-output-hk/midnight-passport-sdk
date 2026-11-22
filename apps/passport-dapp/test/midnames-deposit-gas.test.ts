@@ -3,7 +3,10 @@ import { test } from 'node:test';
 import { createCircuitContext, createConstructorContext } from '@midnight-ntwrk/compact-runtime';
 import * as ledger from '@midnightntwrk/ledger-v9';
 import * as acc from '#acc';
-import { measuredAccNightDeletionCredit } from '../../../packages/adapter-midnight-js/src/night-deposit.js';
+import {
+  measuredAccNightDeletionCredit,
+  rebuildMeasuredDeposit,
+} from '../../../packages/adapter-midnight-js/src/night-deposit.js';
 
 const address = '11'.repeat(32);
 const zero = '00'.repeat(32);
@@ -195,24 +198,6 @@ test('ACC NIGHT funding keeps its exact call and earned deletion credit', async 
     ),
     measured.bytesDeleted,
   );
-  const originalCall = new ledger.ContractCallPrototype(
-    address,
-    'deposit_unshielded',
-    operation,
-    overclaimed,
-    undefined,
-    proof.privateTranscriptOutputs,
-    proof.input,
-    proof.output,
-    ledger.communicationCommitmentRandomness(),
-    'fixture',
-  );
-  const original = ledger.Transaction.fromPartsRandomized(
-    'undeployed',
-    undefined,
-    undefined,
-    ledger.Intent.new(new Date(Date.now() + 3_600_000)).addCall(originalCall),
-  );
   const { withMeasuredDeletionCredit } = (await import(
     new URL('../../../examples/midnames-local/deletion-credit.mjs', import.meta.url).href
   )) as {
@@ -226,21 +211,6 @@ test('ACC NIGHT funding keeps its exact call and earned deletion credit', async 
       contractAddress: string,
     ) => ledger.UnprovenTransaction;
   };
-  const result = {
-    private: { unprovenTx: original },
-    calls: [
-      {
-        contractAddress: address,
-        circuitId: 'deposit_unshielded',
-        public: { partitionedTranscript: [overclaimed, undefined] },
-        private: {
-          privateTranscriptOutputs: proof.privateTranscriptOutputs,
-          input: proof.input,
-          output: proof.output,
-        },
-      },
-    ],
-  };
   const adjust = (input: unknown) =>
     withMeasuredDeletionCredit(
       input,
@@ -251,33 +221,136 @@ test('ACC NIGHT funding keeps its exact call and earned deletion credit', async 
       { hashVerifierKey: () => 'fixture', encodeContractKeyLocation: () => 'fixture' },
       address,
     );
-  assert.throws(
-    () => adjust({ ...result, calls: [{ ...result.calls[0], circuitId: 'withdraw_unshielded' }] }),
-    /one guaranteed ACC NIGHT deposit/,
-  );
-  assert.throws(
-    () =>
-      adjust({
+  for (const segment of ['guaranteed', 'fallible'] as const) {
+    const pair =
+      segment === 'guaranteed'
+        ? ([overclaimed, undefined] as const)
+        : ([undefined, overclaimed] as const);
+    const originalCall = new ledger.ContractCallPrototype(
+      address,
+      'deposit_unshielded',
+      operation,
+      pair[0],
+      pair[1],
+      proof.privateTranscriptOutputs,
+      proof.input,
+      proof.output,
+      ledger.communicationCommitmentRandomness(),
+      'fixture',
+    );
+    const original = ledger.Transaction.fromPartsRandomized(
+      'undeployed',
+      undefined,
+      undefined,
+      ledger.Intent.new(new Date(Date.now() + 3_600_000)).addCall(originalCall),
+    );
+    const result = {
+      private: { unprovenTx: original },
+      calls: [
+        {
+          contractAddress: address,
+          circuitId: 'deposit_unshielded',
+          public: { partitionedTranscript: pair },
+          private: {
+            privateTranscriptOutputs: proof.privateTranscriptOutputs,
+            input: proof.input,
+            output: proof.output,
+          },
+        },
+      ],
+    };
+    assert.throws(
+      () =>
+        adjust({ ...result, calls: [{ ...result.calls[0], circuitId: 'withdraw_unshielded' }] }),
+      /one ACC NIGHT deposit/,
+    );
+    assert.throws(
+      () =>
+        adjust({
+          ...result,
+          calls: [
+            { ...result.calls[0], public: { partitionedTranscript: [undefined, undefined] } },
+          ],
+        }),
+      /one ACC NIGHT deposit/,
+    );
+    const adjusted = adjust(result);
+    const decoded = ledger.Transaction.deserialize(
+      'signature',
+      'pre-proof',
+      'pre-binding',
+      adjusted.serialize(),
+    );
+    const [call] = [...(decoded.intents?.values() ?? [])].flatMap((intent) => intent.actions);
+    assert.ok(call instanceof ledger.ContractCall);
+    const safe = segment === 'guaranteed' ? call.guaranteedTranscript : call.fallibleTranscript;
+    assert.ok(safe);
+    assert.equal(safe.gas.bytesDeleted, measured.bytesDeleted);
+    assert.deepEqual(safe.program, overclaimed.program);
+    assert.deepEqual(safe.effects, overclaimed.effects);
+    assert.doesNotThrow(() => query().runTranscript(safe, model));
+
+    const short = { ...overclaimed, gas: { ...overclaimed.gas, bytesDeleted: 0n } };
+    const shortPair =
+      segment === 'guaranteed' ? ([short, undefined] as const) : ([undefined, short] as const);
+    const shortCall = new ledger.ContractCallPrototype(
+      address,
+      'deposit_unshielded',
+      operation,
+      shortPair[0],
+      shortPair[1],
+      proof.privateTranscriptOutputs,
+      proof.input,
+      proof.output,
+      ledger.communicationCommitmentRandomness(),
+      'fixture',
+    );
+    const shortOriginal = ledger.Transaction.fromPartsRandomized(
+      'undeployed',
+      undefined,
+      undefined,
+      ledger.Intent.new(new Date(Date.now() + 3_600_000)).addCall(shortCall),
+    );
+    const corrected = adjust({
+      ...result,
+      private: { unprovenTx: shortOriginal },
+      calls: [{ ...result.calls[0], public: { partitionedTranscript: shortPair } }],
+    });
+    const [shortCorrected] = [...(corrected.intents?.values() ?? [])].flatMap(
+      (intent) => intent.actions,
+    );
+    assert.ok(shortCorrected instanceof ledger.ContractCall);
+    assert.equal(
+      (segment === 'guaranteed'
+        ? shortCorrected.guaranteedTranscript
+        : shortCorrected.fallibleTranscript
+      )?.gas.bytesDeleted,
+      measured.bytesDeleted,
+    );
+    const adapterCorrected = rebuildMeasuredDeposit(
+      {
         ...result,
-        calls: [
-          { ...result.calls[0], public: { partitionedTranscript: [undefined, overclaimed] } },
-        ],
-      }),
-    /one guaranteed ACC NIGHT deposit/,
-  );
-  const adjusted = adjust(result);
-  const decoded = ledger.Transaction.deserialize(
-    'signature',
-    'pre-proof',
-    'pre-binding',
-    adjusted.serialize(),
-  );
-  const [call] = [...(decoded.intents?.values() ?? [])].flatMap((intent) => intent.actions);
-  assert.ok(call instanceof ledger.ContractCall);
-  const safe = call.guaranteedTranscript;
-  assert.ok(safe);
-  assert.equal(safe.gas.bytesDeleted, measured.bytesDeleted);
-  assert.deepEqual(safe.program, overclaimed.program);
-  assert.deepEqual(safe.effects, overclaimed.effects);
-  assert.doesNotThrow(() => query().runTranscript(safe, model));
+        private: { unprovenTx: shortOriginal },
+        calls: [{ ...result.calls[0], public: { partitionedTranscript: shortPair } }],
+      } as unknown as Parameters<typeof rebuildMeasuredDeposit>[0],
+      state,
+      parameters,
+      address,
+      'undeployed',
+      'fixture',
+    );
+    const [adapterCall] = [...(adapterCorrected.intents?.values() ?? [])].flatMap(
+      (intent) => intent.actions,
+    );
+    assert.ok(adapterCall instanceof ledger.ContractCall);
+    assert.equal(Boolean(adapterCall.guaranteedTranscript), segment === 'guaranteed');
+    assert.equal(Boolean(adapterCall.fallibleTranscript), segment === 'fallible');
+    const adapterTranscript =
+      segment === 'guaranteed' ? adapterCall.guaranteedTranscript : adapterCall.fallibleTranscript;
+    assert.ok(adapterTranscript);
+    assert.equal(adapterTranscript.gas.bytesDeleted, measured.bytesDeleted);
+    assert.deepEqual(adapterTranscript.program, short.program);
+    assert.deepEqual(adapterTranscript.effects, short.effects);
+    assert.doesNotThrow(() => query().runTranscript(adapterTranscript, model));
+  }
 });

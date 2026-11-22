@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
-import { mkdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import {
@@ -11,6 +12,7 @@ import {
 import { saveIsolationReceipt } from '../../scripts/qualification/native-isolation-files.mjs';
 import { verifyPreparedRegistry } from './verify-prepared.mjs';
 import { interactiveReviewRequested } from './terminal-review.mjs';
+import { ACC_REGISTRY, resolvePinnedBinding } from '../../packages/contract/dist/index.js';
 
 const [output, prepared, ref] = process.argv.slice(2);
 assert.equal(process.env.PASSPORT_MIDNAMES_NATIVE, '1');
@@ -21,7 +23,38 @@ const expectedEnvironment = isolationEnvironment(
 );
 for (const [key, value] of Object.entries(expectedEnvironment))
   assert.equal(process.env[key], value, `Unexpected fixture setting ${key}`);
+const http = createRequire(import.meta.url)('node:http');
+const nativeRequest = http.request;
+http.request = function (...args) {
+  const request = nativeRequest.apply(this, args);
+  if (request.path === '/prove') {
+    request.on('response', (response) => {
+      if (response.statusCode < 400) return;
+      let body = '';
+      response.on('data', (chunk) => {
+        body = (body + chunk.toString('utf8')).slice(0, 4096);
+      });
+      response.on('end', () => {
+        appendFileSync(
+          join(output, 'proof-http-error.private.txt'),
+          `${response.statusCode} ${body}\n`,
+          {
+            mode: 0o600,
+          },
+        );
+      });
+    });
+  }
+  return request;
+};
 const sha = (b) => createHash('sha256').update(b).digest('hex');
+const candidateNight = output.split('/').at(-1).startsWith('midnames-night-candidate-');
+const candidateClaim = output.split('/').at(-1).startsWith('midnames-claim-candidate-');
+const candidateProfile = candidateNight || candidateClaim;
+const candidateAssets = process.env.PASSPORT_MIDNAMES_CANDIDATE_ASSETS;
+assert.equal(Boolean(candidateAssets), candidateProfile);
+const candidatePin = candidateProfile ? resolvePinnedBinding('acc-s3r1.1-zkir036') : undefined;
+if (candidatePin) assert.equal(candidatePin.provisional, true);
 const pins = await verifyPreparedRegistry(prepared);
 const assets = join(prepared, 'managed');
 const asset = (path) => readFileSync(join(assets, path));
@@ -32,6 +65,19 @@ symlinkSync(join(ref, 'node_modules'), join(runtimeRoot, 'node_modules'));
 const modulePath = join(runtimeRoot, 'registry.mjs');
 writeFileSync(modulePath, asset('contract/index.js'), { mode: 0o600, flag: 'wx' });
 assert.equal(sha(readFileSync(modulePath)), pins.compiled['contract/index.js']);
+let candidateModule;
+if (candidatePin) {
+  assert.ok(candidateAssets);
+  const accountRuntime = join(output, 'candidate-account-runtime');
+  mkdirSync(accountRuntime);
+  symlinkSync(join(ref, 'node_modules'), join(accountRuntime, 'node_modules'));
+  candidateModule = join(accountRuntime, 'account.mjs');
+  writeFileSync(candidateModule, readFileSync(join(candidateAssets, 'contract/index.js')), {
+    mode: 0o600,
+    flag: 'wx',
+  });
+  assert.equal(sha(readFileSync(candidateModule)), candidatePin.moduleHashes['contract/index.js']);
+}
 const get = async (name) =>
   import(import.meta.resolve(name, pathToFileURL(join(ref, 'package.json')).href));
 const [
@@ -42,6 +88,7 @@ const [
   { CompiledContract },
   contracts,
   ledger,
+  compactRuntime,
   zk,
   proof,
   { createMidnamesIndexer, createMidnamesLedgerReads },
@@ -51,10 +98,13 @@ const [
   import(pathToFileURL(join(ref, 'src/node/wallet.ts')).href),
   import(pathToFileURL(join(ref, 'src/wallet/wave-deploy.ts')).href),
   import(pathToFileURL(modulePath).href),
-  import(pathToFileURL(join(ref, 'contracts/managed/account/contract/index.js')).href),
+  import(
+    pathToFileURL(candidateModule ?? join(ref, 'contracts/managed/account/contract/index.js')).href
+  ),
   get('@midnight-ntwrk/compact-js'),
   get('@midnight-ntwrk/midnight-js-contracts'),
   get('@midnightntwrk/ledger-v9'),
+  get('@midnight-ntwrk/compact-runtime'),
   get('@midnight-ntwrk/midnight-js-node-zk-config-provider'),
   get('@midnight-ntwrk/midnight-js-http-client-proof-provider'),
   import('../../apps/passport-dapp/src/midnames/ledger-reader.ts'),
@@ -62,6 +112,10 @@ const [
   import(pathToFileURL(join(ref, 'src/wallet/inbox.ts')).href),
 ]);
 const mode = process.env.PASSPORT_MIDNAMES_FIXTURE_MODE;
+const hybridVerifier = output.split('/').at(-1).startsWith('midnames-night-browser-hybrid-');
+const fullVerifier = output.split('/').at(-1).startsWith('midnames-night-browser-full036-');
+assert.ok(!(hybridVerifier && fullVerifier));
+assert.ok(!(hybridVerifier || fullVerifier) || mode === 'named-night-send');
 assert.ok(
   [
     'named-shielded-deposit',
@@ -90,7 +144,8 @@ const step = (label) => {
   save();
   console.log(label);
 };
-const write = (name, data) => writeFileSync(join(output, name), data, { mode: 0o600, flag: 'wx' });
+const write = (name, data) =>
+  writeFileSync(join(output, name), data, { mode: 0o600, flag: 'wx', flush: true });
 process.chdir(output);
 let wallet;
 try {
@@ -98,6 +153,17 @@ try {
   wallet = await walletModule.createWallet('0'.repeat(63) + '1');
   await walletModule.syncWallet(wallet, 'isolated genesis sponsor');
   const providers = await walletModule.createProviders(wallet);
+  if (candidatePin) {
+    assert.ok(candidateAssets);
+    providers.zkConfigProvider = new zk.NodeZkConfigProvider(candidateAssets, {
+      expectedManifestHash: candidatePin.manifestSha256,
+    });
+    providers.proofProvider = proof.httpClientProofProvider(
+      process.env.MN_PROOF_SERVER_URL,
+      await zk.nodeZkConfigRegistry(candidateAssets),
+    );
+    step('select-complete-candidate-acc-assets');
+  }
   const submit = providers.midnightProvider.submitTx.bind(providers.midnightProvider);
   providers.midnightProvider.submitTx = async (tx) => {
     assert.equal(tx.version, 'v9');
@@ -119,7 +185,9 @@ try {
         throw Error('No shielded spend');
       },
     }),
-    CompiledContract.withCompiledFileAssets(join(ref, 'contracts/managed/account')),
+    CompiledContract.withCompiledFileAssets(
+      candidateAssets ?? join(ref, 'contracts/managed/account'),
+    ),
   );
   const randomJubJubPoint = () =>
     acc.pureCircuits.compute_public_point_with_jubjub(
@@ -152,8 +220,26 @@ try {
     });
     return address;
   };
+  const verifyCandidateAccount = async (address) => {
+    assert.ok(candidatePin);
+    const observed = await providers.publicDataProvider.queryContractState(address);
+    const onChain = key.deserialize(observed.serialize());
+    assert.equal(onChain.operations().length, 52);
+    for (const [name, pin] of Object.entries(candidatePin.circuits)) {
+      if (pin.proof)
+        assert.equal(sha(onChain.operation(name)?.verifierKey), pin.hashes.verifierKey);
+    }
+    assert.deepEqual(onChain.maintenanceAuthority.committee, []);
+    const decoded = acc.ledger(compactRuntime.ContractState.deserialize(observed.serialize()).data);
+    assert.equal(decoded.booted, true);
+    assert.equal(decoded.spec_version, 3n);
+  };
   const encKeys = inbox.generateEncKeyPair();
   const accountAddress = await deployAccount('account', randomJubJubPoint(), encKeys.publicKey);
+  if (candidatePin) {
+    await verifyCandidateAccount(accountAddress);
+    step('verified-candidate-recipient-roster');
+  }
 
   const regProviders = {
     ...providers,
@@ -299,7 +385,21 @@ try {
     process.env.MN_INDEXER_URL,
     process.env.MN_INDEXER_WS_URL,
   );
-  const reads = createMidnamesLedgerReads(indexer, 'undeployed', 'acc-s3r1.1', 'standalone-0.35');
+  const candidateQualification = candidatePin
+    ? {
+        bindingId: 'acc-s3r1.1-zkir036',
+        manifestSha256: candidatePin.manifestSha256,
+        decodeState: (state) =>
+          acc.ledger(compactRuntime.ContractState.deserialize(state.serialize()).data),
+      }
+    : undefined;
+  const reads = createMidnamesLedgerReads(
+    indexer,
+    'undeployed',
+    candidatePin ? 'acc-s3r1.1-zkir036' : 'acc-s3r1.1',
+    'standalone-0.35',
+    candidateQualification,
+  );
   const profile = { networkId: 'undeployed', namespace: 'night', registryAddress };
   const service = createMidnamesNameService(profile, reads);
   assert.deepEqual(await reads.readClaim('alice.night', profile), {
@@ -440,6 +540,8 @@ try {
         providers,
         ledger,
         reads,
+        candidateQualification,
+        candidateAccountModule: candidateModule,
         profile,
         step,
         readLive,
@@ -483,7 +585,121 @@ try {
     const { qualifyNightSend } = await import('./night-send-fixture.mjs');
     const { JubjubDevice, jubjubChallenges } = await getReferenceSigner();
     const device = JubjubDevice.generate();
+    if (hybridVerifier || fullVerifier) {
+      const diagnostic = process.env.PASSPORT_MIDNAMES_DIAG_KEY_DIR;
+      assert.ok(diagnostic, 'Missing pinned alternate withdrawal key pair');
+      const circuit = 'withdraw_unshielded_with_jubjub';
+      const inventory = fullVerifier
+        ? JSON.parse(
+            readFileSync(
+              new URL('./evidence/compact036-acc-key-inventory-20261122.json', import.meta.url),
+              'utf8',
+            ),
+          )
+        : undefined;
+      if (fullVerifier) {
+        assert.equal(inventory.result, 'complete');
+        assert.equal(Object.keys(inventory.circuits).length, 52);
+      }
+      const newVerifier = new Uint8Array(readFileSync(join(diagnostic, circuit + '.verifier')));
+      const newProver = new Uint8Array(readFileSync(join(diagnostic, circuit + '.prover')));
+      assert.equal(
+        sha(newVerifier),
+        '0d379e75fc29bb44de21a263a1f3bd941658aed71ccaa41cf445b29b104715a4',
+      );
+      assert.equal(
+        sha(newProver),
+        'e4b273724feacdaacb4a842ac51ce4c0a9a51de96cc182fe67cc089fa05b33ab',
+      );
+      const originalZk = providers.zkConfigProvider;
+      const newVerifiers = fullVerifier
+        ? Object.fromEntries(
+            Object.entries(inventory.circuits).map(([name, pin]) => {
+              const bytes = new Uint8Array(readFileSync(join(diagnostic, `${name}.verifier`)));
+              assert.equal(sha(bytes), pin.newVerifierSha256);
+              return [name, bytes];
+            }),
+          )
+        : { [circuit]: newVerifier };
+      providers.zkConfigProvider = Object.assign(Object.create(originalZk), {
+        getVerifierKey: (id) =>
+          Object.hasOwn(newVerifiers, id)
+            ? Promise.resolve(new Uint8Array(newVerifiers[id]))
+            : originalZk.getVerifierKey(id),
+        getProverKey: (id) =>
+          id === circuit ? Promise.resolve(new Uint8Array(newProver)) : originalZk.getProverKey(id),
+      });
+      const ordinaryRegistry = await zk.nodeZkConfigRegistry(join(ref, 'contracts/managed'));
+      assert.ok(Array.isArray(ordinaryRegistry.sources));
+      const { ZKConfigRegistry } = await get('@midnight-ntwrk/midnight-js-types');
+      // Full transaction proving first resolves the deployed verifier hash to
+      // an artifact source. A post-resolution key swap cannot pass that check.
+      const alternateRegistry = new ZKConfigRegistry([
+        providers.zkConfigProvider,
+        ...ordinaryRegistry.sources,
+      ]);
+      providers.proofProvider = proof.httpClientProofProvider(
+        process.env.MN_PROOF_SERVER_URL,
+        alternateRegistry,
+      );
+      step(
+        fullVerifier
+          ? 'select-isolated-full-036-verifier-roster'
+          : 'select-isolated-hybrid-withdrawal-verifier',
+      );
+    }
     const source = await deployAccount('source', device.pk, inbox.generateEncKeyPair().publicKey);
+    if (candidatePin) {
+      await verifyCandidateAccount(source);
+      assert.ok(await reads.isSupportedAccount(accountAddress, 'undeployed'));
+      assert.ok(await reads.isSupportedAccount(source, 'undeployed'));
+      step('verified-two-candidate-acc-rosters');
+    }
+    const verifyHybridSource =
+      hybridVerifier || fullVerifier
+        ? async () => {
+            const account = key.deserialize(
+              (await providers.publicDataProvider.queryContractState(source)).serialize(),
+            );
+            const expected = JSON.parse(
+              readFileSync(
+                new URL(
+                  '../../packages/contract/resources/acc-s3r1.1.key-manifest.json',
+                  import.meta.url,
+                ),
+                'utf8',
+              ),
+            ).circuits;
+            assert.equal(account.operations().length, Object.keys(expected).length);
+            const inventory = fullVerifier
+              ? JSON.parse(
+                  readFileSync(
+                    new URL(
+                      './evidence/compact036-acc-key-inventory-20261122.json',
+                      import.meta.url,
+                    ),
+                    'utf8',
+                  ),
+                ).circuits
+              : undefined;
+            for (const [name, pin] of Object.entries(expected)) {
+              assert.equal(
+                sha(account.operation(name)?.verifierKey),
+                fullVerifier
+                  ? inventory[name].newVerifierSha256
+                  : name === 'withdraw_unshielded_with_jubjub'
+                    ? '0d379e75fc29bb44de21a263a1f3bd941658aed71ccaa41cf445b29b104715a4'
+                    : pin.verifier.sha256,
+                `Isolated source verifier mismatch: ${name}`,
+              );
+            }
+            assert.deepEqual(account.maintenanceAuthority.committee, []);
+          }
+        : undefined;
+    if (verifyHybridSource) {
+      await verifyHybridSource();
+      assert.equal(await reads.isSupportedAccount(source, 'undeployed'), false);
+    }
     const browserRepoint = process.env.PASSPORT_MIDNAMES_BROWSER_REPOINT === '1';
     const repointTarget = browserRepoint
       ? await deployAccount('repoint', randomJubJubPoint(), inbox.generateEncKeyPair().publicKey)
@@ -533,6 +749,12 @@ try {
       repointTarget,
       repointName: browserRepoint ? repointName : undefined,
       defaultField,
+      ref,
+      probeKeyDirectory:
+        hybridVerifier || fullVerifier ? undefined : process.env.PASSPORT_MIDNAMES_DIAG_KEY_DIR,
+      verifyHybridSource,
+      candidateAssets: candidateNight ? candidateAssets : undefined,
+      candidateManifestSha256: candidateNight ? candidatePin.manifestSha256 : undefined,
       step,
     });
     if (process.env.PASSPORT_MIDNAMES_BROWSER_REVIEW === '1') {
@@ -556,15 +778,57 @@ try {
         assert.deepEqual(proofReceipt.sent, { withdraw: 0, deposit: 0 });
         assert.deepEqual(proofReceipt.final, { source: '10', target: '0', repoint: '0' });
         step('verified-browser-owner-repoint-before-night-send');
-      } else step('verified-browser-owner-review-before-night-send');
+      } else if (proofReceipt.keyProbe) {
+        assert.equal(proofReceipt.sameWitnessOldKeyRefused, true);
+        assert.equal(proofReceipt.sameWitnessNewKeyReturnedProof, true);
+        assert.equal(proofReceipt.approvals, 1);
+        assert.equal(proofReceipt.signatures, 1);
+        assert.deepEqual(proofReceipt.sent, { withdraw: 0, deposit: 0 });
+        assert.deepEqual(proofReceipt.final, { source: '10', target: '0' });
+        step('verified-browser-review-before-withdrawal-key-probe');
+      } else {
+        if (hybridVerifier || fullVerifier) {
+          await verifyHybridSource();
+          assert.deepEqual(proofReceipt.sent, { withdraw: 1, deposit: 1 });
+          assert.deepEqual(proofReceipt.final, { source: '6', target: '4' });
+          step(
+            fullVerifier
+              ? 'verified-isolated-full-036-verifier-roster-native-send'
+              : 'verified-isolated-hybrid-verifier-native-send',
+          );
+        } else step('verified-browser-owner-review-before-night-send');
+      }
     }
-    Object.assign(receipt, { ...proofReceipt, claimIdentifier, registryAddress, passed: true });
+    Object.assign(receipt, {
+      ...proofReceipt,
+      hybridVerifierDiagnostic:
+        hybridVerifier || fullVerifier
+          ? {
+              sourceOnly: true,
+              circuit: 'withdraw_unshielded_with_jubjub',
+              verifierSha256: '0d379e75fc29bb44de21a263a1f3bd941658aed71ccaa41cf445b29b104715a4',
+              fullAlternateVerifierRoster: fullVerifier,
+              supportedBinding: false,
+            }
+          : undefined,
+      claimIdentifier,
+      registryAddress,
+      passed: true,
+    });
     step(
       proofReceipt.declined
         ? 'verified-native-named-night-decline'
         : proofReceipt.repointed
           ? 'verified-native-named-night-repoint-refusal'
-          : 'verified-native-named-night-send',
+          : proofReceipt.keyProbe
+            ? 'verified-stable-prover-withdrawal-key-response-without-send'
+            : hybridVerifier || fullVerifier
+              ? fullVerifier
+                ? 'verified-stable-prover-full-036-verifier-roster-named-night-send'
+                : 'verified-stable-prover-hybrid-verifier-named-night-send'
+              : candidateNight
+                ? 'verified-candidate-native-named-night-send'
+                : 'verified-native-named-night-send',
     );
   } else {
     await wallet.wallet.stop();

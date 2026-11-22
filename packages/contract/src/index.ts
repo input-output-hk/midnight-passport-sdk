@@ -14,7 +14,9 @@ export {
   UnsupportedBindingError,
   assertBindingCompatible,
   detectDeployedVersion,
+  detectDeployedVersionByCircuit,
   resolveBinding,
+  resolvePinnedBinding,
 } from './registry.js';
 export {
   AccModuleShapeError,

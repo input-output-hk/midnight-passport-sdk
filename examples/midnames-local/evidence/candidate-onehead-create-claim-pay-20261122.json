@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "kind": "candidate-acc-onehead-create-claim-named-night-payment",
+  "result": "PASS_WITH_ORIGINAL_RECONCILIATION",
+  "observedAt": "2026-11-22",
+  "sourceHead": "d2db4b7ff9d087b6f1ad013f8cba23d6895d861d",
+  "profile": "shared Ledger 9 node, Indexer API v4, release prover plus owned Compact 0.35 compatibility prover; one fresh headless Chromium profile with a synthetic PRF-capable passkey",
+  "bindingId": "acc-s3r1.1-zkir036",
+  "manifestSha256": "590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f",
+  "registryAddress": "90e8734cc3ddc8aaf649b969ecfb61828f75d580725670a0718ed19a8f4a8fe0",
+  "createdAccAddress": "deb34adc3814e59b20dff7f87bcc2ddfe498b59e05a338c28f67de0abc9cee13",
+  "claimedName": "codexflow24.night",
+  "claim": {
+    "txHash": "e5cfbc5a3e23f5bc806ef4a2c0241b68fe934144d0701e0d62b6108fce3b4aec",
+    "blockHeight": 73737,
+    "canonicalSuccess": true,
+    "sponsorDispatchCount": 1,
+    "browserStatus": "Registered. The original claim and current registry record match this account."
+  },
+  "funding": {
+    "createdAccNightBalance": "10",
+    "separateDeviceWalletFunded": true,
+    "deviceDustRegistrationFinalized": true
+  },
+  "namedPayment": {
+    "recipientName": "codexacc22.night",
+    "recipientAccAddress": "1bbba3a26618dc64720ad78fadc98d9b404eab7f983f7bf9c210f8c6c8b2e4c0",
+    "amount": "4",
+    "operations": ["withdraw_unshielded_with_jubjub", "deposit_unshielded"],
+    "withdrawal": {
+      "txHash": "cd43c55aebbc085cf2b4e671286e21ad4473028268aee69b05c6ec3ab63097f0",
+      "blockHeight": 73816,
+      "canonicalSuccess": true
+    },
+    "deposit": {
+      "txHash": "d02575b68e07291fbb29c4c5cfbb5f1dae0ae5c407267998b6a70875081337b8",
+      "blockHeight": 73830,
+      "canonicalSuccess": true
+    },
+    "balances": {
+      "before": { "source": "10", "recipient": "28" },
+      "after": { "source": "6", "recipient": "32" }
+    },
+    "journalArchivedAfterOriginalOnlyBrowserResume": true,
+    "browserReloadAndLiveBalanceRead": true
+  },
+  "automaticFinalityFollowup": {
+    "sourceHead": "07cca23aaaeb7ac1a10bd8cfa9aba4834801148a",
+    "amount": "1",
+    "browserReachedFinalizedWithoutSecondClick": true,
+    "withdrawal": {
+      "txHash": "6b7371dc49576e8d75408985e59a93863008a251a97d7070781d96c0ffb687df",
+      "blockHeight": 74014,
+      "canonicalSuccess": true
+    },
+    "deposit": {
+      "txHash": "fc19d699fabbed0b822e2b3ea2ddcaa48a796c751592d6da772d198923c66e5d",
+      "blockHeight": 74017,
+      "canonicalSuccess": true
+    },
+    "balancesAfterReload": { "source": "5", "recipient": "33" },
+    "journalArchived": true
+  },
+  "checks": {
+    "freshAccCreatedAndActivated": true,
+    "nameClaimedAfterAccActivation": true,
+    "claimOriginalAndRegistryMatchedAfterReopen": true,
+    "separateDeviceWalletFundedAndDustRegistered": true,
+    "namedRouteAndOwnerCeremonyReviewed": true,
+    "bothOriginalPaymentLegsCanonicallyFinal": true,
+    "noDuplicateWithdrawalOrDepositOnReconciliation": true,
+    "sharedDockerStackUnchanged": true,
+    "ownedDemoServicesStoppedAndLeaseReleased": true
+  },
+  "limits": [
+    "The first one-head payment required one original-only browser reconciliation after the chain had finalized; the automatic finality follow-up was a separate payment on a later signed source head.",
+    "The owner credential was a synthetic mock passkey, not a physical authenticator.",
+    "The recipient name was registered before this run; this fresh claim registered the new sender ACC name.",
+    "Only the local provisional candidate binding and shared Ledger 9 profile were exercised; online Midnames and production provider acceptance remain unqualified."
+  ]
+}

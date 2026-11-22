@@ -11,6 +11,7 @@ import {
   settleOriginalForReview,
 } from './claim-retry.js';
 import { createClaimSendReview } from './claim-send-review.js';
+import { installClaimSuggestion } from './claim-suggestion-ui.js';
 import {
   claimDigest,
   claimReceipt,
@@ -74,7 +75,6 @@ function initialClaimStatus(recovery: ClaimRecovery, account: PassportAccount | 
     ? 'Choose a .night name for this account.'
     : 'Read-only .night profile. Check or retain an existing original receipt; claiming is unavailable.';
 }
-
 function assertClaimContext(
   account: PassportAccount | undefined,
   currentAccount: () => PassportAccount | undefined,
@@ -492,6 +492,7 @@ export function showClaimRecovery(
 ): () => void {
   const form = byId<HTMLFormElement>('claim-recovery');
   const name = byId<HTMLInputElement>('claim-recovery-name');
+  const suggest = byId<HTMLButtonElement>('claim-suggest-name');
   const receipt = byId<HTMLTextAreaElement>('claim-recovery-receipt');
   const availability = byId<HTMLButtonElement>('claim-check-availability');
   const retain = byId<HTMLButtonElement>('claim-recovery-retain');
@@ -501,8 +502,8 @@ export function showClaimRecovery(
   const check = byId<HTMLButtonElement>('claim-recovery-check');
   const release = byId<HTMLButtonElement>('claim-release-failed');
   const status = byId('claim-recovery-status');
-  const details = byId<HTMLDetailsElement>('claim-recovery-details');
-  details.open = import.meta.env.VITE_MIDNAMES_CLAIM_PREPARATION !== '1';
+  byId<HTMLDetailsElement>('claim-recovery-details').open =
+    import.meta.env.VITE_MIDNAMES_CLAIM_PREPARATION !== '1';
   const report = claimReport(status, onSetupStatus);
   const preparation =
     recovery.preparation &&
@@ -514,6 +515,7 @@ export function showClaimRecovery(
   );
   form.hidden = false;
   let busy = false;
+  installClaimSuggestion(suggest, recovery, currentAccount, name, report, () => busy);
   name.addEventListener('input', () => {
     sendReview.clear();
     release.hidden = true;
@@ -529,6 +531,7 @@ export function showClaimRecovery(
       check.disabled =
       send.disabled =
       release.disabled =
+      suggest.disabled =
         true;
     preparation?.setBusy(true);
     report('Checking claim details…');
@@ -569,6 +572,7 @@ export function showClaimRecovery(
           check.disabled =
           send.disabled =
           release.disabled =
+          suggest.disabled =
             false;
         name.disabled = receipt.disabled = false;
         if (account === currentAccount() && status.textContent) report(status.textContent);

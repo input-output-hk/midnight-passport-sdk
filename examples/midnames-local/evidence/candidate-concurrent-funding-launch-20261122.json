@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "kind": "candidate-shared-ledger9-concurrent-demo-launch",
+  "result": "PASS_WITH_LIMITS",
+  "observedAt": "2026-11-22",
+  "networkId": "undeployed",
+  "indexerApi": "v4",
+  "bindingId": "acc-s3r1.1-zkir036",
+  "manifestSha256": "590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f",
+  "preparedRegistryVerified": true,
+  "sharedStackAttachedWithoutRestart": true,
+  "stableFundingServicePreservedOnPort": 8789,
+  "candidate": {
+    "passportServicePort": 8787,
+    "fundingServicePort": 18789,
+    "claimOwnerPort": 15190,
+    "claimSponsorPort": 15189,
+    "ownedRegistryProverPort": 16320,
+    "serviceAndFundingPinsMatched": true,
+    "existingAccountNightBalance": "24",
+    "nextTenUnitDepositAvailable": true,
+    "headlessPageLoadedWithoutErrors": true,
+    "nameAndPaymentPanelsPresent": true
+  },
+  "shutdown": {
+    "firstAttempt": "launcher wrapper exited before the Passport service drain; the exact orphaned processes were stopped and the unchanged journals, canonical chain, and lease pin were reconciled in a retained private receipt",
+    "directChildRetry": "Passport service reported drain; shared chain marker finished and sponsor lease released",
+    "controlledFundingStartupFailure": "a refused candidate funding bind after Passport service startup returned exit 1 only after the Passport drain, shared marker finish and sponsor lease release",
+    "ownedPortsClosed": true,
+    "ownedRegistryProverStopped": true,
+    "stableFundingServiceStillRunning": true
+  },
+  "limits": [
+    "The browser smoke did not create an account, claim a name, send funds, or submit a named payment.",
+    "The first interrupted shutdown has a retained reconciliation receipt; only the direct-child retry passed the normal drain path.",
+    "Candidate named NIGHT remains disabled until one connected browser/worker two-leg payment and recovery gate passes."
+  ]
+}

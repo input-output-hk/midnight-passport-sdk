@@ -30,10 +30,15 @@ const lockDir = join(homedir(), '.local/share/midnight-passport');
 const lockPath = join(lockDir, 'midnames-local-demo.lock');
 const template = join(root, 'infra/localnet/docker-compose.ledger9.yml');
 const compatTemplate = join(root, 'infra/localnet/docker-compose.compat-prover.yml');
+const compatImage =
+  'midnightntwrk/proof-server@sha256:2666c7bd7b4517f8ad135565387f98d14347a9ac715c6c466d4a8a852b545ecf';
 const defaultProfile = join(
   root,
   'examples/midnames-local/evidence/shared-ledger9-paidfix-deposit-20261118.json',
 );
+const candidateManifest = JSON.parse(
+  readFileSync(join(root, 'packages/contract/acc-versions.generated.json'), 'utf8'),
+).versions['acc-s3r1.1-zkir036'].manifestSha256;
 const usage = `Usage: nix develop -c node scripts/midnames-local-demo.mjs [check|stack|up|stop] [options]
 
   check               Read-only attach and name-to-ACC verification. Never starts Docker.
@@ -49,8 +54,11 @@ const usage = `Usage: nix develop -c node scripts/midnames-local-demo.mjs [check
   --real-passkey      Use a PRF-capable passkey instead of the development mock.
   --setup             Open account creation without a name (fresh chain only).
   --claim             Enable registration against the verified local .night registry.
+  --claim-journal-id X  Select a retained, isolated claim journal for this demo run.
   --funding           Enable deposits with the separately funded demo wallet.
+  --night-send        Opt in to candidate ACC named NIGHT send (needs --claim --funding).
   --prepared-registry PATH  Pinned Compact 0.35 registry artifacts for --claim.
+  --candidate-assets PATH   Explicit provisional ACC assets on the local release prover.
   --open              Open the page in the default browser after it is ready.
 
 The fallback uses the repo's digest-pinned Ledger 9 Compose template and a
@@ -62,7 +70,7 @@ and private records are preserved.
 
 class CleanupUnconfirmedError extends Error {}
 
-/** @typedef {{command: 'check'|'stack'|'up'|'stop', profile: string, stateDir: string, passportRepo: string|undefined, contractDir: string|undefined, preparedRegistry: string|undefined, attachOnly: boolean, mockPasskey: boolean, setup: boolean, claim: boolean, funding: boolean, open: boolean, help: boolean}} DemoOptions */
+/** @typedef {{command: 'check'|'stack'|'up'|'stop', profile: string, stateDir: string, passportRepo: string|undefined, contractDir: string|undefined, preparedRegistry: string|undefined, candidateAssets: string|undefined, claimJournalId: string|undefined, attachOnly: boolean, mockPasskey: boolean, setup: boolean, claim: boolean, funding: boolean, nightSend: boolean, open: boolean, help: boolean}} DemoOptions */
 /** @typedef {{command: string, args: string[], env: NodeJS.ProcessEnv}} ComposeTarget */
 /** @typedef {{networkId: string, registryAddress: string, name: string, accountAddress: string, claimBlock: {height: number, hash: string}}} Claim */
 
@@ -80,11 +88,14 @@ export function parseArgs(argv) {
     passportRepo: process.env.PASSPORT_REPO,
     contractDir: process.env.PASSPORT_CONTRACT_DIR,
     preparedRegistry: process.env.PASSPORT_MIDNAMES_PREPARED_REGISTRY,
+    candidateAssets: undefined,
+    claimJournalId: undefined,
     attachOnly: false,
     mockPasskey: true,
     setup: false,
     claim: false,
     funding: false,
+    nightSend: false,
     open: false,
     help: false,
   };
@@ -98,6 +109,8 @@ export function parseArgs(argv) {
         '--passport-repo',
         '--contract-dir',
         '--prepared-registry',
+        '--candidate-assets',
+        '--claim-journal-id',
       ].includes(arg)
     ) {
       const value = args[++index];
@@ -106,17 +119,34 @@ export function parseArgs(argv) {
       else if (arg === '--state-dir') result.stateDir = resolve(value);
       else if (arg === '--passport-repo') result.passportRepo = resolve(value);
       else if (arg === '--prepared-registry') result.preparedRegistry = resolve(value);
-      else result.contractDir = resolve(value);
+      else if (arg === '--candidate-assets') result.candidateAssets = resolve(value);
+      else if (arg === '--claim-journal-id') {
+        if (!/^[a-z0-9][a-z0-9-]{0,39}$/.test(value))
+          throw new Error('--claim-journal-id needs a lowercase letters/digits/hyphens label.');
+        result.claimJournalId = value;
+      } else result.contractDir = resolve(value);
     } else if (arg === '--attach-only') result.attachOnly = true;
     else if (arg === '--real-passkey') result.mockPasskey = false;
     else if (arg === '--setup') result.setup = true;
     else if (arg === '--claim') result.claim = true;
     else if (arg === '--funding') result.funding = true;
+    else if (arg === '--night-send') result.nightSend = true;
     else if (arg === '--open') result.open = true;
     else if (arg === '--help' || arg === '-h') result.help = true;
     else throw new Error(`Unknown option: ${arg}`);
   }
   return result;
+}
+
+/** @param {DemoOptions} options */
+export function claimJournalDirectory(options) {
+  const profile = options.candidateAssets ? 'candidate' : 'stable';
+  const name = options.claimJournalId
+    ? `claim-journal-${profile}-${options.claimJournalId}`
+    : profile === 'candidate'
+      ? 'claim-journal-candidate'
+      : 'claim-journal';
+  return join(options.stateDir, name);
 }
 
 /** @param {string} command @param {string[]} args @param {{env?: NodeJS.ProcessEnv, timeout?: number}} [options] */
@@ -475,7 +505,8 @@ async function startClaimHost(options, claim, env) {
     readFileSync(join(options.stateDir, 'claim-sponsor-wallet-provision.json'), 'utf8'),
   );
   assert.equal(provision.status, 'complete', 'Claim sponsor wallet funding is unresolved.');
-  const journal = join(options.stateDir, 'claim-journal');
+  const journal = claimJournalDirectory(options);
+  console.log(`midnames-demo: retaining claim journal at ${journal}.`);
   privateState(journal);
   const args = [
     '--experimental-import-meta-resolve',
@@ -494,7 +525,7 @@ async function startClaimHost(options, claim, env) {
   // its Node grandchild still holds the sponsor wallet and claim journal.
   const child = spawn('node', args, {
     cwd: join(root, 'apps/passport-dapp'),
-    env,
+    env: { ...env, MN_PROOF_SERVER_URL: 'http://127.0.0.1:16320' },
     stdio: ['ignore', 'pipe', 'inherit'],
   });
   let output = '';
@@ -550,12 +581,7 @@ async function startClaimHost(options, claim, env) {
 /** @param {string} stateDir */
 async function compatProver(stateDir) {
   const url = 'http://127.0.0.1:16320/version';
-  try {
-    const response = await fetch(url, { signal: AbortSignal.timeout(4_000) });
-    if (response.ok && (await response.text()) === '9.0.0-rc.8') return { started: false };
-  } catch {
-    /* absent */
-  }
+  // Never send a naming witness to an unrecorded listener, even if its version matches.
   await freePort(16320);
   const project = `${ownedProject(stateDir)}-compat`;
   const marker = join(stateDir, 'compat-prover.json');
@@ -590,6 +616,16 @@ async function compatProver(stateDir) {
     composeRun(target, ['up', '-d', 'proof-server']);
     const containerIds = projectContainerIds(project);
     assert.equal(containerIds.length, 1, 'Compatibility prover must own one container.');
+    const containerId = containerIds[0];
+    assert.ok(containerId);
+    const container = JSON.parse(run('docker', ['inspect', '--format', '{{json .}}', containerId]));
+    assert.equal(container.Id, containerId);
+    assert.equal(container.Config.Image, compatImage);
+    assert.equal(container.HostConfig.NetworkMode, 'bridge');
+    assert.deepEqual(container.HostConfig.PortBindings, {
+      '6300/tcp': [{ HostIp: '127.0.0.1', HostPort: '16320' }],
+    });
+    assert.equal(container.State.Running, true);
     recordContainers(marker, project, containerIds, compatTemplate);
     for (let attempt = 0; attempt < 30; attempt++) {
       try {
@@ -627,15 +663,35 @@ async function demo(options, claim) {
     const env = {
       ...process.env,
       MIDNIGHT_STACK: 'shared-ledger9',
-      PASSPORT_REGISTRY_FILE: join(options.stateDir, 'registry.json'),
-      PASSPORT_COMPAT_PROVER: '1',
-      PASSPORT_COMPAT_PROVER_PORT: '16320',
+      ...(options.contractDir ? { PASSPORT_CONTRACT_DIR: options.contractDir } : {}),
+      PASSPORT_REGISTRY_FILE: join(
+        options.stateDir,
+        options.candidateAssets ? 'registry-candidate.json' : 'registry.json',
+      ),
+      ...(options.candidateAssets
+        ? {
+            PASSPORT_BINDING_ID: 'acc-s3r1.1-zkir036',
+            PASSPORT_CANDIDATE_LOCAL: '1',
+            PASSPORT_MANIFEST_SHA256: candidateManifest,
+            PASSPORT_ARTEFACT_DIR: options.candidateAssets,
+            PASSPORT_COMPAT_PROVER: '0',
+            PASSPORT_PUBLIC_PROOF_SERVER_URL: 'http://127.0.0.1:6300',
+          }
+        : {
+            PASSPORT_BINDING_ID: 'acc-s3r1.1',
+            PASSPORT_CANDIDATE_LOCAL: '0',
+            PASSPORT_COMPAT_PROVER: '1',
+            PASSPORT_COMPAT_PROVER_PORT: '16320',
+          }),
       MN_NETWORK_ID: 'undeployed',
       MN_NODE_URL: 'http://127.0.0.1:9944',
       MN_INDEXER_URL: 'http://127.0.0.1:8088/api/v4/graphql',
       MN_INDEXER_WS_URL: 'ws://127.0.0.1:8088/api/v4/graphql/ws',
-      MN_PROOF_SERVER_URL: 'http://127.0.0.1:16320',
+      MN_PROOF_SERVER_URL: options.candidateAssets
+        ? 'http://127.0.0.1:6300'
+        : 'http://127.0.0.1:16320',
     };
+    if (options.candidateAssets) delete env.PASSPORT_PUBLIC_ZK_BASE_URL;
     for (const key of Object.keys(env)) {
       if (key.startsWith('VITE_MIDNAMES_')) delete env[key];
     }
@@ -648,22 +704,42 @@ async function demo(options, claim) {
         VITE_MIDNAMES_NETWORK_ID: 'undeployed',
         VITE_MIDNAMES_INDEXER_URL: 'http://127.0.0.1:8088/api/v4/graphql',
         VITE_MIDNAMES_INDEXER_WS_URL: 'ws://127.0.0.1:8088/api/v4/graphql/ws',
-        VITE_MIDNAMES_KNOWN_NAME: claim.name,
-        VITE_MIDNAMES_KNOWN_ACC: claim.accountAddress,
-        VITE_MIDNAMES_NIGHT_SEND: '1',
+        VITE_MIDNAMES_NODE_URL: 'http://127.0.0.1:9944',
+        VITE_MIDNAMES_CHAIN_ANCHOR_HEIGHT: String(claim.claimBlock.height),
+        VITE_MIDNAMES_CHAIN_ANCHOR_HASH: claim.claimBlock.hash,
+        ...(!options.candidateAssets && {
+          VITE_MIDNAMES_KNOWN_NAME: claim.name,
+          VITE_MIDNAMES_KNOWN_ACC: claim.accountAddress,
+        }),
+        VITE_MIDNAMES_NIGHT_SEND: options.candidateAssets && !options.nightSend ? '0' : '1',
       });
     }
     if (options.funding) {
+      const fundingName = options.candidateAssets ? 'candidate-funding' : 'funding';
+      if (options.candidateAssets) {
+        // The stable demo may own 8789. Keep the candidate wallet and its
+        // Passport-service proxy on one separate loopback port.
+        env.PASSPORT_FUNDING_PORT = '18789';
+        env.PASSPORT_FUNDING_URL = 'http://127.0.0.1:18789';
+      }
       const provision = JSON.parse(
-        readFileSync(join(options.stateDir, 'funding-wallet-provision.json'), 'utf8'),
+        readFileSync(join(options.stateDir, `${fundingName}-wallet-provision.json`), 'utf8'),
       );
       assert.equal(provision.status, 'complete', 'Funding wallet setup is unresolved.');
       Object.assign(env, {
-        PASSPORT_FUNDING_SEED_FILE: join(options.stateDir, 'funding-seed.private.hex'),
-        PASSPORT_FUNDING_TOKEN_FILE: join(options.stateDir, 'funding-token.private.txt'),
-        PASSPORT_FUNDING_ASSETS_FILE: join(options.stateDir, 'funding-assets.private.json'),
-        PASSPORT_FUNDING_RESERVATIONS_FILE: join(options.stateDir, 'funding-reservations.json'),
-        PASSPORT_FUNDING_DEPLOYMENTS_FILE: join(options.stateDir, 'registry.deployments.json'),
+        PASSPORT_FUNDING_SEED_FILE: join(options.stateDir, `${fundingName}-seed.private.hex`),
+        PASSPORT_FUNDING_TOKEN_FILE: join(options.stateDir, `${fundingName}-token.private.txt`),
+        PASSPORT_FUNDING_ASSETS_FILE: join(options.stateDir, `${fundingName}-assets.private.json`),
+        PASSPORT_FUNDING_RESERVATIONS_FILE: join(
+          options.stateDir,
+          `${fundingName}-reservations.json`,
+        ),
+        PASSPORT_FUNDING_DEPLOYMENTS_FILE: join(
+          options.stateDir,
+          options.candidateAssets
+            ? 'registry-candidate.deployments.json'
+            : 'registry.deployments.json',
+        ),
       });
     }
     if (options.claim) {
@@ -675,7 +751,7 @@ async function demo(options, claim) {
         VITE_MIDNAMES_CLAIM_PREPARATION: '1',
       });
     }
-    const args = ['demo', 'up', '--no-key-service', '--arm', 'jubjub'];
+    const args = [join(root, 'scripts/demo.mjs'), 'up', '--no-key-service', '--arm', 'jubjub'];
     if (options.funding) args.push('--funding');
     if (options.mockPasskey) args.push('--mock-passkey');
     if (options.open) args.push('--open');
@@ -687,7 +763,10 @@ async function demo(options, claim) {
     if (claim) console.log(`midnames-demo: ${claim.name} resolves to ${claim.accountAddress}.`);
     else console.log('midnames-demo: account setup mode; claim a name before enabling named send.');
     console.log('midnames-demo: open the printed localhost URL in a dedicated browser profile.');
-    const child = spawn('pnpm', args, { cwd: root, env, stdio: 'inherit' });
+    // The direct Node child must finish the shared service drain before this
+    // launcher releases its claim host and prover. Keep terminal SIGINT in
+    // this process group so the child receives only the forwarded signal.
+    const child = spawn('node', args, { cwd: root, env, stdio: 'inherit', detached: true });
     let interrupted = false;
     const forward = () => {
       interrupted = true;
@@ -745,7 +824,18 @@ export async function main(argv = process.argv.slice(2)) {
     if (options.setup && options.command !== 'up') throw new Error('--setup applies only to up.');
     if ((options.claim || options.funding) && options.command !== 'up')
       throw new Error('--claim and --funding apply only to up.');
-    if (options.claim && options.setup)
+    if (options.claimJournalId && !options.claim)
+      throw new Error('--claim-journal-id needs --claim.');
+    if (
+      options.nightSend &&
+      (options.command !== 'up' || !options.candidateAssets || !options.claim || !options.funding)
+    )
+      throw new Error('--night-send needs up with --candidate-assets, --claim and --funding.');
+    if (options.command === 'up' && options.candidateAssets && !options.claim)
+      throw new Error(
+        '--candidate-assets needs --claim and a verified standalone registry profile.',
+      );
+    if (options.claim && options.setup && !options.candidateAssets)
       throw new Error('--claim needs a verified local registry profile.');
     if (options.command === 'up' && !options.contractDir && !options.passportRepo)
       throw new Error('Pass --contract-dir or --passport-repo for the pinned ACC.');
@@ -760,8 +850,9 @@ export async function main(argv = process.argv.slice(2)) {
     console.log(JSON.stringify(selected.profile));
     if (options.command === 'stack') return;
     try {
-      if (!options.setup) ensureWorkspaceDependencies();
-      const claim = options.setup ? undefined : await verifyProfile(options.profile);
+      if (!options.setup || options.claim) ensureWorkspaceDependencies();
+      const claim =
+        options.setup && !options.claim ? undefined : await verifyProfile(options.profile);
       if (claim)
         console.log(`midnames-demo: live name pin verified at block ${claim.claimBlock.height}.`);
       if (options.command === 'up') await demo(options, claim);

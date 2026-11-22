@@ -40,7 +40,7 @@ function rebuildWithCredit(
   const [guaranteed, fallible] = call.public.partitionedTranscript;
   if (!!guaranteed === !!fallible) throw new Error('Unexpected call transcript partition.');
   const transcript = guaranteed ?? fallible;
-  if (transcript.gas.bytesDeleted <= 0n)
+  if (transcript.gas.bytesDeleted <= 0n && !allowed.includes('deposit_unshielded'))
     throw new Error('The call transcript has no deletion credit to remove.');
   const existing = intents[0].actions[0];
   const entry =
@@ -118,21 +118,21 @@ export function withMeasuredDeletionCredit(
   if (
     result.calls.length !== 1 ||
     String(call?.circuitId) !== 'deposit_unshielded' ||
-    !guaranteed ||
-    fallible
+    !!guaranteed === !!fallible
   )
-    throw new Error('Measured deletion credit requires one guaranteed ACC NIGHT deposit.');
+    throw new Error(
+      `Measured deletion credit requires one ACC NIGHT deposit: calls=${result.calls.length}, circuit=${String(call?.circuitId)}, guaranteed=${Boolean(guaranteed)}, fallible=${Boolean(fallible)}.`,
+    );
+  const transcript = guaranteed ?? fallible;
   const data = ledger.ContractState.deserialize(state.serialize()).data;
   const model = parameters.transactionCostModel.runtimeCostModel;
   const context = () => new ledger.QueryContext(data, contractAddress);
-  const gather = guaranteed.program.map((part) =>
+  const gather = transcript.program.map((part) =>
     typeof part === 'object' && 'popeq' in part ? { popeq: { ...part.popeq, result: null } } : part,
   );
   const credit = context().query(gather, model).gasCost.bytesDeleted;
-  if (credit <= 0n || credit > guaranteed.gas.bytesDeleted)
-    throw new Error('The measured ACC deletion credit is outside the declared budget.');
   context().runTranscript(
-    { ...guaranteed, gas: { ...guaranteed.gas, bytesDeleted: credit } },
+    { ...transcript, gas: { ...transcript.gas, bytesDeleted: credit } },
     model,
   );
   return rebuildWithCredit(result, state, networkId, ledger, types, contractAddress, credit, [

@@ -50,7 +50,7 @@ export const MANIFEST_SHA256 = __PASSPORT_MANIFEST_SHA256__;
 export const NETWORK_ID = __PASSPORT_NETWORK_ID__;
 export const RP_ID = 'localhost';
 /** The grants ACC binding this page deploys: the artefact build the manifest pin above names. */
-export const BINDING_ID = 'acc-s3r1.1';
+export const BINDING_ID = __PASSPORT_BINDING_ID__;
 /** The host pins this separately from the service's discovery answer. */
 export const ARTEFACT_URL =
   import.meta.env.VITE_PASSPORT_ARTEFACT_URL ??
@@ -301,7 +301,7 @@ export async function connect(
           },
           exists: async () => !!ownerRecord,
         }
-      : browserAccountRecords(networkId),
+      : browserAccountRecords(networkId, localStorage, BINDING_ID),
     random: (length) => crypto.getRandomValues(new Uint8Array(length)),
   });
 }

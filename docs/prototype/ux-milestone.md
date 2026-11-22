@@ -111,9 +111,11 @@ The Name service panel can use an explicitly configured Midnames registry.
 A partial configuration disables lookup and shows the setup requirement.
 Lookup reads the registry and supported target ACC at one indexer block,
 then displays the checked contract target without initiating an account or
-wallet action. The indexer remains a trusted source of those bytes. An online
+wallet action. With a node chain pin, it checks that block against the node's
+finalized canonical chain before reading either contract. The indexer remains
+a trusted source of the contract-state bytes. An online
 profile requires a public known-name-to-ACC
-pin and two distinct-origin indexer paths. Each lookup rechecks the pin and
+pin, two distinct-origin indexer paths and a separately pinned node. Each lookup rechecks the pin and
 requires both paths to agree; changed, divergent or unavailable observations
 refuse the lookup. See the [configuration and evidence scope](../site/names.md#source-preview-midnames-210).
 
@@ -121,6 +123,8 @@ refuse the lookup. See the [configuration and evidence scope](../site/names.md#s
 
 The opt-in localhost demo can use the open account's passkey to prepare a
 claim. The quote review describes the passkey request before the user approves.
+After reload, the account-opening control becomes ready only after its action
+handler is attached, so a fast click cannot be dropped during startup.
 The owner bundle rechecks the current root price and payee before requesting
 the credential. Receipt recovery remains a read, and dispatch remains a
 separate action.
@@ -147,6 +151,11 @@ remain open qualification.
 
 The opt-in **Register a .night name** panel on Passport account → Balances
 appears after creation or passkey-based opening of the target ACC. The claim
+panel can suggest a random local `demo-<24 hex characters>.night` label when the field is empty;
+it first checks for an earlier selection under the same credential and restores
+that selection instead of replacing its original. A suggestion is not an issued
+name, reservation, quote or transaction. The user still reviews the registry
+result, quote, passkey request and payment separately. The claim
 profile requires the observed Indexer v4 transaction protocol
 pin (`2001100` on both the shared Ledger 9 demo and the release-image isolated fixture).
 This is separate from the `/api/v4/graphql` endpoint version. Reviewing a
@@ -158,6 +167,71 @@ select a name; enter it again after a reload. The panel can save a standalone sp
 For a retained original, reopening also checks the sponsor's dispatch fence and
 shows **Prepared but never sent** when the sponsor confirms that state and the
 registry still shows the name available. It does not show registration success.
+
+For the provisional Ledger 9 `acc-s3r1.1-zkir036` source profile, the
+[local launcher](../../examples/midnames-local/README.md#provisional-acc-local-demo-profile)
+can open account creation and the standalone name panel in one browser
+session. It uses a separate deployment registry and claim journal and admits
+the candidate only with exact build pins and loopback Indexer API v4. This
+configuration route is now qualified for the bounded local journey below. In the
+local launcher, candidate ACC proofs use the shared release prover on 6300;
+the pinned Compact 0.35 standalone name registry uses an owned compatibility
+prover on 16320. The browser and sponsor journals must be checked together
+after a fresh native claim run before reporting the journey as qualified.
+The [shared-chain browser receipt](../../examples/midnames-local/evidence/candidate-acc-combined-local-claim-20261122.json)
+records one synthetic ACC creation, same-profile paid `.night` claim, exact
+indexed success and matching registry target. Those steps span signed source
+heads; the final head rechecked the saved registration without another send.
+The later [one-head local run](../../examples/midnames-local/evidence/candidate-onehead-create-claim-pay-20261122.json)
+completed ACC creation, a new name claim and named NIGHT payments with a
+synthetic passkey on the shared chain. It does not qualify a physical provider,
+online naming or a released candidate binding.
+The named-send preflight now gives distinct plain-language refusals for an
+unknown name, a name pointing to the source ACC, an unsupported ACC, and an
+insufficient source balance. An unavailable naming provider is reported as
+unavailable, not as an unregistered name. No owner ceremony or payment starts
+for these cases.
+The local launcher now accepts an explicit claim journal ID for a separate new
+account/name after an earlier claim has been confirmed. It preserves the first
+journal and requires the same ID for that claim's recovery; switching IDs is
+not a safe retry after an unknown outcome. The sponsor wallet remains single
+writer under the shared lease.
+Candidate demo funding now uses a dedicated wallet and state files when the
+operator explicitly combines `--candidate-assets --funding`. The candidate
+wallet uses port 18789, separate from the stable demo on 8789. The funding
+service's [native shared-chain run](../../examples/midnames-local/evidence/candidate-funding-native-20261122.json)
+confirmed its original request, indexed 10-unit NIGHT credit and same-ID
+replay. A separate [headless Passport page run](../../examples/midnames-local/evidence/candidate-funding-browser-20261122.json)
+confirmed a second 10-unit NIGHT credit through the live candidate services,
+finalized chain action and reload without a duplicate request. It selected the
+existing ACC through a test connector; the combined passkey/worker path remains
+open. The connected named NIGHT page source
+now checks the exact candidate binding and manifest through page selection,
+owner review, host admission and deposit preflight. Its browser journal also
+pins the candidate profile so a stable or changed binding cannot resume its
+original. The launcher defaults to `VITE_MIDNAMES_NIGHT_SEND=0` for candidate
+assets and enables it only with explicit `--night-send --claim --funding`
+and `--candidate-assets`. Headless candidate checks cover visibility and the
+saved-original no-ID guard, while the host tests simulate its two legs. A fresh
+isolated [native run](../../examples/midnames-local/evidence/candidate-acc-adapter-named-night-send-20261122.json)
+settled both legs with the exported recipient deposit adapter at one signed
+head. It does not prove a connected browser withdrawal-to-deposit payment or
+recovery by itself. A later [connected browser run](../../examples/midnames-local/evidence/candidate-connected-browser-night-send-20261122.json)
+created and funded a fresh ACC, registered DUST for its separate device wallet,
+reviewed a named 4 NIGHT payment, and finalized one withdrawal and one deposit.
+It reconciled those exact IDs after a browser deposit resume, then reopened to
+confirm an archived journal and source/recipient balances of 6/28. This run
+spans signed heads and used an already registered name. A later
+[one-head local browser run](../../examples/midnames-local/evidence/candidate-onehead-create-claim-pay-20261122.json)
+created a new ACC, claimed `codexflow24.night` after activation, funded the ACC
+and a separate device wallet, registered DUST, and paid 4 NIGHT to the already
+registered `codexacc22.night` ACC. Both original legs finalized; one explicit
+original-only browser check archived them after finality. A follow-up payment
+on a later signed head exercised the automatic finality wait and finished
+without that extra click. This is a synthetic-credential local result, not
+physical-passkey or online-provider acceptance. The candidate launcher stays
+disabled without its explicit opt-in.
+
 An unavailable indexer leaves the original receipt intact and reports the
 check as unavailable. Without claim preparation or sponsor dispatch, the panel
 is labelled read-only receipt inspection and offers no claim action.

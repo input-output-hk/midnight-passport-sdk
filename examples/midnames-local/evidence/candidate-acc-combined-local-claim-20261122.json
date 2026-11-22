@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "kind": "candidate-acc-shared-ledger9-cross-head-browser-claim",
+  "result": "PASS_WITH_LIMITS",
+  "observedAt": "2026-11-22",
+  "networkId": "undeployed",
+  "indexerApi": "v4",
+  "transactionProtocolVersion": 2001100,
+  "chainGenesisHash": "0x823383ec0302be8417cfcbcc62f21df08f4047bca37aaea89e3f54b550ebae1d",
+  "candidateBinding": "acc-s3r1.1-zkir036",
+  "candidateManifestSha256": "590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f",
+  "sourceHeads": {
+    "accountCreation": "83912c37a1e7fedc9fab3edbd5a51300074db5d9",
+    "paidClaim": "57397b704b03908ea7b6b4cd88c0c66e61de3d1e",
+    "sidecarAdmissionRecheck": "1feb53ae0186df60293af7362f6c380ecd05fc42"
+  },
+  "account": {
+    "address": "1bbba3a26618dc64720ad78fadc98d9b404eab7f983f7bf9c210f8c6c8b2e4c0",
+    "createdAndActivatedInPassportPage": true,
+    "reopenedInSamePreservedBrowserProfile": true,
+    "candidateBindingDetectedFromIndexer": true
+  },
+  "nameClaim": {
+    "name": "codexacc22.night",
+    "registryAddress": "90e8734cc3ddc8aaf649b969ecfb61828f75d580725670a0718ed19a8f4a8fe0",
+    "registryProfile": "standalone-0.35",
+    "quoteReviewedInPage": true,
+    "originalPreparedInPage": true,
+    "originalDispatchedOnce": true,
+    "originalSha256": "6818b24e4e4e875c81f610f11e0535ff27704fb111c10e0e7ae913035353ca90",
+    "originalIdentifiers": [
+      "001e20bd4ff4731c0f6a49e9bc36a97728d3f4aa9c0bef26b99f09fd85401314b1",
+      "0060bed8955cfed4ea637399c551a939ee06fc4ef05bb97858f5c117b214907710"
+    ],
+    "indexedStatus": "SUCCESS",
+    "indexedBlock": {
+      "height": 68375,
+      "hash": "c841c2b4d23e0218b6397f5184d372807b56f1633ae33f90bd3d59ccb1ac512d"
+    },
+    "registryOwnerCommitmentMatchesOriginal": true,
+    "registryContractTargetMatchesAccount": true,
+    "pageStatusAfterReload": "Registered. The original claim and current registry record match this account."
+  },
+  "proverSplit": {
+    "candidateAcc": "shared release prover on 127.0.0.1:6300",
+    "nameRegistry": "owned Compact 0.35 compatibility prover on 127.0.0.1:16320",
+    "unownedMatchingVersionListenerRefused": true,
+    "pinnedSidecarPositiveRestart": true
+  },
+  "verification": {
+    "fullPinnedNixGateAtFinalCodeHead": "PASS",
+    "independentExactHeadReview": "APPROVE after P2 correction",
+    "sourceCleanDuringNativeRuns": true,
+    "sharedStackUnchanged": true,
+    "ownedSidecarStopped": true,
+    "sponsorLeaseReleased": true,
+    "browserAndSponsorJournalsPreserved": true
+  },
+  "limits": [
+    "Account creation, paid claim, and post-fix sidecar readback used the same preserved synthetic browser profile across three signed source heads; this is not a single exact-head create-to-claim pass.",
+    "An initial headless driver timed out trying to click a hidden check button after dispatch. Exact indexed SUCCESS, matching registry state, and a later page reload established the outcome without another send.",
+    "No candidate funding or ACC-to-ACC named NIGHT send ran in this browser profile; the separate isolated native named-send receipt has its own source head.",
+    "This does not qualify a real passkey provider, online independent indexers, public passport.night, name-owner total-loss recovery, or a released SDK binding."
+  ]
+}

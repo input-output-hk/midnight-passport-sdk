@@ -6,6 +6,12 @@ Overview menu; Home preserves an open account and selects Balances. Devices/sess
 Settings; capability/name diagnostics are under Advanced. Read the
 [workspace guide](../site/demo-ui.md) before presenting the new layout.
 
+For a provisional local candidate ACC, the Midnames launcher exposes
+**Passport account → Withdraw → Send NIGHT to a Passport name** only with
+`--night-send --claim --funding` and a verified candidate asset directory.
+Present the resolved recipient contract, amount and two operations during
+review. After either leg is sent, reopen the same browser profile to reconcile
+the original intent before another send.
 
 > The current sealed-account flow is described below. For environment setup, NIGHT funding and
 > verified handover status, use the [engineering handover](../site/handover.md) and

@@ -21,7 +21,14 @@ import {
   QueryContext,
   partitionTranscripts,
 } from '@midnightntwrk/ledger-v9';
-import { createMidnamesIndexer, createMidnamesLedgerReads } from '../src/midnames/ledger-reader.js';
+import type { AccRegistry } from '@input-output-hk/mn-passport-contract';
+import { resolveBinding, resolvePinnedBinding } from '@input-output-hk/mn-passport-contract';
+import {
+  admitAccBindingFromState,
+  createMidnamesIndexer,
+  createMidnamesLedgerReads,
+  detectAccBindingFromState,
+} from '../src/midnames/ledger-reader.js';
 import { MIDNAMES_REGISTRY_VERIFIERS } from '../src/midnames/registry-pins.js';
 
 const profile = { networkId: 'undeployed', namespace: 'night', registryAddress: '11'.repeat(32) };
@@ -36,6 +43,91 @@ const payment = {
   buy_enabled: true,
 };
 const owner = { bytes: new Uint8Array(32).fill(4) };
+
+test('ACC admission identifies a complete circuit assignment per account', async () => {
+  const oldKeys = { alpha: Uint8Array.of(1), beta: Uint8Array.of(2) };
+  const newKeys = { alpha: Uint8Array.of(3), beta: Uint8Array.of(4) };
+  const hashes = (keys: typeof oldKeys) =>
+    Object.fromEntries(
+      Object.entries(keys).map(([name, key]) => [
+        name,
+        {
+          pure: false,
+          proof: true,
+          keyLocation: `acc/test/${name}`,
+          hashes: {
+            zkir: '0'.repeat(64),
+            bzkir: '0'.repeat(64),
+            verifierKey: createHash('sha256').update(key).digest('hex'),
+            proverKey: '0'.repeat(64),
+          },
+        },
+      ]),
+    );
+  const base = resolveBinding('acc-s3r1.1');
+  const registry: AccRegistry = {
+    current: 'old',
+    versions: {
+      old: { ...base, circuits: hashes(oldKeys) },
+      candidate: { ...base, provisional: true, circuits: hashes(newKeys) },
+    },
+  };
+  const state = (keys: typeof oldKeys, names: readonly unknown[] = Object.keys(keys)) => ({
+    operations: () => names,
+    operation: (name: string) =>
+      Object.hasOwn(keys, name) ? { verifierKey: keys[name as keyof typeof keys] } : undefined,
+  });
+  assert.equal(await detectAccBindingFromState(state(oldKeys), registry), 'old');
+  assert.equal(await detectAccBindingFromState(state(newKeys), registry), 'candidate');
+  assert.equal(await admitAccBindingFromState(state(oldKeys), registry), 'old');
+  assert.equal(
+    await admitAccBindingFromState(state(newKeys), registry),
+    null,
+    'a detected provisional roster must not become an admitted named ACC',
+  );
+  assert.equal(
+    await detectAccBindingFromState(state({ alpha: oldKeys.alpha, beta: newKeys.beta }), registry),
+    null,
+  );
+  assert.equal(await detectAccBindingFromState(state(oldKeys, ['alpha']), registry), null);
+  assert.equal(await detectAccBindingFromState(state(oldKeys, ['alpha', 'alpha']), registry), null);
+  assert.equal(
+    await detectAccBindingFromState(
+      state(oldKeys, [new TextEncoder().encode('alpha'), 'beta']),
+      registry,
+    ),
+    'old',
+  );
+});
+
+test('candidate account reads require the exact isolated local pin', () => {
+  const bindingId = 'acc-s3r1.1-zkir036';
+  const pin = resolvePinnedBinding(bindingId);
+  const provider = {} as Parameters<typeof createMidnamesLedgerReads>[0];
+  const decodeState = (() => {
+    throw Error('No chain read in pin preflight');
+  }) as NonNullable<Parameters<typeof createMidnamesLedgerReads>[4]>['decodeState'];
+  const candidate = { bindingId, manifestSha256: pin.manifestSha256, decodeState };
+  assert.doesNotThrow(() =>
+    createMidnamesLedgerReads(provider, 'undeployed', bindingId, 'standalone-0.35', candidate),
+  );
+  assert.throws(
+    () => createMidnamesLedgerReads(provider, 'undeployed', bindingId, 'standalone-0.35'),
+    { code: 'UNSUPPORTED_BINDING' },
+  );
+  assert.throws(
+    () =>
+      createMidnamesLedgerReads(provider, 'undeployed', bindingId, 'standalone-0.35', {
+        ...candidate,
+        manifestSha256: '0'.repeat(64),
+      }),
+    /exact local provisional pin/,
+  );
+  assert.throws(
+    () => createMidnamesLedgerReads(provider, 'preview', bindingId, 'standalone-0.35', candidate),
+    /registry profile|local/,
+  );
+});
 
 function fields(values: [string, string][] = []) {
   return Array.from({ length: 10 }, (_, index) => {
@@ -365,8 +457,10 @@ test('installed Midnames v2.1 reads its generated registry over the Ledger 9 ind
   assert.equal(await reads.readSupportedNightBalance(target, 'other-network'), undefined);
   const blockHash = 'aa'.repeat(32);
   const offsets: Array<{ address: string; offset: unknown }> = [];
+  let blockReads = 0;
   const pinnedProvider = {
     async queryBlock() {
+      blockReads++;
       return { hash: blockHash, height: 100 };
     },
     async queryContractState(address: string, offset: unknown) {
@@ -376,7 +470,40 @@ test('installed Midnames v2.1 reads its generated registry over the Ledger 9 ind
         : null;
     },
   } as unknown as Parameters<typeof createMidnamesLedgerReads>[0];
+  const blocked = createMidnamesLedgerReads(
+    pinnedProvider,
+    'undeployed',
+    'acc-s3r1.1',
+    undefined,
+    undefined,
+    async (block) => {
+      assert.deepEqual(block, { hash: blockHash, height: 100 });
+      throw new Error('node finality unavailable');
+    },
+  );
+  await assert.rejects(
+    blocked.readSupportedTarget('alice.night', profile),
+    /node finality unavailable/,
+  );
+  assert.deepEqual(offsets, [], 'Do not read registry or ACC bytes before the node block check.');
   const atomic = createMidnamesLedgerReads(pinnedProvider, 'undeployed', 'acc-s3r1.1');
+  assert.deepEqual(await atomic.readFinalizedBlock(), { hash: blockHash, height: 100 });
+  const selectedReads = blockReads;
+  await assert.rejects(
+    atomic.readSupportedTargetAt('alice.night', profile, { hash: blockHash, height: 100 }),
+    { code: 'InvalidRecord' },
+  );
+  assert.equal(blockReads, selectedReads, 'A shared selected block must not be silently replaced.');
+  assert.deepEqual(offsets, [
+    { address: profile.registryAddress, offset: { type: 'blockHash', blockHash } },
+    { address: target, offset: { type: 'blockHash', blockHash } },
+  ]);
+  offsets.length = 0;
+  await assert.rejects(
+    atomic.readSupportedTargetAt('alice.night', profile, { hash: '0x' + blockHash, height: 100 }),
+    { code: 'Unavailable' },
+  );
+  assert.deepEqual(offsets, [], 'Malformed shared block must refuse before contract reads.');
   await assert.rejects(atomic.readSupportedTarget('alice.night', profile), {
     code: 'InvalidRecord',
   });

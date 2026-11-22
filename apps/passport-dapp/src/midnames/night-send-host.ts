@@ -2,10 +2,12 @@ import type { PassportNameService } from '@input-output-hk/mn-passport-account/n
 import type { NetworkConfig, Prover } from '@input-output-hk/mn-passport-account/ports';
 import type { PassportAccount } from '@input-output-hk/mn-passport-protocol';
 import {
+  assertNightDepositPreflight,
   proveUnboundNightDeposit,
   type MidnightBinding,
 } from '@input-output-hk/mn-passport-adapter-midnight-js';
 import { exactNightBridgeOutput } from './night-bridge-output.js';
+import { localNightBinding } from './local-binding.js';
 import { validNightCredentialBytes } from './night-send-credential.js';
 import { readFinalizedNightLeg } from './night-finality.js';
 import {
@@ -39,6 +41,8 @@ interface ConnectedNightSendOptions {
   readonly network: NetworkConfig;
   readonly binding: MidnightBinding;
   readonly prover: Prover;
+  /** Opt in only after the exact local candidate build and registry profile are checked. */
+  readonly provisionalLocal?: boolean;
 }
 
 interface ConnectedNightSendDeps {
@@ -58,15 +62,25 @@ const FENCE_PREFLIGHT_ERROR =
 const hex = (bytes: Uint8Array) =>
   Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
 
+function matchingCandidateJournalScope(
+  scope: BrowserNightSendScope,
+  network: NetworkConfig,
+): boolean {
+  if (network.bindingId === 'acc-s3r1.1-zkir036')
+    return scope.bindingId === network.bindingId && scope.manifestSha256 === network.manifestSha256;
+  return scope.bindingId === undefined && scope.manifestSha256 === undefined;
+}
+
 function checkedSelection(options: ConnectedNightSendOptions) {
   const { account, wallet } = options;
   const scope = Object.freeze({ ...options.scope });
   const network = Object.freeze({ ...options.network });
   if (
     network.networkId !== 'undeployed' ||
-    network.bindingId !== 'acc-s3r1.1' ||
+    !localNightBinding(network.bindingId, network.manifestSha256, options.provisionalLocal) ||
     scope.networkId !== network.networkId ||
     scope.source !== account.address ||
+    !matchingCandidateJournalScope(scope, network) ||
     !validNightCredentialBytes(account.credentialId) ||
     hex(account.credentialId) !== scope.credentialId ||
     account.networkId !== network.networkId ||
@@ -85,6 +99,18 @@ function checkedSelection(options: ConnectedNightSendOptions) {
     options.names.provider.namespace !== 'night'
   )
     throw new Error('The selected ACC, name service, or device wallet cannot send NIGHT by name.');
+  if (network.bindingId === 'acc-s3r1.1-zkir036')
+    // Structural preflight only. The resolved recipient and real wallet keys are
+    // checked again by the adapter after withdrawal finality, before proving.
+    assertNightDepositPreflight({
+      network,
+      binding: options.binding,
+      target: '0'.repeat(64),
+      amount: 1n,
+      walletKeys: { coinPublicKey: 'preflight', encryptionPublicKey: 'preflight' },
+      prover: options.prover,
+      provisionalLocal: !!options.provisionalLocal,
+    });
   const bridge = wallet.nightBridge;
   if (!bridge)
     throw new Error('The selected ACC, name service, or device wallet cannot send NIGHT by name.');
@@ -125,11 +151,15 @@ export async function createConnectedNightSend(
   if (!ADDRESS.test(rawBridge)) throw new Error('The device-held NIGHT bridge is invalid.');
   const finalized = async (original: NightSendLeg) =>
     deps.finalized(network.indexerUrl, network.nodeUrl, original);
-  const ownerWithdrawal = createNightOwnerWithdrawal(account, (intent) => {
-    checkSelected();
-    options.checkApproved(intent);
-    checkSelected();
-  });
+  const ownerWithdrawal = createNightOwnerWithdrawal(
+    account,
+    (intent) => {
+      checkSelected();
+      options.checkApproved(intent);
+      checkSelected();
+    },
+    { manifestSha256: network.manifestSha256, provisionalLocal: !!options.provisionalLocal },
+  );
   return {
     async send(request: NightSendRequest) {
       checkSelected();
@@ -178,6 +208,7 @@ export async function createConnectedNightSend(
                 encryptionPublicKey: addresses.shieldedEncryptionPublicKey,
               },
               prover: options.prover,
+              provisionalLocal: !!options.provisionalLocal,
             });
             checkSelected();
             const original = await bridge.prepareDeposit({

@@ -10,6 +10,7 @@ import {
   createHostMutationExecutor,
 } from '@input-output-hk/mn-passport-service';
 import { gunzipSync } from 'node:zlib';
+import { resolveBinding } from '@input-output-hk/mn-passport-contract';
 import { createReferenceHostDriver, readHostConfirmation } from '../src/host-driver.ts';
 import type { V9Tx } from '../src/reference-runtime.ts';
 import type {
@@ -155,6 +156,7 @@ test('driver builds real ledger deployment and maintenance bytes and refuses cha
     ).href
   );
   const C: any = await import('../../../packages/contract/generated/acc-s3r1.1/index.js');
+  const oldPins = resolveBinding('acc-s3r1.1');
   const contracts: any = await import(
     pathToFileURL(requireAdapter.resolve('@midnight-ntwrk/midnight-js-contracts')).href
   );
@@ -249,7 +251,7 @@ test('driver builds real ledger deployment and maintenance bytes and refuses cha
     allowedAccount: () => true,
     deploymentCompleted: () => {},
   };
-  const driver = createReferenceHostDriver(runtime),
+  const driver = createReferenceHostDriver(runtime, oldPins),
     identity: HostMutationIdentity = {
       pins: {
         networkId: 'undeployed',
@@ -295,29 +297,32 @@ test('driver builds real ledger deployment and maintenance bytes and refuses cha
   assert.equal(await driver.submit(prepared), '00' + '55'.repeat(32));
   assert.equal(submitted.length, 1);
   assert.equal(hex(submitted[0]?.tx.serialize() ?? new Uint8Array()), prepared.tx);
-  const resumeOnly = createReferenceHostDriver({
-    ...runtime,
-    contracts: {
-      createUnprovenDeployTx: async () => {
-        throw new Error('must not create a replacement deployment');
+  const resumeOnly = createReferenceHostDriver(
+    {
+      ...runtime,
+      contracts: {
+        createUnprovenDeployTx: async () => {
+          throw new Error('must not create a replacement deployment');
+        },
       },
-    },
-    signer: {
-      JubjubDevice: {
-        generate: () => {
-          throw new Error('must not regenerate birth authority');
+      signer: {
+        JubjubDevice: {
+          generate: () => {
+            throw new Error('must not regenerate birth authority');
+          },
+        },
+      },
+      waves: {
+        allCircuits: () => {
+          throw new Error('must not rediscover circuits on resume');
+        },
+        planWaves: () => {
+          throw new Error('must not replan a retained deployment');
         },
       },
     },
-    waves: {
-      allCircuits: () => {
-        throw new Error('must not rediscover circuits on resume');
-      },
-      planWaves: () => {
-        throw new Error('must not replan a retained deployment');
-      },
-    },
-  });
+    oldPins,
+  );
   assert.ok((await resumeOnly.prepareStep(record, 0)).identifiers.length);
   assert.ok((await resumeOnly.prepareStep(record, 1)).identifiers.length);
   const decoded = L.Transaction.deserialize(
@@ -527,18 +532,92 @@ test('driver builds real ledger deployment and maintenance bytes and refuses cha
     ),
   );
   assert.equal(await driver.check(record, 1), false);
-  const wrong = createReferenceHostDriver({
-    ...runtime,
-    waves: {
-      ...runtime.waves,
-      planWaves: (...args: any[]) => {
-        const result = planWaves(args[0], args[1], args[2]);
-        result[0].retiresAuthority = true;
-        return result;
+  const wrong = createReferenceHostDriver(
+    {
+      ...runtime,
+      waves: {
+        ...runtime.waves,
+        planWaves: (...args: any[]) => {
+          const result = planWaves(args[0], args[1], args[2]);
+          result[0].retiresAuthority = true;
+          return result;
+        },
       },
     },
-  });
+    oldPins,
+  );
   await assert.rejects(wrong.prepare(identity, input));
+  const candidate: any = JSON.parse(
+    gunzipSync(
+      await readFile(
+        new URL(
+          '../../../packages/contract/resources/acc-s3r1.1-zkir036.zkir.json.gz',
+          import.meta.url,
+        ),
+      ),
+    ).toString(),
+  );
+  const candidatePins: any = structuredClone(oldPins);
+  candidatePins.manifestSha256 = '590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f';
+  const candidateKeyManifest: any = JSON.parse(
+    await readFile(
+      new URL(
+        '../../../packages/contract/resources/acc-s3r1.1-zkir036.key-manifest.json',
+        import.meta.url,
+      ),
+      'utf8',
+    ),
+  );
+  const changed = circuits.filter((name) => {
+    const pin = candidateKeyManifest.circuits[name]?.verifier?.sha256;
+    assert.match(pin, /^[a-f0-9]{64}$/);
+    candidatePins.circuits[name].hashes.verifierKey = pin;
+    return pin !== oldPins.circuits[name]?.hashes?.verifierKey;
+  });
+  assert.equal(changed.length, 48);
+  const candidateKey = async (name: string) =>
+    new Uint8Array(Buffer.from(candidate.files[`keys/${name}.verifier`], 'base64'));
+  const candidateRuntime = {
+    ...runtime,
+    providers: { ...providers, zkConfigProvider: { getVerifierKey: candidateKey } },
+  };
+  const candidateIdentity: HostMutationIdentity = {
+    ...identity,
+    pins: {
+      ...identity.pins,
+      bindingId: 'acc-s3r1.1-zkir036',
+      manifestSha256: candidatePins.manifestSha256,
+    },
+  };
+  const candidateDriver = createReferenceHostDriver(candidateRuntime, candidatePins);
+  assert.ok((await candidateDriver.prepare(candidateIdentity, input)).steps > 0);
+  await assert.rejects(
+    createReferenceHostDriver(candidateRuntime, oldPins).prepare(identity, input),
+    /host mutation/i,
+    'Old-profile service must refuse a candidate ACC.',
+  );
+  await assert.rejects(
+    createReferenceHostDriver(runtime, candidatePins).prepare(candidateIdentity, input),
+    /host mutation/i,
+    'Candidate-profile service must refuse an old ACC.',
+  );
+  await assert.rejects(
+    createReferenceHostDriver(
+      {
+        ...candidateRuntime,
+        providers: {
+          ...candidateRuntime.providers,
+          zkConfigProvider: {
+            getVerifierKey: (name: string) =>
+              name === changed[0] ? getVerifierKey(name) : candidateKey(name),
+          },
+        },
+      },
+      candidatePins,
+    ).prepare(candidateIdentity, input),
+    /host mutation/i,
+    'A mixed verifier roster must be refused.',
+  );
   t.diagnostic(
     'Offline ledger serialization/frontier guard; no proof-backed or node acceptance claim.',
   );

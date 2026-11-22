@@ -15,8 +15,26 @@ const binding = JSON.parse(
 );
 const revision = binding.source.revision;
 const manifestPin = binding.manifestSha256;
+const candidateBinding = JSON.parse(
+  readFileSync(join(root, 'packages/contract/acc-versions.generated.json'), 'utf8'),
+).versions['acc-s3r1.1-zkir036'];
+const demoBindingId = process.env.PASSPORT_BINDING_ID ?? binding.id;
+if (demoBindingId !== binding.id && demoBindingId !== 'acc-s3r1.1-zkir036')
+  throw new Error('demo: unknown ACC binding');
+if (
+  demoBindingId === 'acc-s3r1.1-zkir036' &&
+  (process.env.PASSPORT_CANDIDATE_LOCAL !== '1' ||
+    !process.env.PASSPORT_ARTEFACT_DIR ||
+    process.env.VITE_MIDNAMES_REGISTRY_PROFILE !== 'standalone-0.35')
+)
+  throw new Error('demo: provisional ACC requires explicit local candidate assets and registry');
+const demoManifestPin =
+  demoBindingId === binding.id ? manifestPin : candidateBinding.manifestSha256;
 const keyPort = 8788;
-const fundingPort = 8789;
+const fundingPortText = process.env.PASSPORT_FUNDING_PORT ?? '8789';
+const fundingPort = Number(fundingPortText);
+if (!/^[1-9][0-9]*$/.test(fundingPortText) || fundingPort < 1024 || fundingPort > 65535)
+  throw new Error('demo: PASSPORT_FUNDING_PORT must be a port from 1024 to 65535');
 
 /** @typedef {{ command: string, arm: 'p256' | 'jubjub', armExplicit?: true, keyService: boolean, funding: boolean, open: boolean, mockPasskey: boolean, passportRepo?: string, contractDir?: string, account?: string, color?: string, amount?: string, requestId?: string, help?: boolean }} DemoOptions */
 
@@ -82,7 +100,7 @@ const usage = `Usage: nix develop -c node scripts/demo.mjs [up|setup|check|fund]
   --passport-repo X  Local checkout of midnightntwrk/passport (or PASSPORT_REPO).
   --contract-dir X   Reuse a previously compiled ACC tree (or PASSPORT_CONTRACT_DIR).
   --no-key-service   Skip the optional standalone key server on port 8788.
-  --funding          Start the separate funding service on port 8789 (localnet).
+  --funding          Start the separate funding service on PASSPORT_FUNDING_PORT (default 8789).
   --mock-passkey     Use the dev-only mock-passkey URL.
   --arm X            Browser account arm: p256 (default) or jubjub (create/open preview).
   --open             Open the demo URL in the default browser.
@@ -242,6 +260,24 @@ function stopOwned(child, group = true) {
   }
 }
 
+/** A signalled shared launcher owns the sponsor lease until its drain exits.
+ * @param {import('node:child_process').ChildProcess | undefined} child */
+function waitForOwnedExit(child, timeoutMs = 45_000) {
+  if (!child || child.exitCode !== null || child.signalCode !== null) return Promise.resolve();
+  return new Promise((resolve) => {
+    const onExit = () => {
+      clearTimeout(timer);
+      resolve(undefined);
+    };
+    const timer = setTimeout(() => {
+      console.error(
+        'demo: still waiting for the shared launcher to drain; preserve its sponsor lease',
+      );
+    }, timeoutMs);
+    child.once('exit', onExit);
+  });
+}
+
 /** @param {import('node:child_process').ChildProcess} child */
 async function waitForKeyService(child) {
   for (let attempt = 0; attempt < 900; attempt++) {
@@ -311,7 +347,7 @@ export async function fund(options) {
   const config = /** @type {{ networkId: string, bindingId: string, manifestSha256: string }} */ (
     await health.json()
   );
-  if (config.bindingId !== binding.id || config.manifestSha256 !== manifestPin)
+  if (config.bindingId !== demoBindingId || config.manifestSha256 !== demoManifestPin)
     throw new Error('funding service binding differs from the demo pin');
   const response = await fetch(new URL('/v1/faucet/fund', endpoint), {
     method: 'POST',
@@ -361,6 +397,10 @@ async function waitForPage(child) {
 
 /** @param {DemoOptions} options */
 async function up(options) {
+  if (demoBindingId !== binding.id && options.keyService)
+    throw new Error(
+      'demo: provisional ACC uses the verified service assets, not the stable key server',
+    );
   const signing = demoSigningEnvironment(options, process.env);
   await check(options);
   const contractDir = prepare(options);
@@ -368,7 +408,7 @@ async function up(options) {
   const env = {
     ...process.env,
     PASSPORT_CONTRACT_DIR: contractDir,
-    PASSPORT_MANIFEST_SHA256: manifestPin,
+    PASSPORT_MANIFEST_SHA256: demoManifestPin,
     ...signing,
     ...(options.funding ? { PASSPORT_DEMO_FUNDING_ENABLED: '1' } : {}),
   };
@@ -431,8 +471,12 @@ async function up(options) {
     if (status !== 0 && status !== 130) process.exitCode = status;
   } finally {
     cleanup();
-    process.off('SIGINT', cleanup);
-    process.off('SIGTERM', cleanup);
+    try {
+      if (process.env.MIDNIGHT_STACK === 'shared-ledger9') await waitForOwnedExit(prototype);
+    } finally {
+      process.off('SIGINT', cleanup);
+      process.off('SIGTERM', cleanup);
+    }
   }
 }
 

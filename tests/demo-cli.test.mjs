@@ -6,6 +6,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fund, manifestStatus, parseArgs } from '../scripts/demo.mjs';
+import {
+  claimJournalDirectory,
+  parseArgs as parseMidnamesArgs,
+} from '../scripts/midnames-local-demo.mjs';
 import binding from '../packages/contract/acc-binding-v2.generated.json' with { type: 'json' };
 
 test('demo CLI chooses up by default and parses explicit setup options', () => {
@@ -29,6 +33,56 @@ test('demo CLI chooses up by default and parses explicit setup options', () => {
   assert.throws(() => parseArgs(['up', '--contract-dir']), /needs a directory/);
   assert.equal(parseArgs(['-h']).help, true);
   assert.throws(() => parseArgs(['reset']), /unknown command/);
+});
+
+test('local Midnames candidate profile requires an explicit asset selection', () => {
+  const defaultOptions = parseMidnamesArgs(['up']);
+  assert.equal(defaultOptions.candidateAssets, undefined);
+  const selected = parseMidnamesArgs([
+    'up',
+    '--setup',
+    '--claim',
+    '--candidate-assets',
+    '/tmp/verified-candidate',
+  ]);
+  assert.equal(selected.candidateAssets, '/tmp/verified-candidate');
+  assert.equal(selected.setup, true);
+  assert.equal(selected.claim, true);
+  assert.throws(() => parseMidnamesArgs(['up', '--candidate-assets']), /needs a path/);
+  assert.equal(
+    parseMidnamesArgs(['up', '--claim', '--claim-journal-id', 'fresh-20261123']).claimJournalId,
+    'fresh-20261123',
+  );
+  for (const invalid of ['../other', '/tmp/other', 'Upper', 'a'.repeat(41)])
+    assert.throws(
+      () => parseMidnamesArgs(['up', '--claim', '--claim-journal-id', invalid]),
+      /--claim-journal-id needs a lowercase/,
+    );
+  const stable = claimJournalDirectory(
+    parseMidnamesArgs([
+      'up',
+      '--claim',
+      '--state-dir',
+      '/tmp/demo',
+      '--claim-journal-id',
+      'candidate-foo',
+    ]),
+  );
+  const candidate = claimJournalDirectory(
+    parseMidnamesArgs([
+      'up',
+      '--claim',
+      '--state-dir',
+      '/tmp/demo',
+      '--candidate-assets',
+      '/tmp/assets',
+      '--claim-journal-id',
+      'foo',
+    ]),
+  );
+  assert.equal(stable, '/tmp/demo/claim-journal-stable-candidate-foo');
+  assert.equal(candidate, '/tmp/demo/claim-journal-candidate-foo');
+  assert.notEqual(stable, candidate);
 });
 
 test('demo fund command sends a pinned authenticated request with the caller idempotency key', async () => {

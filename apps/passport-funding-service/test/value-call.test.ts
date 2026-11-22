@@ -65,6 +65,28 @@ test('value endpoint refuses other circuits and deposits above the demo policy b
   }
 });
 
+test('candidate funding never exposes the stable value-call route', async () => {
+  const config = {
+    networkId: 'undeployed',
+    host: '127.0.0.1',
+    corsOrigin: 'http://localhost:5173',
+    provisionalLocal: true,
+  } as FundingConfig;
+  const server = createServer(config, [valueCallRoute(config, null as never, () => true)]);
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  try {
+    const port = (server.address() as { port: number }).port;
+    const response = await fetch(`http://127.0.0.1:${port}/v1/value-call`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: '{}',
+    });
+    assert.equal(response.status, 403);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
 test('tagged Uint256 amounts reject oversized text before BigInt conversion', () => {
   const maximum = (1n << 256n) - 1n;
   assert.equal(decodeValueArg({ $bigint: maximum.toString() }), maximum);

@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "kind": "candidate-acc-shared-exported-adapter-settled-night-deposit",
+  "result": "PASS_WITH_LIMITS",
+  "observedAt": "2026-11-22",
+  "sourceHead": "0d47432b82575c79fb8953cbd983bf29156db252",
+  "privateScriptSha256": "18a2866b0382bb9db64aa27943940933595ebd3e73872106fe0042d936f996ee",
+  "privateReceiptSha256": "96ace8ef9964d87a7e794b0e640e8f950dd44b0dcd4afdd62832b9fa3df3bc43",
+  "networkId": "undeployed",
+  "indexerApi": "v4",
+  "proofVersion": "9.0.2",
+  "candidateBinding": "acc-s3r1.1-zkir036",
+  "candidateManifestSha256": "590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f",
+  "syntheticRecipientAcc": "1bbba3a26618dc64720ad78fadc98d9b404eab7f983f7bf9c210f8c6c8b2e4c0",
+  "amountNightSmallestUnits": "4",
+  "reconciledSplitTransactionHash": "6510e371e72754b430301bc281b7693b6ea77eda40551d1ef90abaf4a2c76084",
+  "reconciledSplitReceiptSha256": "4b23f5a8f405fd30a835d5be391a0d1c6fcbc21accc81e31fd12c84197dc218a",
+  "reconciledSplitReconciliationSha256": "002f19b22e4a7aabd0d6b306374755fb8e34a3b55752a6629fbc8efe5503f920",
+  "exactSplitOutputConsumed": true,
+  "exportedAdapterUsed": true,
+  "proverCalls": 1,
+  "provenSha256": "eceff6fcecce6419baec1b59546cf568a0078fe01823a6e02e0ea539e0bcebd0",
+  "depositTransactionHash": "ca18b22acb1caac6bbde858b4fec6d59858644ccd909bd38e7eb7d31fb6eedda",
+  "depositIdentifiers": [
+    "00502a20c2c1312b360f2297fe2adbd68074108dc7c0d9f3deb41e209044339366",
+    "004ad14e0241de3c7dee60d03808fdb85853bbb2d9819b5d75cc6d8dd393e8e644"
+  ],
+  "depositDispatches": 1,
+  "depositBlock": {
+    "hash": "99f845ac2537ab1971fc95735f7663c8b8c63bf9b5215dbe4cb4a11544a0e607",
+    "height": 69511
+  },
+  "recipientAccNightBalanceBefore": "0",
+  "recipientAccNightBalanceAfter": "4",
+  "ownedWalletStopped": true,
+  "ownedKeyServerStopped": true,
+  "nativeLeaseReleased": true,
+  "sourceAndSelectedPhysicalInputsUnchanged": true,
+  "limits": [
+    "This was a separate funded synthetic wallet depositing to an existing candidate ACC. It did not withdraw from another Passport ACC or exercise a connected two-leg payment.",
+    "The 4 NIGHT input was split in an earlier transaction, whose original was retained and independently reconciled after an Indexer API v4 observer query error. The deposit consumed that exact finalized output.",
+    "The exported adapter proved the call, while a private native harness used the pinned local wallet to balance, sign and submit it. The browser worker and funding service remain disabled for this provisional binding.",
+    "This does not qualify a real passkey, combined browser journey, online resolver/provider, public passport.night namespace, or released SDK binding."
+  ]
+}

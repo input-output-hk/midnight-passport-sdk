@@ -24,6 +24,10 @@ in this guide remain in force.
 The local source after RC7 also has a read-only, app-owned mock naming adapter.
 See [naming-service interfaces, replacement and demo limits](../site/names.md).
 It is independent of onboarding and never authorizes or redirects a transfer.
+The opt-in Midnames source profile requires its two configured indexers to
+select the same node-finalized block before comparing a named ACC target; a
+lagging reader is unavailable, not a second vote for an older destination.
+Its configured known mapping pin and requested name share one block per lookup.
 
 For the current `acc-s3r1.1` setup, funding flow, audit status and operator handover, see the
 [engineering handover](../site/handover.md). The run evidence below is historical and names the
@@ -321,6 +325,14 @@ shows the full route before credential review, and displays retained original
 IDs for recovery. A connected local Ledger 9 browser run finalized both original
 legs of one named payment and recovered the same IDs after reload. It used a
 local mock JubJub credential; real-provider qualification remains open.
+
+For the separate provisional `acc-s3r1.1-zkir036` candidate, the source-only
+page path requires the exact local manifest, standalone registry profile,
+loopback service and Indexer API v4 endpoints. Its saved payment record carries
+that binding pin and cannot be resumed under the stable binding. The candidate
+launcher keeps the named-send control off while a same-head connected native
+payment and browser recovery are unqualified. The earlier isolated two-leg
+fixture and separately settled direct deposit establish narrower results.
 
 On the current shared Ledger 9 profile, the retained Compact 0.35 NIGHT
 deposit transcript overclaimed deleted-byte gas credit. The node rejected the
