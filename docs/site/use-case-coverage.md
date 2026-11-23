@@ -81,9 +81,17 @@ failures remain separately qualified only at their stated test tiers.
 The typed resolver and the standalone `.night` registry demonstrate
 operation-specific on-chain target lookup, supported-binding verification and
 separate account authorization. The claim, shielded receive and NIGHT payment
-fixtures cover those boundaries on `undeployed`. Production namespace and
-registrar policy, public registry substitution, binding transfers, and a
-native real-credential name-to-open flow still require separate evidence.
+fixtures cover those boundaries on `undeployed`. A
+[connected name-to-open run](../../examples/midnames-local/evidence/compact0361-name-to-authorized-open-20261124.json)
+created and activated a fresh ACC, claimed a fresh name, resolved that name
+after reload, and used the resolved address with the enrolled passkey to open
+the same ACC. Its one original finalized at a canonical block, and a separate
+read-only audit checked the registry owner commitment, contract target,
+supported binding and typed contract-call result. The browser wrote PASS, but
+its Node wrapper required termination after Chrome closed, so the supervisor
+receipt remains FAIL; cleanup and lease release completed. This is a two-step
+host flow with a virtual PRF credential. Production namespace and registrar
+policy, public registry substitution, and binding transfers remain open.
 The [candidate paid-claim receipt](../../examples/midnames-local/evidence/candidate-acc-page-paid-claim-retry-20261122.json)
 adds one local page-owned claim failure and same-profile retry against a full
 Compact 0.36 candidate ACC. Its exact indexed failure was archived before a
@@ -135,6 +143,7 @@ Named shielded receive was qualified on later local source.
 | Deposit a shielded asset by name | Standalone Node sender using the real Midnames adapter and `deposit_shielded` | Native `undeployed` receipt on signed `d492487`: one finalized 10-unit test-token deposit to `alice.night`, with owner decryption and verified holding. At signed `8165c73`, a separate sender finalized one deposit to existing `paidfix.night` on shared Ledger 9; the saved mock-passkey owner read the matching chain-verified holding. Automated pre-dispatch refusal, unknown-outcome, and generated ACC gas tests. | Source-only wallet-to-ACC receive on the transitional local `.night` profile. Automated approval and mock passkey; public namespace, real provider and online substitution remain open. |
 | Send NIGHT between named Passport ACCs | Standalone Node fixture and opt-in Passport browser form using JubJub withdrawal and `deposit_unshielded` | Native `undeployed` payment on signed `d492487` interrupted after withdrawal; the reopened journal spent its exact output and confirmed 10→6 on the source, 0→4 on the target. A later [connected 0.36.1 browser payment](../../examples/midnames-local/evidence/compact0361-connected-browser-night-send-20261123.json) canonically finalized both legs of one reviewed 1-unit intent and archived it after reload. A read-only same-profile continuation reopened and refreshed the source ACC and read both balances at one finalized block: 9/5. A [connected refusal run](../../examples/midnames-local/evidence/compact0361-connected-browser-night-refusals-20261123.json) rejected insufficient balance and an absent name before owner review with the prior journal and balances unchanged. Tests cover repoints, invalid routes and retained receipts at their stated tiers. | Local source and development mock passkey only. Physical credentials and online profiles require separate qualification. |
 | Claim and reconcile a local name | Demo recovery form with a sponsor-prepared owner proof and durable original receipt | Native `undeployed` claim on signed `9a19757` covered lost-response recovery and alternate-credential refusal. [Signed `4a6c7642` evidence](../../examples/midnames-local/evidence/release-ledger9-page-two-originals-20261120.json) covers exact failure retirement and a successful retry in one persistent page profile. A [combined 0.36.1 run](../../examples/midnames-local/evidence/compact0361-real-connector-lost-response-20261124.json) created and activated a new ACC through the real browser connector, sent one reviewed paid claim, lost the sponsor response, reconciled its indexed original, then reloaded and reopened the same ACC without another dispatch. A separate canonical audit verified the finalized owner and contract target. | Isolated local `.night` registry and synthetic virtual PRF credential. The combined pass stayed in one browser process; physical provider consent, process-restart PRF continuity, online namespace and total-loss name continuity remain open. |
+| Resolve a name and open its ACC | Read-only Midnames lookup plus Open by address | A [connected 0.36.1 run](../../examples/midnames-local/evidence/compact0361-name-to-authorized-open-20261124.json) resolved a newly claimed name after reload, opened that exact ACC with its enrolled passkey, and independently audited the finalized binding and typed contract-call target. | Local two-step host flow and virtual PRF credential. The browser passed; its supervisor receipt is FAIL because its Node wrapper needed termination after Chrome closed. No automatic open-by-name action or online/physical-provider qualification. |
 
 These are mapped tests, not exhaustive coverage of every parameter, circuit,
 interleaving or provider. The 52 proof/66 pure circuit inventory does not imply

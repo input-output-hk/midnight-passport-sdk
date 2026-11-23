@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "kind": "isolated-ledger9-compact0361-name-to-authorized-open",
+  "date": "2026-11-24",
+  "sourceHead": "4d1fd39b283235a2702ea594e38ee923ef585498",
+  "profile": {
+    "networkId": "undeployed",
+    "registry": "standalone-0.36.1",
+    "registryAddress": "3d0502ab6b226f12ad621fb6c4e5e9882c75b2df479545cd65d1325f7ad30591",
+    "accountBinding": "acc-s3r1.1-zkir036",
+    "indexerApi": "v4",
+    "transactionProtocolVersion": 2001100,
+    "browserCredential": "synthetic virtual PRF",
+    "accountConnector": "real browser connector",
+    "chain": "retained isolated Ledger 9 chain, separate from the shared demo"
+  },
+  "browser": {
+    "result": "PASS",
+    "name": "v36paged2100bc2.night",
+    "createdAndActivatedAccount": "2885d16668e9f9011b24cb8fa801e39c9ff225e81f33d364b8c76ca8667a2178",
+    "quoteRequests": 1,
+    "ownerProofRequests": 1,
+    "sponsorPrepareRequests": 1,
+    "dispatchRequests": 1,
+    "sponsorResponseStatusBeforeInterception": 202,
+    "responseDroppedToPage": true,
+    "registeredAfterLostResponse": true,
+    "nameResolvedToAccountAfterReload": true,
+    "resolvedAccountOpenedWithEnrolledPasskey": true,
+    "registeredAfterReload": true,
+    "secondDispatch": false,
+    "pageErrors": 0
+  },
+  "original": {
+    "sha256": "6b1c9f0155203b3c3921982c4f0fdac1990eb595a85fe96045bd06ad22553e14",
+    "identifiers": [
+      "008fa476f8b4ed0fc7b538af2d81280f214c65a7dfa4c66f99240fa60e3b7de170",
+      "002096ba889263408a9ee931bcb23846d6ad328cf69cdd1421e66f5da725acb251"
+    ],
+    "indexedStatus": "SUCCESS",
+    "canonicalBlock": {
+      "hash": "b816541b9d4cf85d9bbc4b41b8900aa1a69f36144671161375d170ebd3eea22e",
+      "height": 2237
+    },
+    "finalizedBlock": {
+      "height": 2255,
+      "hash": "800b3f4a20349ab1238def024c8f28302345da60f1e6ff62f5f836b15e9ab1f8"
+    },
+    "registryOwnerCommitment": "6d7230269ffa3cc822f71b8f04cabaad6692bb921ac6357f2c009f682eacb6a6",
+    "registryTarget": {
+      "kind": "contract",
+      "address": "2885d16668e9f9011b24cb8fa801e39c9ff225e81f33d364b8c76ca8667a2178"
+    },
+    "supportedAccount": true,
+    "typedContractCallResolutionMatched": true
+  },
+  "cleanup": {
+    "supervisorResult": "FAIL: browser Node wrapper required SIGTERM after it wrote PASS and Chrome exited",
+    "ownedContainersStopped": 3,
+    "nativeLeaseReleased": true,
+    "sharedStackUntouched": true,
+    "isolatedVolumesAndPrivateJournalsRetained": true
+  },
+  "privateReceiptSha256": {
+    "supervisor": "0813b34c5f9bbe10e0fb93ef04d635a0d81f5364639cf85815ece6381e199f4b",
+    "browser": "59087fff2db4456e983d0e7ff5920cab6b6624fc2427ef3ca9dc1ec741fe874e",
+    "original": "9238c59d01419b8f4c938273e80138aa2d7a3212ea4660063b43bde064b97872",
+    "canonicalAudit": "61b723bb9467d2efca95c3c386bbdd98d39bc97f903eae22b89b6f2118a33db2"
+  },
+  "limits": "The page displayed a provider address hint, which the test supplied to the separate Open by address action; the demo has no one-click open-by-name action. The passkey authorized account opening, not name ownership. The browser PASS and independent canonical audit are separate from the supervisor FAIL caused by its test wrapper remaining alive after Chrome closed. This local single-indexer, virtual-credential run does not qualify physical passkeys, browser-process PRF restoration, public passport.night ownership, online providers, or production images."
+}

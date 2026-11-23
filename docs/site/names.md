@@ -156,6 +156,18 @@ node's state response; it is **not a cryptographic state proof** or independent
 node qualification. The demo presents the result for inspection and value
 routes re-resolve before submission.
 
+An [isolated 0.36.1 browser run](../../examples/midnames-local/evidence/compact0361-name-to-authorized-open-20261124.json)
+created and activated a fresh ACC, claimed a fresh `.night` name, resolved it
+after reload, and supplied the result to the separate **Open by address**
+action. The enrolled virtual PRF credential opened that exact ACC. A separate
+read-only audit checked the exact original and indexer state at a
+node-confirmed finalized block, including the owner commitment, contract
+target, supported ACC binding and typed contract-call resolution. The browser
+wrote PASS; its Node wrapper stayed alive after Chrome closed and was stopped,
+so the supervisor receipt is FAIL while cleanup and lease release passed. This
+is a two-step local demonstration: the lookup does not authorize account
+control, and the demo has no automatic open-by-name action.
+
 For any non-`undeployed` network or non-loopback indexer, the two known-mapping
 inputs and a complete second indexer path are fail-closed readiness gates.
 Before **every** lookup, the adapter reads the known name through both

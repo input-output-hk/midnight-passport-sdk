@@ -100,4 +100,16 @@ withdrawal and one deposit after durable original-intent recovery, with 6/4
 final ACC balances. The reference demo now has an opt-in owner send page and a
 connected local candidate payment receipt. Human passkey consent and online
 naming remain separate qualification gates.
+
+A [connected local name-to-open receipt](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-name-to-authorized-open-20261124.json)
+records a fresh ACC and paid `.night` claim on an isolated Ledger 9 chain. After
+reload, the browser resolved the name and supplied its address to the separate
+**Open by address** control; the enrolled virtual PRF passkey opened that exact
+ACC. A separate read-only audit checked the exact original and indexer state
+at a node-confirmed finalized block, including the owner commitment, contract
+target, supported binding and typed contract-call result.
+The browser passed, but its Node wrapper stayed alive after Chrome closed and
+was terminated, so the supervisor receipt is FAIL even though cleanup and lease
+release completed. This is a two-step local flow with a synthetic credential.
+The lookup does not grant account control or establish a public name owner.
 See the [demo configuration and evidence](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/site/names.md#source-preview-midnames-210).
