@@ -181,8 +181,10 @@ after a fresh native claim run before reporting the journey as qualified.
 The rebuilt Compact 0.36.1 registry has a separate, explicitly isolated local
 claim profile. Its page recovery control requires the candidate ACC pin and
 local node/indexer/prover endpoints; it does not change the shared demo's
-registry. The page-to-chain result for this profile remains unqualified until
-the same browser original is observed through the sponsor and final indexer.
+registry. The [isolated page-to-chain receipt](../../examples/midnames-local/evidence/compact0361-page-claim-20261123.json)
+records one reviewed page original, sponsor dispatch, indexed SUCCESS and
+same-profile recovery after a lost response. Its source ACC was activated
+before the browser run, and its login connector and credential were synthetic.
 The [shared-chain browser receipt](../../examples/midnames-local/evidence/candidate-acc-combined-local-claim-20261122.json)
 records one synthetic ACC creation, same-profile paid `.night` claim, exact
 indexed success and matching registry target. Those steps span signed source

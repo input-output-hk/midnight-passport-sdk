@@ -1134,7 +1134,8 @@ does not prepare or send another claim.
 Standalone claim reconciliation requires an explicit
 `VITE_MIDNAMES_CLAIM_PROTOCOL_VERSION` alongside the Indexer API v4 URLs.
 The shared Ledger 9 demo launcher pins the observed transaction protocol
-`2001100`; the isolated fixture uses `2001000`. The values identify transaction
+`2001100`; an older isolated fixture uses `2001000`, while the current isolated
+0.36.1 chain also uses `2001100`. The values identify transaction
 formats, not GraphQL API revisions. A missing or unsupported pin disables the
 claim profile instead of misclassifying a finalized original as unavailable.
 Resolver-only standalone configurations can omit the pin; they keep name
@@ -1146,8 +1147,11 @@ candidate ACC's exact asset manifest, loopback Indexer API v4 endpoints, and
 both `PASSPORT_MIDNAMES_0361_ISOLATED=1` and
 `VITE_MIDNAMES_0361_ISOLATED=1` with `MIDNIGHT_STACK=isolated-ledger9`.
 The ordinary shared demo keeps its 0.35 registry and compatibility prover.
-The isolated claim route remains a local test profile pending a connected
-Passport page, sponsor, proof and indexed-result run.
+The [connected local receipt](../examples/midnames-local/evidence/compact0361-page-claim-20261123.json)
+records a Passport page, sponsor, release-prover proof, one paid claim and
+same-profile recovery on an isolated Ledger 9 chain. The account login
+connector and passkey were synthetic; the shared demo is not switched to this
+registry profile.
 
 An opt-in host can supply the demo's preparation adapter. The user reviews the
 exact sponsor quote and explicitly approves preparation. The form saves the

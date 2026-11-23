@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "kind": "isolated-ledger9-compact0361-passport-page-paid-claim",
+  "date": "2026-11-23",
+  "result": "PASS",
+  "sourceHead": "3b4a471670e50ee2acb33b7a94029c98e0a447d4",
+  "profile": {
+    "registry": "standalone-0.36.1",
+    "accountBinding": "acc-s3r1.1-zkir036",
+    "networkId": "undeployed",
+    "indexerApi": "v4",
+    "transactionProtocolVersion": 2001100,
+    "proofServer": "release Ledger 9 prover",
+    "chain": "Retained isolated Ledger 9 chain; separate from the running shared demo"
+  },
+  "name": "v36page265d262a.night",
+  "registryAddress": "3d0502ab6b226f12ad621fb6c4e5e9882c75b2df479545cd65d1325f7ad30591",
+  "activatedAccAddress": "14c1181524e783ac7a11d225583cb33c842a144aa89294b765393a5e12794053",
+  "browser": {
+    "virtualPrfCredential": true,
+    "connectorWasFixture": true,
+    "accountCreationCalls": 1,
+    "quoteRequests": 1,
+    "ownerProofRequests": 1,
+    "sponsorPrepareRequests": 1,
+    "dispatchRequests": 1,
+    "lostSponsorResponse": true,
+    "registeredAfterSameProfileReload": true,
+    "originalSha256": "bf48d567878f4c445c18d17927dad2186c5299960e28698785ee9a7b01122535",
+    "originalIdentifiers": [
+      "00af727d7d94c2deb3937aa01327eac77d4a33d9e12531b0c74aa99917280e376d",
+      "006cfe3865f0d944140601a05b3cf95d44d1f7b965a2c83db13fee6bc5b4e49946"
+    ]
+  },
+  "nativeAudit": {
+    "exactOriginalIndexedStatus": "SUCCESS",
+    "claimBlock": {
+      "height": 410,
+      "hash": "101cdaec06f960393bd5262ab2985654fe53bd577e0184f4c834d9f765170091"
+    },
+    "nodeCanonicalBlockMatched": true,
+    "finalizedRegistryOwnerCommitmentMatched": true,
+    "finalizedRegistryTargetMatchedActivatedAcc": true,
+    "activatedAccSupported": true
+  },
+  "earlierInterruptedAttempt": {
+    "outcome": "The browser fixture closed while its Playwright dispatch interception was in flight. Its original was preserved, reconciled as indexed SUCCESS, and recovered as Registered in the same browser profile with zero further dispatches before the fixture was corrected.",
+    "recoveryReceiptSha256": "4a7cb733db033536d7f10d375dc49d52d95a3de859225a9ecdd0e80542f1e513"
+  },
+  "privateReceiptsSha256": {
+    "pageRun": "233105b58631aac46a0ff4b928ed299e8f7dfc00585c47318b86a40a53174987",
+    "browserResult": "2ef560098fb35c82ba16656d30dda9da19b746dfd9611fc047bff83626583225",
+    "canonicalAudit": "b9388f30db8d22131821f36a71c36eb4115e1bb8580681167af287a3bced7316"
+  },
+  "cleanup": {
+    "ownedContainersStopped": 3,
+    "volumesAndOriginalJournalsPreserved": true,
+    "nativeLeaseReleased": true,
+    "sharedMidnightStackUnchanged": true
+  },
+  "limits": "The ACC was previously deployed and activated. The page used a synthetic virtual credential and a fixture login connector, one self-hosted isolated node/indexer, and a local sponsor. This does not qualify physical passkeys, combined ACC creation and registration, independent online providers, production images, or a released SDK."
+}

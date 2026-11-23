@@ -42,10 +42,15 @@ request before automated approval, and recovered the
 same owner commitment after reload. The proof bytes were kept private and
 **not submitted**. The native paid claim and owner transfer in
 [the 0.36.1 evidence](evidence/compact0361-native-name-control-20261123.json)
-are separate synthetic operations. Together they do not yet qualify the
-complete Passport page-to-chain 0.36.1 registration flow, an online provider,
-a physical passkey or a release. The shared demo is not switched to this
-profile by preparing these files.
+were separate synthetic operations. A later
+[one-pass Passport page claim](evidence/compact0361-page-claim-20261123.json)
+used the rebuilt registry and release prover on the retained isolated Ledger 9
+chain. It obtained one quote and proof, sent one reviewed original, recovered
+after a lost sponsor response in the same headless browser profile, then
+verified its indexed SUCCESS block against the node and the live name-to-ACC
+binding. The login connector and credential were synthetic. Physical passkeys,
+combined ACC creation and registration, independent online providers and a
+release remain separate. The ordinary shared demo stays on the 0.35 registry.
 
 ## Open the local Passport and Midnames demo
 
