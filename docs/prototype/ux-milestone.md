@@ -178,6 +178,11 @@ local launcher, candidate ACC proofs use the shared release prover on 6300;
 the pinned Compact 0.35 standalone name registry uses an owned compatibility
 prover on 16320. The browser and sponsor journals must be checked together
 after a fresh native claim run before reporting the journey as qualified.
+The rebuilt Compact 0.36.1 registry has a separate, explicitly isolated local
+claim profile. Its page recovery control requires the candidate ACC pin and
+local node/indexer/prover endpoints; it does not change the shared demo's
+registry. The page-to-chain result for this profile remains unqualified until
+the same browser original is observed through the sponsor and final indexer.
 The [shared-chain browser receipt](../../examples/midnames-local/evidence/candidate-acc-combined-local-claim-20261122.json)
 records one synthetic ACC creation, same-profile paid `.night` claim, exact
 indexed success and matching registry target. Those steps span signed source

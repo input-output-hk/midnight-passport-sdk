@@ -283,6 +283,24 @@ test('configured name lookup requires an explicit matching network, registry and
       'acc-s3r1.1',
     ),
   );
+  const isolated0361 = {
+    ...config,
+    namespace: 'night',
+    registryProfile: 'standalone-0.36.1',
+    isolated0361: '1',
+    claimProtocolVersion: '2001100',
+  };
+  assert.throws(() => configureMidnames(isolated0361, profile.networkId, 'acc-s3r1.1'));
+  assert.throws(() =>
+    configureMidnames({ ...isolated0361, isolated0361: '0' }, profile.networkId, 'acc-s3r1.1'),
+  );
+  assert.throws(() =>
+    configureMidnames(
+      { ...isolated0361, indexerUrl: 'https://indexer.example.test/api/v4/graphql' },
+      profile.networkId,
+      'acc-s3r1.1',
+    ),
+  );
   const standalone = { ...config, namespace: 'night', registryProfile: 'standalone-0.35' };
   const resolverOnly = configureMidnames(standalone, profile.networkId, 'acc-s3r1.1');
   assert.equal(resolverOnly?.provider.mode, 'external');
@@ -441,6 +459,25 @@ test('provisional ACC reader is confined to the local standalone registry', () =
     },
   };
   assert.ok(configureMidnames(local, 'undeployed', candidate.bindingId, undefined, candidate));
+  const isolated0361 = {
+    ...local,
+    registryProfile: 'standalone-0.36.1',
+    isolated0361: '1',
+    claimProtocolVersion: '2001100',
+  };
+  assert.ok(
+    configureMidnames(isolated0361, 'undeployed', candidate.bindingId, undefined, candidate)
+      ?.recovery,
+  );
+  assert.throws(() =>
+    configureMidnames(
+      { ...isolated0361, isolated0361: '0' },
+      'undeployed',
+      candidate.bindingId,
+      undefined,
+      candidate,
+    ),
+  );
   assert.throws(
     () =>
       configureMidnames(

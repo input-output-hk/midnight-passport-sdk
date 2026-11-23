@@ -52,6 +52,21 @@ test('prototype startup checks stable reference and separate candidate bytes', (
       VITE_MIDNAMES_REGISTRY_PROFILE: 'standalone-0.35',
     };
     assert.equal(verifyDemoArtefacts(env, pins), env.PASSPORT_BINDING_ID);
+    const isolated = {
+      ...env,
+      MIDNIGHT_STACK: 'isolated-ledger9',
+      VITE_MIDNAMES_REGISTRY_PROFILE: 'standalone-0.36.1',
+      VITE_MIDNAMES_0361_ISOLATED: '1',
+      PASSPORT_MIDNAMES_0361_ISOLATED: '1',
+    };
+    assert.equal(verifyDemoArtefacts(isolated, pins), env.PASSPORT_BINDING_ID);
+    for (const changed of [
+      { PASSPORT_MIDNAMES_0361_ISOLATED: '0' },
+      { VITE_MIDNAMES_0361_ISOLATED: '0' },
+      { MIDNIGHT_STACK: 'shared-ledger9' },
+      { VITE_MIDNAMES_REGISTRY_PROFILE: 'standalone-0.35' },
+    ])
+      assert.throws(() => verifyDemoArtefacts({ ...isolated, ...changed }, pins));
     for (const changed of [
       { PASSPORT_CANDIDATE_LOCAL: '0' },
       { MIDNIGHT_STACK: 'undeployed' },

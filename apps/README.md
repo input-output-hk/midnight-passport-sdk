@@ -1140,6 +1140,15 @@ claim profile instead of misclassifying a finalized original as unavailable.
 Resolver-only standalone configurations can omit the pin; they keep name
 lookup and named sends but expose no claim recovery panel.
 
+The rebuilt `standalone-0.36.1` registry enables claim preparation and recovery
+only for the isolated Ledger 9 qualification profile. That profile requires the
+candidate ACC's exact asset manifest, loopback Indexer API v4 endpoints, and
+both `PASSPORT_MIDNAMES_0361_ISOLATED=1` and
+`VITE_MIDNAMES_0361_ISOLATED=1` with `MIDNIGHT_STACK=isolated-ledger9`.
+The ordinary shared demo keeps its 0.35 registry and compatibility prover.
+The isolated claim route remains a local test profile pending a connected
+Passport page, sponsor, proof and indexed-result run.
+
 An opt-in host can supply the demo's preparation adapter. The user reviews the
 exact sponsor quote and explicitly approves preparation. The form saves the
 quote and owner commitment before the sponsor request and accepts only a receipt

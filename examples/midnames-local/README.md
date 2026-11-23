@@ -26,6 +26,14 @@ The owner host accepts `standalone-0.36.1` only with this verified output and
 an explicit loopback proof server. The ordinary shared demo still uses its
 separately pinned Compact 0.35 registry and compatibility prover.
 
+The separate local claim host also accepts this release profile when both
+`PASSPORT_MIDNAMES_0361_ISOLATED=1` and `VITE_MIDNAMES_0361_ISOLATED=1`
+are set, `MIDNIGHT_STACK=isolated-ledger9`, and
+`VITE_MIDNAMES_REGISTRY_PROFILE=standalone-0.36.1`. It pins the retained
+isolated node, Indexer API v4 and release prover on ports 19964, 18108 and
+16320. The candidate ACC assets and manifest must match the package pin.
+This setup is for isolated qualification; do not point it at the shared chain.
+
 An [isolated Ledger 9 test](evidence/compact0361-browser-owner-proof-20261123.json)
 proved a fresh claim in headless Chromium with a
 virtual PRF credential and the released proof server. It displayed a

@@ -260,6 +260,7 @@ try {
     {
       claimSponsor: import.meta.env.VITE_MIDNAMES_CLAIM_SPONSOR,
       claimProtocolVersion: import.meta.env.VITE_MIDNAMES_CLAIM_PROTOCOL_VERSION,
+      isolated0361: import.meta.env.VITE_MIDNAMES_0361_ISOLATED,
       registryProfile: import.meta.env.VITE_MIDNAMES_REGISTRY_PROFILE,
       registryAddress: import.meta.env.VITE_MIDNAMES_REGISTRY_ADDRESS,
       namespace: import.meta.env.VITE_MIDNAMES_NAMESPACE,

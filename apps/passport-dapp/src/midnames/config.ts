@@ -25,6 +25,8 @@ export interface MidnamesConfig {
   readonly claimSponsor?: string | undefined;
   /** Exact Indexer v4 transaction protocol observed on this chain, not the API version. */
   readonly claimProtocolVersion?: string | undefined;
+  /** Enables claims only for the explicitly isolated 0.36.1 local test chain. */
+  readonly isolated0361?: string | undefined;
   readonly registryProfile?: string | undefined;
   readonly registryAddress?: string | undefined;
   readonly namespace?: string | undefined;
@@ -189,6 +191,29 @@ function requirePairNodePin(verification: unknown, nodePin: MidnamesNodePin | un
     throw new Error('Two-provider naming requires a separately pinned finalized node.');
 }
 
+function supportsStandaloneClaim(
+  config: MidnamesConfig,
+  profileId: MidnamesRegistryProfile,
+  bindingId: string,
+  candidate: CandidateAccountQualification | undefined,
+  http: string,
+  ws: string,
+  verification: unknown,
+): boolean {
+  if (config.namespace !== 'night') return false;
+  if (profileId === 'standalone-0.35') return true;
+  return (
+    profileId === 'standalone-0.36.1' &&
+    bindingId === 'acc-s3r1.1-zkir036' &&
+    candidate?.bindingId === bindingId &&
+    config.isolated0361 === '1' &&
+    config.networkId === 'undeployed' &&
+    loopback(http) &&
+    loopback(ws) &&
+    verification === undefined
+  );
+}
+
 type MidnamesReader = Pick<
   ReturnType<typeof createMidnamesLedgerReads>,
   | 'readTarget'
@@ -307,9 +332,15 @@ export function configureMidnames(
   const guardKnown = async () => {
     if (knownName !== undefined) await service.resolve({ name: knownName, networkId });
   };
-  // The 0.36.1 compiler profile is read-only until its browser owner bundle
-  // proves and submits through the release prover at this exact source head.
-  const standalone = profileId === 'standalone-0.35' && namespace === 'night';
+  const standalone = supportsStandaloneClaim(
+    config,
+    profileId,
+    bindingId,
+    candidate,
+    http,
+    ws,
+    verification,
+  );
   if (preparation && config.claimSponsor !== '1')
     throw new Error('Claim preparation requires the loopback standalone sponsor.');
   if (
