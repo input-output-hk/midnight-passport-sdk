@@ -960,6 +960,15 @@ fenced deposit's finality; a separate payment on the next signed head completed
 and archived automatically. Neither result qualifies a physical passkey or an
 online Midnames provider.
 
+If a name is repointed **after** the owner's withdrawal finalized, the browser
+retains that original and can ask for a separate, exact review to deposit its
+output into the originally reviewed ACC. The dialog shows the old and current
+ACC targets, amount and saved withdrawal ID. The host rechecks the old ACC's
+supported binding before fencing the deposit. It never sends that output to
+the new named ACC or repeats the withdrawal. A changed registry/provider
+refuses this recovery mode. Source and connected-host tests cover the path;
+a native browser receipt for this post-withdrawal repoint is still needed.
+
 An [isolated Compact 0.36.1 native receipt](../../examples/midnames-local/evidence/compact0361-paid-name-night-send-20261123.json)
 resolved a previously paid, user-owned `.night` name to its contract target,
 then sent 4 NIGHT from a fresh candidate ACC. The sender deliberately stopped

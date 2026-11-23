@@ -32,6 +32,12 @@ interface ConnectedNightSendOptions {
   readonly isSupportedRecipient: (address: string, networkId: string) => Promise<boolean>;
   readonly readSourceBalance: (address: string) => Promise<bigint | undefined>;
   readonly review: (intent: NightSendIntent, balance: bigint) => Promise<boolean>;
+  /** Fresh approval to finish only the saved deposit at its original ACC after the name moves. */
+  readonly reviewOriginalDeposit?: (
+    original: NightSendIntent,
+    current: NightSendIntent,
+    withdrawal: NightSendLeg,
+  ) => Promise<boolean>;
   /** Check that the selected account, credential and wallet still match this host. */
   readonly checkScope: () => void;
   /** Check the exact named route after the actual owner credential ceremony. */
@@ -117,6 +123,17 @@ function checkedSelection(options: ConnectedNightSendOptions) {
   return { scope, network, bridge };
 }
 
+function checkedRecoveryReview(options: ConnectedNightSendOptions, checkSelected: () => void) {
+  const review = options.reviewOriginalDeposit;
+  if (!review) return undefined;
+  return async (original: NightSendIntent, current: NightSendIntent, withdrawal: NightSendLeg) => {
+    checkSelected();
+    const approved = await review(original, current, withdrawal);
+    checkSelected();
+    return approved;
+  };
+}
+
 /** Compose the owner and device-held wallet without giving the resolver signing authority. */
 export async function createConnectedNightSend(
   options: ConnectedNightSendOptions,
@@ -160,6 +177,7 @@ export async function createConnectedNightSend(
     },
     { manifestSha256: network.manifestSha256, provisionalLocal: !!options.provisionalLocal },
   );
+  const reviewOriginalDeposit = checkedRecoveryReview(options, checkSelected);
   return {
     async send(request: NightSendRequest) {
       checkSelected();
@@ -178,6 +196,7 @@ export async function createConnectedNightSend(
             checkSelected();
             return approved;
           },
+          ...(reviewOriginalDeposit && { reviewOriginalDeposit }),
           async submitWithdrawal(intent, beforeSubmit) {
             checkSelected();
             await ownerWithdrawal(intent, async (submission) => {

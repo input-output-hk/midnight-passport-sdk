@@ -223,6 +223,110 @@ test('after a withdrawal and interruption only the original deposit can continue
   assert.deepEqual(calls, ['review', 'sign', 'withdraw', 'deposit']);
 });
 
+test('a repointed name needs a fresh review to finish only the saved original deposit', async () => {
+  const { state, calls, ports, legs } = fixture();
+  state.finalized.add(withdrawal.hash);
+  state.stopBeforeDeposit = true;
+  await assert.rejects(sendNightByName(request, ports()), NightDepositInterrupted);
+  state.stopBeforeDeposit = false;
+  state.address = 'd'.repeat(64);
+  let recoveryReviews = 0;
+  const recovery = {
+    ...ports(),
+    async reviewOriginalDeposit(
+      original: NightSendIntent,
+      current: NightSendIntent,
+      saved: NightSendLeg,
+    ) {
+      recoveryReviews++;
+      assert.equal(original.target, target);
+      assert.equal(current.target, state.address);
+      assert.deepEqual(saved, withdrawal);
+      calls.push('recovery-review');
+      return recoveryReviews > 1;
+    },
+  };
+  await assert.rejects(sendNightByName(request, recovery), NightDepositInterrupted);
+  assert.equal(legs.has('deposit'), false);
+  state.duringDepositProof = () => {
+    state.address = 'e'.repeat(64);
+  };
+  assert.equal((await sendNightByName(request, recovery)).phase, 'deposit-pending');
+  assert.deepEqual(legs.get('deposit'), deposit);
+  state.finalized.add(deposit.hash);
+  assert.equal((await sendNightByName(request, recovery)).phase, 'completed');
+  assert.equal(recoveryReviews, 2, 'a fenced deposit needs only finality, not another review');
+  assert.deepEqual(calls, [
+    'review',
+    'sign',
+    'withdraw',
+    'recovery-review',
+    'recovery-review',
+    'deposit',
+  ]);
+});
+
+test('the original ACC binding must survive the recovery review and proof', async () => {
+  const { state, calls, ports, legs } = fixture();
+  state.finalized.add(withdrawal.hash);
+  state.stopBeforeDeposit = true;
+  await assert.rejects(sendNightByName(request, ports()), NightDepositInterrupted);
+  state.stopBeforeDeposit = false;
+  state.address = 'd'.repeat(64);
+  let reviews = 0;
+  const recovery = {
+    ...ports(),
+    async reviewOriginalDeposit() {
+      reviews++;
+      return true;
+    },
+  };
+  state.supportedTarget = false;
+  await assert.rejects(sendNightByName(request, recovery), NightDepositInterrupted);
+  assert.equal(reviews, 0);
+  state.supportedTarget = true;
+  state.duringDepositProof = () => {
+    state.supportedTarget = false;
+  };
+  await assert.rejects(sendNightByName(request, recovery), NightDepositInterrupted);
+  assert.equal(reviews, 1);
+  assert.equal(legs.has('deposit'), false);
+  assert.deepEqual(calls, ['review', 'sign', 'withdraw']);
+});
+
+test('changing the registry provider cannot use original-target recovery', async () => {
+  const { state, calls, ports, legs } = fixture();
+  state.finalized.add(withdrawal.hash);
+  state.stopBeforeDeposit = true;
+  await assert.rejects(sendNightByName(request, ports()), NightDepositInterrupted);
+  let reviewed = false;
+  const replacement = createMidnamesNameService(
+    { networkId: request.networkId, namespace: 'night', registryAddress: 'f'.repeat(64) },
+    {
+      async readTarget() {
+        return { kind: 'contract' as const, address: 'd'.repeat(64) };
+      },
+      async isSupportedAccount() {
+        return true;
+      },
+    },
+  );
+  await assert.rejects(
+    sendNightByName(request, {
+      ...ports(),
+      names: replacement,
+      async reviewOriginalDeposit() {
+        reviewed = true;
+        return true;
+      },
+    }),
+    NightDepositInterrupted,
+  );
+  assert.equal(reviewed, false);
+  assert.equal(legs.has('deposit'), false);
+  assert.deepEqual(calls, ['review', 'sign', 'withdraw']);
+});
+
 test('an unknown withdrawal remains original-only and cannot fund the next leg', async () => {
   const { calls, ports, legs } = fixture();
   for (let attempt = 0; attempt < 2; attempt++)

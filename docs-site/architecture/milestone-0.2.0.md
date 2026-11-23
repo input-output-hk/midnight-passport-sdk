@@ -101,6 +101,13 @@ corrected exact-head run showed `NightNameChanged` and required a fresh review
 before any owner proof or payment leg. Unsupported-asset native behavior,
 online resolution, and real-provider consent remain open.
 
+The source now distinguishes a repoint **after** a finalized withdrawal: the
+saved output can be deposited into the originally reviewed ACC only after a
+fresh review of the old and current targets and the withdrawal ID. The old ACC
+binding is checked again before the deposit fence, and a changed registry is
+refused. Connected-host tests exercise no second withdrawal and the exact
+original deposit. A native browser run of this recovery path is still pending.
+
 ## Current Midnames delivery
 
 | Journey | Current evidence and implementation | Remaining acceptance |

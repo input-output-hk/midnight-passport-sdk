@@ -452,6 +452,15 @@ When a name resolves to another supported ACC after the route review, the
 page reports the changed destination and archives the unsubmitted attempt.
 The owner must inspect the new ACC address and review a new payment; the
 earlier approval cannot start a withdrawal.
+After a withdrawal has finalized, a later name repoint is a different case:
+the page may offer an explicit review to finish the **saved original deposit**
+at the ACC already approved before withdrawal. The review shows the current
+named ACC, the original ACC, amount and withdrawal hash. Decline leaves the
+journal pending. Approval uses the one observed bridge output and does not
+repeat the owner withdrawal or pay the new named ACC. The original ACC binding
+is rechecked before the deposit fence; a changed registry refuses this path.
+This source and connected-host test does not yet establish a native browser
+recovery run for a post-withdrawal repoint.
 
 The local NIGHT fixture now uses a reusable source guard for the exact bridge
 output and balanced deposit input. It refuses a different withdrawal identity,

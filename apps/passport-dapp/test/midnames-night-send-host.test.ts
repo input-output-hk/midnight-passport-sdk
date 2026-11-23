@@ -157,6 +157,7 @@ async function connectedJourney(
   network: NetworkConfig,
   provisionalLocal = false,
   refusal?: 'repoint-after-review' | 'non-contract-target' | 'unsupported-asset',
+  recoverRepoint = false,
 ) {
   const factory = new IDBFactory();
   const finalized = new Set<string>();
@@ -299,6 +300,20 @@ async function connectedJourney(
           if (refusal === 'repoint-after-review') namedTarget = '6'.repeat(64);
           return true;
         },
+        ...(recoverRepoint && {
+          reviewOriginalDeposit: async (
+            original: { target: string; requestId: string },
+            current: { target: string },
+            saved: { hash: string },
+          ) => {
+            assert.equal(original.target, target);
+            assert.equal(original.requestId, request.requestId);
+            assert.equal(current.target, '6'.repeat(64));
+            assert.equal(saved.hash, withdrawal.hash);
+            calls.push('recovery-review');
+            return true;
+          },
+        }),
         checkScope: () => {},
         checkApproved: () => calls.push('approved'),
         network,
@@ -373,17 +388,19 @@ async function connectedJourney(
   host = await openHost();
   assert.deepEqual((await host.readActive())?.withdrawal, withdrawal);
   namedTarget = '6'.repeat(64);
-  await assert.rejects(
-    () => host.send(request),
-    (error) => {
-      assert.ok(error instanceof NightDepositInterrupted);
-      assert.match(String(error.cause), /scope changed/);
-      return true;
-    },
-  );
-  assert.deepEqual((await host.readActive())?.withdrawal, withdrawal);
-  assert.equal((await host.readActive())?.deposit, undefined);
-  namedTarget = target;
+  if (!recoverRepoint) {
+    await assert.rejects(
+      () => host.send(request),
+      (error) => {
+        assert.ok(error instanceof NightDepositInterrupted);
+        assert.match(String(error.cause), /name changed after withdrawal/);
+        return true;
+      },
+    );
+    assert.deepEqual((await host.readActive())?.withdrawal, withdrawal);
+    assert.equal((await host.readActive())?.deposit, undefined);
+    namedTarget = target;
+  }
   failProof = false;
   loseDepositReply = true;
   assert.equal((await host.send(request)).phase, 'deposit-pending');
@@ -403,6 +420,7 @@ async function connectedJourney(
     'approved',
     'observe-output',
     'prove-deposit',
+    ...(recoverRepoint ? ['recovery-review'] : []),
     'observe-output',
     'prove-deposit',
     'prepare-deposit',
@@ -491,6 +509,10 @@ test('connected NIGHT host reopens the original journal through withdrawal, depo
   await connectedJourney(network);
 });
 
+test('connected NIGHT host resumes only the reviewed original deposit after a name repoint', async () => {
+  await connectedJourney(network, false, undefined, true);
+});
+
 test('pinned local candidate reopens the same two-leg original and rejects a nonlocal endpoint', async () => {
   const candidate = {
     ...network,
@@ -502,6 +524,7 @@ test('pinned local candidate reopens the same two-leg original and rejects a non
     artefactUrl: 'http://127.0.0.1:3000/v1/zk/acc-s3r1.1-zkir036',
   };
   await connectedJourney(candidate, true);
+  await connectedJourney(candidate, true, undefined, true);
   await assert.rejects(
     () => connectedJourney({ ...candidate, indexerUrl: 'http://remote/api/v4/graphql' }, true),
     /Unsupported pinned NIGHT deposit request/,

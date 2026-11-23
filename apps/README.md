@@ -1114,6 +1114,13 @@ If the name resolves to a different supported ACC after the route review, the
 page archives the unsubmitted attempt, explains that the named destination
 changed, and asks for a fresh review. It does not reuse the earlier approval
 or start an owner withdrawal.
+If the withdrawal already finalized before the name moves, the browser keeps
+that exact withdrawal and offers a separate review to deposit its output into
+the **originally reviewed ACC**. The review shows both ACC addresses, the
+amount and saved withdrawal ID. Declining leaves the original pending; approval
+does not withdraw again or redirect to the newly named ACC. The original ACC
+binding is checked again before the deposit is fenced. A changed registry or
+provider does not use this recovery path.
 
 The selected account's original intent and each transaction ID stay in the
 browser journal. A pending withdrawal or deposit is displayed under the same

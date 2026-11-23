@@ -20,6 +20,7 @@ import {
 import {
   NightDepositInterrupted,
   type NightSendIntent,
+  type NightSendLeg,
   type NightSendRequest,
 } from './night-send.js';
 import {
@@ -70,6 +71,14 @@ async function readActive(
 
 function reviewText(intent: NightSendIntent, balance: bigint, candidate: boolean): string {
   return `Send NIGHT to a Passport name?\n\nName: ${intent.name}\nNetwork: ${intent.networkId}\nBinding: ${BINDING_ID}${candidate ? ` (local candidate ${MANIFEST_SHA256})` : ''}\nRegistry: ${intent.providerId.slice('midnames:'.length)}\nSource Passport ACC: ${intent.source}\nRecipient Passport ACC: ${intent.target}\nDevice wallet bridge: ${intent.bridge}\nAmount: ${intent.amount} NIGHT smallest units\nFresh source balance: ${balance} NIGHT smallest units\nOperations: ${intent.operations.join(' → ')}\nRequest: ${intent.requestId}\n\nThe ACC signs withdrawal to the bridge. This app checks the named destination and deposits that exact output into the recipient ACC. The two legs can finish at different times.`;
+}
+
+function originalDepositReviewText(
+  original: NightSendIntent,
+  current: NightSendIntent,
+  withdrawal: NightSendLeg,
+): string {
+  return `The name changed after your NIGHT withdrawal.\n\nName: ${original.name}\nNetwork: ${original.networkId}\nRegistry: ${original.providerId.slice('midnames:'.length)}\nOriginally reviewed Passport ACC: ${original.target}\nCurrent named Passport ACC: ${current.target}\nAmount: ${original.amount} NIGHT smallest units\nSaved withdrawal: ${withdrawal.hash}\nOperation now: deposit_unshielded into the originally reviewed ACC\nRequest: ${original.requestId}\n\nContinue the original deposit into ${original.target}? This uses only the saved withdrawal output. It does not withdraw again or redirect the payment to the new named ACC. Declining leaves the original withdrawal and its output pending for inspection.`;
 }
 
 async function connectedPageSend(
@@ -159,6 +168,19 @@ async function connectedPageSend(
         candidate ? { manifestSha256: MANIFEST_SHA256, provisionalLocal: true } : undefined,
       );
       return true;
+    },
+    async reviewOriginalDeposit(original, current, withdrawal) {
+      host.stage('review');
+      const approved = window.confirm(originalDepositReviewText(original, current, withdrawal));
+      checkScope();
+      traceOperation(
+        approved ? 'namedNight.originalDepositApproved' : 'namedNight.originalDepositDeclined',
+        {
+          requestId: original.requestId,
+          withdrawal: withdrawal.hash,
+        },
+      );
+      return approved;
     },
     checkScope,
     checkApproved(intent) {

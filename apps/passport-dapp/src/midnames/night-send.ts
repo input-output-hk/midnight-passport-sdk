@@ -102,6 +102,12 @@ interface NightSendCorePorts {
   /** Return undefined for a source that fails the pinned binding and activation checks. */
   readSourceBalance(source: string): Promise<bigint | undefined>;
   review(intent: NightSendIntent, observedBalance: bigint): Promise<boolean>;
+  /** A finalized withdrawal may finish at its originally reviewed ACC after a name repoint, but only after a fresh, explicit review. */
+  reviewOriginalDeposit?(
+    original: NightSendIntent,
+    current: NightSendIntent,
+    withdrawal: NightSendLeg,
+  ): Promise<boolean>;
   /** Prepare a deposit funded by the original withdrawal output to the controlled wallet. */
   prepareDeposit(intent: NightSendIntent, withdrawal: NightSendLeg): Promise<PreparedLeg>;
   /** Require canonical successful finality for the exact prepared transaction. */
@@ -216,10 +222,17 @@ async function submitLeg(
   prepared: PreparedLeg,
   ports: NightSendPorts,
   prior?: NightSendLeg,
+  originalTargetRecovery = false,
 ) {
   const original = checkedLeg(prepared.original);
   if (prior) requireDistinctLegs(prior, original);
-  assertSameIntent(intent, await resolveIntent(intent, ports));
+  if (originalTargetRecovery) {
+    if (!(await ports.isSupportedRecipient(intent.target, intent.networkId)))
+      throw new NightSendPreflightError(
+        'NightRecipientUnsupported',
+        'The originally reviewed ACC no longer has a supported binding.',
+      );
+  } else assertSameIntent(intent, await resolveIntent(intent, ports));
   await ports.journal.fenceLeg(leg, original);
   try {
     await prepared.dispatch();
@@ -304,6 +317,43 @@ async function submitSelectedWithdrawal(
   return submitLeg('withdraw', intent, await prepareWithdrawal(intent), ports);
 }
 
+async function depositOriginalWithdrawal(
+  intent: NightSendIntent,
+  request: NightSendRequest,
+  withdrawal: NightSendLeg,
+  ports: NightSendPorts,
+) {
+  const current = await resolveIntent(request, ports);
+  if (current.providerId !== intent.providerId || current.namespace !== intent.namespace)
+    throw new NightSendPreflightError(
+      'NightNameChanged',
+      'The name provider changed after withdrawal. Inspect the saved original.',
+    );
+  const repointed = current.target !== intent.target;
+  if (repointed) {
+    if (!ports.reviewOriginalDeposit)
+      throw new NightSendPreflightError(
+        'NightNameChanged',
+        'The name changed after withdrawal. Inspect the saved original before deposit.',
+      );
+    if (!(await ports.isSupportedRecipient(intent.target, intent.networkId)))
+      throw new NightSendPreflightError(
+        'NightRecipientUnsupported',
+        'The originally reviewed ACC no longer has a supported binding.',
+      );
+    if (!(await ports.reviewOriginalDeposit(intent, current, withdrawal)))
+      throw new Error('The original deposit recovery was declined. The withdrawal remains saved.');
+  } else assertSameIntent(intent, current);
+  return submitLeg(
+    'deposit',
+    intent,
+    await ports.prepareDeposit(intent, withdrawal),
+    ports,
+    withdrawal,
+    repointed,
+  );
+}
+
 /** Standalone wallet-mediated NIGHT payment with original-only reconciliation. */
 export async function sendNightByName(input: NightSendRequest, ports: NightSendPorts) {
   const submitWithdrawal = ports.submitWithdrawal?.bind(ports);
@@ -371,14 +421,7 @@ export async function sendNightByName(input: NightSendRequest, ports: NightSendP
 
   if (!deposit) {
     try {
-      assertSameIntent(intent, await resolveIntent(request, ports));
-      deposit = await submitLeg(
-        'deposit',
-        intent,
-        await ports.prepareDeposit(intent, withdrawal),
-        ports,
-        withdrawal,
-      );
+      deposit = await depositOriginalWithdrawal(intent, request, withdrawal, ports);
     } catch (cause) {
       throw new NightDepositInterrupted(withdrawal, cause);
     }
