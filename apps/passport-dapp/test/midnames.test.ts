@@ -268,6 +268,21 @@ test('configured name lookup requires an explicit matching network, registry and
       'acc-s3r1.1',
     ),
   );
+  assert.equal(
+    configureMidnames(
+      { ...config, registryProfile: 'standalone-0.36.1' },
+      profile.networkId,
+      'acc-s3r1.1',
+    )?.recovery,
+    undefined,
+  );
+  assert.throws(() =>
+    configureMidnames(
+      { ...config, registryProfile: 'standalone-0.36.1', claimProtocolVersion: '2001100' },
+      profile.networkId,
+      'acc-s3r1.1',
+    ),
+  );
   const standalone = { ...config, namespace: 'night', registryProfile: 'standalone-0.35' };
   const resolverOnly = configureMidnames(standalone, profile.networkId, 'acc-s3r1.1');
   assert.equal(resolverOnly?.provider.mode, 'external');
@@ -310,6 +325,13 @@ test('configured name lookup requires an explicit matching network, registry and
   assert.throws(() =>
     configureMidnames(
       { ...config, networkId: 'preview', registryProfile: 'standalone-0.35' },
+      'preview',
+      'acc-s3r1.1',
+    ),
+  );
+  assert.throws(() =>
+    configureMidnames(
+      { ...config, networkId: 'preview', registryProfile: 'standalone-0.36.1' },
       'preview',
       'acc-s3r1.1',
     ),

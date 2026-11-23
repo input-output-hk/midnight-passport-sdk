@@ -111,6 +111,9 @@ test('candidate account reads require the exact isolated local pin', () => {
   assert.doesNotThrow(() =>
     createMidnamesLedgerReads(provider, 'undeployed', bindingId, 'standalone-0.35', candidate),
   );
+  assert.doesNotThrow(() =>
+    createMidnamesLedgerReads(provider, 'undeployed', bindingId, 'standalone-0.36.1', candidate),
+  );
   assert.throws(
     () => createMidnamesLedgerReads(provider, 'undeployed', bindingId, 'standalone-0.35'),
     { code: 'UNSUPPORTED_BINDING' },

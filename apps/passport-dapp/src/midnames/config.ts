@@ -6,7 +6,11 @@ import {
   requireMatchingFinalizedIndexerBlock,
 } from './resolver.js';
 import { isClaimSponsorOrigin, requestClaimDispatch } from './claim-dispatch.js';
-import { registryProfile } from './registry-pins.js';
+import {
+  isStandaloneRegistryProfile,
+  registryProfile,
+  type MidnamesRegistryProfile,
+} from './registry-pins.js';
 import { requireMidnamesV4IndexerPair } from './indexer-endpoints.js';
 import {
   createMidnamesNodeFinality,
@@ -163,7 +167,7 @@ function configuredIndexers(config: MidnamesConfig, networkId: string) {
 
 function requireCandidateLocal(
   candidate: CandidateAccountQualification | undefined,
-  profileId: string,
+  profileId: MidnamesRegistryProfile,
   networkId: string,
   http: string,
   ws: string,
@@ -171,7 +175,7 @@ function requireCandidateLocal(
 ): void {
   if (
     candidate &&
-    (profileId !== 'standalone-0.35' ||
+    (!isStandaloneRegistryProfile(profileId) ||
       networkId !== 'undeployed' ||
       !loopback(http) ||
       !loopback(ws) ||
@@ -303,6 +307,8 @@ export function configureMidnames(
   const guardKnown = async () => {
     if (knownName !== undefined) await service.resolve({ name: knownName, networkId });
   };
+  // The 0.36.1 compiler profile is read-only until its browser owner bundle
+  // proves and submits through the release prover at this exact source head.
   const standalone = profileId === 'standalone-0.35' && namespace === 'night';
   if (preparation && config.claimSponsor !== '1')
     throw new Error('Claim preparation requires the loopback standalone sponsor.');

@@ -32,13 +32,20 @@ export const STANDALONE_REGISTRY_VERIFIERS = Object.freeze({
   update_target: '3b989ba97e6f44c59925ed6164e04284674a820146446c040f6be451aa8a1542',
 });
 
-export type MidnamesRegistryProfile = 'midnames-2.1.0' | 'standalone-0.35';
+// The exact standalone source recompiled with Compact 0.36.1 produced the
+// same 13 verifier keys. Keep the compiler profile explicit even though its
+// on-chain fingerprint is shared with 0.35.
+export type MidnamesRegistryProfile = 'midnames-2.1.0' | 'standalone-0.35' | 'standalone-0.36.1';
+
+export const isStandaloneRegistryProfile = (profile: MidnamesRegistryProfile): boolean =>
+  profile === 'standalone-0.35' || profile === 'standalone-0.36.1';
 
 export function registryProfile(
   value: string | undefined,
   networkId: string,
 ): MidnamesRegistryProfile {
   if (value === undefined || value === 'midnames-2.1.0') return 'midnames-2.1.0';
-  if (value === 'standalone-0.35' && networkId === 'undeployed') return value;
+  if ((value === 'standalone-0.35' || value === 'standalone-0.36.1') && networkId === 'undeployed')
+    return value;
   throw new Error('Unsupported Midnames registry profile for this network.');
 }

@@ -21,6 +21,7 @@ import type { MidnamesIndexerBlock } from './chain-finality.js';
 import {
   MIDNAMES_REGISTRY_VERIFIERS,
   STANDALONE_REGISTRY_VERIFIERS,
+  isStandaloneRegistryProfile,
   registryProfile,
   type MidnamesRegistryProfile,
 } from './registry-pins.js';
@@ -70,7 +71,9 @@ async function selectFinalizedBlock(
 function registryVerifierMap(profile: MidnamesRegistryProfile) {
   return new Map(
     Object.entries(
-      profile === 'standalone-0.35' ? STANDALONE_REGISTRY_VERIFIERS : MIDNAMES_REGISTRY_VERIFIERS,
+      isStandaloneRegistryProfile(profile)
+        ? STANDALONE_REGISTRY_VERIFIERS
+        : MIDNAMES_REGISTRY_VERIFIERS,
     ),
   );
 }
@@ -170,7 +173,7 @@ export function createMidnamesLedgerReads(
     const pin = resolvePinnedBinding(candidate.bindingId);
     if (
       networkId !== 'undeployed' ||
-      pinnedProfile !== 'standalone-0.35' ||
+      !isStandaloneRegistryProfile(pinnedProfile) ||
       candidate.bindingId !== bindingId ||
       !pin.provisional ||
       candidate.manifestSha256 !== pin.manifestSha256

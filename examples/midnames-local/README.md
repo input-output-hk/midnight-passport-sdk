@@ -672,6 +672,15 @@ observed block protocol and reconcile the same original before any retry.
 This receipt does not qualify a combined Passport page-to-chain claim with
 0.36.1, an online registry/provider, or a physical passkey.
 
+The optional `standalone-0.36.1` reader profile admits only local `undeployed`
+registry reads with the same pinned verifier roster. A separate read-only
+check of the retained isolated chain found both original transactions in
+canonical blocks and the transferred name still targeting the same ACC. Since
+the two compiler builds have identical verifier keys, the host must keep its
+deployment manifest and exact registry address to identify the 0.36.1 build.
+The demo launcher continues to select `standalone-0.35`; the new profile does
+not enable claim preparation, dispatch, or named NIGHT sending in the page.
+
 For an operator-controlled local registry, a separate root-assisted fixture
 can issue the name without a paid claim. It proves `create_domain` under the
 root owner's existing witness, then proves `transfer_domain` to a distinct

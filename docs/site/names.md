@@ -338,6 +338,16 @@ Midnight.js 5.0.0/Ledger v9 1.0.0 proof tree. A separate pinned Ledger v9
 isolated local compatibility result, not a new ordinary demo profile or a
 qualification of online names, full browser issuance, or real passkeys.
 
+The source reader also accepts an explicit local `standalone-0.36.1` profile
+for this registry's byte-identical verifier roster. A retained-chain read
+checked the paid claim, owner transfer, and current name-to-ACC binding at
+node-canonical blocks through that profile. Verifier equality alone cannot
+identify which compiler produced a deployed contract, so the host must pin
+the deployment address and its own build record. The reference page keeps
+registration and named sending disabled for this profile until its 0.36.1
+browser proof and send path is qualified. The ordinary local demo remains on
+`standalone-0.35`.
+
 For an online deployment, the host must configure its actual registry address
 and a funded sponsor wallet through `PASSPORT_SPONSOR_SEED` in the service
 environment; the local genesis seed does not fund Preview or Preprod. The wallet
