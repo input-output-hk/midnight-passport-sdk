@@ -160,6 +160,7 @@ async function connectedJourney(
   let address = bridgeAddress;
   let indexerUri = network.indexerUrl;
   let failProof = true;
+  let loseDepositReply = false;
   let selected = true;
   let namedTarget = target;
   let switchAt: 'review' | 'withdrawal' | undefined;
@@ -252,6 +253,7 @@ async function connectedJourney(
         assert.deepEqual(original, deposit);
         assert.deepEqual((await host.readActive())?.deposit, deposit);
         calls.push('submit-deposit');
+        if (loseDepositReply) throw new Error('deposit response lost after dispatch');
         return '00' + 'f'.repeat(64);
       },
       balanceWithdrawalFee: async () => {
@@ -279,47 +281,49 @@ async function connectedJourney(
   const selectedScope = provisionalLocal
     ? { ...scope, bindingId: network.bindingId, manifestSha256: network.manifestSha256 }
     : scope;
-  const host = await createConnectedNightSend(
-    {
-      account,
-      scope: selectedScope,
-      wallet,
-      names,
-      isSupportedRecipient: async () => true,
-      readSourceBalance: async () => 10n,
-      review: async () => {
-        calls.push('review');
-        if (refusal === 'repoint-after-review') namedTarget = '6'.repeat(64);
-        return true;
-      },
-      checkScope: () => {},
-      checkApproved: () => calls.push('approved'),
-      network,
-      provisionalLocal,
-      binding: accModule,
-      prover: {
-        proveTx: async () => {
-          throw new Error('Proof is injected for this test.');
+  const openHost = () =>
+    createConnectedNightSend(
+      {
+        account,
+        scope: selectedScope,
+        wallet,
+        names,
+        isSupportedRecipient: async () => true,
+        readSourceBalance: async () => 10n,
+        review: async () => {
+          calls.push('review');
+          if (refusal === 'repoint-after-review') namedTarget = '6'.repeat(64);
+          return true;
         },
-      } satisfies Prover,
-    },
-    factory,
-    {
-      journal: openBrowserNightSendJournal,
-      finalized: async (_indexer, _node, original) =>
-        finalized.has(original.hash)
-          ? { transaction: originalTransaction, blockHash: '4'.repeat(64), blockHeight: 7 }
-          : undefined,
-      prove: async (value) => {
-        assert.equal(value.target, target);
-        assert.equal(value.amount, 4n);
-        assert.equal(value.provisionalLocal, provisionalLocal);
-        calls.push('prove-deposit');
-        if (failProof) throw new Error('proof unavailable');
-        return Uint8Array.of(7);
+        checkScope: () => {},
+        checkApproved: () => calls.push('approved'),
+        network,
+        provisionalLocal,
+        binding: accModule,
+        prover: {
+          proveTx: async () => {
+            throw new Error('Proof is injected for this test.');
+          },
+        } satisfies Prover,
       },
-    },
-  );
+      factory,
+      {
+        journal: openBrowserNightSendJournal,
+        finalized: async (_indexer, _node, original) =>
+          finalized.has(original.hash)
+            ? { transaction: originalTransaction, blockHash: '4'.repeat(64), blockHeight: 7 }
+            : undefined,
+        prove: async (value) => {
+          assert.equal(value.target, target);
+          assert.equal(value.amount, 4n);
+          assert.equal(value.provisionalLocal, provisionalLocal);
+          calls.push('prove-deposit');
+          if (failProof) throw new Error('proof unavailable');
+          return Uint8Array.of(7);
+        },
+      },
+    );
+  let host = await openHost();
 
   if (refusal) {
     await assert.rejects(
@@ -347,6 +351,8 @@ async function connectedJourney(
 
   assert.equal((await host.send(request)).phase, 'withdrawal-pending');
   assert.deepEqual((await host.readActive())?.withdrawal, withdrawal);
+  host = await openHost();
+  assert.deepEqual((await host.readActive())?.withdrawal, withdrawal);
   finalized.add(withdrawal.hash);
   await assert.rejects(
     () => host.send(request),
@@ -359,9 +365,27 @@ async function connectedJourney(
   );
   assert.deepEqual((await host.readActive())?.withdrawal, withdrawal);
   assert.equal((await host.readActive())?.deposit, undefined);
+  host = await openHost();
+  assert.deepEqual((await host.readActive())?.withdrawal, withdrawal);
+  namedTarget = '6'.repeat(64);
+  await assert.rejects(
+    () => host.send(request),
+    (error) => {
+      assert.ok(error instanceof NightDepositInterrupted);
+      assert.match(String(error.cause), /scope changed/);
+      return true;
+    },
+  );
+  assert.deepEqual((await host.readActive())?.withdrawal, withdrawal);
+  assert.equal((await host.readActive())?.deposit, undefined);
+  namedTarget = target;
   failProof = false;
+  loseDepositReply = true;
   assert.equal((await host.send(request)).phase, 'deposit-pending');
   assert.deepEqual((await host.readActive())?.deposit, deposit);
+  host = await openHost();
+  assert.deepEqual((await host.readActive())?.deposit, deposit);
+  loseDepositReply = false;
   finalized.add(deposit.hash);
   assert.equal((await host.send(request)).phase, 'completed');
   assert.equal(await host.readActive(), undefined);
