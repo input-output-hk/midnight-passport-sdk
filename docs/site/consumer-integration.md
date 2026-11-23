@@ -393,6 +393,10 @@ outside the workspace. It installs all nine local candidate tarballs, compares
 copy of the pinned Midnight runtime family, and reuses an unchanged lockfile for
 an offline frozen install. A local manifest authenticates its file relationships;
 it does not establish registry publisher identity or release provenance.
+The current source consumer mirrors the workspace's `@midnightntwrk/ledger-v9@1.0.0`
+override so transitive Midnight JS dependencies share one physical Ledger 9 class.
+The separate published-RC consumer guard retains its historical `1.0.0-rc.5`
+profile. A mismatch or second physical runtime copy refuses qualification.
 
 Prepare a new private path whose parent already exists. The first preparation may
 resolve/download external dependencies; lifecycle scripts and pnpmfile hooks are
