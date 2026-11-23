@@ -63,8 +63,6 @@ function requireMatchingRecord(
     record.namespace !== namespace ||
     typeof record.accountAddress !== 'string' ||
     !/^[0-9a-f]{64}$/.test(record.accountAddress) ||
-    (record.addressClass !== undefined && record.addressClass !== 'contract') ||
-    (record.resolvedOperation !== undefined && record.resolvedOperation !== 'contract-call') ||
     (request.operation !== undefined &&
       (record.addressClass !== 'contract' || record.resolvedOperation !== request.operation)) ||
     (record.expiresAt !== undefined &&
@@ -125,8 +123,7 @@ export async function resolvePassportName(
     namespace: pins.namespace,
     accountAddress: record.accountAddress,
     ...(record.expiresAt !== undefined && { expiresAt: record.expiresAt }),
-    ...(record.addressClass !== undefined && { addressClass: record.addressClass }),
-    ...(record.resolvedOperation !== undefined && { resolvedOperation: record.resolvedOperation }),
+    ...(operation && { addressClass: 'contract' as const, resolvedOperation: operation }),
     providerId: pins.id,
     mode: pins.mode,
   });

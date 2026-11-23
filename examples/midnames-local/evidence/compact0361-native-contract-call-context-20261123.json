@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "kind": "isolated-ledger9-explicit-contract-call-context-named-payment",
+  "date": "2026-11-23",
+  "status": "PASS",
+  "sourceHead": "d4ebd54bcdae49f7356bca15fb9dc1eaf21e9f60",
+  "profile": "Standalone Midnames Compact 0.36.1 and provisional ACC acc-s3r1.1-zkir036 on retained isolated Ledger 9; Indexer API v4, release prover 9.0.2, connected synthetic mock-passkey Chromium.",
+  "name": "v36claim23.night",
+  "registryAddress": "3d0502ab6b226f12ad621fb6c4e5e9882c75b2df479545cd65d1325f7ad30591",
+  "sourceAcc": "f746d060ef93d3264abf124cd0bee9498ee929aea02c8a18d5aef651f2a55bed",
+  "contractTargetAcc": "14c1181524e783ac7a11d225583cb33c842a144aa89294b765393a5e12794053",
+  "defaultField": {
+    "key": "profile",
+    "address": "c3ed40e0d020ee0be2b8df92cdb26bf69b9f50c6bcd81d8ebf43f2c3f667f756"
+  },
+  "priorOwnerDefaultFieldOriginal": "af272789fcb59a52a8aad294268627fd5bfec2c75ee11a72cd6e8d04393ea202",
+  "before": {
+    "canonicalBlock": {
+      "blockHeight": 1799,
+      "blockHash": "ea8efe1bc9ba8e58144556c675aef2f8f2a5b8a9f8b97f7740ed3b57509235ac"
+    },
+    "balancesNight": {
+      "source": "3",
+      "original": "4",
+      "current": "7"
+    }
+  },
+  "payment": {
+    "intentId": "1780cc18-1238-4deb-8712-45a246eac108",
+    "reviewCount": 1,
+    "asset": "NIGHT",
+    "amountSmallestUnits": "1",
+    "recipient": "14c1181524e783ac7a11d225583cb33c842a144aa89294b765393a5e12794053",
+    "operations": ["withdraw_unshielded_with_jubjub", "deposit_unshielded"],
+    "withdrawal": {
+      "hash": "8d3580ad58fdcf732d28dfbf9acf04fd8de0f6d2d6120668f4b222bd9c618f6b",
+      "canonicalBlockHeight": 1817
+    },
+    "deposit": {
+      "hash": "5a5e60b1a9bfb2eb183d13af42df1645736caae07a28fbfbf543d27de62fbb28",
+      "canonicalBlockHeight": 1829
+    },
+    "oneNewArchivedIntent": true,
+    "noActiveIntentAfterReload": true,
+    "pageErrors": []
+  },
+  "after": {
+    "canonicalBlock": {
+      "blockHeight": 1830,
+      "blockHash": "084aa8ca7aa1c9ef73afc63f11f553545e62e23004a42905646e2ac1b612fbcc"
+    },
+    "balancesNight": {
+      "source": "2",
+      "original": "5",
+      "current": "7"
+    },
+    "defaultFieldUnchanged": true,
+    "contractTargetUnchanged": true
+  },
+  "cleanup": {
+    "exactIsolatedContainersStopped": true,
+    "nativeLeaseReleased": true,
+    "sharedStackUntouched": true,
+    "volumesAndPrivateOriginalsPreserved": true
+  },
+  "privateReceiptSha256": {
+    "before": "7d2fdd61ec34a40c409b8f9f0ce68bd66c8e03e8298976bd00547659a0169765",
+    "browser": "51bca15ce892eee13da26cd25c33aca2a6be3f701d2fad632f00b96638337fd9",
+    "after": "f2a69e8cee83c1e4a11fe6f92d4ec6fef13df988f21ce960be0f6502bff0f6e0",
+    "supervisor": "e07bfdf2f0ce84f3aeaa7b1d5e923cc20fd295431c5c7ee2543aa3edec4419ea"
+  },
+  "limits": "This receipt qualifies one connected synthetic-passkey local payment after the source switched both named value routes to explicit contract-call resolution. It reuses a previously registered name and already activated sender/recipient ACCs; the prior owner field updates are separately evidenced. The browser source and focused tests require a class acknowledgment, while on-chain reads confirm the target remains a contract ACC and distinct from the default field. The local transitional registry is not the proposed MIP-0007 delegated resolver. Physical passkeys, independent online providers, cryptographic state inclusion, account-bound signature of the name, and release remain open."
+}

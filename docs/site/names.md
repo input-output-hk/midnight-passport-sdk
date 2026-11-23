@@ -295,6 +295,10 @@ class explicitly. The local Midnames adapter reads its contract target for the
 request, never its default field; two configured readers must acknowledge the
 same class and operation. A missing class is a refusal without fallback to a
 wallet or default address. This remains a transitional-registry subset.
+The [connected local receipt](../../examples/midnames-local/evidence/compact0361-native-contract-call-context-20261123.json)
+then exercised that explicit context in a fresh 1 NIGHT named payment. The
+contract-target ACC alone received it: source/target/default-field balances
+moved 3/4/7 → 2/5/7 at canonical finalized blocks.
 
 The 2.1.0 tarball includes a read generation and an older managed write
 generation. Its root export can fail at load because the managed module expects

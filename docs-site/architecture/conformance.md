@@ -182,6 +182,10 @@ contract target and checking the ACC binding; named deposit and NIGHT send
 reject a generic address hint without the acknowledgment. This improves the
 host boundary but does not turn the transitional registry into MIP-0007's
 proposed delegated resolver or authenticate a public provider by itself.
+An [exact-head connected local run](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-native-contract-call-context-20261123.json)
+exercised the explicit contract-call query with a name whose default field
+still pointed to a different ACC. One 1 NIGHT payment finalized to the
+contract target; source/target/default-field balances moved 3/4/7 → 2/5/7.
 
 A [fresh isolated Ledger 9 comparison](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/ledger9-night-by-name-prover-comparison-20261122.json)
 repeated the two-leg route on a release node and Indexer API v4. The release

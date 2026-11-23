@@ -143,6 +143,16 @@ canonical originals and balances, then stopped exact resources and released
 the lease without resending. This is one local contract-target routing subset;
 the transitional registry does not provide delegated MIP-0007 resolution.
 
+The [next exact-head browser run](evidence/compact0361-native-contract-call-context-20261123.json)
+used the source helper that requires an explicit `contract-call` result class.
+It reused the same on-chain name and three supported ACCs, reviewed one new
+named 1 NIGHT intent, and finalized withdrawal/deposit at canonical blocks
+1817/1829. Source/contract-target/default-field balances changed 3/4/7 →
+2/5/7. The browser journal gained one archived request and no active request;
+the owner field and target remained distinct at both finalized balance reads.
+Exact resources stopped and the lease was released. This is a connected local
+synthetic-passkey route, not public-provider or real-passkey qualification.
+
 The [routing-refusal receipt](evidence/compact0361-native-routing-refusals-20261123.json)
 then checked a live `UnshieldedAddr` target with the same bytes as a supported
 ACC: the page refused it as `InvalidRecord` before review. In a separate

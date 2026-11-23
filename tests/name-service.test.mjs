@@ -49,6 +49,18 @@ test('custom provider supplies a checked network/namespace-scoped public hint', 
   assert.equal(JSON.stringify(result).includes('never-copy-this'), false);
 });
 
+test('ordinary lookup ignores unrecognized provider routing extensions', async () => {
+  const result = await resolvePassportName(
+    service(async () => ({
+      ...record,
+      addressClass: 'wallet',
+      resolvedOperation: 'default',
+    })),
+    query,
+  );
+  assert.deepEqual(result, { ...record, providerId: provider.id, mode: 'external' });
+});
+
 test('contract-call resolution requires an explicit matching provider acknowledgment', async () => {
   let captured;
   const adapter = service(async (request) => {
