@@ -86,6 +86,16 @@ unsubmitted intent as `name-recheck`. No owner proof or payment leg started;
 both ACC balances stayed 8/6. This is a local synthetic refusal, not an
 online or physical-passkey acceptance result.
 
+The [routing-refusal receipt](evidence/compact0361-native-routing-refusals-20261123.json)
+then checked a live `UnshieldedAddr` target with the same bytes as a supported
+ACC: the page refused it as `InvalidRecord` before review. In a separate
+owner-authorized update during browser review, the name moved from one
+supported ACC to another. The first run safely archived the unsubmitted intent
+but showed a generic error; the corrected page reported `NightNameChanged`
+and asked for a fresh review. No owner proof or payment leg started, and both
+ACC balances remained 8/6. All updates used saved originals and node-canonical
+API v4 confirmations; the shared stack was untouched.
+
 ## Open the local Passport and Midnames demo
 
 The launcher attaches to the designated owner's running Ledger 9 node,

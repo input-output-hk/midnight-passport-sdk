@@ -148,6 +148,16 @@ device wallet and local mock JubJub credential. It does not qualify real
 provider consent, online naming, or an independent inclusion proof beyond the
 configured indexer and node checks.
 
+The later [isolated 0.36.1 routing-refusal evidence](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-native-routing-refusals-20261123.json)
+tests MIP-0007's address-class distinction for this local subset. A name with
+the bytes of a supported ACC but an `UnshieldedAddr` target was refused before
+owner review; the host did not treat it as a contract call. A separate live
+change from one supported ACC target to another during review retired the
+unsubmitted intent and required a new review before owner proof. The ACC
+signature still binds the withdrawal to the bridge, while the name and final
+recipient remain host-checked. This is not complete MIP-0007, online-provider,
+or real-passkey conformance.
+
 A [fresh isolated Ledger 9 comparison](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/ledger9-night-by-name-prover-comparison-20261122.json)
 repeated the two-leg route on a release node and Indexer API v4. The release
 `9.0.2` prover rejected the pinned Compact 0.35 JubJub withdrawal proof

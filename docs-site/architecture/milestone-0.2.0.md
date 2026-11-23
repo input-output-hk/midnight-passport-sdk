@@ -92,8 +92,14 @@ held that browser review open while the existing owner changed the name back
 to the sender ACC. The update reached API v4 indexed `SUCCESS` and node-canonical
 finality before review approval. The page then refused `NightSelfRecipient`,
 archived a `name-recheck` intent before owner proof, and left both ACC balances
-at 8/6. Non-contract targets, changed targets to another supported ACC,
-unsupported assets, online resolution, and real-provider consent remain open.
+at 8/6. A later [local routing-refusal run](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-native-routing-refusals-20261123.json)
+changed the registry target to `UnshieldedAddr` while retaining the bytes of a
+supported ACC; the connected page refused the non-contract class before review.
+It also changed the name to a different supported ACC during browser review.
+The first run safely archived `name-recheck` but showed a generic error; the
+corrected exact-head run showed `NightNameChanged` and required a fresh review
+before any owner proof or payment leg. Unsupported-asset native behavior,
+online resolution, and real-provider consent remain open.
 
 ## Current Midnames delivery
 

@@ -370,8 +370,21 @@ re-resolved the name, reported `NightSelfRecipient`, and archived an exact
 `name-recheck` refusal before owner proof or withdrawal. No proof request was
 made, no payment leg was created, and the two ACC balances remained 8/6 at
 node-finalized snapshots. This qualifies a local change **after** review;
-non-contract targets, another supported ACC target, and online resolution
-remain separate gates.
+the earlier approval cannot authorize a new destination.
+
+The [later routing-refusal receipt](../../examples/midnames-local/evidence/compact0361-native-routing-refusals-20261123.json)
+checks two additional local cases. First, the existing owner set the name's
+address class to `UnshieldedAddr` while keeping the same 32-byte value as a
+supported ACC. A node-finalized read classified it as a non-contract target;
+the connected page refused `InvalidRecord` before review, with no journal or
+balance change. This checks that an ACC contract call cannot fall back from
+its required address class. Second, while a browser review named one supported
+ACC, the owner repointed the name to a different supported ACC. The initial
+page safely archived `name-recheck` before owner proof but displayed a generic
+error. The corrected page reported `NightNameChanged` and asked for a fresh
+review; its exact-head native rerun created no proof request or payment leg,
+and balances stayed 8/6. Online resolution and physical-passkey consent remain
+separate gates.
 
 The source reader also accepts an explicit local `standalone-0.36.1` profile
 for this registry's byte-identical verifier roster. A retained-chain read
@@ -986,7 +999,8 @@ deposit. The original hashes were checked against canonical node blocks and
 indexed success. Sender/recipient balances moved from 9/5 to 8/6 at
 node-finalized indexer snapshots, and the journal archived exactly one
 payment with no active entry. The later after-review repoint receipt above
-qualifies a local changed-name refusal. Non-contract target, unsupported
+qualifies a local changed-name refusal. The later routing-refusal receipt
+also checks a non-contract target and a changed supported ACC. Unsupported
 asset, physical passkey and online-provider qualification remain open.
 
 The local candidate launcher sets `VITE_MIDNAMES_NIGHT_SEND=1` only with
