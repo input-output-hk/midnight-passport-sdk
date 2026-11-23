@@ -86,6 +86,18 @@ unsubmitted intent as `name-recheck`. No owner proof or payment leg started;
 both ACC balances stayed 8/6. This is a local synthetic refusal, not an
 online or physical-passkey acceptance result.
 
+The [post-withdrawal repoint recovery receipt](evidence/compact0361-native-postwithdraw-repoint-recovery-20261123.json)
+at signed source `a215ba3` finalized one 1 NIGHT withdrawal, then the name
+owner repointed to a second supported ACC. In a reopened connected mock-passkey
+browser, a separate review approved depositing that exact saved output into the
+originally reviewed ACC. A read-only fresh-browser audit found the archived
+review. The first run stopped at a read-only preflight assertion; the payment
+run's supervisor later failed on an obsolete balance assertion. Exact
+reconciliation verified canonical originals, 8/6/0 → 7/7/0 ACC balances,
+stopped resources and released lease. The original was not resubmitted.
+This qualifies a bounded local synthetic recovery only; absent or unsupported
+current names, real passkeys and online providers remain open.
+
 The [routing-refusal receipt](evidence/compact0361-native-routing-refusals-20261123.json)
 then checked a live `UnshieldedAddr` target with the same bytes as a supported
 ACC: the page refused it as `InvalidRecord` before review. In a separate

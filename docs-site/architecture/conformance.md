@@ -234,6 +234,17 @@ runner verified unchanged inputs, exact-owned cleanup and lease release.
 This is a local repoint refusal, not online provider agreement, human consent
 or the architecture's operation-context resolver.
 
+A later [isolated post-withdrawal repoint recovery](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-native-postwithdraw-repoint-recovery-20261123.json)
+at signed source `a215ba3` finalized one browser-reviewed withdrawal before
+the owner repointed the name to a second supported ACC. The connected browser
+then separately reviewed and deposited the exact saved output into the
+originally reviewed ACC, and a fresh browser found the archived review.
+The supervisor's obsolete balance assertion failed after payment; exact
+reconciliation confirmed both canonical originals, 8/6/0 → 7/7/0 balances,
+no replay, and cleanup. This remains local synthetic evidence, with no
+physical-passkey consent, online provider qualification, or ACC-signed name
+binding.
+
 ## Security promises in the pinned architecture
 
 The pinned [promises revision](https://github.com/midnightntwrk/passport/blob/99062671d939641cb9ed9274d3d18fce764d539a/docs/plans/PROMISES.md) specifies P5′ and P11–P16. These are product-level properties, not automatic effects of exposing an ACC circuit. The SDK's bounded status is:

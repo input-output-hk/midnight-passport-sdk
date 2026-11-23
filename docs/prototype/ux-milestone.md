@@ -466,8 +466,14 @@ open #318 work.
 Each approval writes the observed name/registry, old/current ACCs, withdrawal
 ID and timestamp to the durable browser journal before proof. The record
 survives reload and archive; it is not an ACC signature or inclusion proof.
-This source and connected-host test does not yet establish a native browser
-recovery run for a post-withdrawal repoint.
+An [isolated Ledger 9 browser run](../../examples/midnames-local/evidence/compact0361-native-postwithdraw-repoint-recovery-20261123.json)
+at signed source `a215ba3` finalized one withdrawal, repointed the name to a
+second supported ACC, and recovered the saved deposit into the originally
+reviewed ACC. A fresh browser reopened the archived recovery review. The
+first run stopped at a read-only preflight error; the successful payment run's
+supervisor failed on an obsolete balance assertion. Both were exactly
+reconciled without resubmitting the original. Physical passkey and online
+provider acceptance remain open.
 
 The local NIGHT fixture now uses a reusable source guard for the exact bridge
 output and balanced deposit input. It refuses a different withdrawal identity,

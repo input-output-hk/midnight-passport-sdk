@@ -973,8 +973,12 @@ separate original-output repair action remains open #318 work. Source and
 connected-host tests cover the supported-repoint path. Each approved mapping
 observation is durably saved with the original withdrawal in the credential
 scoped browser journal and later archived; the name is still host checked, not
-signed by the ACC. A native browser receipt for this post-withdrawal repoint
-is still needed.
+signed by the ACC. An [isolated native browser receipt](../../examples/midnames-local/evidence/compact0361-native-postwithdraw-repoint-recovery-20261123.json)
+at signed source `a215ba3` confirms one finalized withdrawal, a supported
+name repoint, a separate recovery review, and deposit of the saved output into
+the originally reviewed ACC. The archive retained the review after reload.
+The successful payment run's supervisor had an obsolete balance assertion;
+exact reconciliation verified the finalized IDs and balances without replay.
 
 An [isolated Compact 0.36.1 native receipt](../../examples/midnames-local/evidence/compact0361-paid-name-night-send-20261123.json)
 resolved a previously paid, user-owned `.night` name to its contract target,

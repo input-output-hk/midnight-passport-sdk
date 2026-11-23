@@ -1139,6 +1139,15 @@ deposit IDs after reload without a second dispatch. It used a local mock JubJub
 credential and a funded device wallet. Real passkey/provider and online profiles
 remain unqualified. The configured indexer is trusted for
 transaction inclusion; the finalized block check does not prove inclusion.
+
+An [isolated post-withdrawal repoint recovery](../examples/midnames-local/evidence/compact0361-native-postwithdraw-repoint-recovery-20261123.json)
+at signed source `a215ba3` finalized one withdrawal, repointed the name to a
+second supported ACC, and then deposited the saved output into the originally
+reviewed ACC after a separate browser review. The browser archive retained the
+review after reload. Its first run stopped at a read-only preflight error; the
+successful payment run's supervisor then failed on an obsolete balance assertion.
+Both attempts were exactly reconciled, and the original was never resubmitted.
+
 The isolated `nix develop -c pnpm --filter passport-dapp test:midnames-night-page`
 browser check covers control visibility and the no-ID recovery refusal with a
 synthetic connector and registry; it does not perform a payment.

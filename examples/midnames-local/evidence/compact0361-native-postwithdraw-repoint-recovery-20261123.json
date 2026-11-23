@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "kind": "isolated-ledger9-postwithdrawal-name-repoint-recovery",
+  "date": "2026-11-23",
+  "sourceHead": "a215ba3b96417019336229beab0bb92a468e496b",
+  "status": "PASS_AFTER_EXACT_RECONCILIATION",
+  "profile": "Standalone Midnames 0.36.1 and acc-s3r1.1-zkir036 on retained isolated Ledger 9, Indexer API v4, release prover 9.0.2; connected mock-passkey Passport browser.",
+  "name": "v36claim23.night",
+  "registryAddress": "3d0502ab6b226f12ad621fb6c4e5e9882c75b2df479545cd65d1325f7ad30591",
+  "sourceAcc": "f746d060ef93d3264abf124cd0bee9498ee929aea02c8a18d5aef651f2a55bed",
+  "originalReviewedAcc": "c3ed40e0d020ee0be2b8df92cdb26bf69b9f50c6bcd81d8ebf43f2c3f667f756",
+  "currentNamedAccAfterRepoint": "14c1181524e783ac7a11d225583cb33c842a144aa89294b765393a5e12794053",
+  "intentId": "0389e781-c725-437b-a2a0-f63ab51c4745",
+  "before": {
+    "canonicalBlock": {
+      "blockHeight": 1570,
+      "blockHash": "398d97e4f13a256bb840d1a891497f7a2487490a307a75a2e69e91e2028b8b85"
+    },
+    "balancesNight": {
+      "source": "8",
+      "original": "6",
+      "current": "0"
+    }
+  },
+  "withdrawal": {
+    "hash": "c845a90db5336ae3e1d5eee70c90e85468aae14c85c6fab9464bf390b43e7d7b",
+    "canonicalBlockHeight": 1586,
+    "depositProofInterruptedBeforeOriginal": true
+  },
+  "ownerRepoint": {
+    "hash": "963a8464dc742f25e5d02351122d1d2da70025efee95f151ea811a65c4aae263",
+    "canonicalBlock": {
+      "height": 1596,
+      "hash": "70846ce1e47799f9f0447b58f6147518362b1e699ae30a83de372037bba6ae82"
+    },
+    "indexedStatus": "SUCCESS",
+    "newContractTarget": "14c1181524e783ac7a11d225583cb33c842a144aa89294b765393a5e12794053"
+  },
+  "recovery": {
+    "browserContexts": 2,
+    "initialRouteReviews": 1,
+    "originalOnlyResumeConfirmations": 1,
+    "changedTargetReviews": 1,
+    "depositHash": "4dea4fb86297b6f0aaa8b6882870e021841b07f53385b6e224f11a9eca4444ed",
+    "depositCanonicalBlockHeight": 1605,
+    "sameWithdrawalReused": true,
+    "secondWithdrawal": false,
+    "durableReviewArchived": true,
+    "activeJournalEntriesAfter": 0,
+    "archivedHistoryEntriesAfter": 6
+  },
+  "after": {
+    "canonicalBlock": {
+      "blockHeight": 1606,
+      "blockHash": "8dce856e2080891e1d662c30a09dfbceab0482286b815df093bbc9bbe2996f80"
+    },
+    "balancesNight": {
+      "source": "7",
+      "original": "7",
+      "current": "0"
+    }
+  },
+  "cleanup": {
+    "walletStopped": true,
+    "inputsUnchanged": true,
+    "exactIsolatedContainersStopped": true,
+    "nativeLeaseReleased": true,
+    "sharedStackUntouched": true,
+    "volumesAndPrivateOriginalsPreserved": true
+  },
+  "failedAttempts": "The first run failed at a read-only preflight assertion that reversed the two recipient ACC balances. It stopped before browser, owner proof or any transaction. Its exact containers and lease were reconciled. The second run completed the payment, then its supervisor failed on a stale unchanged-balance assertion; the exact finalized originals, 8/6/0 to 7/7/0 balances, stopped resources and lease were independently reconciled without resubmission.",
+  "privateReceiptSha256": {
+    "failedPreflightSupervisor": "452df130b2076781cfe2aae8f38f137115411e597da8afbb66d6cdd4c111abdf",
+    "failedPreflightBalance": "9ed781038a1eec0d7ef8d8513a15c7700c0ab1c03b2b7f7df6b2e769940a1107",
+    "failedPreflightReconciliation": "68e9db47d181f02e17fe0ed517a7a2cc3764726d0bd6de5a4434666fc19adc1b",
+    "beforeBalance": "dbcb95f11796af5da137d1de642f255fa66c3e75e638a1aa8e05dd26a796a833",
+    "interruptedBrowser": "818bd128d93f31c71fdf8b539f3c6ce654b305485fc3d420d9e726b33a2f5b26",
+    "ownerRepoint": "2838868be03e68d59de8a53a3161671ca7f404e6748703fa53ee9be54631d494",
+    "recoveredBrowser": "ac5ed3e39d3c16cf4a6f96f3ccdaf95a1eb6a71ca59e94e7ae618c40d91b577b",
+    "afterBalance": "29ca8cca4ef160842e8a17bd385eb0f2cef44a01486fcb1ea3ba0951d3d7d1ae",
+    "finalSupervisorFailure": "cc831ded60cd455353f8b4f3830cc13f7e2ef4e82a1da4a77cfc5a7facf95ebf",
+    "exactReconciliation": "051ab2d8f3c09a9ebe7dbda0ef36300282c0f88dee9af558086d9570f7e6c88a",
+    "archivedBrowserAudit": "b123dcc9747262281932ac3eb02d60afe54fbc9c86f626d3db423edcb986684c"
+  },
+  "limits": "This qualifies one local synthetic post-withdrawal repoint to another supported ACC and explicit original-target recovery. Absent/non-contract/unsupported/unavailable current names, physical passkeys, online providers, independent state inclusion proof and a released binding remain open."
+}

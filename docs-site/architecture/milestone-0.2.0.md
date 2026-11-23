@@ -108,8 +108,14 @@ binding is checked again before the deposit fence, and a changed registry is
 refused. The name is re-resolved at the deposit fence, so another repoint
 requires another review. Connected-host tests exercise no second withdrawal
 and the exact original deposit. An absent, non-contract, unsupported or
-unavailable current name remains pending for a separate repair path; a native
-browser run of this supported-repoint recovery is also still pending. Each
+unavailable current name remains pending for a separate repair path. An
+[isolated native browser run](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-native-postwithdraw-repoint-recovery-20261123.json)
+at signed source `a215ba3` finalized one withdrawal, repointed the name to a
+second supported ACC, and deposited the saved output into the originally
+reviewed ACC after a separate recovery review. A fresh browser verified the
+archived review. The first run stopped at a read-only preflight error; the
+payment run's supervisor failed on an obsolete balance assertion. Exact
+reconciliation verified both and did not replay the original. Each
 approved mapping observation is durably saved in the credential-scoped intent
 and later archived, but the ACC still signs only its bridge withdrawal.
 
