@@ -1480,13 +1480,23 @@ its three recorded containers, retained volumes and released its lease.
 
 Use the `midnames-night-candidate-379-mixed-recipient-` prefix to select this
 diagnostic lane with a fresh name and unused subnet. The old recipient deposit
-uses the reference compiled contract and old proof provider. A later local-only
-browser route can independently admit the old recipient roster, pin its binding
-in the durable intent and use a second old-binding proof service. Enable it only
+in the first run used the reference compiled contract and old proof provider.
+A fresh [adapter run](evidence/candidate-to-old-night-adapter-20261123.json) at
+signed `253f714b` used the exported `proveUnboundNightDeposit` adapter with the
+old recipient's pinned binding, artifact tree and release proof provider. It
+recovered the saved intent after withdrawal and confirmed the old recipient's
+4 NIGHT deposit at canonical height 96, with balances 10/0 → 6/0 → 6/4,
+one dispatch per leg and no replay. Its exact three containers stopped, the
+physical inputs were unchanged and the native lease was released.
+
+The local browser route independently admits the old recipient roster, pins
+its binding in the durable intent and uses a second old-binding proof service.
+Enable it only
 with `--night-send --mixed-recipient` on a candidate demo whose `.night` name
 points to an activated old-binding ACC. The launcher owns that extra loopback
 service on port 8788, verifies its old manifest and same-chain endpoints, and
-stops it on exit. This route remains provisional until its connected browser
+drains it before the shared sponsor lease can be released. This route remains
+provisional until its connected browser
 payment and recovery pass a fresh native run. It does not promote the candidate
 to an installed or online supported binding. The earlier `a`
 attempt stopped at the dirty-source guard; `b` stopped before stack creation
