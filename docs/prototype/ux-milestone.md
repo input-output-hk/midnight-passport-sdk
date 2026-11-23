@@ -196,6 +196,15 @@ taken name, indexer outage and sponsor quote outage refuse safely without a
 second claim dispatch; the registered name remained visible afterward. Physical
 providers and independent online resolution remain unqualified.
 
+The [0.36.1 named-payment native receipt](../../examples/midnames-local/evidence/compact0361-paid-name-night-send-20261123.json)
+uses that already paid name as a recipient on the retained isolated chain.
+One reviewed Node JubJub intent withdrew 4 NIGHT, paused, recovered the same
+intent, and deposited the exact bridge output. The node and indexer confirmed
+both originals, with source/target balances 10/0 → 6/0 → 6/4 and no replay.
+The page admits this profile only with the isolated registry and candidate
+ACC pins; a synthetic page check passed. A connected 0.36.1 browser payment,
+physical passkey, and online provider remain unqualified.
+
 The [shared-chain browser receipt](../../examples/midnames-local/evidence/candidate-acc-combined-local-claim-20261122.json)
 records one synthetic ACC creation, same-profile paid `.night` claim, exact
 indexed success and matching registry target. Those steps span signed source

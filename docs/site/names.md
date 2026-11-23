@@ -891,8 +891,9 @@ before passing its proof-server URL to the worker.
 
 The source-only named NIGHT control is on **Passport account → Withdraw**. It is
 enabled only for the local `undeployed` JubJub demo with an external Midnames
-reader, pinned `standalone-0.35` registry profile, loopback service/indexer/
-chain endpoints, and `VITE_MIDNAMES_NIGHT_SEND=1`. The Midnames primary HTTP/WS
+reader, pinned `standalone-0.35` registry profile (or explicitly isolated
+`standalone-0.36.1` with the `acc-s3r1.1-zkir036` candidate binding), loopback
+service/indexer/chain endpoints, and `VITE_MIDNAMES_NIGHT_SEND=1`. The Midnames primary HTTP/WS
 indexer pair must match the service-discovered ACC/finality indexer pair;
 a separate verification reader may remain distinct. It checks the recipient ACC
 and source balance, shows the full named route and both ACC operations, then
@@ -910,6 +911,18 @@ archived after one explicit original-only check. The page now waits for a
 fenced deposit's finality; a separate payment on the next signed head completed
 and archived automatically. Neither result qualifies a physical passkey or an
 online Midnames provider.
+
+An [isolated Compact 0.36.1 native receipt](../../examples/midnames-local/evidence/compact0361-paid-name-night-send-20261123.json)
+resolved a previously paid, user-owned `.night` name to its contract target,
+then sent 4 NIGHT from a fresh candidate ACC. The sender deliberately stopped
+after the finalized withdrawal, reopened its durable intent, and deposited the
+exact bridge output into the named ACC. Canonical node blocks and indexed
+SUCCESS were checked for both originals; balances moved 10/0 → 6/0 → 6/4
+with one withdrawal, one deposit and no replay. The sender used a Node JubJub
+fixture, so this qualifies the native two-leg route and recovery, not the
+connected 0.36.1 browser send or physical passkey consent. The isolated
+0.36.1 page gate has synthetic tests; its connected native browser payment
+remains to be qualified before the route is presented as a completed demo.
 
 The local candidate launcher sets `VITE_MIDNAMES_NIGHT_SEND=1` only with
 `--night-send --claim --funding` and `--candidate-assets`. Its default candidate

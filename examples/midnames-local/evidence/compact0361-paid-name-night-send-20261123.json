@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "kind": "isolated-ledger9-compact0361-paid-name-night-send",
+  "date": "2026-11-23",
+  "result": "PASS",
+  "sourceHead": "cd30e8f23d36a832ff595298a98fc2f9a3a03b3e",
+  "profile": {
+    "registry": "standalone-0.36.1",
+    "accountBinding": "acc-s3r1.1-zkir036",
+    "networkId": "undeployed",
+    "indexerApi": "v4",
+    "proofServer": "release Ledger 9 prover 9.0.2",
+    "credential": "Node JubJub fixture; one reviewed intent and one owner signature",
+    "chain": "Retained isolated Ledger 9 chain, separate from the shared demo"
+  },
+  "name": "v36pagea5e19b88.night",
+  "registryAddress": "3d0502ab6b226f12ad621fb6c4e5e9882c75b2df479545cd65d1325f7ad30591",
+  "sourceAcc": "f333b83611b67d79fd2eb82c659e855a8d6f50a5f32df1d5896846cf1f377a44",
+  "recipientAcc": "c3ed40e0d020ee0be2b8df92cdb26bf69b9f50c6bcd81d8ebf43f2c3f667f756",
+  "nameDefaultField": "",
+  "amountNight": "4",
+  "balancesNight": {
+    "before": { "source": "10", "recipient": "0" },
+    "afterWithdrawal": { "source": "6", "recipient": "0" },
+    "afterDeposit": { "source": "6", "recipient": "4" }
+  },
+  "withdrawal": {
+    "txHash": "9371928d9a5df3fc06e1b53b4072ab9cdc07500a8dcf6406cd7b2b7fa7a3ac7a",
+    "blockHeight": 1021,
+    "blockHash": "5ae97637abc6906a669fde7018f126bf0ba1ec8506b718101c1bbaec6057d2b5",
+    "indexedSuccess": true,
+    "nodeCanonicalBlockMatched": true
+  },
+  "deposit": {
+    "txHash": "3448c5e208888c8a14343fc0bac12f11be3bfa619de305569ddd8b77edb9c164",
+    "blockHeight": 1024,
+    "blockHash": "3de30a209b6bb66356c8be764303e3127a1330698179c83b1c1892beabd79e02",
+    "indexedSuccess": true,
+    "nodeCanonicalBlockMatched": true
+  },
+  "recovery": {
+    "interruptedAfterWithdrawalBeforeDeposit": true,
+    "reopenedDurableIntent": true,
+    "exactBridgeOutputConsumed": true,
+    "candidateRecipientAdapterUsed": true,
+    "withdrawalBroadcasts": 1,
+    "depositBroadcasts": 1,
+    "replayBroadcasts": 0
+  },
+  "privateReceiptSha256": {
+    "worker": "fe13196de4fde66bc23b62c78fcbdaba9cb98db1467a878fc73eab0ed17a63ed",
+    "supervisor": "7d26bb5f529d685f37bc1fd5ffb44a790af4cc7fccf04650829c882bcb5e8044",
+    "withdrawal": "efb902e85332c0c94a9de9618004dd90d8c840007ac5707ad2cd32d515b07728",
+    "deposit": "555e9e62da343abf97e4c7de23e7ff3f795f06f5c3ba0630dd1386555fc219d7"
+  },
+  "cleanup": {
+    "ownedNodeAndIndexerStopped": true,
+    "sharedReleaseProverUntouched": true,
+    "nativeLeaseReleased": true,
+    "volumesAndPrivateOriginalsRetained": true
+  },
+  "limits": "The recipient name was previously registered by a real-connector browser run on the retained isolated chain. This run used a Node JubJub fixture for the sender and an explicitly pinned reference ACC client with the candidate binding. It proves native two-leg payment and interruption recovery, not a connected 0.36.1 Passport browser send, physical passkey, independent online provider, production image, or released SDK. Failed preparatory harness runs are retained privately and are not payment passes."
+}

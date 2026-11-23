@@ -1124,6 +1124,13 @@ transaction inclusion; the finalized block check does not prove inclusion.
 The isolated `nix develop -c pnpm --filter passport-dapp test:midnames-night-page`
 browser check covers control visibility and the no-ID recovery refusal with a
 synthetic connector and registry; it does not perform a payment.
+The separately isolated `standalone-0.36.1` profile also requires
+`VITE_MIDNAMES_0361_ISOLATED=1`, `MIDNIGHT_STACK=isolated-ledger9`, and the
+exact `acc-s3r1.1-zkir036` candidate binding. Its native
+[named-payment receipt](../examples/midnames-local/evidence/compact0361-paid-name-night-send-20261123.json)
+shows one withdrawal, interruption recovery, and one deposit to a previously
+paid name. The sender was a Node JubJub fixture; the connected 0.36.1 browser
+payment is still unqualified.
 
 ### Standalone Midnames claim recovery
 

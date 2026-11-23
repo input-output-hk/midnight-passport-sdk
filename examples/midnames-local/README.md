@@ -52,6 +52,15 @@ binding. The login connector and credential were synthetic. Physical passkeys,
 combined ACC creation and registration, independent online providers and a
 release remain separate. The ordinary shared demo stays on the 0.35 registry.
 
+The [subsequent native named-payment receipt](evidence/compact0361-paid-name-night-send-20261123.json)
+reused a previously paid, user-owned name on that retained isolated chain.
+A fresh candidate sender ACC withdrew 4 NIGHT, paused between legs, reopened
+the original intent, and deposited its exact bridge output to the named ACC.
+Both originals reached indexed SUCCESS in canonical node blocks; balances
+moved 10/0 → 6/0 → 6/4 with no replay. The sender was a Node JubJub fixture.
+The isolated 0.36.1 named-send page gate has synthetic coverage; a connected
+native browser send, physical passkey and online provider remain open.
+
 ## Open the local Passport and Midnames demo
 
 The launcher attaches to the designated owner's running Ledger 9 node,
