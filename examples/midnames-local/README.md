@@ -1380,7 +1380,7 @@ SDK or demo admits it.
 ### Provisional candidate named NIGHT qualification
 
 The `midnames-night-candidate-` lane reuses the frozen candidate ACC assets and
-the separately verified Compact 0.36.1 standalone registry tree. It deploys two fresh candidate
+the separately verified standalone registry tree. It deploys two fresh candidate
 ACCs and a registry on a fresh isolated chain, issues a root-owned `.night` name
 to the recipient, checks the complete verifier roster on both accounts, then
 exercises the named NIGHT withdrawal and ACC deposit with a retained two-leg

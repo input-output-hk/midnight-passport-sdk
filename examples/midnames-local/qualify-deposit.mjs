@@ -68,7 +68,6 @@ const candidateAccount = out.startsWith('midnames-acc-candidate-');
 const candidateNight = out.startsWith('midnames-night-candidate-');
 const candidateClaim = out.startsWith('midnames-claim-candidate-');
 const candidateProfile = candidateAccount || candidateNight || candidateClaim;
-const registryProfile = candidateProfile ? 'standalone-0.36.1' : 'standalone-0.35';
 assert.ok(candidateAccount ? prepared === '-' : prepared && isAbsolute(prepared));
 const candidateAssets = process.env.PASSPORT_MIDNAMES_CANDIDATE_ASSETS;
 assert.equal(
@@ -255,7 +254,7 @@ try {
   };
   receipt.leasePin = pin;
   save();
-  if (!candidateAccount) await verifyPreparedRegistry(prepared, deadline.check, registryProfile);
+  if (!candidateAccount) await verifyPreparedRegistry(prepared, deadline.check);
   inputs = await isolatedInputs(root, ref, deadline.check);
   receipt.source = inputs.frozen.source;
   await Promise.all(Object.values(ISOLATED_PORTS).map(isolatedFreePort));
@@ -365,7 +364,7 @@ try {
     if (inputs) {
       const check = () => assert.ok(deadline.cleanupRemaining() > 0);
       await inputs.verify(check);
-      if (!candidateAccount) await verifyPreparedRegistry(prepared, check, registryProfile);
+      if (!candidateAccount) await verifyPreparedRegistry(prepared, check);
       verifyProbeKeys();
       if (candidateProfile) {
         assert.ok(candidateAssets);
