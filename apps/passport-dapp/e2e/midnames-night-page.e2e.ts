@@ -6,6 +6,9 @@ import { chromium } from 'playwright-core';
 import { createServer } from 'vite';
 
 const candidate = process.env.PASSPORT_NIGHT_PAGE_CANDIDATE === '1';
+const registryProfile = process.env.PASSPORT_NIGHT_PAGE_REGISTRY_PROFILE ?? 'standalone-0.35';
+assert.ok(registryProfile === 'standalone-0.35' || registryProfile === 'standalone-0.36.1');
+if (registryProfile === 'standalone-0.36.1') assert.equal(candidate, true);
 const binding = candidate ? 'acc-s3r1.1-zkir036' : 'acc-s3r1.1';
 const manifest = candidate
   ? '590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f'
@@ -50,7 +53,12 @@ if (candidate) {
   assert.ok(process.env.PASSPORT_ARTEFACT_DIR, 'Candidate page test needs pinned local assets.');
 }
 process.env.VITE_MIDNAMES_NIGHT_SEND = '1';
-process.env.VITE_MIDNAMES_REGISTRY_PROFILE = 'standalone-0.35';
+process.env.VITE_MIDNAMES_REGISTRY_PROFILE = registryProfile;
+if (registryProfile === 'standalone-0.36.1') {
+  process.env.VITE_MIDNAMES_0361_ISOLATED = '1';
+  process.env.PASSPORT_MIDNAMES_0361_ISOLATED = '1';
+  process.env.MIDNIGHT_STACK = 'isolated-ledger9';
+}
 process.env.VITE_MIDNAMES_INDEXER_URL = 'http://127.0.0.1:6300';
 process.env.VITE_MIDNAMES_INDEXER_WS_URL = 'ws://127.0.0.1:6300';
 const server = await createServer({

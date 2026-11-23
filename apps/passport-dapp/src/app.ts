@@ -46,6 +46,7 @@ import type { PassportNameService } from '@input-output-hk/mn-passport-account/n
 import { showDemoNameService, showNameConfigurationError } from './name-service.js';
 import { configureMidnames } from './midnames/config.js';
 import { localCandidateAccount } from './midnames/candidate-account.js';
+import { supportsLocalNamedNightSend } from './midnames/night-send-profile.js';
 import { createNamedNightPage } from './midnames/night-send-page.js';
 import { localNightEndpoint, localNightNetwork } from './midnames/night-send-page-state.js';
 import { demoClaimPreparation } from './midnames/claim-demo-owner.js';
@@ -289,7 +290,11 @@ try {
     localNightNetwork(network) &&
     ARM === 'jubjub' &&
     import.meta.env.VITE_MIDNAMES_NIGHT_SEND === '1' &&
-    import.meta.env.VITE_MIDNAMES_REGISTRY_PROFILE === 'standalone-0.35' &&
+    supportsLocalNamedNightSend(
+      import.meta.env.VITE_MIDNAMES_REGISTRY_PROFILE,
+      import.meta.env.VITE_MIDNAMES_0361_ISOLATED,
+      candidateQualification,
+    ) &&
     localNightEndpoint(SERVICE_URL, 'http') &&
     localNightEndpoint(import.meta.env.VITE_MIDNAMES_INDEXER_URL, 'http') &&
     localNightEndpoint(import.meta.env.VITE_MIDNAMES_INDEXER_WS_URL, 'ws')
