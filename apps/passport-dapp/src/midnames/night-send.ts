@@ -61,9 +61,12 @@ export class NightDepositInterrupted extends Error {
     readonly withdrawal: NightSendLeg,
     cause: unknown,
   ) {
-    super('The withdrawal finalized. Inspect the original intent before continuing the deposit.', {
-      cause,
-    });
+    super(
+      cause instanceof NightSendPreflightError && cause.code === 'NightNameChanged'
+        ? 'The name changed during deposit recovery. The original withdrawal is saved; review the current destination before retrying only its deposit.'
+        : 'The withdrawal finalized. Inspect the original intent before continuing the deposit.',
+      { cause },
+    );
     this.name = 'NightDepositInterrupted';
   }
 }

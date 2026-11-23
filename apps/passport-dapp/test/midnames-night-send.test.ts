@@ -262,7 +262,11 @@ test('a repointed name needs a fresh review to finish only the saved original de
   state.duringDepositProof = () => {
     state.address = 'e'.repeat(64);
   };
-  await assert.rejects(sendNightByName(request, recovery), NightDepositInterrupted);
+  await assert.rejects(sendNightByName(request, recovery), (error) => {
+    assert.ok(error instanceof NightDepositInterrupted);
+    assert.match(error.message, /name changed during deposit recovery/i);
+    return true;
+  });
   assert.equal(legs.has('deposit'), false, 'a second repoint cannot fence the stale review');
   state.duringDepositProof = () => {};
   assert.equal((await sendNightByName(request, recovery)).phase, 'deposit-pending');
