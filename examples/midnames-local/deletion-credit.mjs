@@ -99,6 +99,7 @@ export function withoutDeletionCredit(result, state, networkId, ledger, types, c
   return rebuildWithCredit(result, state, networkId, ledger, types, contractAddress, 0n, [
     'create_domain',
     'transfer_domain',
+    'update_target',
     'deposit_shielded',
   ]);
 }

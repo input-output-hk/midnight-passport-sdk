@@ -172,7 +172,7 @@ async function registryFixture() {
     createCircuitContext,
   }: {
     createCircuitContext(options: {
-      circuitId: 'create_domain' | 'transfer_domain';
+      circuitId: 'create_domain' | 'transfer_domain' | 'update_target';
       contractAddress: string;
       coinPublicKeyOrZswapState: string;
       contractState: typeof start.currentContractState.data;
@@ -234,7 +234,25 @@ async function registryFixture() {
   );
   const transferTrace = transferred.context.callProofDataTrace[0];
   assert.ok(transferTrace);
-  return { result, state, trace, transferState, transferTrace };
+  const targetState = ContractState.deserialize(result.serialize());
+  const targetContext = createCircuitContext({
+    circuitId: 'update_target',
+    contractAddress: profile.registryAddress,
+    coinPublicKeyOrZswapState: coin,
+    contractState: targetState.data,
+    privateState: {},
+    time: 0,
+  });
+  const nameId = ledger(targetState.data).name_to_id.lookup({ domain: key, parent_id: root });
+  const updated = await claimant.circuits.update_target(
+    targetContext,
+    nameId,
+    new Uint8Array(32).fill(4),
+    AddressType.ContractAddr,
+  );
+  const targetTrace = updated.context.callProofDataTrace[0];
+  assert.ok(targetTrace);
+  return { result, state, trace, transferState, transferTrace, targetState, targetTrace };
 }
 
 function assertGasBoundary(
@@ -290,8 +308,14 @@ test('transfer_domain replay refuses an overclaimed deletion credit', async () =
   assertGasBoundary(transferState, transferTrace);
 });
 
+test('update_target replay refuses an overclaimed deletion credit', async () => {
+  const { targetState, targetTrace } = await registryFixture();
+  assertGasBoundary(targetState, targetTrace);
+});
+
 test('standalone naming calls are rebuilt before proof without deletion credit', async () => {
-  const { state, trace, transferState, transferTrace } = await registryFixture();
+  const { state, trace, transferState, transferTrace, targetState, targetTrace } =
+    await registryFixture();
   const { withoutDeletionCredit } = (await import(
     new URL('../../../examples/midnames-local/deletion-credit.mjs', import.meta.url).href
   )) as {
@@ -307,6 +331,7 @@ test('standalone naming calls are rebuilt before proof without deletion credit',
   for (const [circuit, startingState, proof] of [
     ['create_domain', state, trace],
     ['transfer_domain', transferState, transferTrace],
+    ['update_target', targetState, targetTrace],
   ] as const) {
     const ledgerState = LedgerContractState.deserialize(startingState.serialize());
     const operation = ledgerState.operation(circuit);
