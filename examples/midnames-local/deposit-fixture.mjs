@@ -51,11 +51,12 @@ const sha = (b) => createHash('sha256').update(b).digest('hex');
 const candidateNight = output.split('/').at(-1).startsWith('midnames-night-candidate-');
 const candidateClaim = output.split('/').at(-1).startsWith('midnames-claim-candidate-');
 const candidateProfile = candidateNight || candidateClaim;
+const registryProfile = candidateProfile ? 'standalone-0.36.1' : 'standalone-0.35';
 const candidateAssets = process.env.PASSPORT_MIDNAMES_CANDIDATE_ASSETS;
 assert.equal(Boolean(candidateAssets), candidateProfile);
 const candidatePin = candidateProfile ? resolvePinnedBinding('acc-s3r1.1-zkir036') : undefined;
 if (candidatePin) assert.equal(candidatePin.provisional, true);
-const pins = await verifyPreparedRegistry(prepared);
+const pins = await verifyPreparedRegistry(prepared, () => {}, registryProfile);
 const assets = join(prepared, 'managed');
 const asset = (path) => readFileSync(join(assets, path));
 // Keep the generated module and the host SDK on the same physical WASM runtime.
@@ -397,7 +398,7 @@ try {
     indexer,
     'undeployed',
     candidatePin ? 'acc-s3r1.1-zkir036' : 'acc-s3r1.1',
-    'standalone-0.35',
+    registryProfile,
     candidateQualification,
   );
   const profile = { networkId: 'undeployed', namespace: 'night', registryAddress };
