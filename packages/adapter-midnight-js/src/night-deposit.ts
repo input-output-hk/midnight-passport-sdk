@@ -20,6 +20,7 @@ import {
   communicationCommitmentRandomness,
 } from '@midnightntwrk/ledger-v9';
 import { createHeldCoinWitness, type MidnightBinding } from './chain.js';
+import { assertPinnedNightRecipientRoster } from './night-recipient-roster.js';
 
 const ADDRESS = /^[a-f0-9]{64}$/;
 const MAX_PROVEN_BYTES = 4 * 1024 * 1024;
@@ -58,13 +59,24 @@ export interface UnboundNightDepositRequest {
     readonly encryptionPublicKey: string;
   };
   readonly prover: Prover;
+  /** Complete versioned contract-package assignment for the recipient ACC. */
+  readonly recipientVerifierRoster: Readonly<Record<string, string>>;
   /** Explicit local proof-only opt-in; the host separately controls balancing and dispatch. */
   readonly provisionalLocal?: boolean;
 }
 
 /** Validate the deposit binding before reading chain state or asking the device wallet to sign. */
 export function assertNightDepositPreflight(request: UnboundNightDepositRequest): void {
-  const { network, binding, target, amount, walletKeys, prover, provisionalLocal } = request;
+  const {
+    network,
+    binding,
+    target,
+    amount,
+    walletKeys,
+    prover,
+    provisionalLocal,
+    recipientVerifierRoster,
+  } = request;
   const manifest = NIGHT_DEPOSIT_PINS[network.bindingId as keyof typeof NIGHT_DEPOSIT_PINS];
   if (
     network.networkId !== 'undeployed' ||
@@ -86,7 +98,10 @@ export function assertNightDepositPreflight(request: UnboundNightDepositRequest)
     !walletKeys.encryptionPublicKey ||
     typeof binding.Contract !== 'function' ||
     typeof binding.ledger !== 'function' ||
-    typeof prover.proveTx !== 'function'
+    typeof prover.proveTx !== 'function' ||
+    !recipientVerifierRoster ||
+    typeof recipientVerifierRoster !== 'object' ||
+    Object.keys(recipientVerifierRoster).length !== 52
   )
     throw new Error('Unsupported pinned NIGHT deposit request.');
 }
@@ -262,7 +277,9 @@ export async function proveUnboundNightDeposit(
   );
   if (!captured.snapshot) throw new Error('The named NIGHT recipient ACC is absent.');
   const [, state, parameters] = captured.snapshot;
-  const operation = ContractState.deserialize(state.serialize()).operation('deposit_unshielded');
+  const recipient = ContractState.deserialize(state.serialize());
+  await assertPinnedNightRecipientRoster(recipient, request.recipientVerifierRoster);
+  const operation = recipient.operation('deposit_unshielded');
   if (!operation) throw new Error('The named NIGHT recipient lacks the pinned deposit operation.');
   if (network.bindingId === 'acc-s3r1.1-zkir036') {
     // The provisional profile must agree at the chain and HTTP artifact boundaries

@@ -1,6 +1,7 @@
 import type { PassportNameService } from '@input-output-hk/mn-passport-account/names';
 import type { NetworkConfig, Prover } from '@input-output-hk/mn-passport-account/ports';
 import type { PassportAccount } from '@input-output-hk/mn-passport-protocol';
+import { pinnedVerifierRoster } from '@input-output-hk/mn-passport-contract';
 import {
   assertNightDepositPreflight,
   proveUnboundNightDeposit,
@@ -111,6 +112,7 @@ function checkedSelection(options: ConnectedNightSendOptions) {
     options.names.provider.namespace !== 'night'
   )
     throw new Error('The selected ACC, name service, or device wallet cannot send NIGHT by name.');
+  const recipientVerifierRoster = pinnedVerifierRoster(network.bindingId);
   if (network.bindingId === 'acc-s3r1.1-zkir036')
     // Structural preflight only. The resolved recipient and real wallet keys are
     // checked again by the adapter after withdrawal finality, before proving.
@@ -121,12 +123,13 @@ function checkedSelection(options: ConnectedNightSendOptions) {
       amount: 1n,
       walletKeys: { coinPublicKey: 'preflight', encryptionPublicKey: 'preflight' },
       prover: options.prover,
+      recipientVerifierRoster,
       provisionalLocal: !!options.provisionalLocal,
     });
   const bridge = wallet.nightBridge;
   if (!bridge)
     throw new Error('The selected ACC, name service, or device wallet cannot send NIGHT by name.');
-  return { scope, network, bridge };
+  return { scope, network, bridge, recipientVerifierRoster };
 }
 
 function checkedRecoveryReview(options: ConnectedNightSendOptions, checkSelected: () => void) {
@@ -171,7 +174,7 @@ export async function createConnectedNightSend(
   deps: ConnectedNightSendDeps = live,
 ) {
   const { account, wallet } = options;
-  const { scope, network, bridge } = checkedSelection(options);
+  const { scope, network, bridge, recipientVerifierRoster } = checkedSelection(options);
   const checkSelected = () => {
     options.checkScope();
     if (
@@ -256,6 +259,7 @@ export async function createConnectedNightSend(
                 encryptionPublicKey: addresses.shieldedEncryptionPublicKey,
               },
               prover: options.prover,
+              recipientVerifierRoster,
               provisionalLocal: !!options.provisionalLocal,
             });
             checkSelected();

@@ -15,6 +15,7 @@ export {
   assertBindingCompatible,
   detectDeployedVersion,
   detectDeployedVersionByCircuit,
+  pinnedVerifierRoster,
   resolveBinding,
   resolvePinnedBinding,
 } from './registry.js';

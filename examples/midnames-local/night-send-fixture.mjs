@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { createServer } from 'node:http';
 import { setTimeout as delay } from 'node:timers/promises';
 import { proveUnboundNightDeposit } from '../../packages/adapter-midnight-js/src/night-deposit.ts';
+import { pinnedVerifierRoster } from '../../packages/contract/dist/index.js';
 import {
   NightPaymentDeclined,
   sendNightByName,
@@ -451,6 +452,7 @@ export async function qualifyNightSend({
                 artefactUrl,
               },
               binding,
+              recipientVerifierRoster: pinnedVerifierRoster('acc-s3r1.1-zkir036'),
               target,
               amount: BigInt(intent.amount),
               walletKeys: {

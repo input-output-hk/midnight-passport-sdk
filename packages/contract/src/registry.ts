@@ -84,6 +84,21 @@ export function resolveBinding(version: string, registry: AccRegistry = ACC_REGI
   return binding;
 }
 
+/** Complete circuit-to-verifier assignment for an explicit pin, including source candidates. */
+export function pinnedVerifierRoster(
+  version: string,
+  registry: AccRegistry = ACC_REGISTRY,
+): Readonly<Record<string, string>> {
+  const binding = resolvePinnedBinding(version, registry);
+  return Object.freeze(
+    Object.fromEntries(
+      Object.entries(binding.circuits).flatMap(([name, pin]) =>
+        pin.hashes ? [[name, pin.hashes.verifierKey] as const] : [],
+      ),
+    ),
+  );
+}
+
 const normaliseHash = (hash: string) => hash.toLowerCase().replace(/^0x/, '');
 
 /**

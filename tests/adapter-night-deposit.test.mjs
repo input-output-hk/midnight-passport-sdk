@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+  assertPinnedNightRecipientRoster,
   assertNightDepositPreflight,
   proveUnboundNightDeposit,
 } from '../packages/adapter-midnight-js/dist/index.js';
 import * as binding from '../packages/contract/generated/acc-s3r1.1/index.js';
-import { resolvePinnedBinding } from '../packages/contract/dist/index.js';
+import { pinnedVerifierRoster, resolvePinnedBinding } from '../packages/contract/dist/index.js';
 
 const baseline = () => ({
   network: {
@@ -18,6 +19,7 @@ const baseline = () => ({
     artefactUrl: 'http://127.0.0.1:18798/v1/zk/acc-s3r1.1',
   },
   binding,
+  recipientVerifierRoster: pinnedVerifierRoster('acc-s3r1.1'),
   target: 'cd'.repeat(32),
   amount: 4n,
   walletKeys: { coinPublicKey: 'coin', encryptionPublicKey: 'encryption' },
@@ -85,6 +87,7 @@ test('provisional NIGHT deposit needs the exact pin, explicit opt-in and loopbac
       artefactUrl: 'http://127.0.0.1:8787/v1/zk/acc-s3r1.1-zkir036',
     },
     provisionalLocal: true,
+    recipientVerifierRoster: pinnedVerifierRoster('acc-s3r1.1-zkir036'),
   };
   assert.doesNotThrow(() => assertNightDepositPreflight(candidate));
   for (const changed of [
@@ -100,4 +103,59 @@ test('provisional NIGHT deposit needs the exact pin, explicit opt-in and loopbac
       () => assertNightDepositPreflight({ ...candidate, ...changed }),
       /Unsupported pinned NIGHT deposit request/,
     );
+});
+
+test('recipient proof guard requires the complete pinned circuit assignment', async () => {
+  const entries = await Promise.all(
+    Array.from({ length: 52 }, async (_, index) => {
+      const name = `circuit_${index}`;
+      const bytes = Uint8Array.of(index);
+      const digest = await crypto.subtle.digest('SHA-256', bytes);
+      return { name, bytes, hash: Buffer.from(digest).toString('hex') };
+    }),
+  );
+  const expected = Object.fromEntries(entries.map(({ name, hash }) => [name, hash]));
+  const keys = new Map(entries.map(({ name, bytes }) => [name, bytes]));
+  const state = {
+    operations: () => [...keys.keys()],
+    /** @param {string} name */
+    operation: (name) => {
+      const verifierKey = keys.get(name);
+      return verifierKey ? { verifierKey } : undefined;
+    },
+  };
+  await assert.doesNotReject(() => assertPinnedNightRecipientRoster(state, expected));
+  const swapped = new Map(keys);
+  const replacement = keys.get('circuit_1');
+  assert.ok(replacement);
+  swapped.set('circuit_0', replacement);
+  await assert.rejects(
+    () =>
+      assertPinnedNightRecipientRoster(
+        {
+          ...state,
+          /** @param {string} name */
+          operation: (name) => {
+            const verifierKey = swapped.get(name);
+            return verifierKey ? { verifierKey } : undefined;
+          },
+        },
+        expected,
+      ),
+    /recipient ACC verifier roster differs/,
+  );
+  const incomplete = { ...expected };
+  delete incomplete.circuit_0;
+  await assert.rejects(
+    () => assertPinnedNightRecipientRoster(state, incomplete),
+    /recipient ACC verifier roster differs/,
+  );
+  await assert.rejects(
+    () =>
+      assertPinnedNightRecipientRoster(
+        { ...state, operations: () => [...keys.keys(), 'extra'] },
+        expected,
+      ),
+    /recipient ACC verifier roster differs/,
+  );
 });

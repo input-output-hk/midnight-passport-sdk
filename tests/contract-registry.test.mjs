@@ -20,6 +20,7 @@ const {
   UnsupportedBindingError,
   detectDeployedVersion,
   detectDeployedVersionByCircuit,
+  pinnedVerifierRoster,
   resolveBinding,
   resolvePinnedBinding,
 } = await import(new URL('../packages/contract/dist/index.js', import.meta.url).href);
@@ -130,6 +131,15 @@ test('binding detection rejects a permuted or incomplete circuit-to-verifier ass
     Object.entries(assigned).map(([name, hash]) => [name, `0x${hash.toUpperCase()}`]),
   );
   assert.equal(detectDeployedVersionByCircuit(normalised), BINDING_VERSION);
+});
+
+test('both pinned profiles expose complete immutable verifier assignments', () => {
+  for (const version of ['acc-s3r1.1', 'acc-s3r1.1-zkir036']) {
+    const roster = pinnedVerifierRoster(version);
+    assert.equal(Object.keys(roster).length, 52);
+    assert.equal(detectDeployedVersionByCircuit(roster), version);
+    assert.ok(Object.isFrozen(roster));
+  }
 });
 
 test('the release pure circuits the passkey caller needs must be present', () => {

@@ -298,12 +298,18 @@ The later source preview also exports `proveUnboundNightDeposit(request)` from
 `adapter-midnight-js` for the separate named NIGHT route. It accepts the pinned
 `undeployed`/`acc-s3r1.1` network and manifest, recipient ACC address, positive
 smallest-unit NIGHT amount, public device-wallet coin/encryption keys, generated
-binding and a replaceable `Prover`. It creates and proves only an unbound
+binding, the complete recipient verifier assignment from the contract package's
+`pinnedVerifierRoster(bindingId)`, and a replaceable `Prover`. The isolated local
+`acc-s3r1.1-zkir036` candidate additionally requires its explicit provisional
+opt-in. Before proving, it checks the captured recipient state against every
+pinned circuit-to-verifier assignment; a partial or changed roster refuses.
+It creates and proves only an unbound
 `deposit_unshielded` ACC call. The device-held wallet must still inspect the
 balanced transaction, bind its input to the journaled withdrawal output, sign
 and fence its original before submission. This source helper has not passed a
-native connected browser or real-provider qualification; it is absent from the
-published RC9 package.
+real-provider qualification and is absent from the published RC9 package. The
+local synthetic browser and native results are recorded in the
+[Midnames demo guide](../../examples/midnames-local/README.md).
 
 ### Shielded deposit sender boundary
 

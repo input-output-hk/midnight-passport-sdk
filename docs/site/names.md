@@ -834,6 +834,14 @@ reviewed recipient ACC and update its balance. The ACC signature binds the
 withdrawal, bridge, asset and amount. The host journal binds the name and
 recipient contract to the deposit, which is permissionless.
 
+The source deposit adapter also checks the captured recipient contract's entire
+52-operation verifier assignment against `pinnedVerifierRoster(bindingId)` before
+asking its prover to create the deposit proof. A matching deposit circuit alone
+does not admit a mixed, partial or changed ACC roster. The host must pass the
+contract package's pin for the recipient version; this local route currently
+uses the same selected binding for sender and recipient. Mixed-version payments
+remain unavailable.
+
 The two transactions settle independently. Their shared unshielded wallet
 output links the transactions in the ledger. If the deposit has yet to dispatch,
 the original intent can continue once its withdrawal is confirmed. Once a leg
