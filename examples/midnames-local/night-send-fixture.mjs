@@ -150,6 +150,7 @@ export async function qualifyNightSend({
   verifyHybridSource,
   candidateAssets,
   candidateManifestSha256,
+  probeRosterNegative,
   step,
 }) {
   const [{ versionOfRecord }, rx, types] = await Promise.all([
@@ -558,6 +559,49 @@ export async function qualifyNightSend({
     );
     step('verified-pre-owner-night-refusals');
   }
+  let rosterRefusal;
+  if (probeRosterNegative) {
+    assert.ok(candidateAssets);
+    step('probe-native-recipient-roster-refusal');
+    rosterRefusal = await probeRosterNegative(async (wrongRosterTarget) => {
+      assert.equal(await reads.isSupportedAccount(wrongRosterTarget, networkId), false);
+      assert.equal(
+        (
+          await reads.readClaim(recipientName, {
+            networkId,
+            namespace: 'night',
+            registryAddress,
+          })
+        )?.target.address,
+        wrongRosterTarget,
+      );
+      await assert.rejects(
+        () =>
+          sendNightByName(
+            { ...request, requestId: randomUUID() },
+            openPorts(() => assert.fail('A changed roster reached deposit preparation.')),
+          ),
+        (error) => error?.name === 'PassportNameError' && error.code === 'InvalidRecord',
+      );
+      assert.equal(approvals, 0);
+      assert.equal(signatures, 0);
+      assert.deepEqual(sent, { withdraw: 0, deposit: 0 });
+      assert.equal(await openJournal(directory).readIntent(), undefined);
+      assert.equal(await openJournal(directory).readLeg('withdraw'), undefined);
+      assert.equal(await openJournal(directory).readLeg('deposit'), undefined);
+      assert.deepEqual(
+        {
+          source: String(await balance(source)),
+          target: String(await balance(target)),
+          wrongRoster: String(await balance(wrongRosterTarget)),
+        },
+        { source: '10', target: '0', wrongRoster: '0' },
+      );
+    });
+    assert.equal((await names.resolve({ name: recipientName, networkId }))?.accountAddress, target);
+    createOnce(join(directory, 'roster-refusal.json'), JSON.stringify(rosterRefusal));
+    step('verified-native-recipient-roster-refusal');
+  }
   const interrupted = new Error('Injected interruption after withdrawal finality');
   step(browserDecline ? 'review-before-owner-signature' : 'withdraw-then-interrupt-before-deposit');
   /** @type {unknown} */ let failure;
@@ -731,5 +775,6 @@ export async function qualifyNightSend({
     exactBridgeOutputConsumed: true,
     candidateAdapterDeposit: Boolean(candidateAssets),
     replayBroadcasts: 0,
+    rosterRefusal,
   };
 }

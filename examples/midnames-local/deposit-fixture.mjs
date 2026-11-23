@@ -49,6 +49,10 @@ http.request = function (...args) {
 };
 const sha = (b) => createHash('sha256').update(b).digest('hex');
 const candidateNight = output.split('/').at(-1).startsWith('midnames-night-candidate-');
+const rosterNegative = output
+  .split('/')
+  .at(-1)
+  .startsWith('midnames-night-candidate-379-roster-negative-');
 const candidateClaim = output.split('/').at(-1).startsWith('midnames-claim-candidate-');
 const candidateProfile = candidateNight || candidateClaim;
 const candidateAssets = process.env.PASSPORT_MIDNAMES_CANDIDATE_ASSETS;
@@ -730,6 +734,88 @@ try {
       );
       assert.ok(await reads.isSupportedAccount(repointTarget, 'undeployed'));
     };
+    const probeRosterNegative = rosterNegative
+      ? async (verifyRefusal) => {
+          assert.ok(candidatePin);
+          const originalZk = providers.zkConfigProvider;
+          const changedCircuit = 'deposit_unshielded';
+          const substitute = new Uint8Array(
+            await originalZk.getVerifierKey('withdraw_unshielded_with_jubjub'),
+          );
+          assert.notEqual(
+            sha(substitute),
+            candidatePin.circuits[changedCircuit].hashes.verifierKey,
+          );
+          providers.zkConfigProvider = Object.assign(Object.create(originalZk), {
+            getVerifierKey: (id) =>
+              id === changedCircuit
+                ? Promise.resolve(new Uint8Array(substitute))
+                : originalZk.getVerifierKey(id),
+          });
+          let wrongRosterTarget;
+          try {
+            wrongRosterTarget = await deployAccount(
+              'wrong-roster',
+              randomJubJubPoint(),
+              inbox.generateEncKeyPair().publicKey,
+            );
+          } finally {
+            providers.zkConfigProvider = originalZk;
+          }
+          const observed = await providers.publicDataProvider.queryContractState(wrongRosterTarget);
+          const onChain = key.deserialize(observed.serialize());
+          assert.equal(onChain.operations().length, 52);
+          assert.deepEqual(onChain.maintenanceAuthority.committee, []);
+          const decoded = acc.ledger(
+            compactRuntime.ContractState.deserialize(observed.serialize()).data,
+          );
+          assert.equal(decoded.booted, true);
+          assert.equal(decoded.spec_version, 3n);
+          const mismatches = Object.entries(candidatePin.circuits)
+            .filter(
+              ([name, pin]) =>
+                pin.proof && sha(onChain.operation(name)?.verifierKey) !== pin.hashes.verifierKey,
+            )
+            .map(([name]) => name);
+          assert.deepEqual(mismatches, [changedCircuit]);
+          assert.equal(await reads.isSupportedAccount(wrongRosterTarget, 'undeployed'), false);
+          const updateNameTarget = async (address) => {
+            const live = registry.ledger(
+              (await providers.publicDataProvider.queryContractState(registryAddress)).data,
+            );
+            const nameId = live.name_to_id.lookup({ domain: nameKey, parent_id: rootId });
+            await contracts.submitCallTx(regProviders, {
+              compiledContract: compiled(rootSecret),
+              contractAddress: registryAddress,
+              circuitId: 'update_target',
+              privateStateId,
+              args: [
+                nameId,
+                new Uint8Array(Buffer.from(address, 'hex')),
+                registry.AddressType.ContractAddr,
+              ],
+            });
+          };
+          step('point-name-at-wrong-roster');
+          await updateNameTarget(wrongRosterTarget);
+          await verifyRefusal(wrongRosterTarget);
+          step('restore-name-after-roster-refusal');
+          await updateNameTarget(accountAddress);
+          assert.ok(await reads.isSupportedAccount(accountAddress, 'undeployed'));
+          return {
+            changedCircuit,
+            originalVerifierSha256: candidatePin.circuits[changedCircuit].hashes.verifierKey,
+            substitutedVerifierSha256: sha(substitute),
+            wrongRosterTarget,
+            restoredTarget: accountAddress,
+            refusal: 'InvalidRecord',
+            approvals: 0,
+            signatures: 0,
+            sent: { withdraw: 0, deposit: 0 },
+            balances: { source: '10', target: '0', wrongRoster: '0' },
+          };
+        }
+      : undefined;
     const proofReceipt = await qualifyNightSend({
       output,
       get,
@@ -755,6 +841,7 @@ try {
       verifyHybridSource,
       candidateAssets: candidateNight ? candidateAssets : undefined,
       candidateManifestSha256: candidateNight ? candidatePin.manifestSha256 : undefined,
+      probeRosterNegative,
       step,
     });
     if (process.env.PASSPORT_MIDNAMES_BROWSER_REVIEW === '1') {
