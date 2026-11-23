@@ -34,6 +34,7 @@ import { MIDNAMES_REGISTRY_VERIFIERS } from '../src/midnames/registry-pins.js';
 
 const profile = { networkId: 'undeployed', namespace: 'night', registryAddress: '11'.repeat(32) };
 const target = '33'.repeat(32);
+const defaultFieldAddress = '22'.repeat(32);
 const claimSecret = new Uint8Array(32).fill(9);
 const coin = '00'.repeat(32);
 const payment = {
@@ -198,7 +199,7 @@ async function registryFixture() {
     AddressType.ContractAddr,
     { is_some: true, value: 'profile' },
     payment,
-    fields([['profile', 'different-target']]),
+    fields([['profile', defaultFieldAddress]]),
   );
   const trace = created.context.callProofDataTrace[0];
   assert.ok(trace);
@@ -252,7 +253,16 @@ async function registryFixture() {
   );
   const targetTrace = updated.context.callProofDataTrace[0];
   assert.ok(targetTrace);
-  return { result, state, trace, transferState, transferTrace, targetState, targetTrace };
+  return {
+    result,
+    state,
+    trace,
+    transferState,
+    transferTrace,
+    targetState,
+    targetTrace,
+    decodeRegistry: ledger,
+  };
 }
 
 function assertGasBoundary(
@@ -411,7 +421,7 @@ test('standalone naming calls are rebuilt before proof without deletion credit',
 });
 
 test('installed Midnames v2.1 reads its generated registry over the Ledger 9 indexer wire format', async (t) => {
-  const { result, state } = await registryFixture();
+  const { result, state, decodeRegistry } = await registryFixture();
   let registryState = Buffer.from(result.serialize()).toString('hex');
   const ledgerParameters = Buffer.from(LedgerParameters.initialParameters().serialize()).toString(
     'hex',
@@ -459,6 +469,12 @@ test('installed Midnames v2.1 reads its generated registry over the Ledger 9 ind
     'acc-s3r1.1',
     'standalone-0.35',
   );
+  const registry = decodeRegistry(result.data);
+  const label = new Uint8Array(32).fill(255);
+  label.set(new TextEncoder().encode('alice'));
+  const id = registry.name_to_id.lookup({ domain: label, parent_id: registry.ROOT_ZONE_ID });
+  assert.equal(registry.id_to_data.lookup(id).default_field.value, 'profile');
+  assert.equal(registry.domain_fields.lookup(id).lookup('profile'), defaultFieldAddress);
   assert.deepEqual(await reads.readTarget('alice.night', profile), {
     kind: 'contract',
     address: target,
