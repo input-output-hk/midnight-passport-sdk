@@ -1431,6 +1431,20 @@ two-leg recovery, reaching 6/4. The unsupported-asset check is local route
 validation; the over-balance check reads the live ACC. Browser consent and
 online Midnames admission remain separate qualifications.
 
+At signed `40e2be6a`, the opt-in
+[roster refusal run](evidence/candidate-acc-night-roster-refusal-20261123.json)
+deployed a third, activated candidate ACC with 52 operations and retired
+maintenance authority, but substituted the `deposit_unshielded` verifier.
+The other 51 circuit assignments matched. After `alice.night` was pointed at
+that ACC, the name reader refused the `InvalidRecord` route before any owner
+approval, signature, payment journal, or leg dispatch. The source/original/
+wrong-roster balances stayed 10/0/0. The fixture restored the name and
+completed the normal original-only four-unit NIGHT payment to the valid ACC,
+reaching 6/4. This is one isolated local changed-roster case, not mixed-version
+admission or full binding promotion. Select this extra lane with a fresh output
+name beginning `midnames-night-candidate-379-roster-negative-`; it deploys a
+third ACC and needs a fresh chain and unused subnet.
+
 ### Provisional candidate paid name claim and retry
 
 The `midnames-claim-candidate-` lane uses the same complete candidate ACC

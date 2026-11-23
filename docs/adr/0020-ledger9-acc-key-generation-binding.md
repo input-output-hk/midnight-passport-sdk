@@ -76,3 +76,17 @@ needs another identity and its own review.
 
 This preserves the SDK's version axis and avoids claiming that the diagnostic
 full-roster payment is already an installable or supported binding.
+
+## Bounded local qualification after this decision
+
+The provisional `acc-s3r1.1-zkir036` route is available only behind explicit
+isolated-local host admission. A [fresh native roster refusal](../../examples/midnames-local/evidence/candidate-acc-night-roster-refusal-20261123.json)
+deployed an activated ACC whose `deposit_unshielded` verifier differed from
+the pin while its other 51 assignments matched. A name pointing to that ACC
+was refused before owner approval, signing, journal admission, or a payment
+leg. The name was then restored to a valid candidate ACC, and the same run
+finalized one synthetic-owner 4 NIGHT payment with original-only recovery.
+This qualifies one changed-verifier negative on Ledger 9. Mixed-version
+source/recipient pairs, other malformed rosters, source and installed-package
+operation coverage, and binding promotion remain separate gates. The ordinary
+supported binding and existing deployments are unchanged.

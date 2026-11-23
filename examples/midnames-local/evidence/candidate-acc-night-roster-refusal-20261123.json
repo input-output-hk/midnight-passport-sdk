@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "kind": "candidate-acc-isolated-native-recipient-roster-refusal",
+  "result": "PASS",
+  "sourceHead": "40e2be6a82ed8359c6c57094132dc06c12ab900f",
+  "observedAt": "2026-11-23",
+  "profile": "fresh isolated Ledger 9 node, Indexer API v4, release prover, candidate ACC 0.36.1 assets, Compact 0.35 standalone registry",
+  "name": "alice.night",
+  "nameAuthority": "root-owned local fixture",
+  "wrongRosterRecipient": {
+    "activated": true,
+    "operationCount": 52,
+    "maintenanceAuthorityRetired": true,
+    "changedCircuit": "deposit_unshielded",
+    "originalVerifierSha256": "bb4421a5909564377d15f0756299bef99740089b842e8d9796ad2d3d75831de9",
+    "substitutedVerifierSha256": "0d379e75fc29bb44de21a263a1f3bd941658aed71ccaa41cf445b29b104715a4",
+    "otherVerifierAssignmentsMatched": 51,
+    "bindingReaderAdmitted": false
+  },
+  "namedSendRefusal": {
+    "namePointedAtWrongRosterOnChain": true,
+    "resultCode": "InvalidRecord",
+    "approvals": 0,
+    "signatures": 0,
+    "withdrawalDispatches": 0,
+    "depositDispatches": 0,
+    "journalEmpty": true,
+    "balances": {
+      "source": "10",
+      "originalRecipient": "0",
+      "wrongRosterRecipient": "0"
+    }
+  },
+  "restoredSupportedRoute": {
+    "nameRestoredToOriginalRecipient": true,
+    "withdrawalDispatches": 1,
+    "depositDispatches": 1,
+    "exactBridgeOutputConsumed": true,
+    "replayBroadcasts": 0,
+    "balances": {
+      "before": { "source": "10", "target": "0" },
+      "afterWithdrawal": { "source": "6", "target": "0" },
+      "final": { "source": "6", "target": "4" }
+    },
+    "withdrawalFinalizedBlock": 133,
+    "depositFinalizedBlock": 136
+  },
+  "originalTransactionCount": 41,
+  "inputsUnchanged": true,
+  "ownedContainersStopped": 3,
+  "retainedVolumes": true,
+  "leaseReleased": true,
+  "unrelatedResourcesControlled": 0,
+  "privateReceiptSha256": {
+    "supervisor": "0d717fbb9fb1c934c2ea8dc3b462194e62e8a82daa8e02bba71710a416d6507c",
+    "worker": "96d3978e5254180ad1334dec952a636d54bb7c8f65b0806885df1319e85d5f7e",
+    "rosterRefusal": "185e5fa873ea0439a96c895ea93bd0d41aa1b2913b48965ea094dbb2072d1ca5"
+  },
+  "limits": [
+    "This proves one on-chain changed-verifier refusal in the isolated fixture before an owner credential request. It does not qualify every malformed roster or mixed-version pair.",
+    "The name was issued by the local registry root, not by a user-owned paid registration in this run.",
+    "The supported follow-up payment used synthetic owner approval; physical passkey, online provider, released package and full candidate binding promotion remain unqualified."
+  ]
+}
