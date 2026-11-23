@@ -394,8 +394,9 @@ identify which compiler produced a deployed contract, so the host must pin
 the deployment address and its own build record. An explicitly isolated
 reference page can prepare and dispatch a claim with this profile under its
 pinned registry, account, network and prover gates. Named NIGHT sending remains
-disabled for this profile. The ordinary shared demo remains on
-`standalone-0.35`.
+available only with the explicitly isolated `acc-s3r1.1-zkir036` candidate
+binding and the opt-in local send gate described below. The ordinary shared
+demo remains on `standalone-0.35`.
 
 A subsequent [isolated headless Chromium check](../../examples/midnames-local/evidence/compact0361-browser-owner-proof-20261123.json) used the pinned 0.36.1 browser
 client and a virtual PRF credential to prove a reviewed, **unsent** claim from
