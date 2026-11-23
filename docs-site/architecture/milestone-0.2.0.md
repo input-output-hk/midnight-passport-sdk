@@ -126,8 +126,14 @@ then owner-repointed the name to the sender ACC. The reopened browser reviewed
 node-canonical sequence was restore/withdraw/repoint/deposit at blocks
 1658/1676/1686/1695; balances moved 6/1/7 → 5/2/7 without a second
 withdrawal. A fresh browser found the archived review and no active intent;
-exact resources stopped and the lease was released. Absent, expired and
-unavailable current-name native cases remain open.
+exact resources stopped and the lease was released. A third
+[isolated browser registry-outage repair](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-native-unavailable-original-repair-20261123.json)
+at signed source `bdc40164` intercepted only browser registry reads after
+withdrawal finality. The page reviewed `Unavailable` and deposited the same
+saved output into the original ACC. Blocks 1725/1738 held withdrawal/deposit;
+same-block balances moved 5/2/7 → 4/3/7. The native lease was released after
+stopping exact isolated resources. The provider itself remained healthy;
+absent and expired native cases remain open.
 
 An [isolated native browser run](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-native-postwithdraw-repoint-recovery-20261123.json)
 at signed source `a215ba3` finalized one withdrawal, repointed the name to a

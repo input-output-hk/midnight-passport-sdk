@@ -268,8 +268,13 @@ at signed source `f788c47` recorded the name's owner-authorized repoint to
 the sender ACC after withdrawal. The connected browser separately reviewed
 `UnsupportedTarget` and finalized only the saved output at the original ACC;
 same-block balances moved 6/1/7 → 5/2/7, with an archived review and no
-second withdrawal. Neither run qualifies absent, expired or unavailable
-native observations, a physical passkey, or an online name route.
+second withdrawal. A third [isolated browser registry-outage repair](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-native-unavailable-original-repair-20261123.json)
+at signed source `bdc40164` failed ten browser registry reads after withdrawal
+finality. The page reviewed `Unavailable` and deposited that saved output into
+the original ACC at block 1738; balances moved 5/2/7 → 4/3/7. This simulates
+one browser provider outage while the node and indexer remain healthy. Absent
+and expired native observations, physical passkeys, and an online name route
+remain unqualified.
 
 ## Security promises in the pinned architecture
 

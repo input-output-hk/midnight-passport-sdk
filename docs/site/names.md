@@ -1005,9 +1005,16 @@ at signed source `f788c47` restored the name's contract target before another
 which the reopened browser observed as `UnsupportedTarget`. An explicit
 direct-ACC repair deposited only the saved output into the original ACC;
 canonical source/original/other balances moved 6/1/7 → 5/2/7, with one
-archived repair review and no active intent. Absent, expired and unavailable
-native observations, physical passkeys and online providers remain
-unqualified under #318.
+archived repair review and no active intent. A third
+[browser registry-outage repair](../../examples/midnames-local/evidence/compact0361-native-unavailable-original-repair-20261123.json)
+at signed source `bdc40164` intercepted only the browser's registry reads
+after withdrawal finality. The reopened page reviewed `Unavailable` and
+deposited the exact saved output into the original ACC at block 1738;
+canonical balances moved 5/2/7 → 4/3/7. The browser saw ten failed reads,
+while the isolated node and indexer stayed healthy. Exact owned resources
+stopped and the native lease was released. Absent and expired native
+observations, physical passkeys and online providers remain unqualified under
+#318.
 
 An [isolated Compact 0.36.1 native receipt](../../examples/midnames-local/evidence/compact0361-paid-name-night-send-20261123.json)
 resolved a previously paid, user-owned `.night` name to its contract target,

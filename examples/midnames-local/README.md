@@ -117,8 +117,15 @@ block 1686. The reopened browser reviewed `UnsupportedTarget` and deposited
 only the saved output into the original ACC at block 1695. Same-block balances
 moved source/original/other 6/1/7 → 5/2/7. A fresh browser found one archived
 repair review and no active intent; exact owned resources stopped and the lease
-was released. Absent, expired and unavailable native cases, real passkeys and
-online providers remain open.
+was released. A third [isolated browser outage repair receipt](evidence/compact0361-native-unavailable-original-repair-20261123.json)
+at signed source `bdc40164` intercepted only the browser's registry reads
+after a finalized withdrawal. The reopened page reviewed `Unavailable` and
+deposited the exact saved output into the original ACC at block 1738, with no
+second withdrawal. Canonical source/original/other balances moved 5/2/7 →
+4/3/7. Ten registry reads failed in the browser, while the isolated indexer
+and node stayed healthy. Exact owned resources stopped and the lease was
+released. This is a synthetic browser provider outage, not an absent name,
+expired record, physical passkey or online-provider qualification.
 
 The [routing-refusal receipt](evidence/compact0361-native-routing-refusals-20261123.json)
 then checked a live `UnshieldedAddr` target with the same bytes as a supported
