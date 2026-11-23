@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "kind": "candidate-acc-isolated-named-night-pre-owner-refusals",
+  "result": "PASS",
+  "sourceHead": "63a234546c3f1b41af26b6e3f5c06d3f209d762f",
+  "observedAt": "2026-11-23",
+  "profile": "fresh isolated Ledger 9 node, Indexer API v4, release prover, complete candidate ACC binding",
+  "name": "alice.night",
+  "nameAuthority": "root-owned local fixture",
+  "refusals": [
+    {
+      "asset": "shielded",
+      "amount": "4",
+      "code": "NightUnsupportedRoute"
+    },
+    {
+      "asset": "NIGHT",
+      "amount": "11",
+      "code": "NightInsufficientBalance"
+    }
+  ],
+  "beforeOwnerReview": {
+    "approvals": 0,
+    "signatures": 0,
+    "withdrawalDispatches": 0,
+    "depositDispatches": 0,
+    "journalEmpty": true,
+    "sourceNight": "10",
+    "recipientNight": "0"
+  },
+  "subsequentSupportedPayment": {
+    "asset": "NIGHT",
+    "amount": "4",
+    "withdrawalDispatches": 1,
+    "depositDispatches": 1,
+    "exactBridgeOutputConsumed": true,
+    "replayBroadcasts": 0,
+    "balances": {
+      "before": { "source": "10", "target": "0" },
+      "afterWithdrawal": { "source": "6", "target": "0" },
+      "final": { "source": "6", "target": "4" }
+    },
+    "withdrawalFinalizedBlock": 94,
+    "depositFinalizedBlock": 97
+  },
+  "originalTransactionCount": 28,
+  "inputsUnchanged": true,
+  "ownedContainersStopped": 3,
+  "retainedVolumes": true,
+  "leaseReleased": true,
+  "unrelatedResourcesControlled": 0,
+  "privateReceiptSha256": {
+    "supervisor": "aac07d65d029ef9ca65c05c92fdec709422f25bf8dfd63b032cffd28e96f1160",
+    "worker": "44def8a975217424991a1755c037057af5b25a9abc0d8e251d347efe8554bb5e",
+    "preOwnerRefusals": "b21d37cbcfda1c1a46bd7cacf0eb23a7e65759d261d76b93797995e937aa5a31"
+  },
+  "limits": [
+    "This qualifies the isolated native fixture's pre-owner checks, not the connected Passport browser control or an online Midnames profile.",
+    "The unsupported-asset refusal is local route validation; the insufficient-balance refusal reads the live source ACC balance.",
+    "Owner approval for the subsequent supported payment was synthetic, not physical passkey consent."
+  ]
+}

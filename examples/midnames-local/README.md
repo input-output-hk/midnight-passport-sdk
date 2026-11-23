@@ -1421,6 +1421,16 @@ used a fresh chain and closed its exact owned resources. This does not yet
 qualify `createConnectedNightSend`, browser passkey consent, IndexedDB payment
 recovery or online name ownership.
 
+At signed `63a2345`, a fresh isolated
+[pre-owner refusal run](evidence/candidate-acc-night-pre-owner-refusals-20261123.json)
+rejected a shielded-asset route and an 11-unit NIGHT request against a live
+10-unit source balance before owner approval, signing, journal admission, or
+payment dispatch. The source/recipient balances stayed 10/0. The same run
+then completed the supported four-unit NIGHT payment with the original-only
+two-leg recovery, reaching 6/4. The unsupported-asset check is local route
+validation; the over-balance check reads the live ACC. Browser consent and
+online Midnames admission remain separate qualifications.
+
 ### Provisional candidate paid name claim and retry
 
 The `midnames-claim-candidate-` lane uses the same complete candidate ACC
