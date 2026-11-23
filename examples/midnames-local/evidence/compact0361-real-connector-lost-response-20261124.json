@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "kind": "isolated-ledger9-compact0361-real-connector-create-claim-lost-response",
+  "date": "2026-11-24",
+  "result": "PASS",
+  "sourceHead": "f9f28b88506744202f61803e8bbf31284d0ca2b5",
+  "profile": {
+    "registry": "standalone-0.36.1",
+    "accountBinding": "acc-s3r1.1-zkir036",
+    "networkId": "undeployed",
+    "indexerApi": "v4",
+    "transactionProtocolVersion": 2001100,
+    "proofServer": "release Ledger 9 prover",
+    "browserCredential": "synthetic virtual PRF",
+    "accountConnector": "real browser connector",
+    "chain": "retained isolated Ledger 9 chain, separate from the shared demo"
+  },
+  "browser": {
+    "name": "v36page22108786.night",
+    "createdAndActivatedAccount": "95c6dddf6f3336111695c16d773444c892830da9756fcb8e4ad4e646f9766e9f",
+    "quoteRequests": 1,
+    "ownerProofRequests": 1,
+    "sponsorPrepareRequests": 1,
+    "dispatchRequests": 1,
+    "sponsorResponseStatusBeforeInterception": 202,
+    "responseDroppedToPage": true,
+    "registeredAfterCheckingOriginal": true,
+    "sameCredentialReopenedSameAccountAfterReload": true,
+    "registeredAfterReload": true,
+    "secondDispatch": false,
+    "pageErrors": 0
+  },
+  "original": {
+    "sha256": "6076040979f946d99d641026f74fcdf90f7a7e118a8f272f289c2d739dc97c66",
+    "identifiers": [
+      "002cc73bff4310d06569ee1a5bbc468886ee2a4d9c231144876a0eca495c9a234b",
+      "00c9daca6bc27398e8181e41e740cc070cb7eb8d42ba44fc7aef2ce137be1222ce"
+    ],
+    "indexedStatus": "SUCCESS",
+    "canonicalBlock": {
+      "height": 2139,
+      "hash": "e5f6baae6f0c89d9a378d67f3d8cd01ee4591ecc288ee3a02506ac6cbb491ca8"
+    },
+    "finalizedBlock": {
+      "height": 2161,
+      "hash": "44878ba896818c7846bb401f9fa2308cb6e306e000e288c01ea2c6a140e480fc"
+    },
+    "registryOwnerCommitment": "71a133a27afff639db8f925389c2fda8b5360b5c4ee84802b3769b0827ccd6a4",
+    "registryTarget": {
+      "kind": "contract",
+      "address": "95c6dddf6f3336111695c16d773444c892830da9756fcb8e4ad4e646f9766e9f"
+    },
+    "supportedAccount": true
+  },
+  "cleanup": {
+    "ownedContainersStopped": 3,
+    "nativeLeaseReleased": true,
+    "sharedStackUntouched": true,
+    "isolatedVolumesAndPrivateJournalsRetained": true
+  },
+  "privateReceiptSha256": {
+    "supervisor": "e993c29514e066cd736d73b3fc4a6e4cc52093d6c8c0f484830c549a6373e3f5",
+    "browser": "4d902d79c7514eaac04f1bcb31bad6283ed1f91d654766a126ff7fd6bee4bfd8",
+    "original": "4e2297ca514b3b53154710c57bf0d75eec8883cdeca9fa7561f37a09d20174d6",
+    "canonicalAudit": "5dd03dd9f9811dc5bf8c28235b79dd3fad6b82268e793e14c935f21684d685ff"
+  },
+  "limits": "One self-hosted isolated node/indexer and sponsor, one synthetic virtual PRF credential, and one uninterrupted browser process. The sponsor response was dropped after it submitted the original; the same process then reloaded and reopened the ACC. This does not qualify a browser-process restart, physical passkeys, total credential loss/recovery, delegated passport.night names, independent online providers, production images, or a released SDK. Earlier harness failures and their independently reconciled originals are preserved in the signed private milestone packet."
+}

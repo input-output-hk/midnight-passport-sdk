@@ -464,6 +464,21 @@ after registration without sending another claim; the registered name remained
 visible afterward. The separate fixture run above covers lost sponsor response;
 physical passkeys and online providers remain unqualified.
 
+A newer [combined lost-response run](../../examples/midnames-local/evidence/compact0361-real-connector-lost-response-20261124.json)
+created and activated another ACC through the real Passport browser connector,
+reviewed the registry quote, proved and dispatched one paid name claim, and
+deliberately dropped the sponsor's HTTP 202 response to the page. The page
+reconciled that original to `Registered.`; after reload, the same virtual PRF
+credential reopened the ACC and confirmed the binding without another
+dispatch. An independent read checked the original's indexed `SUCCESS`,
+node-canonical finalized block, owner commitment and contract target equal to
+that ACC. Two earlier browser-driver failures were separately reconciled as
+successful originals and never retried. This qualifies the local, isolated
+single-process browser path. A fresh browser process cannot reconstruct the
+virtual authenticator's PRF secret from its exported credential, so that
+reopen tier, physical passkeys, total-loss continuity and online naming remain
+open.
+
 For an online deployment, the host must configure its actual registry address
 and a funded sponsor wallet through `PASSPORT_SPONSOR_SEED` in the service
 environment; the local genesis seed does not fund Preview or Preprod. The wallet

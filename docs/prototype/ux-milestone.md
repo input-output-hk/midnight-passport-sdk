@@ -196,6 +196,17 @@ taken name, indexer outage and sponsor quote outage refuse safely without a
 second claim dispatch; the registered name remained visible afterward. Physical
 providers and independent online resolution remain unqualified.
 
+The [combined lost-response follow-up](../../examples/midnames-local/evidence/compact0361-real-connector-lost-response-20261124.json)
+created and activated a new ACC with the real browser connector, prepared one
+reviewed `.night` claim, then dropped the sponsor's response after its one
+dispatch. The page reconciled the indexed original, reloaded in the same
+browser process, reopened the same ACC with its virtual PRF credential and
+confirmed the registry binding. A separate node-canonical audit matched the
+original transaction, owner commitment and ACC target. Earlier interrupted
+driver runs were reconciled separately without resending. This remains an
+isolated synthetic credential result; browser-process restart, physical
+provider custody, total-loss continuity and online resolution are open.
+
 The [0.36.1 named-payment native receipt](../../examples/midnames-local/evidence/compact0361-paid-name-night-send-20261123.json)
 uses that already paid name as a recipient on the retained isolated chain.
 One reviewed Node JubJub intent withdrew 4 NIGHT, paused, recovered the same
