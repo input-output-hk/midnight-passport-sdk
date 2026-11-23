@@ -140,21 +140,37 @@ async function unknownIntent(h: JourneyHarness, page: Page) {
   h.flags.unknownFunding = true;
   await click(page, '#fund');
   await h.waitStatus(page, /failed\./, /outcome unknown/);
-  const original = h.fundingIds.at(-1),
+  const customOriginal = h.fundingIds.at(-1);
+  assert.ok(customOriginal);
+  await dismissActivity(page);
+  await select(page, '#fund-asset', night);
+  await click(page, '#fund');
+  await h.waitStatus(page, /failed\./, /outcome unknown/);
+  const nightOriginal = h.fundingIds.at(-1),
     count = h.fundingIds.length;
-  assert.ok(original);
+  assert.ok(nightOriginal && nightOriginal !== customOriginal);
   h.flags.unavailableFundingReads = 1;
   await refreshAvailability(page);
   await h.waitStatus(page, /refreshed/);
   await ready(page);
   assert.equal(
     await page.evaluate((storageKey) => localStorage.getItem(storageKey), key(custom)),
-    original,
+    customOriginal,
   );
+  assert.equal(
+    await page.evaluate((storageKey) => localStorage.getItem(storageKey), key(night)),
+    nightOriginal,
+  );
+  assert.equal(await page.locator(`#fund-asset option[value="${custom}"]`).isEnabled(), true);
+  assert.equal(await page.locator(`#fund-asset option[value="${night}"]`).isEnabled(), true);
+  await select(page, '#fund-asset', custom);
+  assert.match(await page.locator('#fund').innerText(), /Continue funding/);
+  await select(page, '#fund-asset', night);
+  assert.match(await page.locator('#fund').innerText(), /Continue funding/);
   assert.equal(
     h.fundingIds.length,
     count,
-    'inventory recovery never reconciles or replaces an unknown transfer',
+    'switching saved originals never reconciles or replaces an unknown transfer',
   );
   h.done('account-actions.availability-recovery-preserves-the-original-unknown-funding-intent');
 }

@@ -241,7 +241,9 @@ class DemoUi {
       this.model.account?.address === view.address ? this.model.account.lastTx : undefined;
     const lastTx = view.lastTx ?? keep;
     this.model.account = { ...view, ...(lastTx && { lastTx }) };
-    this.controls.enableFunding([...this.model.assetsByColor.values()]);
+    this.controls.enableFunding(
+      [...this.model.assetsByColor.values()].filter((asset) => asset.amount !== '0'),
+    );
     // A later account action may spend a coin; require a fresh chain check.
     this.model.shieldedHoldings = undefined;
     this.model.deviceRoster = undefined;
@@ -269,10 +271,9 @@ class DemoUi {
   enableFunding = (assets: readonly DemoFundingAsset[]) => this.controls.enableFunding(assets);
   showFundingUnavailable = () => {
     this.controls.enableFunding(
-      [...this.model.assetsByColor.values()].map((asset) => ({
-        ...asset,
-        availability: 'unavailable' as const,
-      })),
+      [...this.model.assetsByColor.values()]
+        .filter((asset) => asset.amount !== '0')
+        .map((asset) => ({ ...asset, availability: 'unavailable' as const })),
     );
   };
   selectedFundingAsset = () => {

@@ -58,7 +58,7 @@ export class ActionControls {
     this.dom.buttons.unlockRoutine.disabled = busy || !this.model.account;
     this.dom.buttons.unlockOwner.disabled = busy || !this.model.account;
     this.dom.buttons.startSession.disabled =
-      busy || !this.model.account || this.model.assetsByColor.size === 0;
+      busy || !this.model.account || this.dom.grantAsset.options.length === 0;
     this.dom.buttons.endSession.disabled = false;
     this.dom.buttons.revokeSession.disabled = busy || !this.model.account;
     this.dom.buttons.create.disabled = busy || !this.model.ready;
@@ -78,11 +78,11 @@ export class ActionControls {
     this.dom.buttons.issueGrant.disabled =
       busy ||
       !this.model.account ||
-      this.model.assetsByColor.size === 0 ||
+      this.dom.grantAsset.options.length === 0 ||
       !/^[0-9a-f]{64}$/.test(this.dom.grantGrantee.value.trim());
     this.dom.buttons.issueGrant
       .closest('li')
-      ?.toggleAttribute('hidden', this.model.assetsByColor.size === 0);
+      ?.toggleAttribute('hidden', this.dom.grantAsset.options.length === 0);
     this.dom.buttons.revokeGrant.disabled =
       busy || !this.model.account || !/^[0-9a-f]{64}$/.test(this.dom.revokeGrantId.value.trim());
     this.dom.grantGrantee.disabled = busy || !this.model.account;
@@ -138,7 +138,7 @@ export class ActionControls {
       .closest('li')
       ?.toggleAttribute('hidden', this.model.assetsByColor.size === 0);
     this.dom.buttons.withdraw.disabled =
-      busy || !this.model.account || this.model.assetsByColor.size === 0;
+      busy || !this.model.account || this.dom.withdrawalSelect.options.length === 0;
     this.dom.withdrawalSelect.disabled = busy || !this.model.account;
     this.dom.withdrawalAmount.disabled = busy || !this.model.account;
     this.dom.withdrawalRecipient.disabled = busy || !this.model.account;
@@ -151,7 +151,7 @@ export class ActionControls {
       byId('account-named-night').dataset.blocked === 'true';
     this.dom.buttons.withdraw
       .closest('li')
-      ?.toggleAttribute('hidden', this.model.assetsByColor.size === 0);
+      ?.toggleAttribute('hidden', this.dom.withdrawalSelect.options.length === 0);
     this.dom.copyButton.disabled =
       busy || (this.model.log.runs.length === 0 && this.model.log.traceEntries.length === 0);
   };
@@ -180,7 +180,9 @@ export class ActionControls {
               : `Test token ${shorten(asset.color, 6, 4)} (${asset.amount} units)`,
         );
         option.value = asset.color;
-        option.disabled = asset.availability !== 'available';
+        option.disabled =
+          asset.availability !== 'available' &&
+          !retained.some((original) => original.color === asset.color);
         if (option.disabled)
           option.textContent +=
             asset.availability === 'insufficient'
