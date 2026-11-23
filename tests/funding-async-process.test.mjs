@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
+import { createServer, request as httpRequest } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 const request = {
   requestId: '12345678-1234-1234-1234-123456789abc',
@@ -23,7 +25,7 @@ async function childServer(mode, root) {
   delete env.NODE_PATH;
   const child = spawn(
     process.execPath,
-    [new URL('./fixtures/funding-async-process.mjs', import.meta.url).pathname, mode, root],
+    [fileURLToPath(new URL('./fixtures/funding-async-process.mjs', import.meta.url)), mode, root],
     { env, stdio: ['ignore', 'pipe', 'pipe'] },
   );
   const exited = new Promise((resolve) => child.once('close', resolve));
@@ -63,15 +65,38 @@ test(
     t.after(() => rm(root, { recursive: true, force: true }));
     const first = await childServer('hold', root);
     t.after(first.close);
-    const original = `http://127.0.0.1:${first.port}/v1/faucet/fund`;
-    const accepted = await fetch(original, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', prefer: 'respond-async' },
-      body: JSON.stringify(request),
-      signal: AbortSignal.timeout(5000),
+    let upstreamStatus;
+    const proxy = createServer((incoming, outgoing) => {
+      const upstream = httpRequest(
+        {
+          hostname: '127.0.0.1',
+          port: first.port,
+          method: incoming.method,
+          path: incoming.url,
+          headers: { ...incoming.headers, host: `127.0.0.1:${first.port}` },
+        },
+        (response) => {
+          upstreamStatus = response.statusCode;
+          response.resume();
+          outgoing.destroy(); // The browser never observes the accepted original.
+        },
+      );
+      upstream.on('error', () => outgoing.destroy());
+      incoming.pipe(upstream);
     });
-    assert.equal(accepted.status, 202);
-    await accepted.body?.cancel(); // The browser disconnects while the worker is still proving.
+    await new Promise((resolve) => proxy.listen(0, '127.0.0.1', () => resolve(undefined)));
+    const proxyAddress = proxy.address();
+    assert.ok(proxyAddress && typeof proxyAddress !== 'string');
+    t.after(() => new Promise((resolve) => proxy.close(resolve)));
+    await assert.rejects(
+      fetch(`http://127.0.0.1:${proxyAddress.port}/v1/faucet/fund`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', prefer: 'respond-async' },
+        body: JSON.stringify(request),
+        signal: AbortSignal.timeout(5000),
+      }),
+    );
+    assert.equal(upstreamStatus, 202);
     await assert.doesNotReject(async () => {
       for (let attempt = 0; attempt < 40; attempt++) {
         try {
