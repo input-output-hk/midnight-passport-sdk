@@ -467,8 +467,10 @@ the name cannot authorize the destination and shows the current observation.
 The original ACC binding and observation are rechecked before deposit; a
 changed observation requires another review. This path has source and
 connected-host tests. An [isolated non-contract name repair](../../examples/midnames-local/evidence/compact0361-native-unresolved-name-original-repair-20261123.json)
-also passed in a mock-passkey browser; other unresolved statuses still need
-native qualification.
+and a [self-target repair](../../examples/midnames-local/evidence/compact0361-native-selftarget-original-repair-20261123.json)
+also passed in a mock-passkey browser. The latter returned the saved output
+to the original ACC after the name moved to the sender ACC. Absent, expired
+and unavailable observations still need native qualification.
 Each approval writes the observed name/registry, original ACC and current ACC
 or unresolved status, withdrawal
 ID and timestamp to the durable browser journal before proof. The record

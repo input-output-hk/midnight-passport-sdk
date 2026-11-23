@@ -253,8 +253,14 @@ journal keeps the approval with the original withdrawal. Connected-host tests
 exercise an unavailable name service. An [isolated non-contract name repair](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-native-unresolved-name-original-repair-20261123.json)
 also passed in a connected mock-passkey browser at signed source `9a8fb50`:
 one canonical withdrawal, owner target-class change, explicit direct repair,
-and one deposit to the original ACC. This does not qualify the other unresolved
-statuses, a physical passkey, or an online name route.
+and one deposit to the original ACC. A second
+[isolated self-target repair](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-native-selftarget-original-repair-20261123.json)
+at signed source `f788c47` recorded the name's owner-authorized repoint to
+the sender ACC after withdrawal. The connected browser separately reviewed
+`UnsupportedTarget` and finalized only the saved output at the original ACC;
+same-block balances moved 6/1/7 → 5/2/7, with an archived review and no
+second withdrawal. Neither run qualifies absent, expired or unavailable
+native observations, a physical passkey, or an online name route.
 
 ## Security promises in the pinned architecture
 

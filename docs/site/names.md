@@ -988,8 +988,16 @@ changed the name's target class to `UnshieldedAddr`. A fresh mock-passkey
 browser reviewed `InvalidRecord`, deposited the exact saved output into the
 original ACC, and archived the durable repair review. Canonical balances
 moved source/original/other 7/0/7 → 6/1/7 with no second withdrawal. The
-supervisor passed and released the native lease. Other unresolved statuses,
-physical passkeys and online providers remain unqualified under #318.
+supervisor passed and released the native lease. A separate
+[self-target repair](../../examples/midnames-local/evidence/compact0361-native-selftarget-original-repair-20261123.json)
+at signed source `f788c47` restored the name's contract target before another
+1 NIGHT withdrawal. The owner then repointed the name to the sending ACC,
+which the reopened browser observed as `UnsupportedTarget`. An explicit
+direct-ACC repair deposited only the saved output into the original ACC;
+canonical source/original/other balances moved 6/1/7 → 5/2/7, with one
+archived repair review and no active intent. Absent, expired and unavailable
+native observations, physical passkeys and online providers remain
+unqualified under #318.
 
 An [isolated Compact 0.36.1 native receipt](../../examples/midnames-local/evidence/compact0361-paid-name-night-send-20261123.json)
 resolved a previously paid, user-owned `.night` name to its contract target,

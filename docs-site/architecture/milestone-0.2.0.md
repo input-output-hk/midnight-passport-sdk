@@ -71,9 +71,10 @@ the test interrupted deposit proving before a deposit original was prepared.
 A new Chrome process reopened the same mock-passkey ACC and saved journal,
 confirmed recovery, reused the original withdrawal and finalized one deposit.
 Canonical transaction checks and node-finalized snapshots measured balances
-9/5 → 8/6, with one archived intent and no active one. Post-review repoint,
-non-contract target and unsupported-asset refusals, physical passkey custody,
-online resolution and release acceptance still need separate qualification.
+9/5 → 8/6, with one archived intent and no active one. The later receipts below
+cover post-review repoint and non-contract target refusal. Unsupported-asset
+native refusal, physical passkey custody, online resolution and release
+acceptance still need separate qualification.
 
 An [isolated owner target proof](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-native-target-proof-20261123.json)
 then used the transferred `v36claim23.night` witness to prove one
@@ -117,7 +118,16 @@ source and connected-host tests. An [isolated non-contract name repair](https://
 at signed source `9a8fb50` finalized one withdrawal, changed the name target
 class to `UnshieldedAddr`, then reviewed and finalized only the saved deposit
 to the original ACC. Canonical balances moved 7/0/7 → 6/1/7; a fresh browser
-found the archived repair review. Other unresolved statuses remain native-open.
+found the archived repair review.
+A second [isolated self-target repair](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-native-selftarget-original-repair-20261123.json)
+at signed source `f788c47` restored the contract target, withdrew 1 NIGHT,
+then owner-repointed the name to the sender ACC. The reopened browser reviewed
+`UnsupportedTarget` and deposited the saved output at the original ACC. The
+node-canonical sequence was restore/withdraw/repoint/deposit at blocks
+1658/1676/1686/1695; balances moved 6/1/7 → 5/2/7 without a second
+withdrawal. A fresh browser found the archived review and no active intent;
+exact resources stopped and the lease was released. Absent, expired and
+unavailable current-name native cases remain open.
 
 An [isolated native browser run](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-native-postwithdraw-repoint-recovery-20261123.json)
 at signed source `a215ba3` finalized one withdrawal, repointed the name to a

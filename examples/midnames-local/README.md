@@ -110,7 +110,15 @@ separate direct repair review followed by the exact original deposit at block
 1646. Same-block ACC balances moved source/original/other 7/0/7 → 6/1/7.
 A fresh read-only browser audit found one archived repair review, no active
 intent; the native supervisor stopped exact resources and released its lease.
-Other unresolved statuses, real passkeys and online providers remain open.
+A second [isolated self-target repair receipt](evidence/compact0361-native-selftarget-original-repair-20261123.json)
+at signed source `f788c47` restored the contract target, finalized one 1 NIGHT
+withdrawal at block 1676, then owner-repointed the name to the sender ACC at
+block 1686. The reopened browser reviewed `UnsupportedTarget` and deposited
+only the saved output into the original ACC at block 1695. Same-block balances
+moved source/original/other 6/1/7 → 5/2/7. A fresh browser found one archived
+repair review and no active intent; exact owned resources stopped and the lease
+was released. Absent, expired and unavailable native cases, real passkeys and
+online providers remain open.
 
 The [routing-refusal receipt](evidence/compact0361-native-routing-refusals-20261123.json)
 then checked a live `UnshieldedAddr` target with the same bytes as a supported

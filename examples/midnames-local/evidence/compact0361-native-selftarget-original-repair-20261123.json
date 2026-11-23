@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "kind": "isolated-ledger9-self-target-original-output-repair",
+  "date": "2026-11-23",
+  "sourceHead": "f788c47bc63791b185897ab0fb05328da5ffeb35",
+  "status": "PASS",
+  "profile": "Standalone Midnames 0.36.1 and acc-s3r1.1-zkir036 on retained isolated Ledger 9, Indexer API v4, release prover 9.0.2; connected mock-passkey Passport browser.",
+  "name": "v36claim23.night",
+  "registryAddress": "3d0502ab6b226f12ad621fb6c4e5e9882c75b2df479545cd65d1325f7ad30591",
+  "sourceAcc": "f746d060ef93d3264abf124cd0bee9498ee929aea02c8a18d5aef651f2a55bed",
+  "originalReviewedAcc": "14c1181524e783ac7a11d225583cb33c842a144aa89294b765393a5e12794053",
+  "otherAcc": "c3ed40e0d020ee0be2b8df92cdb26bf69b9f50c6bcd81d8ebf43f2c3f667f756",
+  "intentId": "54eece82-1747-4c99-9a9a-a82f36180ef4",
+  "restoredContractTarget": {
+    "hash": "31eeba056c1e4cef6ea0951530d902bfc0633d5a7a9114376f81bbd151985dcf",
+    "canonicalBlock": {
+      "height": 1658,
+      "hash": "1fa3eda9708e1591a4f0757544c8e462f314333179550da27aad6383bb74bcdc"
+    },
+    "indexedStatus": "SUCCESS"
+  },
+  "before": {
+    "canonicalBlock": {
+      "blockHeight": 1658,
+      "blockHash": "1fa3eda9708e1591a4f0757544c8e462f314333179550da27aad6383bb74bcdc"
+    },
+    "balancesNight": {
+      "source": "6",
+      "original": "1",
+      "current": "7"
+    }
+  },
+  "withdrawal": {
+    "hash": "60e2bbcbdb89723a4a72dd9b1088e396f55eeb3cc86ee53a8858a2ed7f44c7d2",
+    "canonicalBlockHeight": 1676,
+    "depositProofInterruptedBeforeOriginal": true
+  },
+  "ownerSelfTarget": {
+    "hash": "29f8aee8a567d9d6a05706e9a537a5e3f24df2931bf808330aa41d518ae5578a",
+    "canonicalBlock": {
+      "height": 1686,
+      "hash": "6123ca0dc3fada609808412a3e769e00e17c5ce9b2814e8b7ed48d468b6e1bf8"
+    },
+    "indexedStatus": "SUCCESS",
+    "targetClass": "ContractAddr",
+    "newTarget": "f746d060ef93d3264abf124cd0bee9498ee929aea02c8a18d5aef651f2a55bed"
+  },
+  "recovery": {
+    "browserContexts": 2,
+    "originalOnlyResumeConfirmations": 1,
+    "directRepairReviews": 1,
+    "observedNameStatus": "UnsupportedTarget",
+    "reportedCurrentTarget": "f746d060ef93d3264abf124cd0bee9498ee929aea02c8a18d5aef651f2a55bed",
+    "depositHash": "a8e25fa174ea3615e03bd64a50df6c91622319240d77f1593e17e32ad7065b7b",
+    "depositCanonicalBlockHeight": 1695,
+    "sameWithdrawalReused": true,
+    "secondWithdrawal": false,
+    "depositedToOriginalAcc": true,
+    "activeJournalEntriesAfter": 0,
+    "archivedHistoryEntriesAfter": 8,
+    "durableReviewArchived": true
+  },
+  "after": {
+    "canonicalBlock": {
+      "blockHeight": 1695,
+      "blockHash": "65702c62c75d6cd0b8973563626b03c2033abe423793774807eb177f4fa4db4c"
+    },
+    "balancesNight": {
+      "source": "5",
+      "original": "2",
+      "current": "7"
+    }
+  },
+  "cleanup": {
+    "exactIsolatedContainersStopped": true,
+    "nativeLeaseReleased": true,
+    "sharedStackUntouched": true,
+    "volumesAndPrivateOriginalsPreserved": true
+  },
+  "limits": "This qualifies one local synthetic UnsupportedTarget observation after a finalized withdrawal: the name became a supported contract target equal to the sending ACC. The output went only to the originally reviewed ACC after a separate direct repair review. Absent, expired and unavailable current-name native cases, physical passkeys, online providers, independent state inclusion proof and released binding remain open.",
+  "privateReceiptSha256": {
+    "ownerRestore": "36eba23f3e7d378e7e2c3dd173b11b99e60bea62d5ace2eec19e1f2b01256733",
+    "beforeBalance": "4c77ac1c9c213461002bdcacb22cf476b92a91423c613ffc1d7a365af343ce26",
+    "interruptedBrowser": "99aa98a931fc8aad474ce69ed43a210dd90b6d470eaef9c37aa272d349120596",
+    "ownerSelfTarget": "5b940221713e4ae425526485a54375667dc636d5f8636dbb59005235b7f165fa",
+    "recoveredBrowser": "8037005ec8d5168dd81658ba09bb4a2e5e40dc30af3d8db205a34c8b36f7edbc",
+    "afterBalance": "053e2e16327ee5059869566d499cb615456a52cae625931e1084409132d5974a",
+    "archivedBrowserAudit": "dd959480b1f71def79d9e874925aafcae2a5d20121ec6c5bec3edc49cbc274ef",
+    "supervisor": "d30969aa878942617b4ed0d8b872dce581533d14d2781e8410a5efd70c0893a3"
+  }
+}

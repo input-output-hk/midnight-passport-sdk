@@ -1129,7 +1129,10 @@ destination and shows the reason. The original ACC binding and observed name
 status are checked again before the deposit fence; a changed observation
 requires another review. An [isolated non-contract name repair](../examples/midnames-local/evidence/compact0361-native-unresolved-name-original-repair-20261123.json)
 passed in a connected mock-passkey browser at signed source `9a8fb50`; the
-other unresolved statuses still need native qualification.
+later [self-target repair](../examples/midnames-local/evidence/compact0361-native-selftarget-original-repair-20261123.json)
+passed at signed source `f788c47` after the name was repointed to the sending
+ACC. Both finalized only the saved output at the original ACC. Absent, expired
+and unavailable observations still need native qualification.
 Each approved observation (name, network, registry/provider, original ACC,
 current ACC or unresolved status, withdrawal ID and time) is durably appended
 to the browser intent before deposit
