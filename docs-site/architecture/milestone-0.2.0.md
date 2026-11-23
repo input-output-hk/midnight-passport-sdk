@@ -61,8 +61,19 @@ balance and an absent `.night` name before owner review. It left the prior
 archived payment alone, created no active intent, and read sender/recipient
 balances of 9/5 before and after. The first probe timed out matching obsolete
 UI copy after a safe refusal; its failed receipt and lease reconciliation are
-preserved. Native repoint, non-contract target and fresh-process between-leg
-browser recovery remain separate #318 gates.
+preserved. At that point, native repoint, non-contract target and fresh-process
+between-leg browser recovery were separate #318 gates.
+
+The subsequent [connected fresh-process recovery run](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-connected-browser-night-recovery-20261123.json)
+covered one of those between-leg cases on the retained isolated 0.36.1 chain.
+After the page reviewed a new 1 NIGHT payment and its withdrawal finalized,
+the test interrupted deposit proving before a deposit original was prepared.
+A new Chrome process reopened the same mock-passkey ACC and saved journal,
+confirmed recovery, reused the original withdrawal and finalized one deposit.
+Canonical transaction checks and node-finalized snapshots measured balances
+9/5 → 8/6, with one archived intent and no active one. Native live repoint,
+non-contract target and unsupported-asset refusals, physical passkey custody,
+online resolution and release acceptance still need separate qualification.
 
 ## Current Midnames delivery
 

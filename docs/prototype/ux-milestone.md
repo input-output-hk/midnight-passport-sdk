@@ -213,6 +213,15 @@ refreshed its state from the chain. At one node-finalized block, the sender
 held 9 NIGHT units and the recipient held 5. The payment was not resent.
 Physical passkeys and online providers remain unqualified.
 
+The later [fresh-process recovery run](../../examples/midnames-local/evidence/compact0361-connected-browser-night-recovery-20261123.json)
+interrupted the deposit proof after a new 1 NIGHT withdrawal had finalized.
+It reopened the same synthetic account and payment journal in another Chrome
+process, kept that withdrawal ID, then finalized one recipient deposit. The
+sender/recipient balances moved 9/5 → 8/6 at node-finalized snapshots and
+the journal retained one archived payment with no active intent. This covers
+one between-leg recovery path on the isolated 0.36.1 chain; real passkeys and
+online naming remain separate acceptance work.
+
 The [shared-chain browser receipt](../../examples/midnames-local/evidence/candidate-acc-combined-local-claim-20261122.json)
 records one synthetic ACC creation, same-profile paid `.night` claim, exact
 indexed success and matching registry target. Those steps span signed source

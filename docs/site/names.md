@@ -941,9 +941,22 @@ the sender's 9 NIGHT holding, and an absent `.night` recipient. The page
 showed `NightInsufficientBalance` and `NightNameUnavailable` respectively,
 without a payment review, a new journal entry, or a balance change. The first
 probe's obsolete status matcher timed out after the safe refusal; its exact
-resources were reconciled before the corrected run. This does not qualify a
-live repoint, non-contract target or a failure between payment legs in a fresh
-browser process.
+resources were reconciled before the corrected run. That refusal run did not
+qualify a live repoint, non-contract target or a failure between payment legs
+in a fresh browser process.
+
+A later [connected browser recovery receipt](../../examples/midnames-local/evidence/compact0361-connected-browser-night-recovery-20261123.json)
+qualifies one between-leg case on the retained isolated 0.36.1 chain. The
+page reviewed a 1 NIGHT payment, finalized its withdrawal, and deliberately
+aborted deposit proving before a deposit original was prepared. A
+fresh Chrome process reopened the same mock-passkey ACC and IndexedDB journal,
+confirmed recovery, reused the finalized withdrawal, and submitted one
+deposit. The original hashes were checked against canonical node blocks and
+indexed success. Sender/recipient balances moved from 9/5 to 8/6 at
+node-finalized indexer snapshots, and the journal archived exactly one
+payment with no active entry. Live name repoint, non-contract target,
+unsupported asset, physical passkey and online-provider qualification remain
+open.
 
 The local candidate launcher sets `VITE_MIDNAMES_NIGHT_SEND=1` only with
 `--night-send --claim --funding` and `--candidate-assets`. Its default candidate

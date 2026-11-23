@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "kind": "isolated-ledger9-compact0361-connected-browser-named-night-recovery",
+  "date": "2026-11-23",
+  "result": "PASS",
+  "sourceHead": "015cdd09839480e72391971e27d215fc70850be2",
+  "profile": {
+    "registry": "standalone-0.36.1",
+    "accountBinding": "acc-s3r1.1-zkir036",
+    "networkId": "undeployed",
+    "indexerApi": "v4",
+    "proofServer": "release Ledger 9 prover 9.0.2",
+    "browserCredential": "retained development mock PRF passkey, JubJub signing",
+    "chain": "retained isolated Ledger 9 chain, separate from the shared demo"
+  },
+  "name": "v36pagea5e19b88.night",
+  "sourceAcc": "f746d060ef93d3264abf124cd0bee9498ee929aea02c8a18d5aef651f2a55bed",
+  "recipientAcc": "c3ed40e0d020ee0be2b8df92cdb26bf69b9f50c6bcd81d8ebf43f2c3f667f756",
+  "amountNightSmallestUnits": "1",
+  "payment": {
+    "intentId": "2fe773b7-d2c2-4deb-9cfc-dca706776a0e",
+    "reviewConfirmationsBeforeFirstDispatch": 1,
+    "depositProofRequestsIntercepted": 1,
+    "depositProofRequestsAborted": 1,
+    "withdrawal": {
+      "txHash": "527c74ae1c83d407c3c67261cbdc67e1598f57e84e0c5fe9b047da1e9e1ed5e4",
+      "blockHeight": 1322,
+      "indexedSuccessAndNodeCanonicalBlockMatched": true
+    },
+    "afterInterruption": {
+      "savedWithdrawalMatchesFinalizedOriginal": true,
+      "depositOriginalPrepared": false,
+      "browserJournalActiveEntriesForIntent": 1
+    },
+    "freshChromeProcessReopenedSameAccountAndJournal": true,
+    "recoveryConfirmations": 1,
+    "withdrawalOriginalReused": true,
+    "deposit": {
+      "txHash": "5acff3cd99d49a8afe034e23279bbb359a3f8251ef62ca17f5930204aa5cf655",
+      "blockHeight": 1332,
+      "indexedSuccessAndNodeCanonicalBlockMatched": true
+    },
+    "browserJournalActiveEntriesForIntentAfterRecovery": 0,
+    "browserJournalHistoryEntriesForIntentAfterRecovery": 1
+  },
+  "balancesAtNodeFinalizedIndexerSnapshots": {
+    "before": {
+      "blockHeight": 1305,
+      "blockHash": "40cfb107ce51a7fb92c213e9e0a69ddaa3f4b4628df766b1c2ddaa66eba71ebd",
+      "source": "9",
+      "recipient": "5"
+    },
+    "after": {
+      "blockHeight": 1333,
+      "blockHash": "2031f9204d92b6449fc933089d5fa3386da51ebf8110ea261b2fba2fdce1a17f",
+      "source": "8",
+      "recipient": "6"
+    }
+  },
+  "privateReceiptSha256": {
+    "supervisor": "823dd9b752367dfcf8df9cd7adc906fbb4630ee7b5c1744ead67c09565a8e9be",
+    "balancesBefore": "31ea32f6d8460c433ede50cad0da63bbb640cf8bdea49ae2650573b4fe433507",
+    "interruptedPayment": "4762525a4b9a6c74405839b745f5e07a5af9c233fe20d0a19d4217c02c9ac889",
+    "recoveredPayment": "c284cfb42844bbbce79ce3ca348177950adf2dbd8ac13d10fd6d55509f9b7f8a",
+    "balancesAfter": "0f12ab510ef0f8b24fe922b91207d864318ccf7e2f7f97b9b2898dc0e6100147"
+  },
+  "cleanup": {
+    "exactIsolatedNodeAndIndexerStopped": true,
+    "ownedServiceAndBrowserProcessesStopped": true,
+    "nativeLeaseReleased": true,
+    "chainVolumesAndPrivateOriginalsRetained": true,
+    "sharedLedger9StackUntouched": true
+  },
+  "limits": "This qualifies one between-leg deposit-proof interruption and same-profile recovery in a fresh headless Chrome process on the retained isolated Compact 0.36.1 chain. It uses a development mock passkey. It does not qualify a physical passkey, independent online provider, production image, released SDK, or the full repoint/non-contract/unsupported-asset native matrix."
+}

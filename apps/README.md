@@ -1129,8 +1129,16 @@ The separately isolated `standalone-0.36.1` profile also requires
 exact `acc-s3r1.1-zkir036` candidate binding. Its native
 [named-payment receipt](../examples/midnames-local/evidence/compact0361-paid-name-night-send-20261123.json)
 shows one withdrawal, interruption recovery, and one deposit to a previously
-paid name. The sender was a Node JubJub fixture; the connected 0.36.1 browser
-payment is still unqualified.
+paid name. That sender was a Node JubJub fixture. A later
+[connected browser payment](../examples/midnames-local/evidence/compact0361-connected-browser-night-send-20261123.json)
+reviewed and finalized both legs from the Passport page with a development
+mock passkey. The [fresh-process recovery run](../examples/midnames-local/evidence/compact0361-connected-browser-night-recovery-20261123.json)
+then interrupted deposit proving after a finalized 1 NIGHT withdrawal,
+reopened the same synthetic ACC and journal in another Chrome process, and
+completed that original payment without another withdrawal. Canonical
+transaction checks and node-finalized snapshots confirmed one recipient
+deposit and balances 9/5 → 8/6. Physical passkeys, online providers and the
+broader native refusal matrix remain unqualified.
 
 ### Standalone Midnames claim recovery
 
