@@ -53,6 +53,31 @@ It has no independent node-finality or second-provider check. Keep the
 online Passport profile disabled; the mainnet observation cannot substitute
 for the Preprod profile or the qualification above.
 
+## Read-only Mainnet registry target scan
+
+The pinned transitional Mainnet registry can be inspected without a wallet or
+project token. This diagnostic compares the registry bytes returned by the
+explicit Midnames Indexer API v4 reader with `midnight_contractState` from the
+public Mainnet node at the **same node-canonical finalized block**. It counts
+target classes in the registry; it does not discover ownership or prove that
+an address is a deployed Passport ACC. Use a fresh receipt path:
+
+```sh
+nix develop -c pnpm --filter passport-dapp exec node --import tsx \
+  ../../examples/midnames-online/scan-mainnet-registry.mjs \
+  /private/fresh-mainnet-registry-scan.json
+```
+
+The [23 November receipt](evidence/mainnet-registry-contract-target-scan-20261123.json)
+at block 3,579,141 found 151 zone records: the root's one contract target and
+150 shielded targets. It found **zero non-root contract targets** in that
+registry snapshot. The indexer state bytes matched the separately queried
+public node. This is a dated, single-indexer observation, not a claim that no
+contract name exists on any later block or in another registry. It cannot
+provide the independently known name-to-deployed-ACC mapping, independent
+indexer operators, or public `passport.night` control required for online
+Passport admission. Keep the online profile disabled.
+
 The Caddyfile was checked with Caddy 2.9.1. A local synthetic upstream check
 verified HTTP and WebSocket path rewrites, upstream header injection, local
 preflight, rejection of untrusted and missing origins, replacement of an

@@ -237,6 +237,16 @@ delegated subdomains, or a contract-call route to an ACC. This read lacks an
 independent node-finality check and a second provider, so it cannot admit an
 online Passport profile.
 
+A later [23 November registry scan](../../examples/midnames-online/evidence/mainnet-registry-contract-target-scan-20261123.json)
+used the [read-only scanner](../../examples/midnames-online/scan-mainnet-registry.mjs)
+to compare the pinned Mainnet registry's Indexer API v4 state bytes with the
+public node at the same canonical finalized block. At block 3,579,141, all
+150 non-root records had shielded primary targets; the root held the only
+contract target. That snapshot supplies no name-to-ACC contract-call
+candidate. It uses one indexer and one node, with no independent provider or
+cryptographic inclusion proof, and does not establish future absence or
+ownership. Online Passport admission remains disabled.
+
 For a local host using Midnight Preprod, the optional
 [Blockfrost indexer proxy](../../examples/midnames-online/README.md) exposes the
 v4 HTTP/WebSocket paths to the browser and adds the project ID only upstream.

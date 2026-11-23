@@ -36,6 +36,14 @@ control or delegation of that name, a contract-call ACC target, a second
 provider, or node-verified state. Public `passport.night` issuance remains
 unqualified.
 
+A [later read-only Mainnet registry scan](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-online/evidence/mainnet-registry-contract-target-scan-20261123.json)
+compared the pinned registry's Indexer API v4 bytes with the public node at
+canonical finalized block 3,579,141. The 151 zone records contained one root
+contract target and 150 shielded targets, with no non-root contract target
+for a Passport ACC call at that block. This is a single indexer and one node;
+it does not qualify independent providers, future state, an ACC mapping,
+public parent ownership, or cryptographic inclusion proof.
+
 A later [independent local indexer read](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/independent-indexer-local-provenance-20261122.json)
 at signed `aa0d436d` used a second self-hosted Indexer API v4 instance with
 separate storage and credentials. Both indexers returned identical serialized

@@ -154,6 +154,15 @@ The subsequent source keeps a configured known mapping pin and a different reque
 
 A [22 November mainnet observation](https://github.com/input-output-hk/midnight-passport-sdk/blob/codex/midnames-ledger9-value-native/examples/midnames-online/evidence/mainnet-passport-name-v4-observation-20261122.json) reached the published Midnames registry through one explicitly configured Indexer API v4 reader. At its selected block, `passport.night` had a shielded primary target. That single-provider observation does not establish Passport ownership of the parent name, delegated resolution, an ACC contract target, or independent node finality. It cannot enable the online profile or close #315/#247.
 
+A [23 November node-anchored registry scan](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-online/evidence/mainnet-registry-contract-target-scan-20261123.json)
+used an explicit v4 indexer and the public Mainnet node at the same canonical
+finalized block 3,579,141. The registry bytes matched. Its 151 zone records
+had one root contract target and 150 shielded targets, with **no non-root
+contract-call target**. This explains why the current pinned Mainnet snapshot
+cannot provide the independently known name-to-deployed-ACC mapping required
+by #315/#247. It is one indexer plus one node, not independent provider or
+inclusion-proof qualification; later state and other registries are untested.
+
 The [one-head local receipt](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/candidate-onehead-create-claim-pay-20261122.json) combines a fresh ACC, paid user-owned name claim and named two-leg NIGHT payments under a synthetic passkey. The browser now also offers a random local `demo-<24 hex characters>.night` suggestion when the user has not chosen a label; it restores an earlier credential-scoped selection instead of replacing it. The suggestion does not reserve or claim a name, and no physical-provider or online qualification follows from it.
 
 A newer [candidate binding native run](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/candidate-acc-named-night-send-20261122.json)

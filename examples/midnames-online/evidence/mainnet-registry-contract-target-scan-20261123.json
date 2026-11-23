@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "kind": "midnames-mainnet-node-anchored-contract-target-scan",
+  "scanner": "examples/midnames-online/scan-mainnet-registry.mjs",
+  "observedAt": "2026-11-23T12:02:27.780Z",
+  "result": "NO_NONROOT_CONTRACT_TARGET_AT_SELECTED_BLOCK",
+  "networkId": "mainnet",
+  "indexerOrigin": "https://api.midnames.com",
+  "indexerApi": "v4",
+  "nodeOrigin": "https://rpc.mainnet.midnight.network",
+  "registryAddress": "83b0d57aba442f92e12b5cdf92642adb9927ccd554a9061b5bd0992fc72596bb",
+  "selectedBlock": {
+    "height": 3579141,
+    "hash": "da6b78dbec18d4abcb0d48bf1b72578b2b317be3bb73c015153b186b3bc48e21"
+  },
+  "nodeFinalizedHeight": 3579141,
+  "registryStateBytes": 107554,
+  "nodeStateBytesMatchIndexer": true,
+  "registryTld": "night",
+  "rootZoneId": "0",
+  "zoneRecords": "151",
+  "targetTypeCounts": {
+    "contract": 1,
+    "shielded": 150,
+    "unshielded": 0
+  },
+  "nonRootContractTargetCount": 0,
+  "limits": [
+    "One Midnames-hosted indexer plus one public node, not independent indexer operators or a cryptographic state inclusion proof.",
+    "A contract target candidate is not a verified Passport ACC or an independently known name mapping.",
+    "This is a dated block observation; later writes or another registry can change the result.",
+    "No ownership, delegated passport.night subdomain, claim, payment, physical passkey, or released SDK is qualified."
+  ]
+}
