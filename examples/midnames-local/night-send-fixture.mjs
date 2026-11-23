@@ -138,6 +138,7 @@ export async function qualifyNightSend({
   jubjubChallenges,
   registryAddress,
   target,
+  recipientName = 'alice.night',
   repointTarget,
   repointName,
   defaultField,
@@ -295,7 +296,7 @@ export async function qualifyNightSend({
   };
   const request = {
     requestId: randomUUID(),
-    name: 'alice.night',
+    name: recipientName,
     networkId,
     source,
     bridge,
