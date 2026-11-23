@@ -6,7 +6,7 @@ import {
 import type { CallRequest } from '@input-output-hk/mn-passport-account/ports';
 import type { PassportAccount } from '@input-output-hk/mn-passport-protocol';
 import { NIGHT_SEND_OPERATIONS, type NightSendIntent } from './midnames/night-send.js';
-import { localNightBinding } from './midnames/local-binding.js';
+import { localNightBinding, localNightRecipientBinding } from './midnames/local-binding.js';
 import { withdrawalRequest } from './withdrawal.js';
 
 interface ReviewContext {
@@ -26,6 +26,7 @@ export type NamedNightReview = Pick<
   | 'asset'
   | 'amount'
   | 'target'
+  | 'recipientBindingId'
   | 'providerId'
   | 'namespace'
   | 'operations'
@@ -87,6 +88,9 @@ function admitNamedNight(
     named.namespace !== 'night'
   )
     return refuseExactReview();
+  const recipientBindingId = named.recipientBindingId ?? context.bindingId;
+  if (!localNightRecipientBinding(context.bindingId, recipientBindingId, localCandidate))
+    return refuseExactReview();
   if (
     named.networkId !== context.networkId ||
     named.source !== context.account ||
@@ -107,6 +111,7 @@ function admitNamedNight(
     asset: named.asset,
     amount: named.amount,
     target: named.target,
+    ...(named.recipientBindingId && { recipientBindingId }),
     providerId: named.providerId,
     namespace: named.namespace,
     operations: NIGHT_SEND_OPERATIONS,
@@ -185,6 +190,9 @@ export function exactReviewText(intent: ExactReview): string {
       ? `\n\nNamed NIGHT payment: ${intent.namedNight.name}\n` +
         `Registry: ${intent.namedNight.providerId.slice('midnames:'.length)}\n` +
         `Recipient Passport ACC: ${intent.namedNight.target}\n` +
+        (intent.namedNight.recipientBindingId
+          ? `Recipient binding: ${intent.namedNight.recipientBindingId}\n`
+          : '') +
         `Operations: ${intent.namedNight.operations.join(' → ')}\n` +
         `Request: ${intent.namedNight.requestId}\n` +
         (intent.localCandidate

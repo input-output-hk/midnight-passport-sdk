@@ -187,6 +187,22 @@ function requireCandidateLocal(
     throw new Error('Candidate ACC naming requires one local standalone registry and indexer.');
 }
 
+function requireMixedNightRecipient(
+  additional: string | undefined,
+  candidate: CandidateAccountQualification | undefined,
+  profileId: MidnamesRegistryProfile,
+  online: boolean,
+): void {
+  if (
+    additional !== undefined &&
+    (candidate?.bindingId !== 'acc-s3r1.1-zkir036' ||
+      additional !== 'acc-s3r1.1' ||
+      !isStandaloneRegistryProfile(profileId) ||
+      online)
+  )
+    throw new Error('Mixed NIGHT recipient admission requires the isolated local candidate.');
+}
+
 function requirePairNodePin(verification: unknown, nodePin: MidnamesNodePin | undefined): void {
   if (verification && !nodePin)
     throw new Error('Two-provider naming requires a separately pinned finalized node.');
@@ -284,6 +300,7 @@ export function configureMidnames(
   bindingId: string,
   preparation?: ClaimPreparation,
   candidate?: CandidateAccountQualification,
+  additionalNightRecipientBindingId?: string,
 ): (PassportNameService & { readonly recovery?: ClaimRecovery }) | undefined {
   const { registryAddress, namespace, networkId, knownName, knownAccountAddress } = config;
   if (!preparation && Object.values(config).every((value) => value === undefined)) return undefined;
@@ -302,7 +319,8 @@ export function configureMidnames(
   requirePairNodePin(verification, nodePin);
   const verifyFinalizedBlock = nodePin && createMidnamesNodeFinality(nodePin);
   const verifyContractState = nodePin && createMidnamesNodeStateVerifier(nodePin);
-  const load = (readerHttp: string, readerWs: string) =>
+  requireMixedNightRecipient(additionalNightRecipientBindingId, candidate, profileId, online);
+  const load = (readerHttp: string, readerWs: string, additional?: string) =>
     import('./ledger-reader.js').then(({ createMidnamesIndexer, createMidnamesLedgerReads }) =>
       createMidnamesLedgerReads(
         createMidnamesIndexer(networkId, readerHttp, readerWs),
@@ -312,22 +330,28 @@ export function configureMidnames(
         candidate,
         verifyFinalizedBlock,
         verifyContractState,
+        additional,
       ),
     );
-  const lazyReads = (readerHttp: string, readerWs: string) => {
+  const lazyReads = (readerHttp: string, readerWs: string, additional?: string) => {
     let loaded: ReturnType<typeof load> | undefined;
     return () =>
-      (loaded ??= load(readerHttp, readerWs).catch((error: unknown) => {
+      (loaded ??= load(readerHttp, readerWs, additional).catch((error: unknown) => {
         loaded = undefined;
         throw error;
       }));
   };
   const reads = lazyReads(http, ws);
-  const verificationReads = verification && lazyReads(verification.http, verification.ws);
+  const nameReads = additionalNightRecipientBindingId
+    ? lazyReads(http, ws, additionalNightRecipientBindingId)
+    : reads;
+  const verificationReads =
+    verification &&
+    lazyReads(verification.http, verification.ws, additionalNightRecipientBindingId);
   const profile = { registryAddress, namespace, networkId };
   const service = configuredNameService(
     profile,
-    reads,
+    nameReads,
     verificationReads,
     knownName,
     knownAccountAddress,

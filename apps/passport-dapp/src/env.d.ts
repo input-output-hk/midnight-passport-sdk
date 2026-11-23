@@ -8,6 +8,8 @@ interface ImportMetaEnv {
   readonly VITE_MIDNAMES_NETWORK_ID?: string;
   readonly VITE_MIDNAMES_INDEXER_URL?: string;
   readonly VITE_MIDNAMES_INDEXER_WS_URL?: string;
+  readonly VITE_MIDNAMES_NIGHT_MIXED_RECIPIENT?: string;
+  readonly VITE_MIDNAMES_NIGHT_RECIPIENT_SERVICE_URL?: string;
   readonly VITE_MIDNAMES_NODE_URL?: string;
   readonly VITE_MIDNAMES_CHAIN_ANCHOR_HEIGHT?: string;
   readonly VITE_MIDNAMES_CHAIN_ANCHOR_HASH?: string;

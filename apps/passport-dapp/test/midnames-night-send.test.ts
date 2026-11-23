@@ -31,6 +31,7 @@ function fixture() {
     address: target,
     validTarget: true,
     supportedTarget: true,
+    recipientBindingId: undefined as string | undefined,
     balance: 10n as bigint | undefined,
     absent: false,
     outage: false,
@@ -65,7 +66,7 @@ function fixture() {
   const ports = (): Parameters<typeof sendNightByName>[1] => ({
     names,
     async isSupportedRecipient() {
-      return state.supportedTarget;
+      return state.supportedTarget ? (state.recipientBindingId ?? true) : false;
     },
     journal: {
       async readIntent() {
@@ -249,6 +250,23 @@ test('after a withdrawal and interruption only the original deposit can continue
   assert.equal((await sendNightByName(request, ports())).phase, 'deposit-pending');
   state.finalized.add(deposit.hash);
   assert.equal((await sendNightByName(request, ports())).phase, 'completed');
+  assert.deepEqual(calls, ['review', 'sign', 'withdraw', 'deposit']);
+});
+
+test('a saved withdrawal cannot deposit after the recipient binding changes', async () => {
+  const { state, calls, ports, legs } = fixture();
+  state.recipientBindingId = 'acc-s3r1.1';
+  state.finalized.add(withdrawal.hash);
+  state.stopBeforeDeposit = true;
+  await assert.rejects(sendNightByName(request, ports()), NightDepositInterrupted);
+  assert.deepEqual(calls, ['review', 'sign', 'withdraw']);
+  state.stopBeforeDeposit = false;
+  state.recipientBindingId = 'acc-s3r1.1-zkir036';
+  await assert.rejects(sendNightByName(request, ports()), NightDepositInterrupted);
+  assert.equal(legs.has('deposit'), false);
+  assert.deepEqual(calls, ['review', 'sign', 'withdraw']);
+  state.recipientBindingId = 'acc-s3r1.1';
+  assert.equal((await sendNightByName(request, ports())).phase, 'deposit-pending');
   assert.deepEqual(calls, ['review', 'sign', 'withdraw', 'deposit']);
 });
 

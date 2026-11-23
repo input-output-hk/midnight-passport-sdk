@@ -86,6 +86,11 @@ retry. See the [app configuration](https://github.com/input-output-hk/midnight-p
 and [naming limits]({{ '/names/' | relative_url }}). A connected local Ledger 9
 browser run finalized both original payment legs and recovered the same request
 after reload. Real-provider acceptance and an online profile remain open.
+For an isolated candidate-source demo with an older named recipient on the same
+chain, `--mixed-recipient` enables a separate pinned old-binding proof service.
+The page shows both ACC versions and retains the recipient version with the
+original payment. This mixed route is local source preview; its connected native
+browser acceptance remains open.
 
 ## Enter and navigate
 

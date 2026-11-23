@@ -1480,10 +1480,15 @@ its three recorded containers, retained volumes and released its lease.
 
 Use the `midnames-night-candidate-379-mixed-recipient-` prefix to select this
 diagnostic lane with a fresh name and unused subnet. The old recipient deposit
-uses the reference compiled contract and old proof provider. The exported
-adapter and browser send flow still select one network binding and do not pin
-the recipient binding in their durable intent. Do not expose mixed-version
-sends in the demo or installed SDK on this evidence alone. The earlier `a`
+uses the reference compiled contract and old proof provider. A later local-only
+browser route can independently admit the old recipient roster, pin its binding
+in the durable intent and use a second old-binding proof service. Enable it only
+with `--night-send --mixed-recipient` on a candidate demo whose `.night` name
+points to an activated old-binding ACC. The launcher owns that extra loopback
+service on port 8788, verifies its old manifest and same-chain endpoints, and
+stops it on exit. This route remains provisional until its connected browser
+payment and recovery pass a fresh native run. It does not promote the candidate
+to an installed or online supported binding. The earlier `a`
 attempt stopped at the dirty-source guard; `b` stopped before stack creation
 because its subnet was occupied. Both failed receipts are retained privately.
 

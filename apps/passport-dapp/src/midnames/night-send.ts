@@ -26,6 +26,8 @@ export interface NightSendRequest {
 
 export interface NightSendIntent extends NightSendRequest {
   readonly target: string;
+  /** Independently checked recipient ACC artifact binding; legacy journals imply the source binding. */
+  readonly recipientBindingId?: string;
   readonly providerId: string;
   readonly namespace: string;
   readonly operations: typeof NIGHT_SEND_OPERATIONS;
@@ -117,7 +119,7 @@ interface NightSendCorePorts {
   readonly names: PassportNameService;
   readonly journal: NightSendJournal;
   /** Verify the recipient activation and pinned binding independently of the name-service result. */
-  isSupportedRecipient(address: string, networkId: string): Promise<boolean>;
+  isSupportedRecipient(address: string, networkId: string): Promise<boolean | string>;
   /** Return undefined for a source that fails the pinned binding and activation checks. */
   readSourceBalance(source: string): Promise<bigint | undefined>;
   review(intent: NightSendIntent, observedBalance: bigint): Promise<boolean>;
@@ -192,7 +194,11 @@ async function resolveIntent(
       'NightSelfRecipient',
       'The name must resolve to a different supported Passport ACC.',
     );
-  if ((await ports.isSupportedRecipient(target.accountAddress, request.networkId)) !== true)
+  const recipientBinding = await ports.isSupportedRecipient(
+    target.accountAddress,
+    request.networkId,
+  );
+  if (!recipientBinding)
     throw new NightSendPreflightError(
       'NightRecipientUnsupported',
       'The named recipient is not an activated, supported Passport ACC.',
@@ -200,6 +206,7 @@ async function resolveIntent(
   return Object.freeze({
     ...request,
     target: target.accountAddress,
+    ...(typeof recipientBinding === 'string' && { recipientBindingId: recipientBinding }),
     providerId: target.providerId,
     namespace: target.namespace,
     operations: NIGHT_SEND_OPERATIONS,
@@ -234,7 +241,7 @@ async function observeRecovery(
     throw new NightSendPreflightError('NightNameChanged', 'The original name provider changed.');
   if (target.accountAddress === intent.source)
     return { reason: 'UnsupportedTarget', currentTarget: target.accountAddress };
-  let supported: boolean;
+  let supported: boolean | string;
   try {
     supported = await ports.isSupportedRecipient(target.accountAddress, intent.networkId);
   } catch {
@@ -244,8 +251,18 @@ async function observeRecovery(
   }
   if (!sameProvider())
     throw new NightSendPreflightError('NightNameChanged', 'The original name provider changed.');
-  if (!supported) return { reason: 'UnsupportedTarget', currentTarget: target.accountAddress };
-  return { ...intent, target: target.accountAddress };
+  if (
+    !supported ||
+    (intent.recipientBindingId !== undefined &&
+      target.accountAddress === intent.target &&
+      supported !== intent.recipientBindingId)
+  )
+    return { reason: 'UnsupportedTarget', currentTarget: target.accountAddress };
+  return {
+    ...intent,
+    target: target.accountAddress,
+    ...(typeof supported === 'string' && { recipientBindingId: supported }),
+  };
 }
 
 function sameObservation(
@@ -261,6 +278,7 @@ function sameObservation(
     );
   return (
     reviewed.target === current.target &&
+    reviewed.recipientBindingId === current.recipientBindingId &&
     reviewed.providerId === current.providerId &&
     reviewed.namespace === current.namespace
   );
@@ -276,6 +294,7 @@ function assertSameIntent(a: NightSendIntent, b: NightSendIntent) {
     a.networkId !== b.networkId ||
     a.name !== b.name ||
     a.target !== b.target ||
+    a.recipientBindingId !== b.recipientBindingId ||
     a.providerId !== b.providerId ||
     a.namespace !== b.namespace ||
     a.operations.length !== b.operations.length ||
@@ -301,6 +320,16 @@ function requireDistinctLegs(withdrawal: NightSendLeg, deposit: NightSendLeg) {
     throw new Error('Withdrawal and deposit require distinct transactions.');
 }
 
+async function originalRecipientStillSupported(
+  intent: NightSendIntent,
+  ports: Pick<NightSendPorts, 'isSupportedRecipient'>,
+): Promise<boolean> {
+  const observed = await ports.isSupportedRecipient(intent.target, intent.networkId);
+  return intent.recipientBindingId === undefined
+    ? Boolean(observed)
+    : observed === intent.recipientBindingId;
+}
+
 async function submitLeg(
   leg: 'withdraw' | 'deposit',
   intent: NightSendIntent,
@@ -318,7 +347,7 @@ async function submitLeg(
         'NightNameChanged',
         'The name changed again during deposit recovery. Review the destination again.',
       );
-    if (!(await ports.isSupportedRecipient(intent.target, intent.networkId)))
+    if (!(await originalRecipientStillSupported(intent, ports)))
       throw new NightSendPreflightError(
         'NightRecipientUnsupported',
         'The originally reviewed ACC no longer has a supported binding.',
@@ -431,7 +460,7 @@ async function depositOriginalWithdrawal(
         'NightNameChanged',
         'The name changed after withdrawal. Inspect the saved original before deposit.',
       );
-    if (!(await ports.isSupportedRecipient(intent.target, intent.networkId)))
+    if (!(await originalRecipientStillSupported(intent, ports)))
       throw new NightSendPreflightError(
         'NightRecipientUnsupported',
         'The originally reviewed ACC no longer has a supported binding.',

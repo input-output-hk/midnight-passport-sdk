@@ -9,6 +9,12 @@ Settings; capability/name diagnostics are under Advanced. Read the
 For a provisional local candidate ACC, the Midnames launcher exposes
 **Passport account → Withdraw → Send NIGHT to a Passport name** only with
 `--night-send --claim --funding` and a verified candidate asset directory.
+An optional `--mixed-recipient` additionally permits a name pointing to an
+activated old-binding ACC on that same local chain. The launcher owns a second
+loopback proof service for the recipient's old artifacts. Show both source and
+recipient bindings in the review. The original recipient binding remains pinned
+through reload and recovery; a changed roster must stop before a deposit.
+This mixed route is provisional until a connected native browser run passes.
 Present the resolved recipient contract, amount and two operations during
 review. After either leg is sent, reopen the same browser profile to reconcile
 the original intent before another send.

@@ -970,6 +970,14 @@ binding remains provisional, and the ordinary demo keeps `acc-s3r1.1`.
 Candidate funding is separately provisioned. Candidate named NIGHT sending
 requires the local launcher's explicit `--night-send` with `--claim --funding`;
 it does not activate for an ordinary demo or online binding.
+For a candidate source and an older `acc-s3r1.1` named recipient on the same
+local chain, add `--mixed-recipient`. This starts a separate old-binding proof
+service on loopback port 8788. The page independently checks each ACC's full
+on-chain verifier assignment, displays both bindings at review, saves the
+recipient binding in the original intent and selects that binding's proof
+artifacts for deposit and recovery. A missing or differently configured old
+service refuses before owner signing. This is a provisional local route;
+connected browser/native acceptance and installed-package support remain open.
 The candidate ACC proves through the shared Ledger 9 release prover on port
 6300. The launcher's separately owned compatibility prover on port 16320
 serves the pinned Compact 0.35 standalone name registry's claim proof. The

@@ -55,6 +55,10 @@ type LedgerReads = MidnamesReads & {
     profile: Readonly<MidnamesProfile>,
   ): Promise<DomainTarget | undefined>;
   hasDomain(name: string, profile: Readonly<MidnamesProfile>): Promise<boolean>;
+  readSupportedAccountBinding(
+    address: string,
+    requestedNetwork: string,
+  ): Promise<string | undefined>;
   readSupportedNightBalance(address: string, requestedNetwork: string): Promise<bigint | undefined>;
   readClaim(
     name: string,
@@ -167,6 +171,33 @@ export async function admitAccBindingFromState(
   }
 }
 
+function checkReaderBindings(
+  networkId: string,
+  bindingId: string,
+  profile: MidnamesRegistryProfile,
+  candidate: CandidateAccountQualification | undefined,
+  additional: string | undefined,
+): void {
+  if (candidate) {
+    const pin = resolvePinnedBinding(candidate.bindingId);
+    if (
+      networkId !== 'undeployed' ||
+      !isStandaloneRegistryProfile(profile) ||
+      candidate.bindingId !== bindingId ||
+      !pin.provisional ||
+      candidate.manifestSha256 !== pin.manifestSha256
+    )
+      throw new Error('Candidate ACC qualification requires the exact local provisional pin.');
+  } else resolveBinding(bindingId);
+  if (
+    additional !== undefined &&
+    (additional !== 'acc-s3r1.1' || candidate?.bindingId !== 'acc-s3r1.1-zkir036')
+  )
+    throw new Error(
+      'Mixed recipient admission requires the exact local candidate and old binding.',
+    );
+}
+
 export function createMidnamesLedgerReads(
   provider: RegistryProvider,
   networkId: string,
@@ -175,20 +206,11 @@ export function createMidnamesLedgerReads(
   candidate?: CandidateAccountQualification,
   verifyFinalizedBlock?: (block: MidnamesIndexerBlock) => Promise<void>,
   verifyContractState?: ContractStateVerifier,
+  additionalRecipientBindingId?: string,
 ): LedgerReads {
   const pinnedProfile = registryProfile(profileId, networkId);
   const registryVerifiers = registryVerifierMap(pinnedProfile);
-  if (candidate) {
-    const pin = resolvePinnedBinding(candidate.bindingId);
-    if (
-      networkId !== 'undeployed' ||
-      !isStandaloneRegistryProfile(pinnedProfile) ||
-      candidate.bindingId !== bindingId ||
-      !pin.provisional ||
-      candidate.manifestSha256 !== pin.manifestSha256
-    )
-      throw new Error('Candidate ACC qualification requires the exact local provisional pin.');
-  } else resolveBinding(bindingId);
+  checkReaderBindings(networkId, bindingId, pinnedProfile, candidate, additionalRecipientBindingId);
   const readDomain = async (
     name: string,
     profile: Readonly<MidnamesProfile>,
@@ -245,9 +267,17 @@ export function createMidnamesLedgerReads(
     try {
       const account = observed.contractState.deserialize({ v9: ContractState });
       const detectedBinding = await detectAccBindingFromState(account);
-      if (!detectedBinding || detectedBinding !== bindingId) return undefined;
-      if (!candidate && !(await admitAccBindingFromState(account))) return undefined;
-      const decoded = candidate ? candidate.decodeState(account) : ledger(account.data);
+      if (
+        !detectedBinding ||
+        (detectedBinding !== bindingId && detectedBinding !== additionalRecipientBindingId)
+      )
+        return undefined;
+      if (detectedBinding !== candidate?.bindingId && !(await admitAccBindingFromState(account)))
+        return undefined;
+      const decoded =
+        candidate && detectedBinding === candidate.bindingId
+          ? candidate.decodeState(account)
+          : ledger(account.data);
       return decoded.booted && decoded.spec_version === 3n
         ? { bindingId: detectedBinding, ledger: decoded }
         : undefined;
@@ -294,6 +324,9 @@ export function createMidnamesLedgerReads(
     },
     async isSupportedAccount(address, requestedNetwork) {
       return (await supportedAccount(address, requestedNetwork)) !== undefined;
+    },
+    async readSupportedAccountBinding(address, requestedNetwork) {
+      return (await supportedAccount(address, requestedNetwork))?.bindingId;
     },
     async readSupportedNightBalance(address, requestedNetwork) {
       const account = await supportedAccount(address, requestedNetwork);

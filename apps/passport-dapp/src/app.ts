@@ -283,6 +283,7 @@ try {
       () => appState.primaryAccount,
     ),
     candidateQualification,
+    import.meta.env.VITE_MIDNAMES_NIGHT_MIXED_RECIPIENT === '1' ? 'acc-s3r1.1' : undefined,
   );
   showDemoNameService(naming ?? createMockNameService(network), network);
   if (

@@ -57,6 +57,7 @@ const usage = `Usage: nix develop -c node scripts/midnames-local-demo.mjs [check
   --claim-journal-id X  Select a retained, isolated claim journal for this demo run.
   --funding           Enable deposits with the separately funded demo wallet.
   --night-send        Opt in to candidate ACC named NIGHT send (needs --claim --funding).
+  --mixed-recipient   Allow an old-binding named recipient with its own local proof service.
   --prepared-registry PATH  Pinned Compact 0.35 registry artifacts for --claim.
   --candidate-assets PATH   Explicit provisional ACC assets on the local release prover.
   --open              Open the page in the default browser after it is ready.
@@ -70,7 +71,7 @@ and private records are preserved.
 
 class CleanupUnconfirmedError extends Error {}
 
-/** @typedef {{command: 'check'|'stack'|'up'|'stop', profile: string, stateDir: string, passportRepo: string|undefined, contractDir: string|undefined, preparedRegistry: string|undefined, candidateAssets: string|undefined, claimJournalId: string|undefined, attachOnly: boolean, mockPasskey: boolean, setup: boolean, claim: boolean, funding: boolean, nightSend: boolean, open: boolean, help: boolean}} DemoOptions */
+/** @typedef {{command: 'check'|'stack'|'up'|'stop', profile: string, stateDir: string, passportRepo: string|undefined, contractDir: string|undefined, preparedRegistry: string|undefined, candidateAssets: string|undefined, claimJournalId: string|undefined, attachOnly: boolean, mockPasskey: boolean, setup: boolean, claim: boolean, funding: boolean, nightSend: boolean, mixedRecipient: boolean, open: boolean, help: boolean}} DemoOptions */
 /** @typedef {{command: string, args: string[], env: NodeJS.ProcessEnv}} ComposeTarget */
 /** @typedef {{networkId: string, registryAddress: string, name: string, accountAddress: string, claimBlock: {height: number, hash: string}}} Claim */
 
@@ -96,6 +97,7 @@ export function parseArgs(argv) {
     claim: false,
     funding: false,
     nightSend: false,
+    mixedRecipient: false,
     open: false,
     help: false,
   };
@@ -131,6 +133,7 @@ export function parseArgs(argv) {
     else if (arg === '--claim') result.claim = true;
     else if (arg === '--funding') result.funding = true;
     else if (arg === '--night-send') result.nightSend = true;
+    else if (arg === '--mixed-recipient') result.mixedRecipient = true;
     else if (arg === '--open') result.open = true;
     else if (arg === '--help' || arg === '-h') result.help = true;
     else throw new Error(`Unknown option: ${arg}`);
@@ -712,6 +715,10 @@ async function demo(options, claim) {
           VITE_MIDNAMES_KNOWN_ACC: claim.accountAddress,
         }),
         VITE_MIDNAMES_NIGHT_SEND: options.candidateAssets && !options.nightSend ? '0' : '1',
+        ...(options.mixedRecipient && {
+          VITE_MIDNAMES_NIGHT_MIXED_RECIPIENT: '1',
+          VITE_MIDNAMES_NIGHT_RECIPIENT_SERVICE_URL: 'http://127.0.0.1:8788',
+        }),
       });
     }
     if (options.funding) {
@@ -831,6 +838,8 @@ export async function main(argv = process.argv.slice(2)) {
       (options.command !== 'up' || !options.candidateAssets || !options.claim || !options.funding)
     )
       throw new Error('--night-send needs up with --candidate-assets, --claim and --funding.');
+    if (options.mixedRecipient && !options.nightSend)
+      throw new Error('--mixed-recipient requires --night-send.');
     if (options.command === 'up' && options.candidateAssets && !options.claim)
       throw new Error(
         '--candidate-assets needs --claim and a verified standalone registry profile.',

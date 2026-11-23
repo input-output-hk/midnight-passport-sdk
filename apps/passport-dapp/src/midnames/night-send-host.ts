@@ -31,7 +31,7 @@ interface ConnectedNightSendOptions {
   readonly scope: BrowserNightSendScope;
   readonly wallet: DevWallet;
   readonly names: PassportNameService;
-  readonly isSupportedRecipient: (address: string, networkId: string) => Promise<boolean>;
+  readonly isSupportedRecipient: (address: string, networkId: string) => Promise<boolean | string>;
   readonly readSourceBalance: (address: string) => Promise<bigint | undefined>;
   readonly review: (intent: NightSendIntent, balance: bigint) => Promise<boolean>;
   /** Fresh approval to finish only the saved deposit at its original ACC after the name moves. */
@@ -54,6 +54,12 @@ interface ConnectedNightSendOptions {
   readonly network: NetworkConfig;
   readonly binding: MidnightBinding;
   readonly prover: Prover;
+  /** Independently pinned local proof route for an old recipient of a candidate source. */
+  readonly oldRecipient?: {
+    readonly network: NetworkConfig;
+    readonly binding: MidnightBinding;
+    readonly prover: Prover;
+  };
   /** Opt in only after the exact local candidate build and registry profile are checked. */
   readonly provisionalLocal?: boolean;
 }
@@ -82,6 +88,32 @@ function matchingCandidateJournalScope(
   if (network.bindingId === 'acc-s3r1.1-zkir036')
     return scope.bindingId === network.bindingId && scope.manifestSha256 === network.manifestSha256;
   return scope.bindingId === undefined && scope.manifestSha256 === undefined;
+}
+
+function checkedOldRecipient(options: ConnectedNightSendOptions, source: NetworkConfig): void {
+  const old = options.oldRecipient;
+  if (!old) return;
+  const recipient = old.network;
+  if (
+    source.bindingId !== 'acc-s3r1.1-zkir036' ||
+    recipient.bindingId !== 'acc-s3r1.1' ||
+    !localNightBinding(recipient.bindingId, recipient.manifestSha256) ||
+    recipient.networkId !== source.networkId ||
+    recipient.indexerUrl !== source.indexerUrl ||
+    recipient.indexerWsUrl !== source.indexerWsUrl ||
+    recipient.nodeUrl !== source.nodeUrl ||
+    !/^https?:\/\/(?:localhost|127\.0\.0\.1|\[::1\]):[0-9]+\/v1\/zk\/acc-s3r1\.1$/.test(
+      recipient.artefactUrl,
+    )
+  )
+    throw new Error('The old recipient proof route differs from the local candidate chain.');
+  assertNightDepositPreflight({
+    ...old,
+    target: '0'.repeat(64),
+    amount: 1n,
+    walletKeys: { coinPublicKey: 'preflight', encryptionPublicKey: 'preflight' },
+    recipientVerifierRoster: pinnedVerifierRoster(recipient.bindingId),
+  });
 }
 
 function checkedSelection(options: ConnectedNightSendOptions) {
@@ -113,6 +145,7 @@ function checkedSelection(options: ConnectedNightSendOptions) {
   )
     throw new Error('The selected ACC, name service, or device wallet cannot send NIGHT by name.');
   const recipientVerifierRoster = pinnedVerifierRoster(network.bindingId);
+  checkedOldRecipient(options, network);
   if (network.bindingId === 'acc-s3r1.1-zkir036')
     // Structural preflight only. The resolved recipient and real wallet keys are
     // checked again by the adapter after withdrawal finality, before proving.
@@ -129,7 +162,7 @@ function checkedSelection(options: ConnectedNightSendOptions) {
   const bridge = wallet.nightBridge;
   if (!bridge)
     throw new Error('The selected ACC, name service, or device wallet cannot send NIGHT by name.');
-  return { scope, network, bridge, recipientVerifierRoster };
+  return { scope, network, bridge };
 }
 
 function checkedRecoveryReview(options: ConnectedNightSendOptions, checkSelected: () => void) {
@@ -167,6 +200,60 @@ function checkedRecoveryCallbacks(options: ConnectedNightSendOptions, checkSelec
   };
 }
 
+function depositPort(
+  options: ConnectedNightSendOptions,
+  scope: BrowserNightSendScope,
+  network: NetworkConfig,
+  bridge: NonNullable<DevWallet['nightBridge']>,
+  finalized: (original: NightSendLeg) => ReturnType<typeof readFinalizedNightLeg>,
+  checkSelected: () => void,
+  deps: ConnectedNightSendDeps,
+) {
+  return async (intent: NightSendIntent, withdrawal: NightSendLeg) => {
+    checkSelected();
+    const recipient =
+      intent.recipientBindingId === 'acc-s3r1.1' && options.oldRecipient
+        ? options.oldRecipient
+        : intent.recipientBindingId === network.bindingId
+          ? { network, binding: options.binding, prover: options.prover }
+          : undefined;
+    if (!recipient)
+      throw new Error('The original NIGHT recipient requires a different artifact binding.');
+    options.onDeposit?.();
+    const observed = await finalized(withdrawal);
+    if (!observed) throw new Error('The original NIGHT withdrawal is not final.');
+    const output = exactNightBridgeOutput(intent, withdrawal, observed.transaction);
+    if (!(await bridge.hasOutput(output)))
+      throw new Error('The device wallet has not observed the original NIGHT output.');
+    checkSelected();
+    const keys = await options.wallet.descriptor.connect(network.networkId);
+    const addresses = await keys.getShieldedAddresses();
+    const proven = await deps.prove({
+      network: recipient.network,
+      binding: recipient.binding,
+      target: intent.target,
+      amount: BigInt(intent.amount),
+      walletKeys: {
+        coinPublicKey: addresses.shieldedCoinPublicKey,
+        encryptionPublicKey: addresses.shieldedEncryptionPublicKey,
+      },
+      prover: recipient.prover,
+      recipientVerifierRoster: pinnedVerifierRoster(recipient.network.bindingId),
+      provisionalLocal:
+        recipient.network.bindingId === network.bindingId && !!options.provisionalLocal,
+    });
+    checkSelected();
+    const original = await bridge.prepareDeposit({ scope, target: intent.target, output, proven });
+    return {
+      original,
+      async dispatch() {
+        checkSelected();
+        await bridge.submitDeposit(original);
+      },
+    };
+  };
+}
+
 /** Compose the owner and device-held wallet without giving the resolver signing authority. */
 export async function createConnectedNightSend(
   options: ConnectedNightSendOptions,
@@ -174,7 +261,7 @@ export async function createConnectedNightSend(
   deps: ConnectedNightSendDeps = live,
 ) {
   const { account, wallet } = options;
-  const { scope, network, bridge, recipientVerifierRoster } = checkedSelection(options);
+  const { scope, network, bridge } = checkedSelection(options);
   const checkSelected = () => {
     options.checkScope();
     if (
@@ -210,6 +297,15 @@ export async function createConnectedNightSend(
     },
     { manifestSha256: network.manifestSha256, provisionalLocal: !!options.provisionalLocal },
   );
+  const prepareDeposit = depositPort(
+    options,
+    scope,
+    network,
+    bridge,
+    finalized,
+    checkSelected,
+    deps,
+  );
   return {
     async send(request: NightSendRequest) {
       checkSelected();
@@ -220,7 +316,16 @@ export async function createConnectedNightSend(
         const result = await sendNightByName(request, {
           names: options.names,
           journal,
-          isSupportedRecipient: options.isSupportedRecipient,
+          isSupportedRecipient: async (address, networkId) => {
+            const observed = await options.isSupportedRecipient(address, networkId);
+            // Existing single-binding hosts can still return true. New mixed
+            // hosts must return the independently observed recipient binding.
+            const detected = observed === true ? network.bindingId : observed;
+            return detected === network.bindingId ||
+              (detected === 'acc-s3r1.1' && options.oldRecipient)
+              ? detected
+              : false;
+          },
           readSourceBalance: options.readSourceBalance,
           async review(intent, balance) {
             checkSelected();
@@ -238,45 +343,7 @@ export async function createConnectedNightSend(
             });
           },
           finalized: async (original) => !!(await finalized(original)),
-          async prepareDeposit(intent, withdrawal) {
-            checkSelected();
-            options.onDeposit?.();
-            const observed = await finalized(withdrawal);
-            if (!observed) throw new Error('The original NIGHT withdrawal is not final.');
-            const output = exactNightBridgeOutput(intent, withdrawal, observed.transaction);
-            if (!(await bridge.hasOutput(output)))
-              throw new Error('The device wallet has not observed the original NIGHT output.');
-            checkSelected();
-            const keys = await wallet.descriptor.connect(network.networkId);
-            const addresses = await keys.getShieldedAddresses();
-            const proven = await deps.prove({
-              network,
-              binding: options.binding,
-              target: intent.target,
-              amount: BigInt(intent.amount),
-              walletKeys: {
-                coinPublicKey: addresses.shieldedCoinPublicKey,
-                encryptionPublicKey: addresses.shieldedEncryptionPublicKey,
-              },
-              prover: options.prover,
-              recipientVerifierRoster,
-              provisionalLocal: !!options.provisionalLocal,
-            });
-            checkSelected();
-            const original = await bridge.prepareDeposit({
-              scope,
-              target: intent.target,
-              output,
-              proven,
-            });
-            return {
-              original,
-              async dispatch() {
-                checkSelected();
-                await bridge.submitDeposit(original);
-              },
-            };
-          },
+          prepareDeposit,
         });
         if (result.phase === 'completed' && result.deposit) {
           const retained = await journal.readIntent();

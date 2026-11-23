@@ -15,6 +15,12 @@ named NIGHT guards admit only the exact local candidate pin. The combined
 account creation, paid claim and named payment passed in a
 [one-head local synthetic-passkey run](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/candidate-onehead-create-claim-pay-20261122.json).
 Physical passkey, online naming and released binding remain separate gates.
+For a candidate sender and an activated old-binding recipient on the same local
+chain, the launcher offers `--mixed-recipient` with `--night-send`. It starts a
+separate pinned proof service on port 8788; the payment review displays both
+ACC bindings and the saved original retains the recipient binding through
+recovery. This route remains provisional until a connected native browser
+payment and recovery pass.
 
 1. **Create an ACC:** choose a supported P-256 or JubJub route, review maintenance-authority retirement and the actual passkey request, then wait for a confirmed address. Note the binding and network.
    On the opt-in standalone Midnames profile, **Register a .night name** on Balances is optional after activation; you can return later. Enter a local name or select **Suggest a local .night name** for a random `demo-<24 hex characters>.night` candidate, then select **Continue registration** to check availability and see the four-minute quote. A suggestion alone does not register or reserve a name. **Approve with passkey** prepares the claim and displays the payment terms; **Confirm payment and register** sends it. Continuing after an expired unsent or unprepared attempt runs the sponsor's safety checks and archives that original when safe. Receipts and manual recovery controls remain under **Receipt and recovery details**. Registration is complete only when the original transaction and registry binding match the ACC.

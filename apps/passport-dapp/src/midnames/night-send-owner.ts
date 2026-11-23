@@ -3,7 +3,7 @@ import type {
   PreparedValueSubmission,
 } from '@input-output-hk/mn-passport-protocol';
 import { NIGHT_SEND_OPERATIONS, type NightSendIntent } from './night-send.js';
-import { localNightBinding } from './local-binding.js';
+import { localNightBinding, localNightRecipientBinding } from './local-binding.js';
 
 const NIGHT_COLOR = '00'.repeat(32);
 const ADDRESS = /^[a-f0-9]{64}$/;
@@ -36,6 +36,7 @@ export function createNightOwnerWithdrawal(
       asset: intent.asset,
       amount: intent.amount,
       target: intent.target,
+      ...(intent.recipientBindingId && { recipientBindingId: intent.recipientBindingId }),
       providerId: intent.providerId,
       namespace: intent.namespace,
       operations: Object.freeze([...intent.operations]) as typeof NIGHT_SEND_OPERATIONS,
@@ -64,6 +65,9 @@ export function createNightOwnerWithdrawal(
       reviewed.operations.some((operation, i) => operation !== NIGHT_SEND_OPERATIONS[i])
     )
       throw new Error('The reviewed NIGHT withdrawal differs from the selected owner.');
+    const recipientBindingId = reviewed.recipientBindingId ?? selected.bindingId;
+    if (!localNightRecipientBinding(selected.bindingId, recipientBindingId, profile))
+      throw new Error('The reviewed NIGHT recipient binding differs from this local route.');
     await withdraw(
       { color: NIGHT_COLOR, amount: reviewed.amount, recipient: reviewed.bridge },
       {

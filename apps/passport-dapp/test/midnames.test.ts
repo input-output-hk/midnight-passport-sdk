@@ -486,6 +486,12 @@ test('provisional ACC reader is confined to the local standalone registry', () =
     },
   };
   assert.ok(configureMidnames(local, 'undeployed', candidate.bindingId, undefined, candidate));
+  assert.ok(
+    configureMidnames(local, 'undeployed', candidate.bindingId, undefined, candidate, 'acc-s3r1.1'),
+  );
+  assert.throws(() =>
+    configureMidnames(local, 'undeployed', candidate.bindingId, undefined, candidate, 'unknown'),
+  );
   const isolated0361 = {
     ...local,
     registryProfile: 'standalone-0.36.1',
