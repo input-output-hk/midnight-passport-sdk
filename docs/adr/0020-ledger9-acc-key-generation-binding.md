@@ -87,7 +87,7 @@ was refused before owner approval, signing, journal admission, or a payment
 leg. The name was then restored to a valid candidate ACC, and the same run
 finalized one synthetic-owner 4 NIGHT payment with original-only recovery.
 This qualifies one changed-verifier negative on Ledger 9. Mixed-version
-source/recipient pairs, other malformed rosters, source and installed-package
+product admission, other malformed rosters, source and installed-package
 operation coverage, and binding promotion remain separate gates. The ordinary
 supported binding and existing deployments are unchanged.
 
@@ -97,3 +97,16 @@ assets supplied under the candidate pin before allocating a stack or acquiring
 its lease. It tested the artifact boundary, not the old account's ability to
 prove or receive funds on Ledger 9. It does not replace the mixed-version or
 full operation-subset gates above.
+
+A separate [isolated mixed-version diagnostic](../../examples/midnames-local/evidence/candidate-to-old-night-send-20261123.json)
+now proves one candidate-source to old-recipient pair. Each activated ACC's
+52-operation on-chain roster was checked against its own pin. A root-owned
+`.night` name targeted the old recipient; one synthetic-owner 4 NIGHT
+withdrawal and recipient deposit finalized on release prover 9.0.2, with
+10/0 → 6/0 → 6/4 balances and no replay. This resolves that one on-chain
+pairing question. The old recipient leg used the reference compiled contract
+and proof provider. The exported adapter, browser review, and durable journal
+still lack independent recipient-binding selection and a persisted binding
+pin, so the product continues to refuse mixed-version sends. The reverse
+pairing, other operations, real passkey consent and online acceptance remain
+unqualified.

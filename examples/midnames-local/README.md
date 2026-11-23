@@ -1465,6 +1465,28 @@ asset verification; its failed receipt is retained, and the signed fix and
 fresh run are recorded in the public receipt. This is key-admission evidence,
 not an on-chain mixed-version or old-version compatibility test.
 
+### Candidate source to old recipient diagnostic
+
+A fresh isolated [mixed-version run](evidence/candidate-to-old-night-send-20261123.json)
+at signed `e54fbff0` deployed and activated an old `acc-s3r1.1` recipient and
+a provisional `acc-s3r1.1-zkir036` source. It checked all 52 verifier
+assignments and retired maintenance authority on each account separately,
+issued root-owned `alice.night` to the old recipient, and completed one
+synthetic-owner 4 NIGHT send on the release Ledger 9 prover. The finalized
+balances were 10/0 → 6/0 → 6/4 after withdrawal and old-recipient deposit,
+with one dispatch per leg and no replay. Unsupported asset and insufficient
+balance were refused before owner review. The native supervisor stopped only
+its three recorded containers, retained volumes and released its lease.
+
+Use the `midnames-night-candidate-379-mixed-recipient-` prefix to select this
+diagnostic lane with a fresh name and unused subnet. The old recipient deposit
+uses the reference compiled contract and old proof provider. The exported
+adapter and browser send flow still select one network binding and do not pin
+the recipient binding in their durable intent. Do not expose mixed-version
+sends in the demo or installed SDK on this evidence alone. The earlier `a`
+attempt stopped at the dirty-source guard; `b` stopped before stack creation
+because its subnet was occupied. Both failed receipts are retained privately.
+
 ### Provisional candidate paid name claim and retry
 
 The `midnames-claim-candidate-` lane uses the same complete candidate ACC
