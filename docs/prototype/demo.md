@@ -16,7 +16,9 @@ recipient bindings in the review. The original recipient binding remains pinned
 through reload and recovery; a changed roster must stop before a deposit.
 Candidate account and name claims use the attached release prover; this mode
 does not start the stable demo's separate compatibility prover.
-This mixed route is provisional until a connected native browser run passes.
+One connected native browser run passed payment and interrupted-deposit recovery
+with a retained synthetic sender. Fresh funding, physical passkey and online
+acceptance remain open.
 Present the resolved recipient contract, amount and two operations during
 review. After either leg is sent, reopen the same browser profile to reconcile
 the original intent before another send.

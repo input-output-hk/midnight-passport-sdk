@@ -976,8 +976,11 @@ service on loopback port 8788. The page independently checks each ACC's full
 on-chain verifier assignment, displays both bindings at review, saves the
 recipient binding in the original intent and selects that binding's proof
 artifacts for deposit and recovery. A missing or differently configured old
-service refuses before owner signing. This is a provisional local route;
-connected browser/native acceptance and installed-package support remain open.
+service refuses before owner signing. A
+[connected shared-chain browser run](../examples/midnames-local/evidence/candidate-to-old-connected-browser-night-20261123.json)
+finalized one mixed payment and recovered a second after its deposit proof was
+interrupted. This remains a provisional local route; fresh candidate funding,
+physical passkey, online and installed-package support remain open.
 The candidate ACC and standalone name claims prove through the shared Ledger 9
 release prover on port 6300. Candidate mode does not start or reconcile the
 stable demo's separate Compact 0.35 compatibility prover on port 16320; its

@@ -222,6 +222,17 @@ the journal retained one archived payment with no active intent. This covers
 one between-leg recovery path on the isolated 0.36.1 chain; real passkeys and
 online naming remain separate acceptance work.
 
+The [candidate-to-old connected browser run](../../examples/midnames-local/evidence/candidate-to-old-connected-browser-night-20261123.json)
+then exercised the explicit mixed-recipient route on the shared Ledger 9
+stack. A retained, previously funded candidate sender paid the old-binding
+`paidfix.night` ACC once, then recovered a second payment in a fresh browser
+process after aborting only its recipient proof. Both original legs finalized
+and the recipient binding remained pinned in each archived intent. The first
+driver's post-payment Open-button assertion failed after finality; a separate
+read-only reload check passed without a resend. Fresh candidate funding at
+this head retained an unresolved original, so source onboarding and funding
+are outside this mixed-browser pass.
+
 The [shared-chain browser receipt](../../examples/midnames-local/evidence/candidate-acc-combined-local-claim-20261122.json)
 records one synthetic ACC creation, same-profile paid `.night` claim, exact
 indexed success and matching registry target. Those steps span signed source

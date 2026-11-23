@@ -89,8 +89,11 @@ after reload. Real-provider acceptance and an online profile remain open.
 For an isolated candidate-source demo with an older named recipient on the same
 chain, `--mixed-recipient` enables a separate pinned old-binding proof service.
 The page shows both ACC versions and retains the recipient version with the
-original payment. This mixed route is local source preview; its connected native
-browser acceptance remains open.
+original payment. A [shared Ledger 9 connected browser run](../../examples/midnames-local/evidence/candidate-to-old-connected-browser-night-20261123.json)
+finalized one mixed-version payment and recovered a second payment's saved
+withdrawal after an interrupted recipient proof. The source was previously
+funded and the credential was a development mock; this remains a local source
+preview, with fresh funding, physical passkey and online acceptance open.
 
 ## Enter and navigate
 

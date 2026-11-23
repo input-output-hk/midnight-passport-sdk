@@ -157,6 +157,14 @@ device wallet and local mock JubJub credential. It does not qualify real
 provider consent, online naming, or an independent inclusion proof beyond the
 configured indexer and node checks.
 
+A later [candidate-to-old connected browser run](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/candidate-to-old-connected-browser-night-20261123.json)
+qualified one local mixed-version name route and one fresh-process recovery
+after an interrupted recipient proof. The host pinned the old recipient's full
+verifier roster and binding in the original intent; the candidate sender's ACC
+signature covered the bridge withdrawal. This is bounded shared-chain,
+synthetic-credential evidence. It does not establish online name provenance,
+fresh candidate funding, physical passkey consent or a released binding.
+
 The later [isolated 0.36.1 routing-refusal evidence](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-native-routing-refusals-20261123.json)
 tests MIP-0007's address-class distinction for this local subset. A name with
 the bytes of a supported ACC but an `UnshieldedAddr` target was refused before

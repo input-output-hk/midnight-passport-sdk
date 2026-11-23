@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "kind": "shared-ledger9-candidate-to-old-connected-browser-night-send-and-recovery",
+  "date": "2026-11-23",
+  "result": "PASS_WITH_LIMITS",
+  "sourceHead": "a7d2d8c059b070bfe8bd8f20dd0521715fc6624e",
+  "profile": {
+    "networkId": "undeployed",
+    "chain": "existing shared Ledger 9 stack; launcher attached without starting Docker",
+    "indexerApi": "v4",
+    "proofServer": "release 9.0.2",
+    "registry": "standalone Compact 0.35 .night registry",
+    "registryAddress": "90e8734cc3ddc8aaf649b969ecfb61828f75d580725670a0718ed19a8f4a8fe0",
+    "sourceBinding": "acc-s3r1.1-zkir036",
+    "recipientBinding": "acc-s3r1.1",
+    "browserCredential": "retained synthetic mock PRF passkey with JubJub signing",
+    "oldRecipientProofService": "separate pinned loopback service, stopped after the run"
+  },
+  "name": "paidfix.night",
+  "sourceAcc": "deb34adc3814e59b20dff7f87bcc2ddfe498b59e05a338c28f67de0abc9cee13",
+  "recipientAcc": "efc52cee363c11201b4e9ae7854050f734987d54e01b576a17e3300f24e27f47",
+  "firstPayment": {
+    "amountNightSmallestUnits": "1",
+    "intentId": "8538b155-7360-42af-a870-380a12e45ccb",
+    "reviewIncludedBothBindingsAndExactDestination": true,
+    "reviewConfirmations": 1,
+    "withdrawal": {
+      "txHash": "247ca4b6624ae0ef3a021b2c5d136473f64ed2601417541f601ee00eab338cb7",
+      "blockHeight": 88965,
+      "canonicalSuccess": true
+    },
+    "deposit": {
+      "txHash": "d85f40fd669e704b28525498d52d1752637f933cfac17f535cc457ffd34776e3",
+      "blockHeight": 88980,
+      "canonicalSuccess": true
+    },
+    "balancesBefore": { "source": "5", "recipient": "4" },
+    "balancesAfter": { "source": "4", "recipient": "5" },
+    "freshProcessReadOnlyReload": {
+      "activeSourceIntents": 0,
+      "historyEntriesForOriginal": 1,
+      "originalRecipientBindingRetained": true
+    }
+  },
+  "betweenLegRecovery": {
+    "amountNightSmallestUnits": "1",
+    "intentId": "cc1e7254-e8a2-42b3-bb92-eb3dc21f441a",
+    "firstReviewConfirmations": 1,
+    "proofRequestsIntercepted": 2,
+    "secondProofRequestsAborted": 1,
+    "withdrawal": {
+      "txHash": "a6d9d746916c76a4f07cc597d527b0e20b65dbb2c2c187053b16244379324047",
+      "blockHeight": 89026,
+      "canonicalSuccess": true
+    },
+    "afterInterruption": {
+      "savedOriginalWithdrawal": true,
+      "depositOriginalPrepared": false,
+      "activeIntentRetained": true
+    },
+    "freshBrowserProcessReopenedOriginal": true,
+    "recoveryConfirmations": 1,
+    "withdrawalOriginalReusedWithoutReplay": true,
+    "deposit": {
+      "txHash": "d223c26903b96be935ac864387c1070d8f4068a4cc25b7c587b029566ddcc8c9",
+      "blockHeight": 89046,
+      "canonicalSuccess": true
+    },
+    "balancesBefore": { "source": "4", "recipient": "5" },
+    "balancesAfter": { "source": "3", "recipient": "6" },
+    "activeSourceIntentsAfterRecovery": 0,
+    "historyEntriesForOriginalAfterRecovery": 1,
+    "browserPageErrors": 0
+  },
+  "privateReceiptSha256": {
+    "firstPaymentDriverFailure": "494e2e321141180cbdb8860c5aa52fa7b55de17b9b352943e218a6bc8e00f9dd",
+    "firstPaymentFinality": "45367ad70811c28329bd1a301ffaa0a69a6bfa306241c73feb0f8c0d25e37f08",
+    "firstPaymentReload": "21493d3d0ac18598a3bdd2f75f9695fe47a5d07b9a494484849a01f9d400fe88",
+    "firstBalancesBefore": "96c2dcc7c36fe028af04bbdb13dbcdfed1bf41bc95cad13b20ddae5d89fa3037",
+    "firstBalancesAfter": "e9c7e9fa6b4db0023f6f3913e2c1c487dc7d0729b6c11c10afbb9011907f8bdd",
+    "interruptedPayment": "b3eaa739b0b2c85f8a5c25de66f2f171cab48ad57ea3ac0205c708c1044ccbb4",
+    "recoveredPayment": "f7ea52fd898666ede099289cd1751a99a95da259cbd524c07884b0d8280a93e1",
+    "recoveryBalancesAfter": "2bb52e9fc14c47fcb3b4b6936e04960f0781c40d501f9fabe1e5d2b5bd2c4695"
+  },
+  "cleanup": {
+    "ownedDemoAndBrowserProcessesStopped": true,
+    "sharedSponsorLeaseReleased": true,
+    "sharedStackUntouched": true,
+    "browserProfileAndOriginalJournalsRetained": true
+  },
+  "limits": [
+    "The sender was created, funded and given DUST on an earlier signed source head. This exact-head run qualifies its mixed-version browser payments and one between-leg recovery, not fresh onboarding or funding.",
+    "The first payment completed on chain and archived its browser journal, but its original verification driver timed out on a hidden Open control after reload. A separate read-only fresh-process check passed; no payment was resent.",
+    "A separate fresh candidate ACC funding attempt at this head timed out while the funding worker remained busy. Its original reservation is retained pending reconciliation and was not used for either payment.",
+    "The browser credential is a development mock. Physical passkeys, online independent providers, installed candidate packages and release acceptance remain open."
+  ]
+}

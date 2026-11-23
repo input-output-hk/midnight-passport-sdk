@@ -838,9 +838,11 @@ The source deposit adapter also checks the captured recipient contract's entire
 52-operation verifier assignment against `pinnedVerifierRoster(bindingId)` before
 asking its prover to create the deposit proof. A matching deposit circuit alone
 does not admit a mixed, partial or changed ACC roster. The host must pass the
-contract package's pin for the recipient version; this local route currently
-uses the same selected binding for sender and recipient. Mixed-version payments
-remain unavailable.
+contract package's pin for the recipient version. The default local route uses
+the same selected binding for both ACCs. The explicit candidate-source
+`--mixed-recipient` route can instead deposit into a verified old
+`acc-s3r1.1` recipient on the same Ledger 9 chain. It pins that older binding
+in the reviewed intent and selects its separate proof service for recovery.
 
 The two transactions settle independently. Their shared unshielded wallet
 output links the transactions in the ledger. If the deposit has yet to dispatch,
@@ -848,8 +850,8 @@ the original intent can continue once its withdrawal is confirmed. Once a leg
 has dispatched, the host checks its original transaction identifiers.
 Re-resolution can detect a repoint before either leg, based on the most recent
 observed registry state. After withdrawal, a repoint leaves the value in the
-controlled wallet pending reconciliation. Shielded ACC-to-ACC sends, browser
-passkey consent for this route and online profiles remain unqualified.
+controlled wallet pending reconciliation. Shielded ACC-to-ACC sends, physical
+browser passkey consent and online profiles remain unqualified.
 
 The isolated run started at 10 and 0 smallest NIGHT units. It finalized the
 withdrawal at block 147 and paused at 6 and 0. After the journal was reopened,
@@ -1096,6 +1098,19 @@ payment with no active entry. The later after-review repoint receipt above
 qualifies a local changed-name refusal. The later routing-refusal receipt
 also checks a non-contract target and a changed supported ACC. Unsupported
 asset, physical passkey and online-provider qualification remain open.
+
+The [candidate-to-old connected browser receipt](../../examples/midnames-local/evidence/candidate-to-old-connected-browser-night-20261123.json)
+adds a local mixed-version case on the shared Ledger 9 stack. A retained,
+previously funded candidate ACC paid 1 NIGHT to the old-binding `paidfix.night`
+ACC, moving balances 5/4 → 4/5. A second reviewed payment deliberately lost
+its recipient proof after the withdrawal; a fresh browser process recovered
+the saved output without a second withdrawal and moved balances 4/5 → 3/6.
+Both intents archived with the old recipient binding, and both original legs
+matched canonical blocks and indexed actions. The first verification driver
+timed out on a hidden Open control after its payment had completed; a separate
+read-only reload check passed without resending. This qualifies the retained
+synthetic browser profile, not fresh candidate funding, a physical passkey or
+an online recipient.
 
 The local candidate launcher sets `VITE_MIDNAMES_NIGHT_SEND=1` only with
 `--night-send --claim --funding` and `--candidate-assets`. Its default candidate

@@ -76,6 +76,16 @@ cover post-review repoint and non-contract target refusal. Unsupported-asset
 native refusal, physical passkey custody, online resolution and release
 acceptance still need separate qualification.
 
+An [explicit mixed-recipient browser run](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/candidate-to-old-connected-browser-night-20261123.json)
+at signed `a7d2d8c0` used the shared Ledger 9 stack, candidate sender and old
+`acc-s3r1.1` `paidfix.night` recipient. One reviewed payment finalized at
+5/4 → 4/5 NIGHT. A second payment interrupted only the recipient proof after
+withdrawal, then recovered its saved output in a fresh browser process to
+3/6. Both journals archived the pinned old recipient binding and both legs
+matched canonical blocks. The retained sender had been funded on an earlier
+head; a separate fresh funding attempt at this head remains an unresolved
+original and is not part of this pass. The candidate remains provisional.
+
 An [isolated owner target proof](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-native-target-proof-20261123.json)
 then used the transferred `v36claim23.night` witness to prove one
 `update_target` call with pinned 0.36.1 artifacts. The fixture removed

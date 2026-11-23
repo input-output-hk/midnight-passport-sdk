@@ -1495,10 +1495,16 @@ Enable it only
 with `--night-send --mixed-recipient` on a candidate demo whose `.night` name
 points to an activated old-binding ACC. The launcher owns that extra loopback
 service on port 8788, verifies its old manifest and same-chain endpoints, and
-drains it before the shared sponsor lease can be released. This route remains
-provisional until its connected browser
-payment and recovery pass a fresh native run. It does not promote the candidate
-to an installed or online supported binding. The earlier `a`
+drains it before the shared sponsor lease can be released. A
+[connected shared-chain browser run](evidence/candidate-to-old-connected-browser-night-20261123.json)
+at signed `a7d2d8c0` finalized a 1 NIGHT candidate-to-old payment, then
+interrupted a second payment after withdrawal and recovered its exact output
+in a fresh browser process. The old recipient's balance moved 4 → 5 → 6;
+the sender moved 5 → 4 → 3. Its source ACC and DUST wallet were created and
+funded earlier, so this does not qualify fresh funding at this head. The
+separate fresh funding attempt retained an unresolved original after its
+browser timeout. The candidate remains provisional, with physical passkey,
+installed-package and online acceptance open. The earlier `a`
 attempt stopped at the dirty-source guard; `b` stopped before stack creation
 because its subnet was occupied. Both failed receipts are retained privately.
 
