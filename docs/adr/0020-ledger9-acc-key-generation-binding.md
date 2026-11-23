@@ -90,3 +90,10 @@ This qualifies one changed-verifier negative on Ledger 9. Mixed-version
 source/recipient pairs, other malformed rosters, source and installed-package
 operation coverage, and binding promotion remain separate gates. The ordinary
 supported binding and existing deployments are unchanged.
+
+The [native supervisor key-admission check](../../examples/midnames-local/evidence/candidate-acc-key-prestack-refusals-20261123.json)
+also refused a missing prover key, a same-size corrupt key, and old-binding
+assets supplied under the candidate pin before allocating a stack or acquiring
+its lease. It tested the artifact boundary, not the old account's ability to
+prove or receive funds on Ledger 9. It does not replace the mixed-version or
+full operation-subset gates above.

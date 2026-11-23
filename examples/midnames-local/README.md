@@ -1445,6 +1445,26 @@ admission or full binding promotion. Select this extra lane with a fresh output
 name beginning `midnames-night-candidate-379-roster-negative-`; it deploys a
 third ACC and needs a fresh chain and unused subnet.
 
+The separate [pre-stack key-refusal run](evidence/candidate-acc-key-prestack-refusals-20261123.json)
+at signed `3e0558fd` invoked the actual native supervisor with a Docker-deny
+shim. An absent `deposit_unshielded` prover key, a same-size corrupt copy, and
+the old Compact 0.35 account asset tree under the candidate pin each failed
+before Docker access, native output allocation, or lease acquisition. It used
+an owned symlink mirror and left the verified candidate key unchanged. Run a
+fresh suffix with `qualify-candidate-key-refusals.mjs` using the prepared
+registry, reference checkout and candidate asset directory as arguments.
+
+```sh
+nix develop -c node examples/midnames-local/qualify-candidate-key-refusals.mjs \
+  freshsuffix /absolute/path/to/prepared-registry \
+  /absolute/path/to/reference-checkout /absolute/path/to/candidate-assets
+```
+
+The first harness attempt was stopped by Nix's inherited `LD_DYLD_PATH` before
+asset verification; its failed receipt is retained, and the signed fix and
+fresh run are recorded in the public receipt. This is key-admission evidence,
+not an on-chain mixed-version or old-version compatibility test.
+
 ### Provisional candidate paid name claim and retry
 
 The `midnames-claim-candidate-` lane uses the same complete candidate ACC
