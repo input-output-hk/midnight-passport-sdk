@@ -467,16 +467,28 @@ try {
   assert.ok(reviewedTerms.includes(`Register ${input.name}`));
   assert.ok(reviewedTerms.includes(`Passport account ${input.accountAddress}`));
 
+  let completeInterception!: () => void;
+  let failInterception!: (error: unknown) => void;
+  const interception = new Promise<void>((resolve, reject) => {
+    completeInterception = resolve;
+    failInterception = reject;
+  });
   await page.route('**' + claimDispatchPath, async (route) => {
-    const response = await route.fetch({ maxRetries: 0, maxRedirects: 0 });
-    assert.equal(response.status(), 202);
-    lostResponse = true;
-    await route.abort('failed');
+    try {
+      const response = await route.fetch({ maxRetries: 0, maxRedirects: 0 });
+      assert.equal(response.status(), 202);
+      lostResponse = true;
+      await route.abort('failed');
+      completeInterception();
+    } catch (error) {
+      failInterception(error);
+    }
   });
   const sent = page.waitForEvent('requestfailed', {
     predicate: (request) => request.url().endsWith(claimDispatchPath),
   });
   await page.locator('#claim-dispatch').click();
+  await interception;
   await sent;
   assert.equal(dispatchRequests, expectedAttempts);
   await browser.close();
