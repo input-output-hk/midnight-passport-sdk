@@ -55,6 +55,15 @@ sender/recipient balances of 9/5 at one node-finalized block. The original
 was not resent. Physical passkey, online provider and release acceptance are
 separate gates.
 
+A [later connected refusal run](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-connected-browser-night-refusals-20261123.json)
+on that retained isolated chain rejected an amount above the sender's 9 NIGHT
+balance and an absent `.night` name before owner review. It left the prior
+archived payment alone, created no active intent, and read sender/recipient
+balances of 9/5 before and after. The first probe timed out matching obsolete
+UI copy after a safe refusal; its failed receipt and lease reconciliation are
+preserved. Native repoint, non-contract target and fresh-process between-leg
+browser recovery remain separate #318 gates.
+
 ## Current Midnames delivery
 
 | Journey | Current evidence and implementation | Remaining acceptance |

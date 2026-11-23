@@ -932,6 +932,16 @@ Chrome process with the same mock passkey, refreshed its chain state, and read
 sender/recipient balances of 9/5 at one node-finalized block. No payment was
 resent. Physical passkey, online-provider and release acceptance remain open.
 
+The [same-profile connected refusal receipt](../../examples/midnames-local/evidence/compact0361-connected-browser-night-refusals-20261123.json)
+then checked two pre-owner failures on that retained chain: 10 NIGHT against
+the sender's 9 NIGHT holding, and an absent `.night` recipient. The page
+showed `NightInsufficientBalance` and `NightNameUnavailable` respectively,
+without a payment review, a new journal entry, or a balance change. The first
+probe's obsolete status matcher timed out after the safe refusal; its exact
+resources were reconciled before the corrected run. This does not qualify a
+live repoint, non-contract target or a failure between payment legs in a fresh
+browser process.
+
 The local candidate launcher sets `VITE_MIDNAMES_NIGHT_SEND=1` only with
 `--night-send --claim --funding` and `--candidate-assets`. Its default candidate
 page leaves the control disabled.

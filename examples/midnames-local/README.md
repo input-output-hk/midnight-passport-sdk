@@ -69,6 +69,14 @@ with the same mock passkey, refreshed it from the chain, and checked both ACC
 balances at one node-finalized block: sender 9, recipient 5. The original was
 not resent. Physical passkey and online-provider acceptance remain open.
 
+The [subsequent read-only refusal receipt](evidence/compact0361-connected-browser-night-refusals-20261123.json)
+uses the same saved account and mock-passkey profile with the retained isolated
+0.36.1 chain. The Passport page refused an over-balance 10 NIGHT payment and an
+absent name before owner review; the old payment remained archived with no
+active intent, and both balances remained 9/5. Its first probe matched stale
+UI wording and timed out after a safe refusal; the failed receipt and exact
+lease reconciliation were preserved before a corrected fresh run passed.
+
 ## Open the local Passport and Midnames demo
 
 The launcher attaches to the designated owner's running Ledger 9 node,
