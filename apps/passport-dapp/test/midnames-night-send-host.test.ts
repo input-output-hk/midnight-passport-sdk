@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { IDBFactory } from 'fake-indexeddb';
 import type { PassportAccount } from '@input-output-hk/mn-passport-protocol';
-import type { PassportNameService } from '@input-output-hk/mn-passport-account/names';
+import {
+  PassportNameError,
+  type PassportNameService,
+} from '@input-output-hk/mn-passport-account/names';
 import type { NetworkConfig, Prover } from '@input-output-hk/mn-passport-account/ports';
 import { accModule } from '../src/acc-module.js';
 import { createMidnamesNameService } from '../src/midnames/resolver.js';
@@ -146,7 +149,11 @@ test('stable NIGHT host refuses a candidate-pinned journal scope before wallet a
   assert.equal(walletTouched, false);
 });
 
-async function connectedJourney(network: NetworkConfig, provisionalLocal = false) {
+async function connectedJourney(
+  network: NetworkConfig,
+  provisionalLocal = false,
+  refusal?: 'repoint-after-review' | 'non-contract-target' | 'unsupported-asset',
+) {
   const factory = new IDBFactory();
   const finalized = new Set<string>();
   const calls: string[] = [];
@@ -154,6 +161,7 @@ async function connectedJourney(network: NetworkConfig, provisionalLocal = false
   let indexerUri = network.indexerUrl;
   let failProof = true;
   let selected = true;
+  let namedTarget = target;
   let switchAt: 'review' | 'withdrawal' | undefined;
   const originalTransaction: NightBridgeTransaction = {
     transactionHash: () => withdrawal.hash,
@@ -261,7 +269,10 @@ async function connectedJourney(network: NetworkConfig, provisionalLocal = false
   const names = createMidnamesNameService(
     { networkId: 'undeployed', namespace: 'night', registryAddress: '3'.repeat(64) },
     {
-      readTarget: async () => ({ kind: 'contract', address: target }),
+      readTarget: async () => ({
+        kind: refusal === 'non-contract-target' ? 'other' : 'contract',
+        address: namedTarget,
+      }),
       isSupportedAccount: async () => true,
     },
   );
@@ -278,6 +289,7 @@ async function connectedJourney(network: NetworkConfig, provisionalLocal = false
       readSourceBalance: async () => 10n,
       review: async () => {
         calls.push('review');
+        if (refusal === 'repoint-after-review') namedTarget = '6'.repeat(64);
         return true;
       },
       checkScope: () => {},
@@ -308,6 +320,30 @@ async function connectedJourney(network: NetworkConfig, provisionalLocal = false
       },
     },
   );
+
+  if (refusal) {
+    await assert.rejects(
+      () =>
+        host.send(refusal === 'unsupported-asset' ? { ...request, asset: 'shielded' } : request),
+      refusal === 'repoint-after-review'
+        ? /scope changed/
+        : refusal === 'non-contract-target'
+          ? (error: unknown) => error instanceof PassportNameError && error.code === 'InvalidRecord'
+          : /Unsupported or invalid standalone NIGHT payment/,
+    );
+    assert.equal(await host.readActive(), undefined);
+    const journal = await openBrowserNightSendJournal(factory, selectedScope);
+    assert.equal(await journal.readIntent(), undefined);
+    assert.equal(await journal.readLeg('withdraw'), undefined);
+    assert.equal(await journal.readLeg('deposit'), undefined);
+    assert.equal(
+      (await journal.readRefused(request.requestId))?.reason,
+      refusal === 'repoint-after-review' ? 'name-recheck' : undefined,
+    );
+    journal.close();
+    assert.deepEqual(calls, refusal === 'repoint-after-review' ? ['review'] : []);
+    return;
+  }
 
   assert.equal((await host.send(request)).phase, 'withdrawal-pending');
   assert.deepEqual((await host.readActive())?.withdrawal, withdrawal);
@@ -441,4 +477,22 @@ test('pinned local candidate reopens the same two-leg original and rejects a non
     () => connectedJourney({ ...candidate, indexerUrl: 'http://remote/api/v4/graphql' }, true),
     /Unsupported pinned NIGHT deposit request/,
   );
+});
+
+test('pinned local connected host refuses moved, non-contract and unsupported-asset routes before owner signing', async () => {
+  const candidate = {
+    ...network,
+    bindingId: 'acc-s3r1.1-zkir036',
+    manifestSha256: '590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f',
+    indexerUrl: 'http://127.0.0.1:8088/api/v4/graphql',
+    indexerWsUrl: 'ws://127.0.0.1:8088/api/v4/graphql/ws',
+    nodeUrl: 'http://127.0.0.1:9944/',
+    artefactUrl: 'http://127.0.0.1:3000/v1/zk/acc-s3r1.1-zkir036',
+  };
+  for (const refusal of [
+    'repoint-after-review',
+    'non-contract-target',
+    'unsupported-asset',
+  ] as const)
+    await connectedJourney(candidate, true, refusal);
 });
