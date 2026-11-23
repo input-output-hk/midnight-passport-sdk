@@ -64,6 +64,13 @@ page-to-chain 0.36.1 claim, online registry/provider, independent inclusion
 proof, and real passkey custody also remain unqualified. The ordinary shared
 demo still pins its separate 0.35 registry profile.
 
+The next [isolated Chromium check](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-browser-owner-proof-20261123.json) proved a reviewed but unsent 0.36.1 claim
+with a virtual PRF credential, then recovered the same owner commitment after
+reload. It made no proof request before automated approval of the fixture
+quote. The pinned browser
+client and prepared artifact hashes are reproducible locally; this does not
+establish a connected Passport page submission or human-provider consent.
+
 **Local recovery source preview, 20 November 2026:** The sponsor can now
 recognize its exact quote in a bounded private archive, refuse a superseded
 sibling quote with an owner-bound marker, and archive a dispatched original

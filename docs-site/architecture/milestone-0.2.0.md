@@ -20,6 +20,12 @@ conformance documentation is part of this source change. The ordinary demo
 continues to use its separately pinned 0.35 registry profile, and the broader
 #316 browser/provider and online gates remain open.
 
+A subsequent [isolated Chromium proof check](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-browser-owner-proof-20261123.json) used the pinned 0.36.1 browser
+client, a virtual PRF credential and the release prover. It displayed a
+fixture-supplied quote before automated approval, proved an unsent claim, and recovered the same
+owner commitment after reload. A complete Passport page-to-chain 0.36.1
+registration and indexed recovery still need a connected qualification run.
+
 ## Current Midnames delivery
 
 | Journey | Current evidence and implementation | Remaining acceptance |

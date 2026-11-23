@@ -5,12 +5,15 @@ import { startDemoOwnerBundle } from './claim-owner-browser-host.mjs';
 import { verifyPreparedRegistry } from './verify-prepared.mjs';
 
 async function main() {
-  const [preparedPath, referencePath, publicContextPath, origin, ...extra] = process.argv.slice(2);
+  const [preparedPath, referencePath, publicContextPath, origin, profileArg, ...extra] =
+    process.argv.slice(2);
   if (!preparedPath || !referencePath || !publicContextPath || extra.length) {
     throw new Error(
-      'Usage: node --experimental-import-meta-resolve examples/midnames-local/claim-owner-demo-local.mjs <prepared-registry> <acc-reference-contract> <public-context.json> [demo-origin]',
+      'Usage: node --experimental-import-meta-resolve examples/midnames-local/claim-owner-demo-local.mjs <prepared-registry> <registry-client> <public-context.json> [demo-origin] [standalone-0.35|standalone-0.36.1]',
     );
   }
+  const profile = profileArg ?? 'standalone-0.35';
+  assert.ok(profile === 'standalone-0.35' || profile === 'standalone-0.36.1');
 
   const context = JSON.parse(readFileSync(publicContextPath, 'utf8'));
   assert.equal(
@@ -31,7 +34,7 @@ async function main() {
   }
 
   const prepared = resolve(preparedPath);
-  await verifyPreparedRegistry(prepared);
+  await verifyPreparedRegistry(prepared, () => {}, profile);
   const assets = join(prepared, 'managed');
   const stop = AbortSignal.any([signalOn('SIGINT'), signalOn('SIGTERM')]);
   const owner = await startDemoOwnerBundle(
@@ -39,6 +42,8 @@ async function main() {
       assets,
       modulePath: join(assets, 'contract', 'index.js'),
       ref: resolve(referencePath),
+      registryProfile: profile,
+      ...(profile === 'standalone-0.36.1' && { proverUrl: context.proverUrl }),
     },
     context,
     origin,

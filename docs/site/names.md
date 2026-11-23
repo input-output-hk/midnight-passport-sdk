@@ -344,9 +344,18 @@ checked the paid claim, owner transfer, and current name-to-ACC binding at
 node-canonical blocks through that profile. Verifier equality alone cannot
 identify which compiler produced a deployed contract, so the host must pin
 the deployment address and its own build record. The reference page keeps
-registration and named sending disabled for this profile until its 0.36.1
-browser proof and send path is qualified. The ordinary local demo remains on
+registration and named sending disabled for this profile until its complete
+page-to-chain and named-send paths are qualified. The ordinary local demo remains on
 `standalone-0.35`.
+
+A subsequent [isolated headless Chromium check](../../examples/midnames-local/evidence/compact0361-browser-owner-proof-20261123.json) used the pinned 0.36.1 browser
+client and a virtual PRF credential to prove a reviewed, **unsent** claim from
+fixture-supplied terms. It made no proof request before automated quote
+approval and recovered the same naming
+commitment after reload. This validates the local browser owner-proof step;
+the complete Passport page, sponsor submission and indexed recovery remain
+separate acceptance work. Registration and named sending stay disabled in the
+ordinary page for this profile.
 
 For an online deployment, the host must configure its actual registry address
 and a funded sponsor wallet through `PASSPORT_SPONSOR_SEED` in the service

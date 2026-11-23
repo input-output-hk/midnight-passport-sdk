@@ -1,5 +1,44 @@
 # Midnames local demo and registry preparation
 
+## Compact 0.36.1 isolated registry proof profile
+
+The released Compact 0.36.1 compiler can rebuild the pinned Ledger 9
+standalone registry from the upstream `ledger-9-live` source. The preparer
+changes only its language pragma, checks the exact upstream and adapted
+source hashes, then checks the generated module, all 13 ZKIR files and all
+prover/verifier keys against `registry-manifest-0361.json`. It prepares files;
+it does not open a wallet, deploy a contract or register a name. The branch
+source is mutable, so a hash mismatch stops preparation for review.
+
+Use a fresh output directory and the installed 0.36.1 compiler directory:
+
+```sh
+COMPACT_0361_DIRECTORY=/absolute/path/to/compact-0.36.1 \
+  nix develop -c node examples/midnames-local/prepare-0361.mjs \
+  --upstream-ledger9 /absolute/path/to/fresh-private-prepared
+nix develop -c npm ci --prefix examples/midnames-local/registry-0361-client \
+  --ignore-scripts
+```
+
+The separate `registry-0361-client` lockfile pins the release Compact.js,
+Compact runtime, Midnight.js and Ledger 9 dependencies for this registry.
+The owner host accepts `standalone-0.36.1` only with this verified output and
+an explicit loopback proof server. The ordinary shared demo still uses its
+separately pinned Compact 0.35 registry and compatibility prover.
+
+An [isolated Ledger 9 test](evidence/compact0361-browser-owner-proof-20261123.json)
+proved a fresh claim in headless Chromium with a
+virtual PRF credential and the released proof server. It displayed a
+fixture-supplied quote based on live registry terms before proof, made no proof
+request before automated approval, and recovered the
+same owner commitment after reload. The proof bytes were kept private and
+**not submitted**. The native paid claim and owner transfer in
+[the 0.36.1 evidence](evidence/compact0361-native-name-control-20261123.json)
+are separate synthetic operations. Together they do not yet qualify the
+complete Passport page-to-chain 0.36.1 registration flow, an online provider,
+a physical passkey or a release. The shared demo is not switched to this
+profile by preparing these files.
+
 ## Open the local Passport and Midnames demo
 
 The launcher attaches to the designated owner's running Ledger 9 node,
