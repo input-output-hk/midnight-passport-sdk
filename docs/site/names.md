@@ -358,8 +358,20 @@ node-canonical block. A fresh-process Passport browser then read the new target
 at a finalized block and refused a 1 NIGHT send as `NightSelfRecipient` before
 owner review. The payment journal stayed inactive and the sender and earlier
 recipient balances remained 8/6. This qualifies a completed local repoint and
-self-recipient refusal. It does not cover a name changing **after** payment
-review, a non-contract target, or an online registry.
+self-recipient refusal before review.
+
+The [after-review repoint receipt](../../examples/midnames-local/evidence/compact0361-native-after-review-repoint-refusal-20261123.json)
+uses the same isolated chain with the name restored to its original supported
+ACC. A connected mock-passkey browser displayed one review for that target.
+While the review stayed open, the existing name owner changed the contract
+target to the sender ACC with one saved `update_target` original, indexed
+`SUCCESS` in a node-canonical block. After review approval, the page
+re-resolved the name, reported `NightSelfRecipient`, and archived an exact
+`name-recheck` refusal before owner proof or withdrawal. No proof request was
+made, no payment leg was created, and the two ACC balances remained 8/6 at
+node-finalized snapshots. This qualifies a local change **after** review;
+non-contract targets, another supported ACC target, and online resolution
+remain separate gates.
 
 The source reader also accepts an explicit local `standalone-0.36.1` profile
 for this registry's byte-identical verifier roster. A retained-chain read
@@ -973,9 +985,9 @@ confirmed recovery, reused the finalized withdrawal, and submitted one
 deposit. The original hashes were checked against canonical node blocks and
 indexed success. Sender/recipient balances moved from 9/5 to 8/6 at
 node-finalized indexer snapshots, and the journal archived exactly one
-payment with no active entry. Live name repoint, non-contract target,
-unsupported asset, physical passkey and online-provider qualification remain
-open.
+payment with no active entry. The later after-review repoint receipt above
+qualifies a local changed-name refusal. Non-contract target, unsupported
+asset, physical passkey and online-provider qualification remain open.
 
 The local candidate launcher sets `VITE_MIDNAMES_NIGHT_SEND=1` only with
 `--night-send --claim --funding` and `--candidate-assets`. Its default candidate

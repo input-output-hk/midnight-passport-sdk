@@ -77,6 +77,15 @@ active intent, and both balances remained 9/5. Its first probe matched stale
 UI wording and timed out after a safe refusal; the failed receipt and exact
 lease reconciliation were preserved before a corrected fresh run passed.
 
+The [later after-review repoint receipt](evidence/compact0361-native-after-review-repoint-refusal-20261123.json)
+held a connected mock-passkey browser's 1 NIGHT review open while the existing
+name owner changed the reviewed contract target on the isolated Ledger 9 chain.
+After API v4 indexed the owner's saved original at a node-canonical block,
+the browser accepted the review, re-resolved the name, and retired the exact
+unsubmitted intent as `name-recheck`. No owner proof or payment leg started;
+both ACC balances stayed 8/6. This is a local synthetic refusal, not an
+online or physical-passkey acceptance result.
+
 ## Open the local Passport and Midnames demo
 
 The launcher attaches to the designated owner's running Ledger 9 node,

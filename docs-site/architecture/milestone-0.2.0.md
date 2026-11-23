@@ -87,8 +87,13 @@ submitted one saved owner-authorized original and confirmed the synthetic name
 now points to the test sender ACC at a node-canonical block. A fresh-process
 Passport browser read that finalized mapping and refused the named NIGHT send
 as `NightSelfRecipient` before owner review. Its payment journal and 8/6 ACC
-balances were unchanged. A name change **after** a payment review, a
-non-contract target, and unsupported-asset refusals remain open.
+balances were unchanged. A subsequent [after-review repoint](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-native-after-review-repoint-refusal-20261123.json)
+held that browser review open while the existing owner changed the name back
+to the sender ACC. The update reached API v4 indexed `SUCCESS` and node-canonical
+finality before review approval. The page then refused `NightSelfRecipient`,
+archived a `name-recheck` intent before owner proof, and left both ACC balances
+at 8/6. Non-contract targets, changed targets to another supported ACC,
+unsupported assets, online resolution, and real-provider consent remain open.
 
 ## Current Midnames delivery
 
