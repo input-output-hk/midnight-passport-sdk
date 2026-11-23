@@ -39,6 +39,10 @@ RC8 adds the optional read-only
 [naming-service port and checked resolver]({{ '/names/' | relative_url }}):
 `PassportNameService` in `account/ports`, `resolvePassportName` in `account/names`.
 These are independent of account creation and absent from published RC7.
+The current 0.2.0 source preview additionally exports
+`resolvePassportContractCallName` from `account/names`. It requires an explicit
+contract-call class acknowledgment for a named ACC destination; it is not in
+the published RC9 package. See [naming adapters]({{ '/names/' | relative_url }}).
 
 The optional [interaction models]({{ '/interaction/' | relative_url }}) subpath
 provides immutable public operation/journey snapshots and a presentation store

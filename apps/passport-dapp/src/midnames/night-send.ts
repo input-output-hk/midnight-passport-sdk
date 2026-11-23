@@ -1,6 +1,6 @@
 import {
   PassportNameError,
-  resolvePassportName,
+  resolvePassportContractCallName,
   type PassportNameService,
 } from '@input-output-hk/mn-passport-account/names';
 import type { PreparedValueSubmission } from '@input-output-hk/mn-passport-protocol';
@@ -181,7 +181,7 @@ async function resolveIntent(
   request: NightSendRequest,
   ports: Pick<NightSendPorts, 'names' | 'isSupportedRecipient'>,
 ) {
-  const target = await resolvePassportName(ports.names, request);
+  const target = await resolvePassportContractCallName(ports.names, request);
   if (!target || target.mode !== 'external')
     throw new NightSendPreflightError(
       'NightNameUnavailable',
@@ -220,7 +220,7 @@ async function observeRecovery(
     throw new NightSendPreflightError('NightNameChanged', 'The original name provider changed.');
   let target;
   try {
-    target = await resolvePassportName(ports.names, intent);
+    target = await resolvePassportContractCallName(ports.names, intent);
   } catch (error) {
     if (!(error instanceof PassportNameError) || error.code === 'InvalidQuery') throw error;
     if (!sameProvider())

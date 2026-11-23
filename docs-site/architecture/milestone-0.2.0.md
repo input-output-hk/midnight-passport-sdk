@@ -144,6 +144,11 @@ failed on an obsolete single-history assertion after both payment legs
 finalized; read-only exact-ID reconciliation verified the original hashes,
 canonical blocks and balances without replay. This is a local MIP-0007
 address-selection subset, not delegated operation-context resolution.
+The current-source account helper and both named-value hosts now require an
+explicit contract-call class acknowledgment from the resolver. A default or
+wallet address hint lacking that class cannot start owner authorization. The
+local Midnames adapter reads the contract target and checks its ACC binding;
+public provider provenance and delegated MIP-0007 routing remain separate gates.
 
 An [isolated native browser run](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-native-postwithdraw-repoint-recovery-20261123.json)
 at signed source `a215ba3` finalized one withdrawal, repointed the name to a

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   PassportNameError,
+  resolvePassportContractCallName,
   resolvePassportName,
   type PassportNameErrorCode,
 } from '@input-output-hk/mn-passport-account/names';
@@ -47,6 +48,32 @@ test('resolves the currently observed contract target for the captured registry 
   assert.equal((await resolvePassportName(adapter, query))?.accountAddress, account);
   address = repointed;
   assert.equal((await resolvePassportName(adapter, query))?.accountAddress, repointed);
+});
+
+test('contract-call context admits only a verified contract target', async () => {
+  const calls: string[] = [];
+  const adapter = createMidnamesNameService(profile, {
+    async readTarget(name) {
+      assert.equal(name, query.name);
+      calls.push('contract-target');
+      return { kind: 'contract', address: account };
+    },
+    async isSupportedAccount(address) {
+      assert.equal(address, account);
+      calls.push('binding');
+      return true;
+    },
+  });
+  const result = await resolvePassportContractCallName(adapter, query);
+  assert.equal(result?.accountAddress, account);
+  assert.deepEqual(calls, ['contract-target', 'binding']);
+  assert.equal(result?.addressClass, 'contract');
+  assert.equal(result?.resolvedOperation, 'contract-call');
+  const bad = createMidnamesNameService(
+    profile,
+    reads(async () => ({ kind: 'other', address: repointed })),
+  );
+  await assert.rejects(resolvePassportContractCallName(bad, query), code('InvalidRecord'));
 });
 
 test('uses an atomic target and ACC check when the provider supports one', async () => {

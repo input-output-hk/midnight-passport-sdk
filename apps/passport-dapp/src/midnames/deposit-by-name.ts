@@ -5,7 +5,7 @@ import {
   type ShieldedDepositSender,
 } from '@input-output-hk/mn-passport-account';
 import {
-  resolvePassportName,
+  resolvePassportContractCallName,
   type PassportNameService,
 } from '@input-output-hk/mn-passport-account/names';
 
@@ -49,7 +49,7 @@ export async function depositByName(
   const color = new Uint8Array(request.color);
   const nonce = new Uint8Array(request.nonce);
   const resolve = async () => {
-    const target = await resolvePassportName(ports.names, { name, networkId });
+    const target = await resolvePassportContractCallName(ports.names, { name, networkId });
     if (!target || target.mode !== 'external')
       throw new Error('No external contract target for this name.');
     return target;

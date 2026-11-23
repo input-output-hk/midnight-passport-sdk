@@ -146,6 +146,21 @@ test('unsupported routes, target type and insufficient balance refuse before own
   assert.deepEqual(calls, []);
 });
 
+test('a provider default address cannot authorize a contract-call payment', async () => {
+  const { calls, legs, ports } = fixture();
+  const unclassified = {
+    provider: { id: 'midnames:' + 'd'.repeat(64), namespace: 'night', mode: 'external' as const },
+    async resolve(query: { name: string; networkId: string }) {
+      return { ...query, namespace: 'night', accountAddress: target };
+    },
+  };
+  await assert.rejects(sendNightByName(request, { ...ports(), names: unclassified }), {
+    code: 'InvalidRecord',
+  });
+  assert.deepEqual(calls, []);
+  assert.equal(legs.size, 0);
+});
+
 test('preflight refusals have distinct public codes without owner approval or dispatch', async () => {
   const { state, calls, ports, legs } = fixture();
   const refused = async (input: NightSendRequest, code: NightSendPreflightError['code']) => {
@@ -377,6 +392,8 @@ test('an expired name requires the same explicit direct-ACC repair review', asyn
         ...query,
         namespace: 'night',
         accountAddress: target,
+        addressClass: 'contract' as const,
+        resolvedOperation: 'contract-call' as const,
         expiresAt: Date.now() - 1,
       };
     },

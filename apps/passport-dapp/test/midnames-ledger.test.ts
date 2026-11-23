@@ -22,7 +22,10 @@ import {
   partitionTranscripts,
 } from '@midnightntwrk/ledger-v9';
 import type { AccRegistry } from '@input-output-hk/mn-passport-contract';
-import { PassportNameError } from '@input-output-hk/mn-passport-account/names';
+import {
+  PassportNameError,
+  resolvePassportContractCallName,
+} from '@input-output-hk/mn-passport-account/names';
 import { resolveBinding, resolvePinnedBinding } from '@input-output-hk/mn-passport-contract';
 import {
   admitAccBindingFromState,
@@ -30,6 +33,7 @@ import {
   createMidnamesLedgerReads,
   detectAccBindingFromState,
 } from '../src/midnames/ledger-reader.js';
+import { createMidnamesNameService } from '../src/midnames/resolver.js';
 import { MIDNAMES_REGISTRY_VERIFIERS } from '../src/midnames/registry-pins.js';
 
 const profile = { networkId: 'undeployed', namespace: 'night', registryAddress: '11'.repeat(32) };
@@ -553,6 +557,18 @@ test('installed Midnames v2.1 reads its generated registry over the Ledger 9 ind
     target: { kind: 'contract', address: target },
   });
   assert.equal(queryCount, 2);
+  const operation = createMidnamesNameService(profile, {
+    readTarget: reads.readTarget,
+    isSupportedAccount: async (address) => address === target,
+  });
+  const contractCall = await resolvePassportContractCallName(operation, {
+    name: 'alice.night',
+    networkId: 'undeployed',
+  });
+  assert.equal(contractCall?.accountAddress, target);
+  assert.notEqual(contractCall?.accountAddress, defaultFieldAddress);
+  assert.equal(contractCall?.addressClass, 'contract');
+  assert.equal(contractCall?.resolvedOperation, 'contract-call');
   await assert.rejects(standalone.readTarget('alice.night', profile), { code: 'InvalidRecord' });
   assert.equal(await reads.readTarget('missing.night', profile), undefined);
   assert.equal(await reads.readClaim('missing.night', profile), undefined);

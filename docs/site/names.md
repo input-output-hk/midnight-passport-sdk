@@ -46,6 +46,18 @@ into an immutable result with `providerId` and `mode`. Provider extensions and
 exception text are not forwarded. No automatic cache/retry or chain access.
 Inject `{ now: () => milliseconds }` for deterministic tests.
 
+**Current-source 0.2.0 preview:** `resolvePassportContractCallName` makes the
+operation context explicit when a host intends to call an ACC contract. It
+requests `operation: 'contract-call'` and accepts a result only when the
+provider acknowledges both `resolvedOperation: 'contract-call'` and
+`addressClass: 'contract'`. A generic or mock address hint without that
+acknowledgment cannot authorize a named ACC payment. The optional fields leave
+existing `resolvePassportName` lookups compatible; this new helper is not in
+the published RC9 package. A provider's acknowledgment is a claim, not a
+chain-state proof. The Midnames adapter checks its contract target and deployed
+ACC binding separately, and the send host rechecks the recipient before owner
+authorization and submission.
+
 Names are exact strings of up to256 UTF-16 code units without whitespace or
 Unicode control/format characters. No implicit trim, case folding, Unicode
 normalisation or DNS/upstream-name validation occurs. Providers define their own
@@ -278,6 +290,11 @@ its contract target unchanged. The connected synthetic-passkey page sent
 4/3/7 → 3/4/7 at canonical finalized snapshots. This tests the MIP-0007
 address-selection distinction for one local payment, not the proposed
 delegated resolver or an online name service.
+The current-source named deposit and NIGHT send now request that contract-call
+class explicitly. The local Midnames adapter reads its contract target for the
+request, never its default field; two configured readers must acknowledge the
+same class and operation. A missing class is a refusal without fallback to a
+wallet or default address. This remains a transitional-registry subset.
 
 The 2.1.0 tarball includes a read generation and an older managed write
 generation. Its root export can fail at load because the managed module expects

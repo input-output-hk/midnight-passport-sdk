@@ -176,6 +176,12 @@ browser harness used an obsolete single-history assertion; a read-only
 reconciliation verified the new archived intent, canonical originals and
 balances without replay. This supports the local contract-call target
 selection subset only; delegated operation-context routing remains absent.
+The current-source SDK port also permits an explicit `contract-call` query.
+The local Midnames adapter acknowledges that context only after selecting a
+contract target and checking the ACC binding; named deposit and NIGHT send
+reject a generic address hint without the acknowledgment. This improves the
+host boundary but does not turn the transitional registry into MIP-0007's
+proposed delegated resolver or authenticate a public provider by itself.
 
 A [fresh isolated Ledger 9 comparison](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/ledger9-night-by-name-prover-comparison-20261122.json)
 repeated the two-leg route on a release node and Indexer API v4. The release

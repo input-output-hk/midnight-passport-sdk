@@ -42,8 +42,36 @@ export interface ResolvedPassportName extends PassportNameRecord {
   readonly mode: PassportNameProvider['mode'];
 }
 
+export interface ResolvedPassportContractName extends ResolvedPassportName {
+  readonly addressClass: 'contract';
+  readonly resolvedOperation: 'contract-call';
+}
+
 const token = (value: unknown, max = 128): value is string =>
   typeof value === 'string' && value.length <= max && /^[a-zA-Z0-9][a-zA-Z0-9._:-]*$/.test(value);
+
+function requireMatchingRecord(
+  value: unknown,
+  request: PassportNameQuery,
+  namespace: string,
+): asserts value is PassportNameRecord {
+  if (value === null || typeof value !== 'object') throw new PassportNameError('InvalidRecord');
+  const record = value as PassportNameRecord;
+  if (
+    record.name !== request.name ||
+    record.networkId !== request.networkId ||
+    record.namespace !== namespace ||
+    typeof record.accountAddress !== 'string' ||
+    !/^[0-9a-f]{64}$/.test(record.accountAddress) ||
+    (record.addressClass !== undefined && record.addressClass !== 'contract') ||
+    (record.resolvedOperation !== undefined && record.resolvedOperation !== 'contract-call') ||
+    (request.operation !== undefined &&
+      (record.addressClass !== 'contract' || record.resolvedOperation !== request.operation)) ||
+    (record.expiresAt !== undefined &&
+      (!Number.isSafeInteger(record.expiresAt) || record.expiresAt < 0))
+  )
+    throw new PassportNameError('InvalidRecord');
+}
 
 /**
  * Checks a provider's resolution hint, not ownership, finality or permission to spend.
@@ -57,6 +85,7 @@ export async function resolvePassportName(
   const provider = service?.provider;
   const name = query?.name;
   const networkId = query?.networkId;
+  const operation = query?.operation;
   if (
     !token(provider?.id) ||
     !token(provider?.namespace) ||
@@ -66,7 +95,8 @@ export async function resolvePassportName(
     name.length === 0 ||
     name.length > 256 ||
     /[\s\p{C}]/u.test(name) ||
-    !token(networkId, 64)
+    !token(networkId, 64) ||
+    (operation !== undefined && operation !== 'contract-call')
   )
     throw new PassportNameError('InvalidQuery');
   // Capture caller/provider scope before awaiting an adapter that may mutate its own objects.
@@ -75,7 +105,7 @@ export async function resolvePassportName(
     namespace: provider.namespace,
     mode: provider.mode,
   });
-  const request = Object.freeze({ name, networkId });
+  const request = Object.freeze({ name, networkId, ...(operation && { operation }) });
   let record: PassportNameRecord | undefined;
   try {
     record = await service.resolve(request);
@@ -83,18 +113,7 @@ export async function resolvePassportName(
     throw providerError(error);
   }
   if (record === undefined) return undefined;
-  if (
-    record === null ||
-    typeof record !== 'object' ||
-    record.name !== name ||
-    record.networkId !== networkId ||
-    record.namespace !== pins.namespace ||
-    typeof record.accountAddress !== 'string' ||
-    !/^[0-9a-f]{64}$/.test(record.accountAddress) ||
-    (record.expiresAt !== undefined &&
-      (!Number.isSafeInteger(record.expiresAt) || record.expiresAt < 0))
-  )
-    throw new PassportNameError('InvalidRecord');
+  requireMatchingRecord(record, request, pins.namespace);
   const now = (options.now ?? Date.now)();
   if (!Number.isSafeInteger(now) || now < 0) throw new PassportNameError('InvalidQuery');
   if (record.expiresAt !== undefined && record.expiresAt <= now)
@@ -106,7 +125,26 @@ export async function resolvePassportName(
     namespace: pins.namespace,
     accountAddress: record.accountAddress,
     ...(record.expiresAt !== undefined && { expiresAt: record.expiresAt }),
+    ...(record.addressClass !== undefined && { addressClass: record.addressClass }),
+    ...(record.resolvedOperation !== undefined && { resolvedOperation: record.resolvedOperation }),
     providerId: pins.id,
     mode: pins.mode,
   });
+}
+
+/** Request a contract-call address class explicitly; never accept a default or wallet route. */
+export async function resolvePassportContractCallName(
+  service: PassportNameService,
+  query: Pick<PassportNameQuery, 'name' | 'networkId'>,
+  options: { readonly now?: () => number } = {},
+): Promise<Readonly<ResolvedPassportContractName> | undefined> {
+  const result = await resolvePassportName(
+    service,
+    { ...query, operation: 'contract-call' },
+    options,
+  );
+  if (result === undefined) return undefined;
+  if (result.addressClass !== 'contract' || result.resolvedOperation !== 'contract-call')
+    throw new PassportNameError('InvalidRecord');
+  return result as Readonly<ResolvedPassportContractName>;
 }

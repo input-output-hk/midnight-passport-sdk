@@ -3,6 +3,8 @@ export interface PassportNameQuery {
   /** Exact, provider-defined spelling. Normalisation belongs to the provider/host. */
   readonly name: string;
   readonly networkId: string;
+  /** Optional operation context. A provider must explicitly acknowledge this in its result. */
+  readonly operation?: 'contract-call';
 }
 
 export interface PassportNameRecord extends PassportNameQuery {
@@ -11,6 +13,9 @@ export interface PassportNameRecord extends PassportNameQuery {
   readonly accountAddress: string;
   /** Optional expiry, in Unix epoch milliseconds. Absence is not a permanence guarantee. */
   readonly expiresAt?: number;
+  /** Present only when the provider verified a contract-call target for this query. */
+  readonly addressClass?: 'contract';
+  readonly resolvedOperation?: 'contract-call';
 }
 
 export interface PassportNameProvider {
