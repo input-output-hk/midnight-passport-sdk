@@ -1120,7 +1120,14 @@ the **originally reviewed ACC**. The review shows both ACC addresses, the
 amount and saved withdrawal ID. Declining leaves the original pending; approval
 does not withdraw again or redirect to the newly named ACC. The original ACC
 binding is checked again before the deposit is fenced. A changed registry or
-provider does not use this recovery path.
+provider does not use this recovery path. The name is re-resolved just before
+the deposit fence; another repoint requires another review. An absent,
+non-contract, unsupported or unavailable current name remains pending for a
+separate original-output recovery path; this dialog does not repair those cases.
+Each approved observation (name, network, registry/provider, old and new ACC,
+withdrawal ID and time) is durably appended to the browser intent before deposit
+proof and retained in its archived history. This is a local audit record, not an
+ACC-signed name field or a cryptographic state proof.
 
 The selected account's original intent and each transaction ID stay in the
 browser journal. A pending withdrawal or deposit is displayed under the same

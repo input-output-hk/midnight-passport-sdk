@@ -966,8 +966,15 @@ output into the originally reviewed ACC. The dialog shows the old and current
 ACC targets, amount and saved withdrawal ID. The host rechecks the old ACC's
 supported binding before fencing the deposit. It never sends that output to
 the new named ACC or repeats the withdrawal. A changed registry/provider
-refuses this recovery mode. Source and connected-host tests cover the path;
-a native browser receipt for this post-withdrawal repoint is still needed.
+refuses this recovery mode. The current name target is rechecked at the deposit
+fence; a second repoint requires a new review. An absent, non-contract,
+unsupported or unavailable current name leaves the saved output pending; a
+separate original-output repair action remains open #318 work. Source and
+connected-host tests cover the supported-repoint path. Each approved mapping
+observation is durably saved with the original withdrawal in the credential
+scoped browser journal and later archived; the name is still host checked, not
+signed by the ACC. A native browser receipt for this post-withdrawal repoint
+is still needed.
 
 An [isolated Compact 0.36.1 native receipt](../../examples/midnames-local/evidence/compact0361-paid-name-night-send-20261123.json)
 resolved a previously paid, user-owned `.night` name to its contract target,

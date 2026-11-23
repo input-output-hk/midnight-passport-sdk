@@ -459,6 +459,13 @@ named ACC, the original ACC, amount and withdrawal hash. Decline leaves the
 journal pending. Approval uses the one observed bridge output and does not
 repeat the owner withdrawal or pay the new named ACC. The original ACC binding
 is rechecked before the deposit fence; a changed registry refuses this path.
+The name is also re-resolved at that fence, and another repoint requires a new
+review. Absent, non-contract, unsupported or unavailable current names still
+leave the output pending; an independent original-output recovery action is
+open #318 work.
+Each approval writes the observed name/registry, old/current ACCs, withdrawal
+ID and timestamp to the durable browser journal before proof. The record
+survives reload and archive; it is not an ACC signature or inclusion proof.
 This source and connected-host test does not yet establish a native browser
 recovery run for a post-withdrawal repoint.
 

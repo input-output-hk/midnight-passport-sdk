@@ -48,6 +48,12 @@ export interface NightSendJournal {
   retireRefused?(intent: NightSendIntent, reason: 'name-recheck'): Promise<void>;
   /** Reconcile only a proven pre-credential fence rejection; keep its history. */
   retireUnsupportedFence?(intent: NightSendIntent): Promise<void>;
+  /** Durably pin each approved post-withdrawal mapping before another deposit proof. */
+  recordRecoveryReview?(
+    original: NightSendIntent,
+    current: NightSendIntent,
+    withdrawal: NightSendLeg,
+  ): Promise<void>;
 }
 
 export class NightDepositInterrupted extends Error {
@@ -222,11 +228,21 @@ async function submitLeg(
   prepared: PreparedLeg,
   ports: NightSendPorts,
   prior?: NightSendLeg,
-  originalTargetRecovery = false,
+  recoveryObservation?: NightSendIntent,
 ) {
   const original = checkedLeg(prepared.original);
   if (prior) requireDistinctLegs(prior, original);
-  if (originalTargetRecovery) {
+  if (recoveryObservation) {
+    const current = await resolveIntent(intent, ports);
+    if (
+      current.target !== recoveryObservation.target ||
+      current.providerId !== recoveryObservation.providerId ||
+      current.namespace !== recoveryObservation.namespace
+    )
+      throw new NightSendPreflightError(
+        'NightNameChanged',
+        'The name changed again during deposit recovery. Review the destination again.',
+      );
     if (!(await ports.isSupportedRecipient(intent.target, intent.networkId)))
       throw new NightSendPreflightError(
         'NightRecipientUnsupported',
@@ -331,7 +347,7 @@ async function depositOriginalWithdrawal(
     );
   const repointed = current.target !== intent.target;
   if (repointed) {
-    if (!ports.reviewOriginalDeposit)
+    if (!ports.reviewOriginalDeposit || !ports.journal.recordRecoveryReview)
       throw new NightSendPreflightError(
         'NightNameChanged',
         'The name changed after withdrawal. Inspect the saved original before deposit.',
@@ -343,6 +359,7 @@ async function depositOriginalWithdrawal(
       );
     if (!(await ports.reviewOriginalDeposit(intent, current, withdrawal)))
       throw new Error('The original deposit recovery was declined. The withdrawal remains saved.');
+    await ports.journal.recordRecoveryReview(intent, current, withdrawal);
   } else assertSameIntent(intent, current);
   return submitLeg(
     'deposit',
@@ -350,7 +367,7 @@ async function depositOriginalWithdrawal(
     await ports.prepareDeposit(intent, withdrawal),
     ports,
     withdrawal,
-    repointed,
+    repointed ? current : undefined,
   );
 }
 

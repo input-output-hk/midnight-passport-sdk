@@ -34,8 +34,21 @@ export interface BrowserNightSendRecord {
   readonly ownerStartedAt?: string;
   readonly withdrawal?: NightSendLeg;
   readonly deposit?: NightSendLeg;
+  /** Approved observations are retained even when a later proof or fence refuses. */
+  readonly recoveryReviews?: readonly NightRecoveryReview[];
 }
 type StoredNightSend = BrowserNightSendRecord;
+
+export interface NightRecoveryReview {
+  readonly name: string;
+  readonly networkId: 'undeployed';
+  readonly providerId: string;
+  readonly namespace: 'night';
+  readonly originalTarget: string;
+  readonly currentTarget: string;
+  readonly withdrawalHash: string;
+  readonly approvedAt: string;
+}
 
 interface ArchivedNightSend extends StoredNightSend {
   readonly archivedAt: string;
@@ -105,6 +118,44 @@ function checkedLeg(value: unknown): NightSendLeg {
   return { hash: row.hash, identifiers: [...row.identifiers] };
 }
 
+function checkedRecoveryReviews(
+  value: unknown,
+  intent: NightSendIntent,
+  withdrawal: NightSendLeg | undefined,
+): readonly NightRecoveryReview[] | undefined {
+  if (value === undefined) return undefined;
+  if (!withdrawal || !Array.isArray(value) || value.length === 0 || value.length > 32)
+    throw new Error('Stored NIGHT deposit recovery reviews are invalid.');
+  return value.map((item: unknown) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item))
+      throw new Error('Stored NIGHT deposit recovery review is invalid.');
+    const row = item as Record<string, unknown>;
+    if (
+      row.name !== intent.name ||
+      row.networkId !== intent.networkId ||
+      row.providerId !== intent.providerId ||
+      row.namespace !== intent.namespace ||
+      row.originalTarget !== intent.target ||
+      !hex32(row.currentTarget) ||
+      row.currentTarget === intent.target ||
+      row.withdrawalHash !== withdrawal.hash ||
+      typeof row.approvedAt !== 'string' ||
+      !Number.isFinite(Date.parse(row.approvedAt))
+    )
+      throw new Error('Stored NIGHT deposit recovery review is invalid.');
+    return {
+      name: intent.name,
+      networkId: 'undeployed',
+      providerId: intent.providerId,
+      namespace: 'night',
+      originalTarget: intent.target,
+      currentTarget: row.currentTarget,
+      withdrawalHash: withdrawal.hash,
+      approvedAt: row.approvedAt,
+    };
+  });
+}
+
 function sameBindingProfile(row: Record<string, unknown>, scope: BrowserNightSendScope): boolean {
   return row.bindingId === scope.bindingId && row.manifestSha256 === scope.manifestSha256;
 }
@@ -128,6 +179,7 @@ function checkedRow(value: unknown, scope: BrowserNightSendScope): StoredNightSe
   const intent = checkedIntent(row.intent, scope);
   const withdrawal = row.withdrawal === undefined ? undefined : checkedLeg(row.withdrawal);
   const deposit = row.deposit === undefined ? undefined : checkedLeg(row.deposit);
+  const recoveryReviews = checkedRecoveryReviews(row.recoveryReviews, intent, withdrawal);
   if ((deposit && !withdrawal) || (deposit && deposit.hash === withdrawal?.hash))
     throw new Error('Stored NIGHT payment legs are inconsistent.');
   return {
@@ -141,6 +193,7 @@ function checkedRow(value: unknown, scope: BrowserNightSendScope): StoredNightSe
     ...(row.ownerStartedAt && { ownerStartedAt: row.ownerStartedAt }),
     ...(withdrawal && { withdrawal }),
     ...(deposit && { deposit }),
+    ...(recoveryReviews && { recoveryReviews }),
   };
 }
 
@@ -326,6 +379,47 @@ function ownerAttemptMethods(
   };
 }
 
+function recoveryReviewMethod(
+  access: JournalAccess,
+  scope: BrowserNightSendScope,
+  key: string,
+): NonNullable<NightSendJournal['recordRecoveryReview']> {
+  return async (original, current, withdrawal) => {
+    const expected = checkedIntent(original, scope);
+    const observed = checkedIntent(current, scope);
+    const saved = checkedLeg(withdrawal);
+    if (
+      observed.target === expected.target ||
+      !same({ ...expected, target: observed.target }, observed)
+    )
+      throw new Error('The recovered NIGHT name observation differs from the original scope.');
+    await access((row, tx) => {
+      if (
+        !row?.withdrawal ||
+        row.deposit ||
+        !same(row.intent, expected) ||
+        !same(row.withdrawal, saved) ||
+        (row.recoveryReviews?.length ?? 0) >= 32
+      )
+        throw new Error('The original NIGHT deposit recovery cannot be recorded.');
+      const reviewed: NightRecoveryReview = {
+        name: expected.name,
+        networkId: 'undeployed',
+        providerId: expected.providerId,
+        namespace: 'night',
+        originalTarget: expected.target,
+        currentTarget: observed.target,
+        withdrawalHash: saved.hash,
+        approvedAt: new Date().toISOString(),
+      };
+      tx.objectStore(activeStore).put(
+        { ...row, recoveryReviews: [...(row.recoveryReviews ?? []), reviewed] },
+        key,
+      );
+    }, true);
+  };
+}
+
 /** One active original per ACC on this origin, serialized by IndexedDB across tabs. */
 export async function openBrowserNightSendJournal(
   factory: IDBFactory,
@@ -430,6 +524,7 @@ export async function openBrowserNightSendJournal(
         );
       }, true);
     },
+    recordRecoveryReview: recoveryReviewMethod(access, scope, key),
     ...ownerAttemptMethods(access, scope, key, historyKey),
   } satisfies NightSendJournal;
 

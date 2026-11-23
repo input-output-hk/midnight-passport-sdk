@@ -105,8 +105,13 @@ The source now distinguishes a repoint **after** a finalized withdrawal: the
 saved output can be deposited into the originally reviewed ACC only after a
 fresh review of the old and current targets and the withdrawal ID. The old ACC
 binding is checked again before the deposit fence, and a changed registry is
-refused. Connected-host tests exercise no second withdrawal and the exact
-original deposit. A native browser run of this recovery path is still pending.
+refused. The name is re-resolved at the deposit fence, so another repoint
+requires another review. Connected-host tests exercise no second withdrawal
+and the exact original deposit. An absent, non-contract, unsupported or
+unavailable current name remains pending for a separate repair path; a native
+browser run of this supported-repoint recovery is also still pending. Each
+approved mapping observation is durably saved in the credential-scoped intent
+and later archived, but the ACC still signs only its bridge withdrawal.
 
 ## Current Midnames delivery
 

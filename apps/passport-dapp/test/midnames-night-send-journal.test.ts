@@ -115,6 +115,51 @@ test('each transaction fence is durable, ordered and never replaced after a lost
   journal.close();
 });
 
+test('post-withdrawal recovery observations survive reload and completion', async () => {
+  const factory = new IDBFactory();
+  let journal = await openBrowserNightSendJournal(factory, candidateScope);
+  await journal.createIntent(intent);
+  await assert.rejects(
+    journal.recordRecoveryReview(intent, { ...intent, target: '6'.repeat(64) }, withdrawal),
+    /cannot be recorded/,
+  );
+  await journal.fenceLeg('withdraw', withdrawal);
+  await assert.rejects(
+    journal.recordRecoveryReview(
+      intent,
+      { ...intent, providerId: `midnames:${'8'.repeat(64)}`, target: '6'.repeat(64) },
+      withdrawal,
+    ),
+    /differs from the original scope/,
+  );
+  await journal.recordRecoveryReview(intent, { ...intent, target: '6'.repeat(64) }, withdrawal);
+  journal.close();
+
+  journal = await openBrowserNightSendJournal(factory, candidateScope);
+  const reviewed = (await journal.readActive())?.recoveryReviews;
+  assert.ok(reviewed && reviewed.length === 1);
+  const first = reviewed[0];
+  assert.ok(first);
+  assert.deepEqual((({ approvedAt: _approvedAt, ...rest }) => rest)(first), {
+    name: intent.name,
+    networkId: intent.networkId,
+    providerId: intent.providerId,
+    namespace: intent.namespace,
+    originalTarget: intent.target,
+    currentTarget: '6'.repeat(64),
+    withdrawalHash: withdrawal.hash,
+  });
+  assert.ok(Number.isFinite(Date.parse(first.approvedAt)));
+  await journal.fenceLeg('deposit', deposit);
+  await journal.archiveCompleted(intent, withdrawal, deposit, async () => true);
+  assert.deepEqual((await journal.readArchived(intent.requestId))?.recoveryReviews, reviewed);
+  await assert.rejects(
+    journal.recordRecoveryReview(intent, { ...intent, target: '7'.repeat(64) }, withdrawal),
+    /cannot be recorded/,
+  );
+  journal.close();
+});
+
 test('a known pre-owner refusal retires only the exact no-leg intent and retains its audit', async () => {
   const factory = new IDBFactory();
   let journal = await openBrowserNightSendJournal(factory, scope);

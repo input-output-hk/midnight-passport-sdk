@@ -42,6 +42,11 @@ function fixture() {
   const calls: string[] = [];
   let intent: NightSendIntent | undefined;
   const legs = new Map<string, NightSendLeg>();
+  const recoveryRecords: {
+    original: NightSendIntent;
+    current: NightSendIntent;
+    withdrawal: NightSendLeg;
+  }[] = [];
   const names = createMidnamesNameService(
     { networkId: request.networkId, namespace: 'night', registryAddress: 'd'.repeat(64) },
     {
@@ -73,6 +78,12 @@ function fixture() {
       async fenceLeg(leg, receipt) {
         assert.equal(legs.has(leg), false);
         legs.set(leg, receipt);
+      },
+      async recordRecoveryReview(original, current, saved) {
+        assert.deepEqual(legs.get('withdraw'), saved);
+        assert.equal(legs.has('deposit'), false);
+        recoveryRecords.push({ original, current, withdrawal: saved });
+        calls.push('recovery-record');
       },
     },
     async readSourceBalance() {
@@ -118,7 +129,7 @@ function fixture() {
       return state.finalized.has(original.hash);
     },
   });
-  return { state, ports, calls, legs };
+  return { state, ports, calls, legs, recoveryRecords };
 }
 
 test('unsupported routes, target type and insufficient balance refuse before owner approval', async () => {
@@ -224,7 +235,7 @@ test('after a withdrawal and interruption only the original deposit can continue
 });
 
 test('a repointed name needs a fresh review to finish only the saved original deposit', async () => {
-  const { state, calls, ports, legs } = fixture();
+  const { state, calls, ports, legs, recoveryRecords } = fixture();
   state.finalized.add(withdrawal.hash);
   state.stopBeforeDeposit = true;
   await assert.rejects(sendNightByName(request, ports()), NightDepositInterrupted);
@@ -251,17 +262,31 @@ test('a repointed name needs a fresh review to finish only the saved original de
   state.duringDepositProof = () => {
     state.address = 'e'.repeat(64);
   };
+  await assert.rejects(sendNightByName(request, recovery), NightDepositInterrupted);
+  assert.equal(legs.has('deposit'), false, 'a second repoint cannot fence the stale review');
+  state.duringDepositProof = () => {};
   assert.equal((await sendNightByName(request, recovery)).phase, 'deposit-pending');
   assert.deepEqual(legs.get('deposit'), deposit);
   state.finalized.add(deposit.hash);
   assert.equal((await sendNightByName(request, recovery)).phase, 'completed');
-  assert.equal(recoveryReviews, 2, 'a fenced deposit needs only finality, not another review');
+  assert.equal(
+    recoveryReviews,
+    3,
+    'a second repoint needs a new review; a fenced deposit does not',
+  );
+  assert.deepEqual(
+    recoveryRecords.map((row) => row.current.target),
+    ['d'.repeat(64), 'e'.repeat(64)],
+  );
   assert.deepEqual(calls, [
     'review',
     'sign',
     'withdraw',
     'recovery-review',
     'recovery-review',
+    'recovery-record',
+    'recovery-review',
+    'recovery-record',
     'deposit',
   ]);
 });
@@ -291,7 +316,7 @@ test('the original ACC binding must survive the recovery review and proof', asyn
   await assert.rejects(sendNightByName(request, recovery), NightDepositInterrupted);
   assert.equal(reviews, 1);
   assert.equal(legs.has('deposit'), false);
-  assert.deepEqual(calls, ['review', 'sign', 'withdraw']);
+  assert.deepEqual(calls, ['review', 'sign', 'withdraw', 'recovery-record']);
 });
 
 test('changing the registry provider cannot use original-target recovery', async () => {
