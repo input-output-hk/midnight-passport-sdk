@@ -173,7 +173,12 @@ async function registryFixture() {
     createCircuitContext,
   }: {
     createCircuitContext(options: {
-      circuitId: 'create_domain' | 'transfer_domain' | 'update_target';
+      circuitId:
+        | 'create_domain'
+        | 'transfer_domain'
+        | 'update_target'
+        | 'add_domain_field'
+        | 'update_domain_default_field';
       contractAddress: string;
       coinPublicKeyOrZswapState: string;
       contractState: typeof start.currentContractState.data;
@@ -253,6 +258,43 @@ async function registryFixture() {
   );
   const targetTrace = updated.context.callProofDataTrace[0];
   assert.ok(targetTrace);
+  const fieldState = ContractState.deserialize(result.serialize());
+  const fieldContext = createCircuitContext({
+    circuitId: 'add_domain_field',
+    contractAddress: profile.registryAddress,
+    coinPublicKeyOrZswapState: coin,
+    contractState: fieldState.data,
+    privateState: {},
+    time: 0,
+  });
+  const addedField = await claimant.circuits.add_domain_field(
+    fieldContext,
+    nameId,
+    'alternate',
+    defaultFieldAddress,
+  );
+  const fieldTrace = addedField.context.callProofDataTrace[0];
+  assert.ok(fieldTrace);
+  fieldState.data = addedField.context.callContext.currentQueryContext.state;
+  const defaultState = ContractState.deserialize(fieldState.serialize());
+  const defaultContext = createCircuitContext({
+    circuitId: 'update_domain_default_field',
+    contractAddress: profile.registryAddress,
+    coinPublicKeyOrZswapState: coin,
+    contractState: defaultState.data,
+    privateState: {},
+    time: 0,
+  });
+  const updatedDefault = await claimant.circuits.update_domain_default_field(
+    defaultContext,
+    nameId,
+    {
+      is_some: true,
+      value: 'alternate',
+    },
+  );
+  const defaultTrace = updatedDefault.context.callProofDataTrace[0];
+  assert.ok(defaultTrace);
   return {
     result,
     state,
@@ -261,6 +303,10 @@ async function registryFixture() {
     transferTrace,
     targetState,
     targetTrace,
+    fieldState,
+    fieldTrace,
+    defaultState,
+    defaultTrace,
     decodeRegistry: ledger,
   };
 }
@@ -268,6 +314,7 @@ async function registryFixture() {
 function assertGasBoundary(
   state: ContractState,
   trace: Awaited<ReturnType<typeof registryFixture>>['trace'],
+  deletionExpected = true,
 ) {
   const initial = LedgerContractState.deserialize(state.serialize());
   const params = LedgerParameters.initialParameters();
@@ -285,7 +332,7 @@ function assertGasBoundary(
       : operation,
   );
   const measured = context().query(gather, model).gasCost;
-  assert.ok(measured.bytesDeleted > 0n);
+  assert.equal(measured.bytesDeleted > 0n, deletionExpected);
   assert.throws(
     () =>
       context().runTranscript(
@@ -323,9 +370,25 @@ test('update_target replay refuses an overclaimed deletion credit', async () => 
   assertGasBoundary(targetState, targetTrace);
 });
 
+test('field updates replay only with measured deletion credit', async () => {
+  const { fieldState, fieldTrace, defaultState, defaultTrace } = await registryFixture();
+  assertGasBoundary(fieldState, fieldTrace, false);
+  assertGasBoundary(defaultState, defaultTrace);
+});
+
 test('standalone naming calls are rebuilt before proof without deletion credit', async () => {
-  const { state, trace, transferState, transferTrace, targetState, targetTrace } =
-    await registryFixture();
+  const {
+    state,
+    trace,
+    transferState,
+    transferTrace,
+    targetState,
+    targetTrace,
+    fieldState,
+    fieldTrace,
+    defaultState,
+    defaultTrace,
+  } = await registryFixture();
   const { withoutDeletionCredit } = (await import(
     new URL('../../../examples/midnames-local/deletion-credit.mjs', import.meta.url).href
   )) as {
@@ -342,6 +405,8 @@ test('standalone naming calls are rebuilt before proof without deletion credit',
     ['create_domain', state, trace],
     ['transfer_domain', transferState, transferTrace],
     ['update_target', targetState, targetTrace],
+    ['add_domain_field', fieldState, fieldTrace],
+    ['update_domain_default_field', defaultState, defaultTrace],
   ] as const) {
     const ledgerState = LedgerContractState.deserialize(startingState.serialize());
     const operation = ledgerState.operation(circuit);
