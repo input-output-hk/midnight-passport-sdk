@@ -8,6 +8,7 @@ import { proveUnboundNightDeposit } from '../../packages/adapter-midnight-js/src
 import { pinnedVerifierRoster } from '../../packages/contract/dist/index.js';
 import {
   NightPaymentDeclined,
+  NightSendPreflightError,
   sendNightByName,
 } from '../../apps/passport-dapp/src/midnames/night-send.ts';
 import { createMidnamesNameService } from '../../apps/passport-dapp/src/midnames/resolver.ts';
@@ -507,6 +508,55 @@ export async function qualifyNightSend({
         await providers.midnightProvider.submitTx(balanced);
       },
     };
+  }
+  if (candidateAssets) {
+    step('probe-pre-owner-night-refusals');
+    const cases = [
+      {
+        request: { ...request, requestId: randomUUID(), asset: 'shielded' },
+        code: 'NightUnsupportedRoute',
+      },
+      {
+        request: { ...request, requestId: randomUUID(), amount: String(fund + 1n) },
+        code: 'NightInsufficientBalance',
+      },
+    ];
+    for (const { request: refused, code } of cases) {
+      await assert.rejects(
+        () =>
+          sendNightByName(
+            refused,
+            openPorts(() => assert.fail('A refused route reached deposit preparation.')),
+          ),
+        (error) => error instanceof NightSendPreflightError && error.code === code,
+      );
+      assert.equal(approvals, 0);
+      assert.equal(signatures, 0);
+      assert.deepEqual(sent, { withdraw: 0, deposit: 0 });
+      assert.equal(await openJournal(directory).readIntent(), undefined);
+      assert.equal(await openJournal(directory).readLeg('withdraw'), undefined);
+      assert.equal(await openJournal(directory).readLeg('deposit'), undefined);
+      assert.deepEqual(
+        { source: String(await balance(source)), target: String(await balance(target)) },
+        { source: String(fund), target: '0' },
+      );
+    }
+    createOnce(
+      join(directory, 'pre-owner-refusals.json'),
+      JSON.stringify({
+        cases: cases.map(({ request: refused, code }) => ({
+          asset: refused.asset,
+          amount: refused.amount,
+          code,
+        })),
+        approvals,
+        signatures,
+        sent,
+        journalEmpty: true,
+        balances: { source: String(fund), target: '0' },
+      }),
+    );
+    step('verified-pre-owner-night-refusals');
   }
   const interrupted = new Error('Injected interruption after withdrawal finality');
   step(browserDecline ? 'review-before-owner-signature' : 'withdraw-then-interrupt-before-deposit');
