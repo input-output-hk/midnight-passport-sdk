@@ -14,6 +14,8 @@ activated old-binding ACC on that same local chain. The launcher owns a second
 loopback proof service for the recipient's old artifacts. Show both source and
 recipient bindings in the review. The original recipient binding remains pinned
 through reload and recovery; a changed roster must stop before a deposit.
+Candidate account and name claims use the attached release prover; this mode
+does not start the stable demo's separate compatibility prover.
 This mixed route is provisional until a connected native browser run passes.
 Present the resolved recipient contract, amount and two operations during
 review. After either leg is sent, reopen the same browser profile to reconcile

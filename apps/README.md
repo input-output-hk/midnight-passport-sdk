@@ -978,11 +978,10 @@ recipient binding in the original intent and selects that binding's proof
 artifacts for deposit and recovery. A missing or differently configured old
 service refuses before owner signing. This is a provisional local route;
 connected browser/native acceptance and installed-package support remain open.
-The candidate ACC proves through the shared Ledger 9 release prover on port
-6300. The launcher's separately owned compatibility prover on port 16320
-serves the pinned Compact 0.35 standalone name registry's claim proof. The
-launcher stops only that owned prover container and leaves the shared stack's
-volumes untouched.
+The candidate ACC and standalone name claims prove through the shared Ledger 9
+release prover on port 6300. Candidate mode does not start or reconcile the
+stable demo's separate Compact 0.35 compatibility prover on port 16320; its
+recorded container and the shared stack's volumes stay untouched.
 The [local candidate claim receipt](../examples/midnames-local/evidence/candidate-acc-combined-local-claim-20261122.json)
 records a same-profile synthetic account creation and paid name claim across
 signed heads, followed by a read-only final-head registration check. It does

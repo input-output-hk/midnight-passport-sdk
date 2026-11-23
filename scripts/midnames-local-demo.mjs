@@ -658,7 +658,11 @@ async function compatProver(stateDir) {
 /** @param {DemoOptions} options @param {Claim|undefined} claim */
 async function demo(options, claim) {
   privateState(options.stateDir);
-  const prover = await compatProver(options.stateDir);
+  // Candidate ACC and registry claims use the attached release prover. Do not
+  // reconcile or start the stable-only compatibility project in this mode.
+  const prover = options.candidateAssets
+    ? { started: false, project: undefined, containerIds: undefined }
+    : await compatProver(options.stateDir);
   /** @type {Awaited<ReturnType<typeof startClaimHost>> | undefined} */
   let claimHost;
   try {
