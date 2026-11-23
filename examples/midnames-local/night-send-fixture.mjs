@@ -135,6 +135,10 @@ export async function qualifyNightSend({
   ledger,
   binding,
   reads,
+  recipientReads = reads,
+  recipientCompiled,
+  recipientProviders,
+  mixedRecipient = false,
   source,
   device,
   jubjubChallenges,
@@ -163,7 +167,7 @@ export async function qualifyNightSend({
   const networkId = 'undeployed';
   const names = createMidnamesNameService(
     { networkId, namespace: 'night', registryAddress },
-    reads,
+    recipientReads,
   );
   const color = new Uint8Array(32);
   const bridgeBytes = walletModule.userAddressBytes(wallet);
@@ -252,8 +256,10 @@ export async function qualifyNightSend({
     }
     throw new Error('The diagnostic withdrawal proof was not requested');
   };
-  const makeCall = async (address, circuitId, args) => {
-    const { privateStateProvider, ...publicProviders } = providers;
+  const makeCall = async (address, circuitId, args, selected = {}) => {
+    const callProviders = selected.providers ?? providers;
+    const callCompiled = selected.compiled ?? accountCompiled;
+    const { privateStateProvider, ...publicProviders } = callProviders;
     const captured = { snapshot: undefined };
     const pinned = new Proxy(publicProviders.publicDataProvider, {
       get(provider, property) {
@@ -270,7 +276,7 @@ export async function qualifyNightSend({
     const call = await contracts.createUnprovenCallTx(
       { ...publicProviders, publicDataProvider: pinned },
       {
-        compiledContract: accountCompiled,
+        compiledContract: callCompiled,
         contractAddress: address,
         circuitId,
         args,
@@ -291,9 +297,9 @@ export async function qualifyNightSend({
     }
     if (probeKeyDirectory && circuitId === 'withdraw_unshielded_with_jubjub')
       await probeWithdrawal(unprovenTx, address);
-    const proven = await providers.proofProvider.proveTx({ version: 'v9', tx: unprovenTx });
+    const proven = await callProviders.proofProvider.proveTx({ version: 'v9', tx: unprovenTx });
     assert.equal(proven.version, 'v9');
-    const balanced = await providers.walletProvider.balanceTx(proven);
+    const balanced = await callProviders.walletProvider.balanceTx(proven);
     assert.equal(balanced.version, 'v9');
     return balanced;
   };
@@ -351,7 +357,7 @@ export async function qualifyNightSend({
   const openPorts = (beforeDeposit) => ({
     names,
     journal: openJournal(directory),
-    isSupportedRecipient: (address, network) => reads.isSupportedAccount(address, network),
+    isSupportedRecipient: (address, network) => recipientReads.isSupportedAccount(address, network),
     async readSourceBalance(address) {
       if (verifyHybridSource && address === source) {
         await verifyHybridSource();
@@ -441,49 +447,54 @@ export async function qualifyNightSend({
           hasExactNightBridgeCoin(await availableNight(), expected, encodedBridge),
         ),
       );
-      const balanced = candidateAssets
-        ? await withCandidateArtifacts(candidateAssets, async (artefactUrl) => {
-            const proven = await proveUnboundNightDeposit({
-              network: {
-                networkId,
-                bindingId: 'acc-s3r1.1-zkir036',
-                manifestSha256: candidateManifestSha256,
-                nodeUrl: process.env.MN_NODE_URL + '/',
-                indexerUrl: process.env.MN_INDEXER_URL,
-                indexerWsUrl: process.env.MN_INDEXER_WS_URL,
-                artefactUrl,
-              },
-              binding,
-              recipientVerifierRoster: pinnedVerifierRoster('acc-s3r1.1-zkir036'),
-              target,
-              amount: BigInt(intent.amount),
-              walletKeys: {
-                coinPublicKey: providers.walletProvider.getCoinPublicKey(),
-                encryptionPublicKey: providers.walletProvider.getEncryptionPublicKey(),
-              },
-              prover: {
-                async proveTx(bytes) {
-                  const tx = ledger.Transaction.deserialize(
-                    'signature',
-                    'pre-proof',
-                    'pre-binding',
-                    bytes,
-                  );
-                  const result = await providers.proofProvider.proveTx({ version: 'v9', tx });
-                  assert.equal(result.version, 'v9');
-                  return { tx: result.tx.serialize() };
-                },
-              },
-              provisionalLocal: true,
-            });
-            const result = await providers.walletProvider.balanceTx({
-              version: 'v9',
-              tx: ledger.Transaction.deserialize('signature', 'proof', 'pre-binding', proven),
-            });
-            assert.equal(result.version, 'v9');
-            return result;
+      const balanced = mixedRecipient
+        ? await makeCall(target, intent.operations[1], [color, BigInt(intent.amount)], {
+            providers: recipientProviders,
+            compiled: recipientCompiled,
           })
-        : await makeCall(target, intent.operations[1], [color, BigInt(intent.amount)]);
+        : candidateAssets
+          ? await withCandidateArtifacts(candidateAssets, async (artefactUrl) => {
+              const proven = await proveUnboundNightDeposit({
+                network: {
+                  networkId,
+                  bindingId: 'acc-s3r1.1-zkir036',
+                  manifestSha256: candidateManifestSha256,
+                  nodeUrl: process.env.MN_NODE_URL + '/',
+                  indexerUrl: process.env.MN_INDEXER_URL,
+                  indexerWsUrl: process.env.MN_INDEXER_WS_URL,
+                  artefactUrl,
+                },
+                binding,
+                recipientVerifierRoster: pinnedVerifierRoster('acc-s3r1.1-zkir036'),
+                target,
+                amount: BigInt(intent.amount),
+                walletKeys: {
+                  coinPublicKey: providers.walletProvider.getCoinPublicKey(),
+                  encryptionPublicKey: providers.walletProvider.getEncryptionPublicKey(),
+                },
+                prover: {
+                  async proveTx(bytes) {
+                    const tx = ledger.Transaction.deserialize(
+                      'signature',
+                      'pre-proof',
+                      'pre-binding',
+                      bytes,
+                    );
+                    const result = await providers.proofProvider.proveTx({ version: 'v9', tx });
+                    assert.equal(result.version, 'v9');
+                    return { tx: result.tx.serialize() };
+                  },
+                },
+                provisionalLocal: true,
+              });
+              const result = await providers.walletProvider.balanceTx({
+                version: 'v9',
+                tx: ledger.Transaction.deserialize('signature', 'proof', 'pre-binding', proven),
+              });
+              assert.equal(result.version, 'v9');
+              return result;
+            })
+          : await makeCall(target, intent.operations[1], [color, BigInt(intent.amount)]);
       assertExactNightBridgeSpend(balanced.tx, expected, ledger.addressFromKey);
       return prepared('deposit', balanced);
     },
@@ -773,7 +784,8 @@ export async function qualifyNightSend({
     withdrawal,
     deposit,
     exactBridgeOutputConsumed: true,
-    candidateAdapterDeposit: Boolean(candidateAssets),
+    candidateAdapterDeposit: Boolean(candidateAssets) && !mixedRecipient,
+    mixedRecipient,
     replayBroadcasts: 0,
     rosterRefusal,
   };
