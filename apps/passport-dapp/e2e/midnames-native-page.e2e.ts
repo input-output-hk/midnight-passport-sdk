@@ -40,6 +40,12 @@ assert.match(input.sponsorPaymentAddress, /^[0-9a-f]{64}$/);
 assert.match(input.night, /^[0-9]+$/);
 assert.match(input.maximumDust, /^[0-9]+$/);
 const candidate = input.candidate;
+const releaseRegistry = process.env.PASSPORT_MIDNAMES_0361_ISOLATED === '1';
+if (releaseRegistry) {
+  assert.ok(candidate, 'The release-registry page lane requires the pinned candidate ACC.');
+  assert.equal(process.env.MIDNIGHT_STACK, 'isolated-ledger9');
+  assert.equal(process.env.VITE_MIDNAMES_0361_ISOLATED, '1');
+}
 if (candidate) {
   assert.equal(candidate.bindingId, 'acc-s3r1.1-zkir036');
   assert.equal(
@@ -48,7 +54,9 @@ if (candidate) {
   );
   assert.equal(
     candidate.modulePath,
-    resolve(output, '..', 'candidate-account-runtime/account.mjs'),
+    releaseRegistry
+      ? resolve(process.env.PASSPORT_MIDNAMES_CANDIDATE_ASSETS ?? '', 'contract/index.js')
+      : resolve(output, '..', 'candidate-account-runtime/account.mjs'),
   );
   assert.ok(process.env.PASSPORT_MIDNAMES_CANDIDATE_ASSETS);
   assert.equal(
@@ -63,9 +71,11 @@ assert.match(ownerPort ?? '', /^[1-9][0-9]{0,4}$/);
 assert.equal(process.env.MN_INDEXER_URL, 'http://127.0.0.1:18108/api/v4/graphql');
 assert.equal(process.env.MN_INDEXER_WS_URL, 'ws://127.0.0.1:18108/api/v4/graphql/ws');
 Object.assign(process.env, {
-  PASSPORT_MANIFEST_SHA256: '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f',
+  PASSPORT_MANIFEST_SHA256: releaseRegistry
+    ? candidate?.manifestSha256
+    : '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f',
   PASSPORT_NETWORK_ID: 'undeployed',
-  VITE_MIDNAMES_REGISTRY_PROFILE: 'standalone-0.35',
+  VITE_MIDNAMES_REGISTRY_PROFILE: releaseRegistry ? 'standalone-0.36.1' : 'standalone-0.35',
   VITE_MIDNAMES_REGISTRY_ADDRESS: input.registryAddress,
   VITE_MIDNAMES_NAMESPACE: 'night',
   VITE_MIDNAMES_NETWORK_ID: 'undeployed',
