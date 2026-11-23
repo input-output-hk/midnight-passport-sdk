@@ -363,6 +363,43 @@ test('an unresolved name can repair only the exact finalized output at its origi
   }
 });
 
+test('an expired name requires the same explicit direct-ACC repair review', async () => {
+  const { state, ports, legs } = fixture();
+  state.finalized.add(withdrawal.hash);
+  state.stopBeforeDeposit = true;
+  await assert.rejects(sendNightByName(request, ports()), NightDepositInterrupted);
+  state.stopBeforeDeposit = false;
+  const base = ports();
+  const expired = {
+    ...base.names,
+    async resolve(query: { name: string; networkId: string }) {
+      return {
+        ...query,
+        namespace: 'night',
+        accountAddress: target,
+        expiresAt: Date.now() - 1,
+      };
+    },
+  };
+  let reviewed = 0;
+  const recovery = {
+    ...base,
+    names: expired,
+    async reviewUnresolvedOriginalDeposit(
+      original: NightSendIntent,
+      observation: NightUnresolvedObservation,
+    ) {
+      assert.equal(original.target, target);
+      assert.equal(observation.reason, 'Expired');
+      reviewed++;
+      return true;
+    },
+  };
+  assert.equal((await sendNightByName(request, recovery)).phase, 'deposit-pending');
+  assert.equal(reviewed, 1);
+  assert.equal(legs.get('deposit')?.hash, deposit.hash);
+});
+
 test('unresolved repair refuses changed provider, lost original binding and failed durable review', async () => {
   const { state, ports, legs, calls } = fixture();
   state.finalized.add(withdrawal.hash);
