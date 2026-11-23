@@ -371,9 +371,11 @@ The exact original indexed `SUCCESS` in a node-checked canonical block; the
 finalized registry target matched the ACC created in that browser profile.
 An earlier run sent one successful claim but its test driver timed out while
 reopening; its original was audited separately and was never resent. This
-qualifies the combined local software and native path. The separate fixture
-run above covers lost sponsor response; physical passkeys and online
-providers remain unqualified.
+qualifies the combined local software and native path. A later fresh-account
+run also refused a taken name, an indexer outage and a sponsor quote outage
+after registration without sending another claim; the registered name remained
+visible afterward. The separate fixture run above covers lost sponsor response;
+physical passkeys and online providers remain unqualified.
 
 For an online deployment, the host must configure its actual registry address
 and a funded sponsor wallet through `PASSPORT_SPONSOR_SEED` in the service

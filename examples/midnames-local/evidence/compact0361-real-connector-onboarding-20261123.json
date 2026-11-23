@@ -77,5 +77,40 @@
       "canonicalAudit": "c4db456eaa624cfcf4b9cb6217e8f8c00621a3528bdab41862ad70367a3c52a6"
     }
   },
-  "limits": "One self-hosted isolated node/indexer, a local sponsor, and a synthetic virtual PRF credential. The first run did not prove browser reopen. The corrected run qualified same-profile reopen and name status after reload, but did not inject a lost sponsor response. The separate fixture-connector page receipt qualifies lost-response recovery. Neither receipt qualifies physical passkeys, independent online providers, production images, a released SDK, or same-name continuity after total credential loss."
+  "limits": "One self-hosted isolated node/indexer, a local sponsor, and a synthetic virtual PRF credential. The first run did not prove browser reopen. The corrected run qualified same-profile reopen and name status after reload. The negative run additionally qualified taken-name, indexer-outage and sponsor-quote-outage refusals after a successful real-connector registration, with no second claim dispatch. The separate fixture-connector page receipt qualifies lost-response recovery; this real-connector run did not inject a lost sponsor response. Neither receipt qualifies physical passkeys, independent online providers, production images, a released SDK, or same-name continuity after total credential loss.",
+  "negativeRun": {
+    "sourceHead": "7d823384950977e3e4338dfc078cc0b51d96c132",
+    "name": "v36pagea5e19b88.night",
+    "accountAddress": "c3ed40e0d020ee0be2b8df92cdb26bf69b9f50c6bcd81d8ebf43f2c3f667f756",
+    "quoteRequests": 2,
+    "ownerProofRequests": 1,
+    "sponsorPrepareRequests": 1,
+    "dispatchRequests": 1,
+    "originalSha256": "ca71c86ec672c4bd296f3209e4f0c73818e8cbb94ac1ee71d7050478a31257c8",
+    "originalIdentifiers": [
+      "00496303437249e60a5e05f15a61b3eda5567acb7c748e6d01294be135bf3e9846",
+      "00a2f771f40a098c5b3ba0bddb29dfcce508e5e5ba25c878fbec4d5fc4e796cba9"
+    ],
+    "browserReopenedSameAccount": true,
+    "registeredAfterReload": true,
+    "takenNameRefused": true,
+    "indexerOutageRefused": true,
+    "sponsorQuoteOutageRefused": true,
+    "registeredAfterNegativeChecks": true,
+    "claimBlock": {
+      "hash": "3a0f322fd68a4688493dd90c00eaf9af6e46b052801e2730500134ae2c0e72d5",
+      "height": 728
+    },
+    "nodeCanonicalBlockMatched": true,
+    "finalizedRegistryTargetMatchedCreatedAcc": true,
+    "indexedOriginalSuccess": true,
+    "ownedContainersStopped": 3,
+    "nativeLeaseReleased": true,
+    "privateReceiptSha256": {
+      "run": "7f84102f42c88a6c9b63d65d86ab87c83848197ae66c73fc4dd9fea718ffdcaa",
+      "browser": "921238ef69f293db6b62212429ba4bad4ea622b05f329aad4c4d161c65febf35",
+      "canonicalAudit": "ac9c4ef25135fb845cd82a20d59e48452c457924a4403b16225b381b437c2efa"
+    },
+    "preparatoryHarnessFailures": "A first setup attempt omitted the Passport service; a second could not reuse an exported virtual credential because CDP did not preserve PRF capability. Both stopped before another claim send, and their receipts are retained privately."
+  }
 }

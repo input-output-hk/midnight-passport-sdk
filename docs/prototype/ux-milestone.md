@@ -191,8 +191,10 @@ created a fresh ACC, claimed a new `.night` name, and reopened both in one
 virtual-credential browser profile on the isolated 0.36.1 chain. Its one
 original finalized and the canonical registry target matched that ACC. An
 earlier browser-driver reopen timeout after a successful claim was preserved
-and audited without sending again. Physical providers and independent online
-resolution remain unqualified.
+and audited without sending again. A later fresh-account run confirmed that a
+taken name, indexer outage and sponsor quote outage refuse safely without a
+second claim dispatch; the registered name remained visible afterward. Physical
+providers and independent online resolution remain unqualified.
 
 The [shared-chain browser receipt](../../examples/midnames-local/evidence/candidate-acc-combined-local-claim-20261122.json)
 records one synthetic ACC creation, same-profile paid `.night` claim, exact
