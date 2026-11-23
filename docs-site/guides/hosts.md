@@ -51,8 +51,10 @@ For supported-target lookups, the local launcher supplies a confirmed claim
 block and node URL. The browser checks that the indexer's selected block is
 canonical and finalized on that node before reading the registry or ACC.
 Online configuration requires a separate node origin and a confirmed non-genesis
-chain pin. The indexer still supplies trusted contract-state bytes at that
-block; this is not a state proof or an online qualification.
+chain pin. The browser compares each indexer state with the node's
+`midnight_contractState` bytes at that block, refusing a mismatch or unavailable
+RPC. This trusts the configured node; it is not a cryptographic state proof or
+an online qualification.
 To create that registry on a healthy local stack after activating an ACC, use
 the [pinned local bootstrap recipe](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/README.md#bootstrap-the-registry-on-an-existing-local-stack).
 It records the deployment waves and keeps root naming authority private; the

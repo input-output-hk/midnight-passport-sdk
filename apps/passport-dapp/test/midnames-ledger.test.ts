@@ -22,6 +22,7 @@ import {
   partitionTranscripts,
 } from '@midnightntwrk/ledger-v9';
 import type { AccRegistry } from '@input-output-hk/mn-passport-contract';
+import { PassportNameError } from '@input-output-hk/mn-passport-account/names';
 import { resolveBinding, resolvePinnedBinding } from '@input-output-hk/mn-passport-contract';
 import {
   admitAccBindingFromState,
@@ -461,6 +462,7 @@ test('installed Midnames v2.1 reads its generated registry over the Ledger 9 ind
   const blockHash = 'aa'.repeat(32);
   const offsets: Array<{ address: string; offset: unknown }> = [];
   let blockReads = 0;
+  let accountObserved = false;
   const pinnedProvider = {
     async queryBlock() {
       blockReads++;
@@ -469,8 +471,17 @@ test('installed Midnames v2.1 reads its generated registry over the Ledger 9 ind
     async queryContractState(address: string, offset: unknown) {
       offsets.push({ address, offset });
       return address === profile.registryAddress
-        ? { contractState: { deserialize: () => result } }
-        : null;
+        ? { contractState: { deserialize: () => result, serialize: () => result.serialize() } }
+        : address === target && accountObserved
+          ? {
+              contractState: {
+                deserialize: () => {
+                  throw new Error('not an ACC');
+                },
+                serialize: () => Uint8Array.of(1, 2, 3),
+              },
+            }
+          : null;
     },
   } as unknown as Parameters<typeof createMidnamesLedgerReads>[0];
   const blocked = createMidnamesLedgerReads(
@@ -501,6 +512,66 @@ test('installed Midnames v2.1 reads its generated registry over the Ledger 9 ind
     { address: profile.registryAddress, offset: { type: 'blockHash', blockHash } },
     { address: target, offset: { type: 'blockHash', blockHash } },
   ]);
+  offsets.length = 0;
+  const checked: string[] = [];
+  const authenticated = createMidnamesLedgerReads(
+    pinnedProvider,
+    'undeployed',
+    'acc-s3r1.1',
+    undefined,
+    undefined,
+    async () => {},
+    async (address, selected, bytes) => {
+      assert.deepEqual(selected, { hash: blockHash, height: 100 });
+      checked.push(address);
+      assert.deepEqual(bytes, address === target ? Uint8Array.of(1, 2, 3) : result.serialize());
+    },
+  );
+  accountObserved = true;
+  await assert.rejects(authenticated.readSupportedTarget('alice.night', profile), {
+    code: 'InvalidRecord',
+  });
+  assert.deepEqual(checked, [profile.registryAddress, target]);
+  checked.length = 0;
+  offsets.length = 0;
+  const rejected = createMidnamesLedgerReads(
+    pinnedProvider,
+    'undeployed',
+    'acc-s3r1.1',
+    undefined,
+    undefined,
+    async () => {},
+    async (address) => {
+      checked.push(address);
+      throw new PassportNameError('Unavailable');
+    },
+  );
+  await assert.rejects(rejected.readSupportedTarget('alice.night', profile), {
+    code: 'Unavailable',
+  });
+  assert.deepEqual(checked, [profile.registryAddress]);
+  assert.deepEqual(offsets, [
+    { address: profile.registryAddress, offset: { type: 'blockHash', blockHash } },
+  ]);
+  checked.length = 0;
+  offsets.length = 0;
+  const rejectedAccount = createMidnamesLedgerReads(
+    pinnedProvider,
+    'undeployed',
+    'acc-s3r1.1',
+    undefined,
+    undefined,
+    async () => {},
+    async (address) => {
+      checked.push(address);
+      if (address === target) throw new PassportNameError('Unavailable');
+    },
+  );
+  await assert.rejects(rejectedAccount.readSupportedTarget('alice.night', profile), {
+    code: 'Unavailable',
+  });
+  assert.deepEqual(checked, [profile.registryAddress, target]);
+  accountObserved = false;
   offsets.length = 0;
   await assert.rejects(
     atomic.readSupportedTargetAt('alice.night', profile, { hash: '0x' + blockHash, height: 100 }),

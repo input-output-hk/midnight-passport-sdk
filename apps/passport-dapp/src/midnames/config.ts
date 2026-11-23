@@ -14,6 +14,7 @@ import {
 import { requireMidnamesV4IndexerPair } from './indexer-endpoints.js';
 import {
   createMidnamesNodeFinality,
+  createMidnamesNodeStateVerifier,
   type MidnamesIndexerBlock,
   type MidnamesNodePin,
 } from './chain-finality.js';
@@ -300,6 +301,7 @@ export function configureMidnames(
   const nodePin = configuredNodePin(config, online, http, verification?.http);
   requirePairNodePin(verification, nodePin);
   const verifyFinalizedBlock = nodePin && createMidnamesNodeFinality(nodePin);
+  const verifyContractState = nodePin && createMidnamesNodeStateVerifier(nodePin);
   const load = (readerHttp: string, readerWs: string) =>
     import('./ledger-reader.js').then(({ createMidnamesIndexer, createMidnamesLedgerReads }) =>
       createMidnamesLedgerReads(
@@ -309,6 +311,7 @@ export function configureMidnames(
         profileId,
         candidate,
         verifyFinalizedBlock,
+        verifyContractState,
       ),
     );
   const lazyReads = (readerHttp: string, readerWs: string) => {

@@ -12,11 +12,12 @@ Here, **implemented subset** means this fork has a source path for the named ope
 
 The later source-preview resolver reads each requested name and its target ACC
 at one indexer block. This removes a registry/ACC tip mismatch inside one
-provider read, but the indexer still supplies the state bytes and may lag the
-chain. The local demo also checks each supported-target lookup against a
-separately pinned node's canonical finalized block. Neither check authenticates
-the indexer's contract-state bytes or establishes an online provider or the
-proposed MIP-0007 delegated resolver.
+provider read. The local demo checks each supported-target lookup against a
+separately pinned node's canonical finalized block, then compares the indexer's
+registry and ACC state bytes with that node's response at the same block.
+It refuses a mismatch, but still trusts the configured node and does not
+establish a cryptographic state proof, an online provider, or the proposed
+MIP-0007 delegated resolver.
 With two configured indexers, the browser now requires a matching selected
 finalized block and reads both providers at that exact block hash; a lagging
 reader refuses. This guards the comparison's block scope but remains source

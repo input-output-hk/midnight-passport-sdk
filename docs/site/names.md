@@ -134,11 +134,14 @@ Missing names, wrong target types and unavailable reads have separate outcomes.
 With a configured node pin, the adapter first checks the anchor and the
 indexer's selected block hash against that node's canonical, finalized chain.
 It refuses an unfinalized, noncanonical or wrong-chain block before reading the
-registry or ACC. Online profiles require this pin on a node origin separate
-from both indexers. The node can be behind the indexer, in which case lookup
-refuses until a finalized block becomes available. The indexer remains trusted
-for the **contract-state bytes** returned at the selected block; the node check
-is not a state proof. The demo presents the result for inspection and value
+registry or ACC. For each state it uses, it compares the indexer's serialized
+bytes with the node's `midnight_contractState` response at that exact block;
+missing or different bytes refuse the lookup. Online profiles require this pin
+on a node origin separate from both indexers, and the node must expose that
+read-only RPC. The node can be behind the indexer, in which case lookup refuses
+until a finalized block becomes available. This comparison trusts the configured
+node's state response; it is **not a cryptographic state proof** or independent
+node qualification. The demo presents the result for inspection and value
 routes re-resolve before submission.
 
 For any non-`undeployed` network or non-loopback indexer, the two known-mapping
@@ -198,9 +201,9 @@ uses the node's canonical finalized block as a single Indexer API v4 offset
 for the registry and target ACC. This avoids reading those two contracts on
 different indexer tips in that operator check. The interactive resolver also
 checks its selected indexer block against the configured node's finalized
-canonical chain on each supported-target lookup. It still trusts indexer
-contract-state bytes at that block. Neither check qualifies an online provider
-or proves the returned state cryptographically.
+canonical chain on each supported-target lookup, then compares the registry
+and ACC state bytes with that node at the selected block. This does not qualify
+an online node or prove the returned state cryptographically.
 When two indexers are configured, each lookup requires them to select the
 same finalized canonical block before reading either target. Both reads use
 that block hash for the registry and ACC. A lagging provider refuses instead
