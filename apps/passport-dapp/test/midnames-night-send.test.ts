@@ -181,7 +181,13 @@ test('repoints before owner signing and after withdrawal proof refuse the origin
     state[stage] = () => {
       state.address = 'f'.repeat(64);
     };
-    await assert.rejects(sendNightByName(request, ports()), /scope changed/);
+    await assert.rejects(
+      sendNightByName(request, ports()),
+      stage === 'beforeSign'
+        ? (error: unknown) =>
+            error instanceof NightSendPreflightError && error.code === 'NightNameChanged'
+        : /scope changed/,
+    );
     assert.deepEqual(calls, stage === 'beforeSign' ? ['review'] : ['review', 'sign']);
     assert.equal(legs.size, 0);
   }

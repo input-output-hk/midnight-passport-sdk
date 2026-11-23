@@ -448,6 +448,11 @@ the name and recipient ACC remain host-checked rather than signed circuit
 fields. The opt-in local demo control now uses this seam, without a qualified
 native browser payment.
 
+When a name resolves to another supported ACC after the route review, the
+page reports the changed destination and archives the unsubmitted attempt.
+The owner must inspect the new ACC address and review a new payment; the
+earlier approval cannot start a withdrawal.
+
 The local NIGHT fixture now uses a reusable source guard for the exact bridge
 output and balanced deposit input. It refuses a different withdrawal identity,
 extra output or substituted deposit coin before the second dispatch. The

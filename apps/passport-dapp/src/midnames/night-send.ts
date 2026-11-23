@@ -72,6 +72,7 @@ export class NightPaymentDeclined extends Error {
 type NightSendPreflightCode =
   | 'NightUnsupportedRoute'
   | 'NightNameUnavailable'
+  | 'NightNameChanged'
   | 'NightSelfRecipient'
   | 'NightRecipientUnsupported'
   | 'NightSourceUnsupported'
@@ -268,7 +269,17 @@ async function recheckBeforeOwnerWithdrawal(
   retireRefused: RetireRefusal | undefined,
 ) {
   try {
-    assertSameIntent(intent, await resolveIntent(request, ports));
+    const resolved = await resolveIntent(request, ports);
+    if (
+      resolved.target !== intent.target ||
+      resolved.providerId !== intent.providerId ||
+      resolved.namespace !== intent.namespace
+    )
+      throw new NightSendPreflightError(
+        'NightNameChanged',
+        'The original payment scope changed after review. Review the named destination again.',
+      );
+    assertSameIntent(intent, resolved);
   } catch (error) {
     if (ownerRoute) await retireRefused?.(intent, 'name-recheck');
     throw error;

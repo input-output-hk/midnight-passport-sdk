@@ -12,7 +12,11 @@ import { createMidnamesNameService } from '../src/midnames/resolver.js';
 import { createConnectedNightSend } from '../src/midnames/night-send-host.js';
 import { openBrowserNightSendJournal } from '../src/midnames/night-send-journal.js';
 import type { NightBridgeTransaction } from '../src/midnames/night-bridge-output.js';
-import { NightDepositInterrupted, type NightSendRequest } from '../src/midnames/night-send.js';
+import {
+  NightDepositInterrupted,
+  NightSendPreflightError,
+  type NightSendRequest,
+} from '../src/midnames/night-send.js';
 import type { DevWallet } from '../src/wallet/contracts.js';
 
 const source = 'a'.repeat(64);
@@ -330,7 +334,8 @@ async function connectedJourney(
       () =>
         host.send(refusal === 'unsupported-asset' ? { ...request, asset: 'shielded' } : request),
       refusal === 'repoint-after-review'
-        ? /scope changed/
+        ? (error: unknown) =>
+            error instanceof NightSendPreflightError && error.code === 'NightNameChanged'
         : refusal === 'non-contract-target'
           ? (error: unknown) => error instanceof PassportNameError && error.code === 'InvalidRecord'
           : /Unsupported or invalid standalone NIGHT payment/,

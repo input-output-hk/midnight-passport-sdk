@@ -424,6 +424,8 @@ const HINTS: Readonly<Record<string, string>> = {
     'This local demo can send only a positive NIGHT amount to another Passport ACC by name. No payment was started.',
   NightNameUnavailable:
     'This name has no supported Passport ACC contract target on the configured registry. No payment was started.',
+  NightNameChanged:
+    'The named destination changed after review. Check the new ACC address and review the payment again. No payment was started.',
   NightSelfRecipient:
     'This name resolves to the open Passport ACC. Choose a different recipient. No payment was started.',
   NightRecipientUnsupported:

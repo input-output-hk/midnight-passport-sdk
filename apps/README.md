@@ -1110,6 +1110,10 @@ review. A declined or changed route does not start the payment.
 Before that review, the page explains an absent name, self-recipient, unsupported
 ACC or insufficient balance separately. A naming provider outage is not treated
 as an absent name. These refusals start no owner ceremony or transaction.
+If the name resolves to a different supported ACC after the route review, the
+page archives the unsubmitted attempt, explains that the named destination
+changed, and asks for a fresh review. It does not reuse the earlier approval
+or start an owner withdrawal.
 
 The selected account's original intent and each transaction ID stay in the
 browser journal. A pending withdrawal or deposit is displayed under the same
