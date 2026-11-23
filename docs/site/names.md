@@ -271,6 +271,14 @@ separate backends, so it does not enable the online demo profile.
 | [P2](https://github.com/midnightntwrk/passport/blob/main/docs/plans/PROMISES.md) on-chain name binding | Check the registry's pinned verifier roster and require two configured readers to agree on a contract target for online profiles; require a matching owner commitment and ACC target for claim confirmation. | Each indexer remains a trusted read input. Independent backend/chain-state agreement, public `passport.night` ownership, complete named onboarding, and total-loss continuity remain open. |
 | [P8](https://github.com/midnightntwrk/passport/blob/main/docs/plans/PROMISES.md) substitutable infrastructure | The reader accepts injected providers; local qualification uses an owned indexer and prover rather than a Midnames-hosted lookup service. Online source configuration requires distinct indexer origins and fails closed on disagreement. | Distinct origins alone do not establish independent providers. The online authenticated provider and independently known name-to-contract smoke are unqualified. The optional claim sponsor is a host policy and has no demonstrated online replacement. |
 
+A [native contract-target routing check](../../examples/midnames-local/evidence/compact0361-native-default-field-contract-target-20261123.json)
+set the same local name's default `profile` field to a different ACC and kept
+its contract target unchanged. The connected synthetic-passkey page sent
+1 NIGHT to the contract target: source/target/default-field balances changed
+4/3/7 → 3/4/7 at canonical finalized snapshots. This tests the MIP-0007
+address-selection distinction for one local payment, not the proposed
+delegated resolver or an online name service.
+
 The 2.1.0 tarball includes a read generation and an older managed write
 generation. Its root export can fail at load because the managed module expects
 runtime 0.15.0, and its write wrapper reports writes paused. The demo uses only

@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "kind": "isolated-ledger9-name-default-field-versus-contract-target",
+  "date": "2026-11-23",
+  "status": "PASS",
+  "sourceHead": "35e63bafe866a79243f80a05ba9dc9bfa6cc86c9",
+  "profile": "Standalone Midnames Compact 0.36.1 and ACC acc-s3r1.1-zkir036 on retained isolated Ledger 9; Indexer API v4, release prover 9.0.2, connected synthetic mock-passkey Chromium.",
+  "name": "v36claim23.night",
+  "registryAddress": "3d0502ab6b226f12ad621fb6c4e5e9882c75b2df479545cd65d1325f7ad30591",
+  "sourceAcc": "f746d060ef93d3264abf124cd0bee9498ee929aea02c8a18d5aef651f2a55bed",
+  "contractTargetAcc": "14c1181524e783ac7a11d225583cb33c842a144aa89294b765393a5e12794053",
+  "defaultField": {
+    "key": "profile",
+    "address": "c3ed40e0d020ee0be2b8df92cdb26bf69b9f50c6bcd81d8ebf43f2c3f667f756"
+  },
+  "ownerUpdates": [
+    {
+      "circuit": "add_domain_field",
+      "originalHash": "e74c4fbfc7574fc962870856525e17902f0e9e8e45517f4917bf6db9bd7a363a",
+      "canonicalBlock": {
+        "height": 1760,
+        "hash": "996e6cd066a48ee3fc45957b55b28f27846d5a72678626013c4c4128d15e82a8"
+      },
+      "indexedStatus": "SUCCESS"
+    },
+    {
+      "circuit": "update_domain_default_field",
+      "originalHash": "af272789fcb59a52a8aad294268627fd5bfec2c75ee11a72cd6e8d04393ea202",
+      "canonicalBlock": {
+        "height": 1770,
+        "hash": "56042a774937e60b276569ed3e60c1bcca9379ad7a1de03e61796c1d0a595960"
+      },
+      "indexedStatus": "SUCCESS"
+    }
+  ],
+  "before": {
+    "canonicalBlock": {
+      "blockHeight": 1770,
+      "blockHash": "56042a774937e60b276569ed3e60c1bcca9379ad7a1de03e61796c1d0a595960"
+    },
+    "balancesNight": {
+      "source": "4",
+      "original": "3",
+      "current": "7"
+    }
+  },
+  "browserPayment": {
+    "intentId": "a0368446-53e9-4d1c-a7a7-886ffd54e792",
+    "reviewCount": 1,
+    "pageReportedBothLegsFinalized": true,
+    "recipient": "14c1181524e783ac7a11d225583cb33c842a144aa89294b765393a5e12794053",
+    "withdrawal": {
+      "hash": "ba8e1506473fd3fd2db82521705b7decbd91ffa212740be67cc587accf133fe5",
+      "canonicalBlockHeight": 1787
+    },
+    "deposit": {
+      "hash": "362e3530e2218d6b1c88861fd54038835a743fb755d83dba7373710ba2b67b46",
+      "canonicalBlockHeight": 1792
+    },
+    "noActiveIntent": true,
+    "newArchiveCount": 1,
+    "pageErrors": []
+  },
+  "after": {
+    "canonicalBlock": {
+      "blockHeight": 1796,
+      "blockHash": "89279b3fe4a0e84712a662f008c5029461565e1061206b2b2ef89b3a4275a5d0"
+    },
+    "balancesNight": {
+      "source": "3",
+      "original": "4",
+      "current": "7"
+    },
+    "contractTargetUnchanged": true,
+    "defaultFieldUnchanged": true
+  },
+  "cleanup": {
+    "exactIsolatedContainersStopped": true,
+    "nativeLeaseReleased": true,
+    "sharedStackUntouched": true,
+    "volumesAndPrivateOriginalsPreserved": true
+  },
+  "privateReceiptSha256": {
+    "addField": "157926705f1cec8dd1e7e255e15b8516f5f791bf57c3bd4a4d4d548f23503284",
+    "setDefault": "49a2133c3004a02030705b8d012b8d607e6dfa33e31a165a176f7d26f19e7f01",
+    "before": "eaed52cef56f4e71a83ab7fc932e7640d01e9ca44943ad47b31d263532054fdd",
+    "browserFailure": "c326860fd4c4ef88a37c46e4537b03e284382f22f8d1e018cf6b165c8ec56ae5",
+    "after": "685120466f748479d1babd2e68260ffe9ec16fdbf1e6c5ed650cd761eafeed4a",
+    "reconciliation": "e2a2fbd06bfb3f6b60e6a4a467806abcd89337ee8db1722ef9d5ee0d76f3ad21"
+  },
+  "limits": "The first owner field run stopped before any original or browser action because the local deletion-credit guard did not recognize these circuits; its exact resources were reconciled before retry. The native payment succeeded, but the first browser harness asserted that a persistent profile had only one historical payment for this name. Its failure receipt and original IDs were preserved; a separate read-only reconciliation checked the newest archived intent, both canonical original legs, all three balances, and exact cleanup without resending. This qualifies one local synthetic MIP-0007 contract-target-versus-default-field subset. The transitional registry does not implement delegated operation-context routing, online providers, cryptographic inclusion proof, or real-passkey consent."
+}

@@ -135,6 +135,16 @@ same-block balances moved 5/2/7 → 4/3/7. The native lease was released after
 stopping exact isolated resources. The provider itself remained healthy;
 absent and expired native cases remain open.
 
+The [isolated default-field routing receipt](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-native-default-field-contract-target-20261123.json)
+at signed source `35e63baf` finalized owner field updates, giving the name a
+default `profile` address different from its ACC contract target. The
+connected synthetic browser reviewed and paid 1 NIGHT to the contract target;
+source/target/default-field balances moved 4/3/7 → 3/4/7. The browser harness
+failed on an obsolete single-history assertion after both payment legs
+finalized; read-only exact-ID reconciliation verified the original hashes,
+canonical blocks and balances without replay. This is a local MIP-0007
+address-selection subset, not delegated operation-context resolution.
+
 An [isolated native browser run](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-native-postwithdraw-repoint-recovery-20261123.json)
 at signed source `a215ba3` finalized one withdrawal, repointed the name to a
 second supported ACC, and deposited the saved output into the originally

@@ -167,6 +167,16 @@ signature still binds the withdrawal to the bridge, while the name and final
 recipient remain host-checked. This is not complete MIP-0007, online-provider,
 or real-passkey conformance.
 
+A later [isolated default-field routing check](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-native-default-field-contract-target-20261123.json) finalized two
+owner-authorized field updates so the name's default `profile` address was a
+different activated ACC from its contract target. The connected synthetic
+browser finalized a 1 NIGHT payment to the contract target; the
+source/target/default-field balances changed 4/3/7 → 3/4/7. The first
+browser harness used an obsolete single-history assertion; a read-only
+reconciliation verified the new archived intent, canonical originals and
+balances without replay. This supports the local contract-call target
+selection subset only; delegated operation-context routing remains absent.
+
 A [fresh isolated Ledger 9 comparison](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/ledger9-night-by-name-prover-comparison-20261122.json)
 repeated the two-leg route on a release node and Indexer API v4. The release
 `9.0.2` prover rejected the pinned Compact 0.35 JubJub withdrawal proof

@@ -127,6 +127,22 @@ and node stayed healthy. Exact owned resources stopped and the lease was
 released. This is a synthetic browser provider outage, not an absent name,
 expired record, physical passkey or online-provider qualification.
 
+The [default-field routing receipt](evidence/compact0361-native-default-field-contract-target-20261123.json)
+at signed source `35e63baf` finalized owner-authorized `add_domain_field`
+and `update_domain_default_field` calls. The name's `profile` default field
+pointed to a second activated ACC, while its contract target stayed at the
+original ACC. A connected mock-passkey browser reviewed and finalized a
+1 NIGHT named payment to the contract target. At node-finalized snapshots,
+source/contract-target/default-field balances moved 4/3/7 → 3/4/7.
+The first owner proof attempt stopped before submission on a missing local
+deletion-credit allowance; the corrected guard measures zero deletion for
+field addition and rejects overclaim. The payment later passed, but the
+persistent-profile harness expected only one historical payment for this name.
+A read-only reconciliation identified the new archived intent, checked both
+canonical originals and balances, then stopped exact resources and released
+the lease without resending. This is one local contract-target routing subset;
+the transitional registry does not provide delegated MIP-0007 resolution.
+
 The [routing-refusal receipt](evidence/compact0361-native-routing-refusals-20261123.json)
 then checked a live `UnshieldedAddr` target with the same bytes as a supported
 ACC: the page refused it as `InvalidRecord` before review. In a separate
