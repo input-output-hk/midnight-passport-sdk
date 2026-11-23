@@ -32,6 +32,17 @@ activated and opened through a fixture connector, and the credential was
 virtual. This qualifies that bounded local page-to-chain path, not combined
 ACC creation, physical passkeys, or online providers.
 
+A [later isolated real-connector receipt](https://github.com/input-output-hk/midnight-passport-sdk/blob/codex/373-archived-quote-recovery/examples/midnames-local/evidence/compact0361-real-connector-onboarding-20261123.json)
+records fresh candidate ACC creation and activation, one reviewed paid `.night`
+claim, and same-profile ACC reopen with the name still registered. The one
+original indexed `SUCCESS` in a node-checked canonical block, and the
+finalized registry target matched the newly created ACC. The first browser
+attempt's reopen driver timed out after its claim succeeded; its exact
+original was audited without redispatch. The corrected run used a virtual
+credential and a self-hosted isolated node/indexer. Lost-response recovery is
+qualified by the separate fixture-connector run above; physical passkeys and
+independent online providers remain open.
+
 ## Current Midnames delivery
 
 | Journey | Current evidence and implementation | Remaining acceptance |

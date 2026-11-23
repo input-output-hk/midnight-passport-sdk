@@ -363,6 +363,18 @@ and finalized registry owner and ACC target matched. The ACC was previously
 activated and opened through a fixture connector. Combined ACC creation,
 physical passkey custody and online provider qualification remain open.
 
+A later [real-connector onboarding run](../../examples/midnames-local/evidence/compact0361-real-connector-onboarding-20261123.json)
+created and activated a fresh candidate ACC with a virtual PRF credential in
+the Passport page, reviewed one sponsor quote, proved and sent one paid claim,
+then reopened the same ACC after reload and found its `.night` name registered.
+The exact original indexed `SUCCESS` in a node-checked canonical block; the
+finalized registry target matched the ACC created in that browser profile.
+An earlier run sent one successful claim but its test driver timed out while
+reopening; its original was audited separately and was never resent. This
+qualifies the combined local software and native path. The separate fixture
+run above covers lost sponsor response; physical passkeys and online
+providers remain unqualified.
+
 For an online deployment, the host must configure its actual registry address
 and a funded sponsor wallet through `PASSPORT_SPONSOR_SEED` in the service
 environment; the local genesis seed does not fund Preview or Preprod. The wallet

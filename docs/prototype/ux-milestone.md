@@ -185,6 +185,15 @@ registry. The [isolated page-to-chain receipt](../../examples/midnames-local/evi
 records one reviewed page original, sponsor dispatch, indexed SUCCESS and
 same-profile recovery after a lost response. Its source ACC was activated
 before the browser run, and its login connector and credential were synthetic.
+
+The [subsequent real-connector run](../../examples/midnames-local/evidence/compact0361-real-connector-onboarding-20261123.json)
+created a fresh ACC, claimed a new `.night` name, and reopened both in one
+virtual-credential browser profile on the isolated 0.36.1 chain. Its one
+original finalized and the canonical registry target matched that ACC. An
+earlier browser-driver reopen timeout after a successful claim was preserved
+and audited without sending again. Physical providers and independent online
+resolution remain unqualified.
+
 The [shared-chain browser receipt](../../examples/midnames-local/evidence/candidate-acc-combined-local-claim-20261122.json)
 records one synthetic ACC creation, same-profile paid `.night` claim, exact
 indexed success and matching registry target. Those steps span signed source

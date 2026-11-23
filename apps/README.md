@@ -1153,6 +1153,16 @@ same-profile recovery on an isolated Ledger 9 chain. The account login
 connector and passkey were synthetic; the shared demo is not switched to this
 registry profile.
 
+The [later real-connector receipt](../examples/midnames-local/evidence/compact0361-real-connector-onboarding-20261123.json)
+uses the actual Passport connector to create and activate a new candidate ACC,
+claim a user-owned `.night` name, and reopen the same ACC and registered name
+after reload. Its corrected synthetic-browser run sent one reviewed original;
+an independent native audit matched the finalized registry target to that new
+ACC. The first run's browser reopen driver timed out after a successful claim;
+its saved original was audited without redispatch. Both runs used one isolated
+Ledger 9 node/indexer and a virtual credential. They do not qualify physical
+passkey custody or the online registry.
+
 An opt-in host can supply the demo's preparation adapter. The user reviews the
 exact sponsor quote and explicitly approves preparation. The form saves the
 quote and owner commitment before the sponsor request and accepts only a receipt

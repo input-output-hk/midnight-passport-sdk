@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "kind": "isolated-ledger9-compact0361-real-connector-create-and-name-claim",
+  "date": "2026-11-23",
+  "result": "PASS_WITH_PRESERVED_FIRST_DRIVER_FAILURE",
+  "sourceHead": "ac113ffa00806d240cdfed06642f4107bfa9cf34",
+  "profile": {
+    "registry": "standalone-0.36.1",
+    "accountBinding": "acc-s3r1.1-zkir036",
+    "networkId": "undeployed",
+    "indexerApi": "v4",
+    "transactionProtocolVersion": 2001100,
+    "proofServer": "release Ledger 9 prover",
+    "browserCredential": "synthetic virtual PRF",
+    "accountConnector": "real browser connector",
+    "chain": "Retained isolated Ledger 9 chain, separate from the shared demo"
+  },
+  "firstRun": {
+    "result": "BROWSER_REOPEN_DRIVER_TIMEOUT_AFTER_SUCCESSFUL_CLAIM",
+    "reason": "The browser driver waited for a missing account-facts locator before it could handle the next ceremony. No second claim was sent. The saved original independently indexed SUCCESS and the registry pointed to the newly created ACC.",
+    "evidence": {
+      "name": "v36page8c2ddc79.night",
+      "accountAddress": "8f204f08d7006bf32314b9786652518fafc336549d519f044ce6cf35e56028dd",
+      "quoteRequests": 1,
+      "ownerProofRequests": 1,
+      "sponsorPrepareRequests": 1,
+      "dispatchRequests": 1,
+      "originalSha256": "487df04c18aa7c1ac69a9a3d5eacf51a9491e0acc99c5715f5b756ae1849cc08",
+      "originalIdentifiers": [
+        "001f5baf27c9bf028138620a787cc2dc084be3eb1363afa65eb4f7b9ffa06339df",
+        "00c4d004cd8d0e605c124f6e9869c793666f2ed48b0a04f546f41e815ed0a14055"
+      ],
+      "browserReopenedSameAccount": false,
+      "registeredAfterReload": false,
+      "claimBlock": {
+        "hash": "1f53cac9793c0d79fa2ab5ac3c9f44b8f2fd464df8cf84e7c81b7bad46083188",
+        "height": 497
+      },
+      "nodeCanonicalBlockMatched": true,
+      "finalizedRegistryTargetMatchedCreatedAcc": true,
+      "indexedOriginalSuccess": true,
+      "ownedContainersStopped": 3,
+      "nativeLeaseReleased": true,
+      "privateReceiptSha256": {
+        "run": "2cfbe4e6bc91b6b569ff82051a560de7e0db7e7b69204dbfa24d8c48e2bdf22b",
+        "browser": "a345b73ddf80bdad3b091df1be1d63b62ba15e5b784eff33b5d4f0ddf9956c27",
+        "canonicalAudit": "bd01a40d86053dd24c181d4d9db6f0854be0956199f6b904e082b811b05ff6cf"
+      }
+    }
+  },
+  "correctedRun": {
+    "name": "v36pagefc0493fc.night",
+    "accountAddress": "1a11929c51d2fdff74a44b12aba97db0420277b8fdce8ea610f82356379b0bf4",
+    "quoteRequests": 1,
+    "ownerProofRequests": 1,
+    "sponsorPrepareRequests": 1,
+    "dispatchRequests": 1,
+    "originalSha256": "5391ae39b49d8dc062be5d2055fee0f39f8d10b6457d65fb1ffce225943db7c4",
+    "originalIdentifiers": [
+      "00fc316372f918fb7c94f51862d399fcd642809dbc883a2229e8ae89318f1e4fa2",
+      "0049d5dfcd8dbfc71245a114547bfe97c1dd83c815e6faf83454ea7c8a0d9726a3"
+    ],
+    "browserReopenedSameAccount": true,
+    "registeredAfterReload": true,
+    "claimBlock": {
+      "hash": "6ccf9c5dd06587524b7cec658952c8f2287e54ac3bacc61ce1ee3d450db3d3d1",
+      "height": 572
+    },
+    "nodeCanonicalBlockMatched": true,
+    "finalizedRegistryTargetMatchedCreatedAcc": true,
+    "indexedOriginalSuccess": true,
+    "ownedContainersStopped": 3,
+    "nativeLeaseReleased": true,
+    "privateReceiptSha256": {
+      "run": "92b690c525d184707a193f373bcacbc6d712b76923a9d8b69e29e0ef130a5847",
+      "browser": "3ebcc6ed70e5b51cc0181658eb7eeecc1a15c8ac3262afc3f182866f6d04c259",
+      "canonicalAudit": "c4db456eaa624cfcf4b9cb6217e8f8c00621a3528bdab41862ad70367a3c52a6"
+    }
+  },
+  "limits": "One self-hosted isolated node/indexer, a local sponsor, and a synthetic virtual PRF credential. The first run did not prove browser reopen. The corrected run qualified same-profile reopen and name status after reload, but did not inject a lost sponsor response. The separate fixture-connector page receipt qualifies lost-response recovery. Neither receipt qualifies physical passkeys, independent online providers, production images, a released SDK, or same-name continuity after total credential loss."
+}
