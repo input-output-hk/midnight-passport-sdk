@@ -206,10 +206,12 @@ ACC pins. A later [connected browser receipt](../../examples/midnames-local/evid
 created and funded a fresh JubJub ACC, funded its separate device wallet,
 registered DUST, and sent 1 NIGHT to that paid name from the Passport page.
 Both original legs finalized in canonical blocks; one reviewed intent moved
-to browser history with no active payment. A verification-driver click on a
-hidden Open button timed out after page reload, so post-payment ACC reopen is
-still unqualified. The payment was not resent. Physical passkeys and online
-providers remain unqualified.
+to browser history with no active payment. The first verification driver
+timed out on a hidden Open button after reload; a later read-only run in a
+fresh Chrome process reopened the same ACC with the same mock passkey and
+refreshed its state from the chain. At one node-finalized block, the sender
+held 9 NIGHT units and the recipient held 5. The payment was not resent.
+Physical passkeys and online providers remain unqualified.
 
 The [shared-chain browser receipt](../../examples/midnames-local/evidence/candidate-acc-combined-local-claim-20261122.json)
 records one synthetic ACC creation, same-profile paid `.night` claim, exact

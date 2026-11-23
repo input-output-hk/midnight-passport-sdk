@@ -48,9 +48,12 @@ used a fresh JubJub ACC, development mock passkey, separately funded device
 wallet and DUST registration on that retained isolated chain. The Passport page
 reviewed 1 NIGHT to an earlier paid `.night` name; both original legs finalized
 in canonical blocks and its journal archived one payment with no active entry.
-The verification driver clicked a hidden Open button after reload and timed
-out. The original was not resent, and post-payment ACC reopen remains open.
-Physical passkey, online provider and release acceptance are separate gates.
+The first verification driver clicked a hidden Open button after reload and
+timed out. A read-only continuation in a fresh Chrome process reopened the
+same ACC with the same mock passkey, refreshed its chain state and checked
+sender/recipient balances of 9/5 at one node-finalized block. The original
+was not resent. Physical passkey, online provider and release acceptance are
+separate gates.
 
 ## Current Midnames delivery
 

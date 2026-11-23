@@ -926,10 +926,11 @@ connected 0.36.1 browser send or physical passkey consent. The isolated
 funded a fresh JubJub ACC and separate device wallet, registered DUST, then
 reviewed and sent 1 NIGHT to the paid name from the Passport page. Both exact
 originals finalized in canonical blocks, and its journal archived one payment
-with no active entry after reload. The verification driver timed out on a hidden
-Open button after reload, so a post-payment ACC reopen remains unqualified.
-This was a development mock passkey on an isolated chain; physical passkey,
-online-provider and release acceptance remain open.
+with no active entry after reload. The first verification driver timed out on a
+hidden Open button. A later read-only run reopened the same ACC in a fresh
+Chrome process with the same mock passkey, refreshed its chain state, and read
+sender/recipient balances of 9/5 at one node-finalized block. No payment was
+resent. Physical passkey, online-provider and release acceptance remain open.
 
 The local candidate launcher sets `VITE_MIDNAMES_NIGHT_SEND=1` only with
 `--night-send --claim --funding` and `--candidate-assets`. Its default candidate

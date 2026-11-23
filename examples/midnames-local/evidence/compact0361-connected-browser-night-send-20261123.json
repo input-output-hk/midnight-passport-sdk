@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "kind": "isolated-ledger9-compact0361-connected-browser-named-night-send",
   "date": "2026-11-23",
-  "result": "PAYMENT_PASS_WITH_PRESERVED_REOPEN_DRIVER_TIMEOUT",
+  "result": "PAYMENT_AND_FRESH_PROCESS_REOPEN_PASS_WITH_PRESERVED_FIRST_DRIVER_TIMEOUT",
   "sourceHead": "d37e7a5625d7edd637e5ec0493297450c325b78d",
   "profile": {
     "registry": "standalone-0.36.1",
@@ -33,7 +33,7 @@
     "browserJournalHistoryEntriesForIntent": 1,
     "browserJournalActiveEntriesForSourceAfterPayment": 0,
     "browserJournalHistoryVisibleAfterPageReload": true,
-    "accountReopenedAfterPayment": false
+    "accountReopenedAfterPayment": true
   },
   "payment": {
     "intentId": "4f151fa7-2620-4437-96da-00a3e8279f82",
@@ -49,8 +49,30 @@
     }
   },
   "preservedDriverFailure": {
-    "reason": "After both legs finalized, the headless verification driver reloaded the page but clicked a hidden Open button in the retained tab layout. It did not send another payment. The failure receipt still observed one archived payment, no active payment, and the completed status; a separate canonical audit reconfirmed both original hashes before releasing the lease.",
+    "reason": "After both legs finalized, the first headless verification driver reloaded the page but clicked a hidden Open button in the retained tab layout. It did not send another payment. The failure receipt still observed one archived payment, no active payment, and the completed status; a separate canonical audit reconfirmed both original hashes before releasing the lease. A fresh-process read-only continuation subsequently reopened and refreshed the same ACC.",
     "secondPaymentAttempted": false
+  },
+  "readOnlyContinuation": {
+    "sourceHead": "1a869778c3a241adfb22c22898b42f3418ecbd6a",
+    "sameRetainedChainAndBrowserProfile": true,
+    "finalizedSnapshot": {
+      "blockHeight": 1228,
+      "blockHash": "fd367183689373c4fc2f308d0fac66fdf5013cbf3761758344ee008661736490"
+    },
+    "balancesNightSmallestUnits": {
+      "source": "9",
+      "recipient": "5"
+    },
+    "freshChromeProcessOpenedSourceWithSameMockPasskey": true,
+    "sourceAccStateRefreshedFromChain": true,
+    "archivedPaymentEntries": 1,
+    "activePaymentEntries": 0,
+    "paymentResent": false,
+    "privateReceiptSha256": {
+      "balances": "c05d6da2082eb2ad8ea527b66406f786946888e05cdc0949e965709c2452ec69",
+      "browserReopen": "84b9486d8e0c68603fd11575df8b6d95033cba50f035b8145873faada7bc8055",
+      "supervisor": "2b1b374a172fabc00c3006478ddb01a5dd79593f0c702a3c3f07810844e97c77"
+    }
   },
   "privateReceiptSha256": {
     "accountCreation": "12d997a1234977d0c9db6b95c9f695f21008f2eb1dcefa3a59853427ae29179f",
@@ -64,7 +86,8 @@
     "exactOwnedNodeAndIndexerStopped": true,
     "sharedStackAndReleaseProverUntouched": true,
     "nativeLeaseReleasedAfterCanonicalAudit": true,
+    "readOnlyContinuationResourcesStoppedAndLeaseReleased": true,
     "volumesOriginalsAndFailedReceiptRetainedPrivately": true
   },
-  "limits": "This qualifies one connected 0.36.1 browser named NIGHT payment with a development mock passkey and local services. It does not qualify post-payment ACC reopen, a physical passkey, independent online provider, production image, released SDK, or all negative/retry paths. The recipient name was registered in an earlier browser run on this retained chain. No recipient balance check was made in this run."
+  "limits": "This qualifies one connected 0.36.1 browser named NIGHT payment and a later read-only same-profile reopen with a development mock passkey and local services. The sender and recipient ACC balances were checked at one subsequent node-finalized block. It does not qualify a physical passkey, independent online provider, production image, released SDK, or all negative/retry paths. The recipient name was registered in an earlier browser run on this retained chain; the balance check was in the later continuation, not the original payment process."
 }
