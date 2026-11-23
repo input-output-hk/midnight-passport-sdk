@@ -202,8 +202,14 @@ One reviewed Node JubJub intent withdrew 4 NIGHT, paused, recovered the same
 intent, and deposited the exact bridge output. The node and indexer confirmed
 both originals, with source/target balances 10/0 → 6/0 → 6/4 and no replay.
 The page admits this profile only with the isolated registry and candidate
-ACC pins; a synthetic page check passed. A connected 0.36.1 browser payment,
-physical passkey, and online provider remain unqualified.
+ACC pins. A later [connected browser receipt](../../examples/midnames-local/evidence/compact0361-connected-browser-night-send-20261123.json)
+created and funded a fresh JubJub ACC, funded its separate device wallet,
+registered DUST, and sent 1 NIGHT to that paid name from the Passport page.
+Both original legs finalized in canonical blocks; one reviewed intent moved
+to browser history with no active payment. A verification-driver click on a
+hidden Open button timed out after page reload, so post-payment ACC reopen is
+still unqualified. The payment was not resent. Physical passkeys and online
+providers remain unqualified.
 
 The [shared-chain browser receipt](../../examples/midnames-local/evidence/candidate-acc-combined-local-claim-20261122.json)
 records one synthetic ACC creation, same-profile paid `.night` claim, exact

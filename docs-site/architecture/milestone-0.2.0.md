@@ -43,6 +43,15 @@ credential and a self-hosted isolated node/indexer. Lost-response recovery is
 qualified by the separate fixture-connector run above; physical passkeys and
 independent online providers remain open.
 
+A later [connected Compact 0.36.1 browser payment](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-connected-browser-night-send-20261123.json)
+used a fresh JubJub ACC, development mock passkey, separately funded device
+wallet and DUST registration on that retained isolated chain. The Passport page
+reviewed 1 NIGHT to an earlier paid `.night` name; both original legs finalized
+in canonical blocks and its journal archived one payment with no active entry.
+The verification driver clicked a hidden Open button after reload and timed
+out. The original was not resent, and post-payment ACC reopen remains open.
+Physical passkey, online provider and release acceptance are separate gates.
+
 ## Current Midnames delivery
 
 | Journey | Current evidence and implementation | Remaining acceptance |

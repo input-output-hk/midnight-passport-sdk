@@ -921,8 +921,15 @@ SUCCESS were checked for both originals; balances moved 10/0 → 6/0 → 6/4
 with one withdrawal, one deposit and no replay. The sender used a Node JubJub
 fixture, so this qualifies the native two-leg route and recovery, not the
 connected 0.36.1 browser send or physical passkey consent. The isolated
-0.36.1 page gate has synthetic tests; its connected native browser payment
-remains to be qualified before the route is presented as a completed demo.
+0.36.1 page gate also has synthetic tests. A later
+[connected browser receipt](../../examples/midnames-local/evidence/compact0361-connected-browser-night-send-20261123.json)
+funded a fresh JubJub ACC and separate device wallet, registered DUST, then
+reviewed and sent 1 NIGHT to the paid name from the Passport page. Both exact
+originals finalized in canonical blocks, and its journal archived one payment
+with no active entry after reload. The verification driver timed out on a hidden
+Open button after reload, so a post-payment ACC reopen remains unqualified.
+This was a development mock passkey on an isolated chain; physical passkey,
+online-provider and release acceptance remain open.
 
 The local candidate launcher sets `VITE_MIDNAMES_NIGHT_SEND=1` only with
 `--night-send --claim --funding` and `--candidate-assets`. Its default candidate

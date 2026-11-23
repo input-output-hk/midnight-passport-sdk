@@ -58,8 +58,14 @@ A fresh candidate sender ACC withdrew 4 NIGHT, paused between legs, reopened
 the original intent, and deposited its exact bridge output to the named ACC.
 Both originals reached indexed SUCCESS in canonical node blocks; balances
 moved 10/0 → 6/0 → 6/4 with no replay. The sender was a Node JubJub fixture.
-The isolated 0.36.1 named-send page gate has synthetic coverage; a connected
-native browser send, physical passkey and online provider remain open.
+The [later connected browser payment](evidence/compact0361-connected-browser-night-send-20261123.json)
+used the same isolated 0.36.1 profile with a fresh JubJub ACC and development
+mock passkey. It funded the ACC and its separate device wallet, registered
+DUST, reviewed 1 NIGHT to the paid name, and finalized both originals in
+canonical blocks. Its browser journal held one completed payment and no active
+payment after reload. The verification driver then clicked a hidden Open button,
+so post-payment ACC reopen was not qualified. The original was not resent.
+Physical passkey and online-provider acceptance remain open.
 
 ## Open the local Passport and Midnames demo
 
