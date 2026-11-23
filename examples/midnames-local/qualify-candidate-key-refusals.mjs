@@ -83,6 +83,15 @@ const run = (name, assets, expected) => {
   const runName = `midnames-night-candidate-379-key-${name}-${suffix}`;
   const nativeOutput = join(root, 'review', runName);
   assert.equal(existsSync(nativeOutput), false);
+  const childEnv = {
+    ...process.env,
+    PATH: `${bin}:${process.env.PATH}`,
+    PASSPORT_MIDNAMES_NATIVE: '1',
+    PASSPORT_RC_LOCALNET: '1',
+    PASSPORT_MIDNAMES_CANDIDATE_ASSETS: assets,
+  };
+  // The native runner forbids this Nix shell variable as an isolation override.
+  delete childEnv.LD_DYLD_PATH;
   const result = spawnSync(
     process.execPath,
     [
@@ -94,13 +103,7 @@ const run = (name, assets, expected) => {
     ],
     {
       cwd: root,
-      env: {
-        ...process.env,
-        PATH: `${bin}:${process.env.PATH}`,
-        PASSPORT_MIDNAMES_NATIVE: '1',
-        PASSPORT_RC_LOCALNET: '1',
-        PASSPORT_MIDNAMES_CANDIDATE_ASSETS: assets,
-      },
+      env: childEnv,
       encoding: 'utf8',
       timeout: 300_000,
       maxBuffer: 2 * 1024 * 1024,
