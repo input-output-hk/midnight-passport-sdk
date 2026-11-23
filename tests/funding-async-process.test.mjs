@@ -13,11 +13,13 @@ const request = {
   bindingId: 'acc-s3r1.1',
   manifestSha256: 'ef'.repeat(32),
   accountAddress: 'ab'.repeat(32),
-  color: 'cd'.repeat(32),
+  color: '00'.repeat(32),
   amount: '10',
 };
 
-/** @param {'hold' | 'reopen'} mode @param {string} root */
+/** @typedef {{ requestId: string, accountAddress: string, color: string, amount: string, state: string, progress?: { balanceBefore: string, preparationTxId?: string, depositTxId?: string }, result?: { requestId: string, txId: string, preparationTxId?: string, creditedBalance: string } }} FundingStatus */
+
+/** @param {'hold' | 'hold-after-submit' | 'reopen' | 'proof-fail' | 'unknown-submit' | 'credit'} mode @param {string} root */
 async function childServer(mode, root) {
   const env = { ...process.env };
   delete env.NODE_TEST_CONTEXT;
@@ -57,78 +59,246 @@ async function childServer(mode, root) {
   return { port, close };
 }
 
-test(
-  'a killed async funding worker leaves one observable original and cannot redispatch after restart',
-  { timeout: 15000 },
-  async (t) => {
-    const root = await mkdtemp(join(tmpdir(), 'passport-funding-process-'));
-    t.after(() => rm(root, { recursive: true, force: true }));
-    const first = await childServer('hold', root);
-    t.after(first.close);
-    let upstreamStatus;
-    const proxy = createServer((incoming, outgoing) => {
-      const upstream = httpRequest(
-        {
-          hostname: '127.0.0.1',
-          port: first.port,
-          method: incoming.method,
-          path: incoming.url,
-          headers: { ...incoming.headers, host: `127.0.0.1:${first.port}` },
-        },
-        (response) => {
-          upstreamStatus = response.statusCode;
-          response.resume();
-          outgoing.destroy(); // The browser never observes the accepted original.
-        },
+for (const mode of /** @type {const} */ (['hold', 'hold-after-submit']))
+  test(
+    `a killed async funding worker at ${mode} leaves one observable original and cannot redispatch`,
+    { timeout: 15000 },
+    async (t) => {
+      const root = await mkdtemp(join(tmpdir(), 'passport-funding-process-'));
+      t.after(() => rm(root, { recursive: true, force: true }));
+      const first = await childServer(mode, root);
+      t.after(first.close);
+      let upstreamStatus;
+      const proxy = createServer((incoming, outgoing) => {
+        const upstream = httpRequest(
+          {
+            hostname: '127.0.0.1',
+            port: first.port,
+            method: incoming.method,
+            path: incoming.url,
+            headers: { ...incoming.headers, host: `127.0.0.1:${first.port}` },
+          },
+          (response) => {
+            upstreamStatus = response.statusCode;
+            response.resume();
+            outgoing.destroy(); // The browser never observes the accepted original.
+          },
+        );
+        upstream.on('error', () => outgoing.destroy());
+        incoming.pipe(upstream);
+      });
+      await new Promise((resolve) => proxy.listen(0, '127.0.0.1', () => resolve(undefined)));
+      const proxyAddress = proxy.address();
+      assert.ok(proxyAddress && typeof proxyAddress !== 'string');
+      t.after(() => new Promise((resolve) => proxy.close(resolve)));
+      await assert.rejects(
+        fetch(`http://127.0.0.1:${proxyAddress.port}/v1/faucet/fund`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', prefer: 'respond-async' },
+          body: JSON.stringify(request),
+          signal: AbortSignal.timeout(5000),
+        }),
       );
-      upstream.on('error', () => outgoing.destroy());
-      incoming.pipe(upstream);
-    });
-    await new Promise((resolve) => proxy.listen(0, '127.0.0.1', () => resolve(undefined)));
-    const proxyAddress = proxy.address();
-    assert.ok(proxyAddress && typeof proxyAddress !== 'string');
-    t.after(() => new Promise((resolve) => proxy.close(resolve)));
-    await assert.rejects(
-      fetch(`http://127.0.0.1:${proxyAddress.port}/v1/faucet/fund`, {
+      assert.equal(upstreamStatus, 202);
+      await assert.doesNotReject(async () => {
+        for (let attempt = 0; attempt < 40; attempt++) {
+          try {
+            assert.equal((await stat(join(root, 'started'))).isFile(), true);
+            return;
+          } catch (error) {
+            if (attempt === 39) throw error;
+            await new Promise((resolve) => setTimeout(resolve, 50));
+          }
+        }
+      });
+      await first.close();
+      const second = await childServer('reopen', root);
+      t.after(second.close);
+      const reopened = `http://127.0.0.1:${second.port}/v1/faucet/fund`;
+      const status = await fetch(
+        `${reopened}/${request.requestId}?accountAddress=${request.accountAddress}`,
+      );
+      assert.equal(status.status, 200);
+      assert.deepEqual(await status.json(), {
+        requestId: request.requestId,
+        accountAddress: request.accountAddress,
+        color: request.color,
+        amount: request.amount,
+        state: 'pending',
+        progress: {
+          balanceBefore: '0',
+          preparationTxId: 'fixture-wallet-preparation',
+          ...(mode === 'hold-after-submit' && { depositTxId: 'fixture-acc-deposit' }),
+        },
+      });
+      const replay = await fetch(reopened, {
         method: 'POST',
         headers: { 'content-type': 'application/json', prefer: 'respond-async' },
         body: JSON.stringify(request),
-        signal: AbortSignal.timeout(5000),
-      }),
-    );
-    assert.equal(upstreamStatus, 202);
-    await assert.doesNotReject(async () => {
-      for (let attempt = 0; attempt < 40; attempt++) {
-        try {
-          assert.equal((await stat(join(root, 'started'))).isFile(), true);
-          return;
-        } catch (error) {
-          if (attempt === 39) throw error;
-          await new Promise((resolve) => setTimeout(resolve, 50));
-        }
-      }
+      });
+      assert.equal(replay.status, 409);
+      assert.equal(await readFile(join(root, 'dispatches'), 'utf8'), `${request.requestId}\n`);
+      if (mode === 'hold-after-submit')
+        assert.equal(
+          await readFile(join(root, 'acc-submissions'), 'utf8'),
+          `${request.requestId}\n`,
+        );
+      else await assert.rejects(readFile(join(root, 'acc-submissions')), { code: 'ENOENT' });
+    },
+  );
+
+/** @param {string} base @param {string} id */
+async function observe(base, id) {
+  const response = await fetch(`${base}/${id}?accountAddress=${request.accountAddress}`);
+  assert.equal(response.status, 200);
+  return /** @type {FundingStatus} */ (await response.json());
+}
+
+/** @param {string} base @param {typeof request} body */
+async function postFunding(base, body) {
+  return fetch(base, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', prefer: 'respond-async' },
+    body: JSON.stringify(body),
+  });
+}
+
+/** @param {string} base @param {string} id @param {string} state */
+async function waitForState(base, id, state) {
+  for (let attempt = 0; attempt < 80; attempt++) {
+    const result = await observe(base, id);
+    if (result.state === state) return result;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  throw new Error(`funding fixture did not reach ${state}`);
+}
+
+/** @param {string} path @param {string} expected */
+async function waitForFile(path, expected) {
+  for (let attempt = 0; attempt < 80; attempt++) {
+    try {
+      if ((await readFile(path, 'utf8')) === expected) return;
+    } catch (error) {
+      if (
+        typeof error !== 'object' ||
+        error === null ||
+        !('code' in error) ||
+        error.code !== 'ENOENT'
+      )
+        throw error;
+    }
+    if (attempt === 79) throw new Error(`fixture did not record ${expected.trim()}`);
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+}
+
+test(
+  'pre-submit proof failure releases only its marked original and restores daily capacity',
+  { timeout: 15000 },
+  async (t) => {
+    const root = await mkdtemp(join(tmpdir(), 'passport-funding-proof-fail-'));
+    t.after(() => rm(root, { recursive: true, force: true }));
+    const first = await childServer('proof-fail', root);
+    t.after(first.close);
+    const base = `http://127.0.0.1:${first.port}/v1/faucet/fund`;
+    assert.equal((await postFunding(base, request)).status, 202);
+    const released = await waitForState(base, request.requestId, 'released');
+    assert.deepEqual(released.progress, {
+      balanceBefore: '0',
+      preparationTxId: 'fixture-wallet-preparation',
     });
+    assert.equal(await readFile(join(root, 'dispatches'), 'utf8'), `${request.requestId}\n`);
+    await assert.rejects(readFile(join(root, 'acc-submissions')), { code: 'ENOENT' });
     await first.close();
     const second = await childServer('reopen', root);
     t.after(second.close);
     const reopened = `http://127.0.0.1:${second.port}/v1/faucet/fund`;
-    const status = await fetch(
-      `${reopened}/${request.requestId}?accountAddress=${request.accountAddress}`,
+    assert.equal((await postFunding(reopened, request)).status, 409);
+    assert.equal((await observe(reopened, request.requestId)).state, 'released');
+    assert.equal(
+      (
+        await postFunding(reopened, {
+          ...request,
+          requestId: '22345678-1234-1234-1234-123456789abc',
+          amount: '20',
+        })
+      ).status,
+      202,
     );
-    assert.equal(status.status, 200);
-    assert.deepEqual(await status.json(), {
-      requestId: request.requestId,
-      accountAddress: request.accountAddress,
-      color: request.color,
-      amount: request.amount,
-      state: 'pending',
+    assert.equal(await readFile(join(root, 'dispatches'), 'utf8'), `${request.requestId}\n`);
+  },
+);
+
+test(
+  'lost node response keeps exact submit ID pending and consumes daily capacity across restart',
+  { timeout: 15000 },
+  async (t) => {
+    const root = await mkdtemp(join(tmpdir(), 'passport-funding-unknown-submit-'));
+    t.after(() => rm(root, { recursive: true, force: true }));
+    const first = await childServer('unknown-submit', root);
+    t.after(first.close);
+    const base = `http://127.0.0.1:${first.port}/v1/faucet/fund`;
+    assert.equal((await postFunding(base, request)).status, 202);
+    for (let attempt = 0; attempt < 80; attempt++) {
+      const result = await observe(base, request.requestId);
+      if (result.progress?.depositTxId) {
+        assert.equal(result.state, 'pending');
+        assert.equal(result.progress.depositTxId, 'fixture-acc-deposit');
+        break;
+      }
+      if (attempt === 79) throw new Error('missing durable submit ID');
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    await waitForFile(join(root, 'acc-submissions'), `${request.requestId}\n`);
+    await waitForFile(join(root, 'outcome-unknown'), '1');
+    await first.close();
+    const second = await childServer('reopen', root);
+    t.after(second.close);
+    const reopened = `http://127.0.0.1:${second.port}/v1/faucet/fund`;
+    assert.equal((await postFunding(reopened, request)).status, 409);
+    const pending = await observe(reopened, request.requestId);
+    assert.deepEqual(pending.progress, {
+      balanceBefore: '0',
+      preparationTxId: 'fixture-wallet-preparation',
+      depositTxId: 'fixture-acc-deposit',
     });
-    const replay = await fetch(reopened, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', prefer: 'respond-async' },
-      body: JSON.stringify(request),
-    });
-    assert.equal(replay.status, 409);
-    await assert.rejects(readFile(join(root, 'forbidden-redispatch')), { code: 'ENOENT' });
+    assert.equal(
+      (
+        await postFunding(reopened, {
+          ...request,
+          requestId: '22345678-1234-1234-1234-123456789abc',
+          amount: '20',
+        })
+      ).status,
+      429,
+    );
+    assert.equal(await readFile(join(root, 'dispatches'), 'utf8'), `${request.requestId}\n`);
+    assert.equal(await readFile(join(root, 'acc-submissions'), 'utf8'), `${request.requestId}\n`);
+  },
+);
+
+test(
+  'recorded credit result survives restart and same-ID POST returns it without redispatch',
+  { timeout: 15000 },
+  async (t) => {
+    const root = await mkdtemp(join(tmpdir(), 'passport-funding-credit-'));
+    t.after(() => rm(root, { recursive: true, force: true }));
+    const first = await childServer('credit', root);
+    t.after(first.close);
+    const base = `http://127.0.0.1:${first.port}/v1/faucet/fund`;
+    assert.equal((await postFunding(base, request)).status, 202);
+    const complete = await waitForState(base, request.requestId, 'complete');
+    assert.ok(complete.result);
+    assert.equal(complete.result.txId, 'fixture-acc-deposit');
+    await first.close();
+    const second = await childServer('reopen', root);
+    t.after(second.close);
+    const reopened = `http://127.0.0.1:${second.port}/v1/faucet/fund`;
+    assert.deepEqual(await observe(reopened, request.requestId), complete);
+    const replay = await postFunding(reopened, request);
+    assert.equal(replay.status, 200);
+    assert.deepEqual(await replay.json(), complete.result);
+    assert.equal(await readFile(join(root, 'dispatches'), 'utf8'), `${request.requestId}\n`);
+    assert.equal(await readFile(join(root, 'acc-submissions'), 'utf8'), `${request.requestId}\n`);
   },
 );
