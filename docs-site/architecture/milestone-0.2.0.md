@@ -75,6 +75,13 @@ Canonical transaction checks and node-finalized snapshots measured balances
 non-contract target and unsupported-asset refusals, physical passkey custody,
 online resolution and release acceptance still need separate qualification.
 
+An [isolated owner target proof](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-native-target-proof-20261123.json)
+then used the transferred `v36claim23.night` witness to prove one
+`update_target` call with pinned 0.36.1 artifacts. The fixture removed
+overclaimed deletion credit, and the registry target remained unchanged because
+the call was not submitted. This prepares the live repoint lane; it does not
+qualify a changed on-chain mapping or a connected browser refusal.
+
 ## Current Midnames delivery
 
 | Journey | Current evidence and implementation | Remaining acceptance |

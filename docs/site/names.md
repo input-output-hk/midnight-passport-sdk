@@ -342,6 +342,15 @@ isolated local compatibility result, not a new ordinary demo profile or a
 qualification of online names or real passkeys. A later connected browser
 claim is recorded below.
 
+A [separate owner target proof](../../examples/midnames-local/evidence/compact0361-native-target-proof-20261123.json)
+used that retained isolated chain and the transferred `v36claim23.night` owner
+to prove a single `update_target` call. The fixture rebuilt its call without
+overclaimed deletion credit and verified the pinned key and BZKIR assets before
+proving. It checked that the current registry target remained unchanged because
+the proof was **not submitted**. This establishes the owner proof path for a
+future live name-repoint refusal test; it does not establish changed on-chain
+resolution or a connected browser refusal.
+
 The source reader also accepts an explicit local `standalone-0.36.1` profile
 for this registry's byte-identical verifier roster. A retained-chain read
 checked the paid claim, owner transfer, and current name-to-ACC binding at
