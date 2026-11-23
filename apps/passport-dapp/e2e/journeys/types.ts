@@ -13,6 +13,8 @@ export interface FixtureState {
 }
 export interface JourneyFlags {
   unknownFunding: boolean;
+  asyncFunding?: boolean;
+  pendingFundingStatusReads?: number;
   emptyFunding?: boolean;
   multipleFundingAssets?: boolean;
   customFundingUnavailable?: boolean;

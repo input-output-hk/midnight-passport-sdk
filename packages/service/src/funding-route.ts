@@ -33,6 +33,17 @@ export type FundingReservation =
     }
   | { readonly state: 'pending' | 'conflict' | 'daily-limit' };
 
+export interface FundingObservation {
+  readonly request: ServiceWire.FundAccRequest;
+  readonly state: 'pending' | 'complete' | 'released';
+  readonly progress?: {
+    readonly balanceBefore: string;
+    readonly preparationTxId?: string;
+    readonly depositTxId?: string;
+  };
+  readonly result?: ServiceWire.FundAccResponse;
+}
+
 /** Durable milestones for diagnosing an uncertain wallet outcome. */
 export type FundingProgress =
   | { readonly stage: 'balance-observed'; readonly balanceBefore: string }
@@ -50,6 +61,8 @@ export interface FundingStore {
     policy: FundingAssetPolicy,
     utcDay: string,
   ): Promise<FundingReservation>;
+  /** Read the original without reserving, dispatching, or changing its outcome. */
+  observe?(requestId: string): Promise<FundingObservation | undefined>;
   /** A failed completion must leave the reservation pending for operator reconciliation. */
   complete(requestId: string, result: ServiceWire.FundAccResponse): Promise<void>;
   /** Persist each wallet milestone before the next spending step. */
@@ -120,15 +133,14 @@ function requestOf(value: unknown): ServiceWire.FundAccRequest {
   };
 }
 
-async function respondToFundingFailure(
-  res: ServerResponse,
+async function fundingFailureResult(
   options: FundingRouteOptions,
   requestId: string,
   stage: FundingProgress['stage'] | 'admitted',
   noSubmit: boolean,
   accNotSubmitted: boolean,
   error: unknown,
-): Promise<true> {
+): Promise<{ readonly status: number; readonly body: Record<string, unknown> }> {
   const log = options.log ?? ((message: string) => console.error(message));
   if (accNotSubmitted && options.store.releaseAccNotSubmitted) {
     try {
@@ -141,12 +153,14 @@ async function respondToFundingFailure(
           submission: 'reconciled-no-credit',
         }),
       );
-      json(res, 409, {
-        requestId,
-        code: 'FundingRequestReleased',
-        submission: 'reconciled-no-credit',
-      });
-      return true;
+      return {
+        status: 409,
+        body: {
+          requestId,
+          code: 'FundingRequestReleased',
+          submission: 'reconciled-no-credit',
+        },
+      };
     } catch {
       // A failed durable release is uncertain. Keep the original ID pending.
     }
@@ -156,19 +170,98 @@ async function respondToFundingFailure(
     try {
       await options.store.releaseNoSubmit(requestId, 'funding-preflight');
       log(JSON.stringify({ requestId, stage, code: refusal.code, submission: 'not-started' }));
-      json(res, PREFLIGHT_STATUS[refusal.code], {
-        requestId,
-        code: refusal.code,
-        error: refusal.message,
-        submission: 'not-started',
-      });
-      return true;
+      return {
+        status: PREFLIGHT_STATUS[refusal.code],
+        body: {
+          requestId,
+          code: refusal.code,
+          error: refusal.message,
+          submission: 'not-started',
+        },
+      };
     } catch {
       // A failed durable release is uncertain. Never invite a replacement request.
     }
   }
   log(JSON.stringify({ requestId, stage, code: 'FundingOutcomeUnknown' }));
-  throw new HttpError(502, 'funding outcome requires reconciliation');
+  return { status: 502, body: { error: 'funding outcome requires reconciliation' } };
+}
+
+async function authorizeFunding(options: FundingRouteOptions, req: IncomingMessage): Promise<void> {
+  let authorized = false;
+  try {
+    authorized = await options.authorize(req);
+  } catch {
+    throw new HttpError(403, 'funding caller refused');
+  }
+  if (!authorized) throw new HttpError(403, 'funding caller refused');
+}
+
+async function readFundingStatus(
+  options: FundingRouteOptions,
+  res: ServerResponse,
+  url: URL,
+): Promise<true> {
+  const requestId = url.pathname.slice('/v1/faucet/fund/'.length);
+  const accountAddress = url.searchParams.get('accountAddress');
+  if (!UUID.test(requestId) || !accountAddress || !ADDRESS.test(accountAddress))
+    throw new HttpError(400, 'invalid funding status request');
+  if (!options.store.observe) throw new HttpError(501, 'funding status is unavailable');
+  const observation = await options.store.observe(requestId);
+  if (
+    !observation ||
+    observation.request.accountAddress !== accountAddress ||
+    observation.request.networkId !== options.networkId ||
+    observation.request.bindingId !== options.bindingId ||
+    observation.request.manifestSha256 !== options.manifestSha256
+  )
+    throw new HttpError(404, 'funding original was not found');
+  res.setHeader('cache-control', 'no-store');
+  json(res, 200, {
+    requestId,
+    accountAddress,
+    color: observation.request.color,
+    amount: observation.request.amount,
+    state: observation.state,
+    ...(observation.progress && { progress: observation.progress }),
+    ...(observation.result && { result: observation.result }),
+  });
+  return true;
+}
+
+async function executeFunding(
+  options: FundingRouteOptions,
+  request: ServiceWire.FundAccRequest,
+): Promise<{ readonly status: number; readonly body: unknown }> {
+  let stage: FundingProgress['stage'] | 'admitted' = 'admitted';
+  let noSubmit = false;
+  let accNotSubmitted = false;
+  try {
+    const result = await options.backend.fund(request, async (progress) => {
+      await options.store.recordProgress(request.requestId, progress);
+      stage = progress.stage;
+      noSubmit = progress.stage === 'no-submit';
+      accNotSubmitted = progress.stage === 'acc-not-submitted';
+    });
+    if (
+      result.requestId !== request.requestId ||
+      !result.txId ||
+      !DECIMAL.test(result.creditedBalance) ||
+      BigInt(result.creditedBalance) > MAX_AMOUNT
+    )
+      throw new Error('funding backend returned an invalid confirmation');
+    await options.store.complete(request.requestId, result);
+    return { status: 200, body: result };
+  } catch (error) {
+    return fundingFailureResult(
+      options,
+      request.requestId,
+      stage,
+      noSubmit,
+      accNotSubmitted,
+      error,
+    );
+  }
 }
 
 /** The funding route never calls the fee-only sponsor path or trusts a directory address. */
@@ -186,14 +279,15 @@ export function fundingRoute(options: FundingRouteOptions): Route {
   if (assets.size !== options.assets.length) throw new Error('duplicate funding asset policy');
   const now = options.now ?? (() => new Date());
   return async (req, res, url) => {
-    if (req.method !== 'POST' || url.pathname !== '/v1/faucet/fund') return false;
-    let authorized = false;
-    try {
-      authorized = await options.authorize(req);
-    } catch {
-      throw new HttpError(403, 'funding caller refused');
+    if (req.method === 'GET' && url.pathname.startsWith('/v1/faucet/fund/')) {
+      await authorizeFunding(options, req);
+      return readFundingStatus(options, res, url);
     }
-    if (!authorized) throw new HttpError(403, 'funding caller refused');
+    if (req.method !== 'POST' || url.pathname !== '/v1/faucet/fund') return false;
+    await authorizeFunding(options, req);
+    const asyncRequested = req.headers.prefer === 'respond-async';
+    if (asyncRequested && !options.store.observe)
+      throw new HttpError(501, 'asynchronous funding requires durable status');
     const request = requestOf(await readJson(req, 4096));
     if (
       request.networkId !== options.networkId ||
@@ -234,36 +328,24 @@ export function fundingRoute(options: FundingRouteOptions): Route {
     if (reservation.state === 'conflict') throw new HttpError(409, 'funding request ID was reused');
     if (reservation.state === 'daily-limit')
       throw new HttpError(429, 'daily funding limit reached');
-    let stage: FundingProgress['stage'] | 'admitted' = 'admitted';
-    let noSubmit = false;
-    let accNotSubmitted = false;
-    try {
-      const result = await options.backend.fund(request, async (progress) => {
-        await options.store.recordProgress(request.requestId, progress);
-        stage = progress.stage;
-        noSubmit = progress.stage === 'no-submit';
-        accNotSubmitted = progress.stage === 'acc-not-submitted';
+    if (asyncRequested) {
+      // The reservation is durable before acknowledgement. A disconnected browser
+      // can only observe this original; it cannot start another wallet operation.
+      void executeFunding(options, request).catch(() => {
+        (options.log ?? console.error)(
+          JSON.stringify({
+            requestId: request.requestId,
+            code: 'FundingOutcomeUnknown',
+            stage: 'status-write',
+          }),
+        );
       });
-      if (
-        result.requestId !== request.requestId ||
-        !result.txId ||
-        !DECIMAL.test(result.creditedBalance) ||
-        BigInt(result.creditedBalance) > MAX_AMOUNT
-      )
-        throw new Error('funding backend returned an invalid confirmation');
-      await options.store.complete(request.requestId, result);
-      json(res, 200, result);
-    } catch (error) {
-      return respondToFundingFailure(
-        res,
-        options,
-        request.requestId,
-        stage,
-        noSubmit,
-        accNotSubmitted,
-        error,
-      );
+      json(res, 202, { requestId: request.requestId, state: 'pending' });
+      return true;
     }
+    const outcome = await executeFunding(options, request);
+    if (outcome.status === 502) throw new HttpError(502, 'funding outcome requires reconciliation');
+    json(res, outcome.status, outcome.body);
     return true;
   };
 }

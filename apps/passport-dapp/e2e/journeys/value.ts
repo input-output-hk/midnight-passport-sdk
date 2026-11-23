@@ -91,8 +91,12 @@ export async function checkEarlyFailureBeforeAnyCredentialCeremonyReveals(
     await owner.setViewportSize({ width: 1280, height: 900 });
   }
   await fill(owner, '#withdraw-amount', '1');
+  h.flags.asyncFunding = true;
+  h.flags.pendingFundingStatusReads = 1;
   await click(owner, '#fund');
   await waitStatus(owner, /account balance: 10/);
+  assert.ok(calls.includes('funding-status'), 'the async browser route checks its original');
+  h.flags.asyncFunding = false;
   const successfulFundingId =
     fundingIds.at(-1) ??
     (() => {
@@ -104,6 +108,7 @@ export async function checkEarlyFailureBeforeAnyCredentialCeremonyReveals(
   });
   await click(owner, '#fund');
   await waitStatus(owner, /account balance: 10/);
+  assert.equal(fundingIds.filter((id) => id === successfulFundingId).length, 1);
   assert.equal(state.night, 10, 'replayed funding ID must not credit twice');
   await fill(owner, '#withdraw-amount', '1');
   await fill(owner, '#withdraw-recipient', 'invalid-recipient');

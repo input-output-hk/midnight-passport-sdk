@@ -1400,3 +1400,10 @@ confirmed a 10-unit deposit, indexed finality and same-ID replay. A
 then confirmed another 10-unit NIGHT deposit, finalized Indexer API v4 action
 and reload without resubmission. It used an existing-account connector fixture;
 the full passkey/worker path and named payment remain separate acceptance work.
+The source-only funding flow now accepts a durable asynchronous original and
+reads its status through the loopback Passport service. **Continue funding**
+checks that original after a page reload or inventory outage; it never issues a
+second POST for the saved request ID. A separate fresh candidate attempt remains
+pending after its earlier 180-second proxy timeout. This change does not resolve
+or release that original, nor does a simulated browser path establish a fresh
+native funding pass at this head.

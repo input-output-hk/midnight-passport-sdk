@@ -1,4 +1,4 @@
-import { type DemoFundingAsset } from './funding.js';
+import { storedFundingOriginal, type DemoFundingAsset } from './funding.js';
 import { type WalletView } from './wallet/view.js';
 import type { PassportEvent, PassportGrantRoster } from '@input-output-hk/mn-passport-protocol';
 
@@ -241,6 +241,7 @@ class DemoUi {
       this.model.account?.address === view.address ? this.model.account.lastTx : undefined;
     const lastTx = view.lastTx ?? keep;
     this.model.account = { ...view, ...(lastTx && { lastTx }) };
+    this.controls.enableFunding([...this.model.assetsByColor.values()]);
     // A later account action may spend a coin; require a fresh chain check.
     this.model.shieldedHoldings = undefined;
     this.model.deviceRoster = undefined;
@@ -276,7 +277,17 @@ class DemoUi {
   };
   selectedFundingAsset = () => {
     const selected = this.model.assetsByColor.get(this.dom.fundingSelect.value);
-    return selected?.availability === 'available' ? selected : undefined;
+    if (!selected) return undefined;
+    return selected.availability === 'available' ||
+      (this.model.account &&
+        storedFundingOriginal(
+          localStorage,
+          this.model.header.network,
+          this.model.account.address,
+          selected.color,
+        ))
+      ? selected
+      : undefined;
   };
   withdrawalCallLimit = () =>
     this.model.assetsByColor.get(this.dom.withdrawalSelect.value)?.amount ?? '0';

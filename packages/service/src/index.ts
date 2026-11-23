@@ -30,6 +30,7 @@ export {
   fundingRoute,
   type FundingAssetPolicy,
   type FundingReservation,
+  type FundingObservation,
   type FundingProgress,
   type FundingStore,
   type FundingBackend,

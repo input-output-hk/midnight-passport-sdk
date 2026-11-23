@@ -104,14 +104,125 @@ async function serve({
     calls,
     close: () => new Promise((resolve) => server.close(resolve)),
     /** @param {FundAccRequest} [body] */
-    post: (body = request) =>
+    post: (body = request, prefer = '') =>
       fetch(`http://127.0.0.1:${bound.port}/v1/faucet/fund`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', ...(prefer && { prefer }) },
         body: JSON.stringify(body),
       }),
+    get: (id = request.requestId, account = request.accountAddress) =>
+      fetch(`http://127.0.0.1:${bound.port}/v1/faucet/fund/${id}?accountAddress=${account}`),
   };
 }
+
+test('durable async funding survives a lost browser response without redispatch', async (t) => {
+  const path = join(mkdtempSync(join(tmpdir(), 'funding-async-')), 'reservations.json');
+  /** @type {(value: FundAccResponse) => void} */
+  let finish = () => {};
+  const working = new Promise((resolve) => {
+    finish = resolve;
+  });
+  const svc = await serve({ store: createFileFundingStore(path), fund: () => working });
+  t.after(svc.close);
+  const started = await svc.post(request, 'respond-async');
+  assert.equal(started.status, 202);
+  assert.deepEqual(await started.json(), { requestId: request.requestId, state: 'pending' });
+  assert.equal((await svc.get()).status, 200);
+  assert.equal(/** @type {{state:string}} */ (await (await svc.get()).json()).state, 'pending');
+  assert.equal((await svc.get(request.requestId, 'ff'.repeat(32))).status, 404);
+  assert.equal((await svc.post(request, 'respond-async')).status, 409);
+  assert.equal(svc.calls.length, 1);
+  finish({ requestId: request.requestId, txId: 'tx-async', creditedBalance: '10' });
+  /** @type {{state:string,result?:{txId:string}} | undefined} */
+  let observation;
+  for (let attempt = 0; attempt < 30; attempt++) {
+    observation = /** @type {{state:string,result?:{txId:string}}} */ (
+      await (await svc.get()).json()
+    );
+    if (observation.state === 'complete') break;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  assert.equal(observation?.state, 'complete');
+  assert.equal(observation.result?.txId, 'tx-async');
+  assert.equal(svc.calls.length, 1);
+  const reopened = await serve({ store: createFileFundingStore(path) });
+  t.after(reopened.close);
+  assert.equal(
+    /** @type {{result:{txId:string}}} */ (await (await reopened.get()).json()).result.txId,
+    'tx-async',
+  );
+  assert.equal(reopened.calls.length, 0);
+});
+
+test('async proof failure retains the original unless a durable no-submit marker releases it', async (t) => {
+  const path = join(mkdtempSync(join(tmpdir(), 'funding-async-failure-')), 'reservations.json');
+  const svc = await serve({
+    store: createFileFundingStore(path),
+    fund: async (_request, recordProgress) => {
+      await recordProgress?.({ stage: 'balance-observed', balanceBefore: '0' });
+      await recordProgress?.({ stage: 'prepared', preparationTxId: 'wallet-prepared' });
+      throw new Error('worker lost during proof');
+    },
+  });
+  t.after(svc.close);
+  assert.equal((await svc.post(request, 'respond-async')).status, 202);
+  let original;
+  for (let attempt = 0; attempt < 30; attempt++) {
+    original = /** @type {{state:string,progress?:{preparationTxId:string}}} */ (
+      await (await svc.get()).json()
+    );
+    if (original.progress?.preparationTxId) break;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  assert.equal(original?.state, 'pending');
+  assert.equal(original.progress?.preparationTxId, 'wallet-prepared');
+  assert.equal((await svc.post(request, 'respond-async')).status, 409);
+  assert.equal(svc.calls.length, 1);
+  const reopened = await serve({ store: createFileFundingStore(path) });
+  t.after(reopened.close);
+  assert.equal(
+    /** @type {{state:string}} */ (await (await reopened.get()).json()).state,
+    'pending',
+  );
+  assert.equal((await reopened.post(request, 'respond-async')).status, 409);
+  assert.equal(reopened.calls.length, 0);
+});
+
+test('async funding distinguishes proved pre-submit release from uncertain submitted original', async (t) => {
+  for (const stage of ['acc-not-submitted', 'submitted']) {
+    const path = join(mkdtempSync(join(tmpdir(), `funding-async-${stage}-`)), 'reservations.json');
+    const svc = await serve({
+      store: createFileFundingStore(path),
+      fund: async (_request, recordProgress) => {
+        await recordProgress?.({ stage: 'balance-observed', balanceBefore: '0' });
+        await recordProgress?.({ stage: 'prepared', preparationTxId: 'wallet-prepared' });
+        if (stage === 'submitted')
+          await recordProgress?.({ stage: 'submitted', txId: 'deposit-original' });
+        else await recordProgress?.({ stage: 'acc-not-submitted' });
+        throw new Error('worker result unavailable');
+      },
+    });
+    t.after(svc.close);
+    assert.equal(
+      (await svc.post({ ...request, color: '00'.repeat(32) }, 'respond-async')).status,
+      202,
+    );
+    let observed;
+    for (let attempt = 0; attempt < 30; attempt++) {
+      observed = /** @type {{state:string,progress?:{depositTxId?:string}}} */ (
+        await (await svc.get()).json()
+      );
+      if (observed.state === 'released' || observed.progress?.depositTxId) break;
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    assert.equal(observed?.state, stage === 'submitted' ? 'pending' : 'released');
+    assert.equal(
+      observed.progress?.depositTxId,
+      stage === 'submitted' ? 'deposit-original' : undefined,
+    );
+    assert.equal(svc.calls.length, 1);
+  }
+});
 
 test('funding is authenticated, pinned, bounded and idempotent', async (t) => {
   const svc = await serve();

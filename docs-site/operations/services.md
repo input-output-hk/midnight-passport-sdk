@@ -14,6 +14,16 @@ The funding service owns a **different wallet** that sends allowed assets into a
 
 A legacy request with only a preparation ID can be released after an operator attributes four node gas rejections and verifies an empty mempool and unchanged complete ACC history; its original reservation remains as a tombstone. A missing final hash alone does not prove that the ACC call was never sent. The browser clears an old ID only after the exact reconciled receipt, and a further click starts a new request. Keep the funding bearer token out of browser storage and bundles. The demo's local funding proxy is a bounded evaluation path, not a production authentication design.
 
+The source-preview funding route also supports `Prefer: respond-async`: it
+durably reserves the ID before returning `202`, continues the proof in the
+funding process, and exposes an authenticated read-only status for that exact
+ID and account. The loopback Passport service proxies that status without
+exposing the bearer token. A restarted process does not redispatch a pending
+reservation. The browser retains its original ID and offers **Continue funding**
+after reload, even if the current asset inventory is unavailable or its policy
+has changed. The operator must reconcile a pending original if the worker ended
+before a confirmed result; a new request ID is not a safe retry.
+
 For exact routes and configuration, use the [service source guide](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc9/docs/site/service.md) and [funding app guide](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/passport-funding-service/README.md). [The release receipt](https://github.com/input-output-hk/midnight-passport-sdk/releases/download/sdk-v0.1.0-rc9/rc9-publication-receipt.json) identifies the published images. No SDK package installation provisions the node, proof server, fee wallet, or asset wallet.
 
 ## Wallet identity, state and ports

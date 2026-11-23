@@ -69,6 +69,8 @@ test('demo funding is opt-in and restricted to loopback localnet', () => {
 test('browser seam keeps token server-side and funds only a registered deployed ACC', async () => {
   let forwarded = 0;
   let wrongManifest = false;
+  let asyncReply = false;
+  let statusState: 'pending' | 'complete' = 'pending';
   const backend = createHttpServer(async (req, res) => {
     if (req.url === '/healthz') {
       res.writeHead(200, { 'content-type': 'application/json' });
@@ -107,8 +109,30 @@ test('browser seam keeps token server-side and funds only a registered deployed 
       res.end(JSON.stringify({ accountAddress, color, night: '0', fundedAsset: '20' }));
       return;
     }
+    if (req.url?.startsWith(`/v1/faucet/fund/${requestId}?`)) {
+      assert.equal(req.headers.authorization, `Bearer ${token}`);
+      assert.equal(
+        new URL(req.url, 'http://localhost').searchParams.get('accountAddress'),
+        accountAddress,
+      );
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(
+        JSON.stringify({
+          requestId,
+          accountAddress,
+          color,
+          amount: '10',
+          state: statusState,
+          ...(statusState === 'complete' && {
+            result: { requestId, txId: `00${'d'.repeat(64)}`, creditedBalance: '20' },
+          }),
+        }),
+      );
+      return;
+    }
     assert.equal(req.url, '/v1/faucet/fund');
     assert.equal(req.headers.authorization, `Bearer ${token}`);
+    assert.equal(req.headers.prefer, 'respond-async');
     const chunks: Buffer[] = [];
     for await (const chunk of req) chunks.push(chunk as Buffer);
     const body = JSON.parse(Buffer.concat(chunks).toString('utf8'));
@@ -116,6 +140,11 @@ test('browser seam keeps token server-side and funds only a registered deployed 
     assert.equal(body.color, color);
     assert.equal(body.amount, '10');
     forwarded++;
+    if (asyncReply) {
+      res.writeHead(202, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ requestId, state: 'pending' }));
+      return;
+    }
     res.writeHead(200, { 'content-type': 'application/json' });
     res.end(
       JSON.stringify({
@@ -177,9 +206,28 @@ test('browser seam keeps token server-side and funds only a registered deployed 
       creditedBalance: '20',
     });
     assert.equal(forwarded, 1);
+    asyncReply = true;
+    const accepted = await post(accountAddress, config.corsOrigin);
+    assert.equal(accepted.status, 202);
+    assert.deepEqual(await accepted.json(), { requestId, state: 'pending' });
+    const statusUrl = `${url}/${requestId}?accountAddress=${accountAddress}`;
+    assert.equal(
+      (await fetch(statusUrl)).status,
+      200,
+      'same-origin GET fetches do not require an Origin header',
+    );
+    assert.equal(
+      (await fetch(statusUrl, { headers: { origin: 'https://other.example' } })).status,
+      403,
+    );
+    const read = () => fetch(statusUrl, { headers: { origin: config.corsOrigin } });
+    assert.equal(((await (await read()).json()) as { state: string }).state, 'pending');
+    statusState = 'complete';
+    assert.equal(((await (await read()).json()) as { state: string }).state, 'complete');
+    assert.equal(forwarded, 2, 'status reads never dispatch funding');
     wrongManifest = true;
     assert.equal((await post(accountAddress, config.corsOrigin)).status, 503);
-    assert.equal(forwarded, 1, 'a binding mismatch never reaches the funding wallet');
+    assert.equal(forwarded, 2, 'a binding mismatch never reaches the funding wallet');
   } finally {
     server.close();
     backend.close();

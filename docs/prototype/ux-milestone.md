@@ -258,6 +258,12 @@ writer under the shared lease.
 Candidate demo funding now uses a dedicated wallet and state files when the
 operator explicitly combines `--candidate-assets --funding`. The candidate
 wallet uses port 18789, separate from the stable demo on 8789. The funding
+source preview now returns a durable accepted ID before a long proof. The page
+polls a read-only status and labels a saved request **Continue funding**, even
+when a current inventory read fails. A second click or reload does not reissue
+the original wallet operation. A stopped worker with no conclusive no-submit
+marker remains pending for operator reconciliation; the earlier unresolved
+candidate funding reservation has not been cleared or retried. The funding
 service's [native shared-chain run](../../examples/midnames-local/evidence/candidate-funding-native-20261122.json)
 confirmed its original request, indexed 10-unit NIGHT credit and same-ID
 replay. A separate [headless Passport page run](../../examples/midnames-local/evidence/candidate-funding-browser-20261122.json)

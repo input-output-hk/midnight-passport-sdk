@@ -85,7 +85,8 @@ async function accountRoute(h: JourneyHarness, route: Route) {
   }
 }
 async function serviceRoute(h: JourneyHarness, route: Route, url: URL) {
-  if (url.pathname === '/v1/demo/funding') return fundingRoute(h, route, url);
+  if (url.pathname === '/v1/demo/funding' || url.pathname.startsWith('/v1/demo/funding/'))
+    return fundingRoute(h, route, url);
   if (url.pathname === '/v1/demo/value-call') {
     const body = route.request().postDataJSON() as {
       circuit: string;

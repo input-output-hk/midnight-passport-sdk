@@ -35,6 +35,13 @@ using `PASSPORT_FUNDING_SEED_FILE`, plus the protected token and asset allowlist
 the [funding operations guide](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/passport-funding-service/README.md).
 The CLI forwards that configuration to `demo up --funding`. Funding then listens
 on `127.0.0.1:8789`; its token stays server-side and deposits remain bounded.
+In the current source preview, **Fund Passport account** saves one request ID
+before the funding wallet starts its proof. The page checks that original's
+durable status while the deposit runs. After a reload or an unavailable asset
+inventory, **Continue funding** reads the same ID without sending a second
+deposit. A pending original may still have been submitted; keep its receipt for
+operator reconciliation if the worker stops. This flow is newer than RC9 and
+requires separate native qualification before a new release claim.
 
 Both processes otherwise default to the same public standalone genesis seed.
 That default is for **one active wallet at a time**, as in sequential CLI

@@ -80,6 +80,20 @@ color, amount, transaction ID and confirmed ACC balances for NIGHT and the test 
 or when the Passport service is bound beyond loopback. The operator CLI remains available as
 `demo fund`.
 
+In this source preview, the browser seam requests `Prefer: respond-async` from
+the funding process. Once the request is durably reserved,
+`POST /v1/faucet/fund` returns `202` with its original request ID. Authenticated,
+read-only `GET /v1/faucet/fund/<requestId>?accountAddress=<hex>` reports that
+same reservation as `pending`, `complete`, or `released`, with its last durable
+wallet milestone. The demo proxies this as `GET /v1/demo/funding/<requestId>`;
+the bearer token stays server-side. **Continue funding** reads the original
+after reload, even if current wallet inventory is unavailable. A completed
+result clears only its matching browser ID; a proved no-credit release requires
+a separate explicit new click. An uncertain worker stop, missing transaction ID
+or empty ACC balance leaves the original pending for operator reconciliation.
+The service never restarts a wallet operation from a pending record after a
+process restart.
+
 The funding service defaults to packaged `acc-s3r1.1`. An explicit source-only
 `acc-s3r1.1-zkir036` path verifies the candidate manifest and generated module
 before loading it, then routes NIGHT deposits through the pinned adapter. It

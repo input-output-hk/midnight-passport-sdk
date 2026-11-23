@@ -30,6 +30,11 @@ network, journals and unknown IDs when investigating a failure.
 The browser runs at `http://localhost:5173`. The Passport, key and optional funding
 services normally use `8787`, `8788` and `8789`. The optional funding wallet supplies
 allowlisted ACC deposits; the fee sponsor and the user's built-in wallet are separate.
+In this source preview, **Fund Passport account** saves one request ID, then
+checks the funding service's durable status while the wallet proves and confirms
+the deposit. After a reload or inventory outage, **Continue funding** checks the
+same original without sending another deposit. A pending status is not proof of
+failure or no credit; keep it for operator reconciliation if the worker stopped.
 Use the [demo use cases]({{ '/use-cases/' | relative_url }}) for action prerequisites and
 [historical RC5 funding trace]({{ '/handover/' | relative_url }}) for that dated evidence.
 Use the app setup reference above for prerequisites and state preservation.

@@ -15,7 +15,7 @@ import {
 import { randomUUID } from 'node:crypto';
 import { dirname } from 'node:path';
 import type { ServiceWire } from '@input-output-hk/mn-passport-protocol';
-import type { FundingProgress, FundingStore } from './funding-route.js';
+import type { FundingObservation, FundingProgress, FundingStore } from './funding-route.js';
 import type { FundingCreditEvidence, FundingRejectionEvidence } from './funding-reconciliation.js';
 
 interface ProgressRecord {
@@ -431,6 +431,17 @@ export async function releaseRejectedFundingReservation(
 export function createFileFundingStore(file: string): FundingStore {
   const withLock = <T>(work: () => T): T => withFundingLock(file, work);
   return {
+    async observe(requestId): Promise<FundingObservation | undefined> {
+      if (!UUID.test(requestId)) throw new Error('invalid funding request ID');
+      const entry = load(file).requests[requestId];
+      if (!entry) return undefined;
+      return {
+        request: entry.request,
+        state: entry.result ? 'complete' : entry.release ? 'released' : 'pending',
+        ...(entry.progress && { progress: entry.progress }),
+        ...(entry.result && { result: entry.result }),
+      };
+    },
     async reserve(request, policy, utcDay) {
       return withLock(() => {
         if (

@@ -5,7 +5,15 @@ import { fixedUnshieldedGrantLimits } from './grant-input.js';
 
 import { tracedFetch, traceOperation } from './operation-trace.js';
 
-import { fundingRequestFailure, fundingExchange, fundingUnsettled } from './funding.js';
+import {
+  fundingRequestFailure,
+  fundingExchange,
+  fundingUnsettled,
+  waitForFundingOriginal,
+  fundingStorageKeys,
+  storedFundingOriginal,
+  checkedFundingConfirmation,
+} from './funding.js';
 
 import type { DemoActionHost } from './app-model.js';
 
@@ -17,71 +25,124 @@ export class TransferActions {
     if (!asset)
       throw new Error('Deposit availability changed. Refresh availability and try again.');
     const target = this.host.state.account.address;
-    const key = `passport-demo:fund:${this.host.network}:${target}:${asset.color}`;
-    const legacyKey = `passport-demo:fund:${this.host.network}:${target}`;
-    let requestId = localStorage.getItem(key);
-    if (!requestId && asset.color !== '00'.repeat(32)) {
-      requestId = localStorage.getItem(legacyKey);
-      if (requestId) localStorage.setItem(key, requestId);
-    }
+    const { current: key, legacy: legacyKey } = fundingStorageKeys(
+      this.host.network,
+      target,
+      asset.color,
+    );
+    let requestId = storedFundingOriginal(localStorage, this.host.network, target, asset.color);
+    if (requestId && !localStorage.getItem(key)) localStorage.setItem(key, requestId);
+    const continuingOriginal = Boolean(requestId);
     if (!requestId) {
       requestId = crypto.randomUUID();
       localStorage.setItem(key, requestId);
     }
     this.host.stage('deposit');
-    traceOperation('funding.intent', {
+    traceOperation(continuingOriginal ? 'funding.observe' : 'funding.intent', {
       requestId,
       accountAddress: target,
       networkId: this.host.network,
       color: asset.color,
-      amount: asset.amount,
+      ...(!continuingOriginal && { amount: asset.amount }),
     });
     this.host.status(
-      `Funding account ${target.slice(0, 12)}… with ${asset.amount} ${asset.color === '00'.repeat(32) ? 'NIGHT' : 'test units'}…`,
+      continuingOriginal
+        ? `Checking original funding for account ${target.slice(0, 12)}…`
+        : `Funding account ${target.slice(0, 12)}… with ${asset.amount} ${asset.color === '00'.repeat(32) ? 'NIGHT' : 'test units'}…`,
     );
-    const { response, result } = await fundingExchange(() =>
-      tracedFetch(this.host.fundingUrl.toString(), {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ accountAddress: target, requestId, color: asset.color }),
-      }),
-    );
-    if (!response.ok) {
-      throw fundingRequestFailure({
-        status: response.status,
-        result,
-        requestId,
-        storage: localStorage,
-        keys: [key, legacyKey],
-        onNotStarted: (details) => traceOperation('funding.notStarted', details),
-        onReconciled: (details) => traceOperation('funding.reconciled', details),
-      });
+    const originalUrl = new URL(this.host.fundingUrl);
+    originalUrl.pathname += `/${requestId}`;
+    originalUrl.searchParams.set('accountAddress', target);
+    const observeOriginal = async () => {
+      const observed = await fundingExchange(() => tracedFetch(originalUrl.toString()));
+      if (!observed.response.ok)
+        throw fundingUnsettled('Original funding status is unavailable. Keep this request ID.');
+      return observed.result;
+    };
+    let expectedAmount = asset.amount;
+    const awaitOriginal = async (): Promise<Record<string, unknown>> => {
+      const status = await waitForFundingOriginal(
+        observeOriginal,
+        {
+          requestId,
+          accountAddress: target,
+          color: asset.color,
+          ...(!continuingOriginal && { amount: asset.amount }),
+        },
+        (progress) => {
+          this.host.status(
+            progress?.depositTxId
+              ? 'Funding deposit was sent. Waiting for confirmed ACC credit…'
+              : progress?.preparationTxId
+                ? 'Funding wallet is prepared. Proving the ACC deposit…'
+                : 'Funding is processing. The original request is saved and can be checked after reload…',
+          );
+        },
+      );
+      if (status.state === 'released')
+        throw fundingRequestFailure({
+          status: 409,
+          result: { requestId, code: 'FundingRequestReleased', submission: 'reconciled-no-credit' },
+          requestId,
+          storage: localStorage,
+          keys: [key, legacyKey],
+          onNotStarted: (details) => traceOperation('funding.notStarted', details),
+          onReconciled: (details) => traceOperation('funding.reconciled', details),
+        });
+      if (!status.result) throw fundingUnsettled('Funding original has no confirmed result.');
+      if (continuingOriginal) expectedAmount = status.amount;
+      return {
+        ...status.result,
+        accountAddress: target,
+        color: asset.color,
+        amount: status.amount,
+      };
+    };
+    let result;
+    if (continuingOriginal) {
+      result = await awaitOriginal();
+    } else {
+      const exchange = await fundingExchange(() =>
+        tracedFetch(this.host.fundingUrl.toString(), {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ accountAddress: target, requestId, color: asset.color }),
+        }),
+      );
+      if (exchange.response.status === 202) {
+        if (exchange.result.requestId !== requestId || exchange.result.state !== 'pending')
+          throw fundingUnsettled('Funding service returned an invalid pending original.');
+        result = await awaitOriginal();
+      } else if (!exchange.response.ok) {
+        throw fundingRequestFailure({
+          status: exchange.response.status,
+          result: exchange.result,
+          requestId,
+          storage: localStorage,
+          keys: [key, legacyKey],
+          onNotStarted: (details) => traceOperation('funding.notStarted', details),
+          onReconciled: (details) => traceOperation('funding.reconciled', details),
+        });
+      } else {
+        result = exchange.result;
+      }
     }
-    if (
-      result.requestId !== requestId ||
-      result.accountAddress !== target ||
-      result.color !== asset.color ||
-      result.amount !== asset.amount ||
-      typeof result.txId !== 'string' ||
-      !/^(?:[0-9a-f]{64}|[0-9a-f]{66})$/.test(result.txId) ||
-      (result.preparationTxId !== undefined &&
-        (typeof result.preparationTxId !== 'string' ||
-          !/^(?:[0-9a-f]{64}|[0-9a-f]{66})$/.test(result.preparationTxId))) ||
-      typeof result.creditedBalance !== 'string' ||
-      !/^\d+$/.test(result.creditedBalance)
-    ) {
-      throw fundingUnsettled('Funding service returned an invalid confirmation');
-    }
+    const confirmed = checkedFundingConfirmation(result, {
+      requestId,
+      accountAddress: target,
+      color: asset.color,
+      amount: expectedAmount,
+    });
     this.host.record('funding', {
       requestId,
       accountAddress: target,
       color: asset.color,
-      amount: asset.amount,
-      txId: result.txId,
-      ...(result.preparationTxId && { preparationTxId: result.preparationTxId }),
-      creditedBalance: result.creditedBalance,
+      amount: confirmed.amount,
+      txId: confirmed.txId,
+      ...(confirmed.preparationTxId && { preparationTxId: confirmed.preparationTxId }),
+      creditedBalance: confirmed.creditedBalance,
     });
-    this.host.ui.showFunding(target, asset.color, result.creditedBalance);
+    this.host.ui.showFunding(target, asset.color, confirmed.creditedBalance);
     void this.host.refreshAccountBalances(target).catch(() => {
       traceOperation('account.balances.unavailable', { accountAddress: target });
     });
@@ -89,15 +150,15 @@ export class TransferActions {
       requestId,
       accountAddress: target,
       color: asset.color,
-      amount: asset.amount,
-      txId: result.txId,
-      ...(result.preparationTxId && { preparationTxId: result.preparationTxId }),
-      creditedBalance: result.creditedBalance,
+      amount: confirmed.amount,
+      txId: confirmed.txId,
+      ...(confirmed.preparationTxId && { preparationTxId: confirmed.preparationTxId }),
+      creditedBalance: confirmed.creditedBalance,
     });
     localStorage.removeItem(key);
     if (asset.color !== '00'.repeat(32)) localStorage.removeItem(legacyKey);
     this.host.status(
-      `Passport account balance: ${result.creditedBalance} ${asset.color === '00'.repeat(32) ? 'NIGHT smallest units' : 'test token units'}. Transaction ${result.txId.slice(0, 12)}…`,
+      `Passport account balance: ${confirmed.creditedBalance} ${asset.color === '00'.repeat(32) ? 'NIGHT smallest units' : 'test token units'}. Transaction ${confirmed.txId.slice(0, 12)}…`,
     );
   };
   startSession = async () => {
