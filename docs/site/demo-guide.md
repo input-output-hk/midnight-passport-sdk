@@ -97,8 +97,14 @@ The page shows both ACC versions and retains the recipient version with the
 original payment. A [shared Ledger 9 connected browser run](../../examples/midnames-local/evidence/candidate-to-old-connected-browser-night-20261123.json)
 finalized one mixed-version payment and recovered a second payment's saved
 withdrawal after an interrupted recipient proof. The source was previously
-funded and the credential was a development mock; this remains a local source
-preview, with fresh funding, physical passkey and online acceptance open.
+funded and the credential was a development mock; that run did not test fresh
+funding. Physical passkey and online acceptance remain open.
+A later [fresh local funding and named-send receipt](../../examples/midnames-local/evidence/candidate-fresh-funding-named-night-20261123.json)
+records one new synthetic candidate ACC credited with 10 NIGHT and a reviewed
+1 NIGHT payment to the old-binding `paidfix.night` ACC. Both legs finalized;
+the balances moved 10/6 → 9/7. Its device wallet needed separate local
+funding and DUST registration. An earlier ambiguous funding original remains
+pending; long-proof recovery, physical passkeys and online acceptance are open.
 
 ## Enter and navigate
 

@@ -164,6 +164,13 @@ verifier roster and binding in the original intent; the candidate sender's ACC
 signature covered the bridge withdrawal. This is bounded shared-chain,
 synthetic-credential evidence. It does not establish online name provenance,
 fresh candidate funding, physical passkey consent or a released binding.
+A later [fresh local candidate receipt](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/candidate-fresh-funding-named-night-20261123.json)
+qualifies one new synthetic ACC's 10 NIGHT credit, separate device-wallet
+DUST registration and 1 NIGHT candidate-to-old named send on the same shared
+chain. Node and Indexer API v4 confirmed both payment legs, with balances
+10/6 → 9/7. An earlier ambiguous funding original remains pending. Long-proof
+recovery, physical consent, online provenance and a released candidate binding
+are still unqualified.
 
 The later [isolated 0.36.1 routing-refusal evidence](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-native-routing-refusals-20261123.json)
 tests MIP-0007's address-class distinction for this local subset. A name with

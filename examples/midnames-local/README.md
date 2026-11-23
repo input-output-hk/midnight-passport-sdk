@@ -1508,6 +1508,16 @@ installed-package and online acceptance open. The earlier `a`
 attempt stopped at the dirty-source guard; `b` stopped before stack creation
 because its subnet was occupied. Both failed receipts are retained privately.
 
+A later [fresh funding and named-send run](evidence/candidate-fresh-funding-named-night-20261123.json)
+on signed `fcaa85b5` deployed a new synthetic JubJub ACC, credited one
+10 NIGHT funding original on the shared Ledger 9 chain, funded and registered
+its separate device wallet for DUST, and sent 1 NIGHT to the old-binding
+`paidfix.night` ACC. Indexer API v4 and the node confirmed both payment legs;
+the balances moved 10/6 → 9/7 and a read-only browser reload found one
+archived intent with no active duplicate. The earlier ambiguous funding
+original belongs to another ACC and remains untouched. This run does not
+qualify long-proof recovery, a physical passkey, online providers or release.
+
 ### Provisional candidate paid name claim and retry
 
 The `midnames-claim-candidate-` lane uses the same complete candidate ACC

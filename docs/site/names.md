@@ -1112,6 +1112,14 @@ read-only reload check passed without resending. This qualifies the retained
 synthetic browser profile, not fresh candidate funding, a physical passkey or
 an online recipient.
 
+A later [fresh local candidate receipt](../../examples/midnames-local/evidence/candidate-fresh-funding-named-night-20261123.json)
+documents one new synthetic JubJub ACC funded with 10 NIGHT, separate device
+wallet funding and DUST registration, and a reviewed 1 NIGHT payment to the
+same old-binding named recipient. Both legs finalized on the shared Ledger 9
+chain; source/recipient balances moved 10/6 → 9/7. The earlier ambiguous
+funding original belongs to a different ACC and remains pending. This is
+local mock-passkey evidence, not physical-passkey or online acceptance.
+
 The local candidate launcher sets `VITE_MIDNAMES_NIGHT_SEND=1` only with
 `--night-send --claim --funding` and `--candidate-assets`. Its default candidate
 page leaves the control disabled.

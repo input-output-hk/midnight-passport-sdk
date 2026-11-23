@@ -86,6 +86,16 @@ matched canonical blocks. The retained sender had been funded on an earlier
 head; a separate fresh funding attempt at this head remains an unresolved
 original and is not part of this pass. The candidate remains provisional.
 
+The later [fresh candidate funding and named-send run](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/candidate-fresh-funding-named-night-20261123.json)
+on signed `fcaa85b5` deployed a new synthetic JubJub ACC, credited one
+distinct 10 NIGHT funding original, separately funded and registered its
+device wallet for DUST, and finalized one reviewed 1 NIGHT payment to the
+same old-binding `paidfix.night` recipient. Canonical node/Indexer API v4
+checks found both legs; balances moved 10/6 → 9/7 and the browser journal
+held one completed intent with no active duplicate. The earlier ambiguous
+funding original belongs to another ACC and remains pending. This local pass
+does not close long-proof recovery, physical passkey, online or release gates.
+
 An [isolated owner target proof](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-native-target-proof-20261123.json)
 then used the transferred `v36claim23.night` witness to prove one
 `update_target` call with pinned 0.36.1 artifacts. The fixture removed

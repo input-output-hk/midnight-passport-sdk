@@ -233,6 +233,14 @@ read-only reload check passed without a resend. Fresh candidate funding at
 this head retained an unresolved original, so source onboarding and funding
 are outside this mixed-browser pass.
 
+The later [fresh candidate funding and named-send receipt](../../examples/midnames-local/evidence/candidate-fresh-funding-named-night-20261123.json)
+closes that local source-onboarding evidence gap for one new synthetic JubJub
+ACC on signed `fcaa85b5`: its distinct 10 NIGHT original credited canonically,
+the separately funded device wallet registered DUST, and a reviewed 1 NIGHT
+payment to `paidfix.night` finalized both legs. Source/recipient balances
+moved 10/6 → 9/7. The earlier ambiguous original remains pending; long-proof
+failure recovery, real passkeys and online providers are still open.
+
 The [shared-chain browser receipt](../../examples/midnames-local/evidence/candidate-acc-combined-local-claim-20261122.json)
 records one synthetic ACC creation, same-profile paid `.night` claim, exact
 indexed success and matching registry target. Those steps span signed source
