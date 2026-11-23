@@ -351,6 +351,16 @@ the proof was **not submitted**. This establishes the owner proof path for a
 future live name-repoint refusal test; it does not establish changed on-chain
 resolution or a connected browser refusal.
 
+The later [local repoint and browser refusal](../../examples/midnames-local/evidence/compact0361-native-name-repoint-refusal-20261123.json)
+submitted one saved original from that owner to change the synthetic name's
+contract target to the test sender ACC. API v4 indexed `SUCCESS` in a
+node-canonical block. A fresh-process Passport browser then read the new target
+at a finalized block and refused a 1 NIGHT send as `NightSelfRecipient` before
+owner review. The payment journal stayed inactive and the sender and earlier
+recipient balances remained 8/6. This qualifies a completed local repoint and
+self-recipient refusal. It does not cover a name changing **after** payment
+review, a non-contract target, or an online registry.
+
 The source reader also accepts an explicit local `standalone-0.36.1` profile
 for this registry's byte-identical verifier roster. A retained-chain read
 checked the paid claim, owner transfer, and current name-to-ACC binding at

@@ -71,7 +71,7 @@ the test interrupted deposit proving before a deposit original was prepared.
 A new Chrome process reopened the same mock-passkey ACC and saved journal,
 confirmed recovery, reused the original withdrawal and finalized one deposit.
 Canonical transaction checks and node-finalized snapshots measured balances
-9/5 → 8/6, with one archived intent and no active one. Native live repoint,
+9/5 → 8/6, with one archived intent and no active one. Post-review repoint,
 non-contract target and unsupported-asset refusals, physical passkey custody,
 online resolution and release acceptance still need separate qualification.
 
@@ -81,6 +81,14 @@ then used the transferred `v36claim23.night` witness to prove one
 overclaimed deletion credit, and the registry target remained unchanged because
 the call was not submitted. This prepares the live repoint lane; it does not
 qualify a changed on-chain mapping or a connected browser refusal.
+
+A later [isolated repoint and connected refusal](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-native-name-repoint-refusal-20261123.json)
+submitted one saved owner-authorized original and confirmed the synthetic name
+now points to the test sender ACC at a node-canonical block. A fresh-process
+Passport browser read that finalized mapping and refused the named NIGHT send
+as `NightSelfRecipient` before owner review. Its payment journal and 8/6 ACC
+balances were unchanged. A name change **after** a payment review, a
+non-contract target, and unsupported-asset refusals remain open.
 
 ## Current Midnames delivery
 
