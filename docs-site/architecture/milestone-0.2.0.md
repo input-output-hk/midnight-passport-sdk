@@ -107,9 +107,16 @@ fresh review of the old and current targets and the withdrawal ID. The old ACC
 binding is checked again before the deposit fence, and a changed registry is
 refused. The name is re-resolved at the deposit fence, so another repoint
 requires another review. Connected-host tests exercise no second withdrawal
-and the exact original deposit. An absent, non-contract, unsupported or
-unavailable current name remains pending for a separate repair path. An
-[isolated native browser run](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-native-postwithdraw-repoint-recovery-20261123.json)
+and the exact original deposit.
+
+An absent, invalid/non-contract, expired,
+unsupported or unavailable current name can use a distinct direct-ACC repair
+review for only the saved output and originally reviewed ACC. The host rechecks
+the original binding and observed name status before deposit. This path has
+source and connected-host tests; native browser and chain evidence remain
+open.
+
+An [isolated native browser run](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-native-postwithdraw-repoint-recovery-20261123.json)
 at signed source `a215ba3` finalized one withdrawal, repointed the name to a
 second supported ACC, and deposited the saved output into the originally
 reviewed ACC after a separate recovery review. A fresh browser verified the

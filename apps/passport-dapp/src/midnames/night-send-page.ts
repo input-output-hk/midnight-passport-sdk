@@ -22,6 +22,7 @@ import {
   type NightSendIntent,
   type NightSendLeg,
   type NightSendRequest,
+  type NightUnresolvedObservation,
 } from './night-send.js';
 import {
   namedNightStatus,
@@ -79,6 +80,21 @@ function originalDepositReviewText(
   withdrawal: NightSendLeg,
 ): string {
   return `The name changed after your NIGHT withdrawal.\n\nName: ${original.name}\nNetwork: ${original.networkId}\nRegistry: ${original.providerId.slice('midnames:'.length)}\nOriginally reviewed Passport ACC: ${original.target}\nCurrent named Passport ACC: ${current.target}\nAmount: ${original.amount} NIGHT smallest units\nSaved withdrawal: ${withdrawal.hash}\nOperation now: deposit_unshielded into the originally reviewed ACC\nRequest: ${original.requestId}\n\nContinue the original deposit into ${original.target}? This uses only the saved withdrawal output. It does not withdraw again or redirect the payment to the new named ACC. Declining leaves the original withdrawal and its output pending for inspection.`;
+}
+
+function unresolvedDepositReviewText(
+  original: NightSendIntent,
+  observation: NightUnresolvedObservation,
+  withdrawal: NightSendLeg,
+): string {
+  const status = {
+    Absent: 'The name service reports no current record.',
+    InvalidRecord: 'The name service returned an invalid or non-contract record.',
+    Expired: 'The name record is expired.',
+    Unavailable: 'The current name or target binding could not be verified.',
+    UnsupportedTarget: 'The current name target is not a supported recipient ACC.',
+  }[observation.reason];
+  return `Finish the saved NIGHT withdrawal at its original ACC?\n\nName: ${original.name}\nNetwork: ${original.networkId}\nRegistry: ${original.providerId.slice('midnames:'.length)}\nCurrent name status: ${status}${observation.currentTarget ? `\nCurrent reported target: ${observation.currentTarget}` : ''}\nOriginally reviewed Passport ACC: ${original.target}\nAmount: ${original.amount} NIGHT smallest units\nSaved withdrawal: ${withdrawal.hash}\nOperation now: deposit_unshielded into the originally reviewed ACC\nRequest: ${original.requestId}\n\nThis is direct recovery of the saved output, not a new named payment. The current name does not authorize this destination. The original ACC binding and saved output will be checked again before submission. No second withdrawal or redirect will occur. Declining keeps the original pending.`;
 }
 
 async function connectedPageSend(
@@ -179,6 +195,18 @@ async function connectedPageSend(
           requestId: original.requestId,
           withdrawal: withdrawal.hash,
         },
+      );
+      return approved;
+    },
+    async reviewUnresolvedOriginalDeposit(original, observation, withdrawal) {
+      host.stage('review');
+      const approved = window.confirm(
+        unresolvedDepositReviewText(original, observation, withdrawal),
+      );
+      checkScope();
+      traceOperation(
+        approved ? 'namedNight.originalRepairApproved' : 'namedNight.originalRepairDeclined',
+        { requestId: original.requestId, withdrawal: withdrawal.hash, reason: observation.reason },
       );
       return approved;
     },
@@ -335,7 +363,7 @@ export function createNamedNightPage(
       await inspect();
       host.status(
         result.phase === 'completed'
-          ? 'Both original NIGHT payment legs finalized. The named recipient ACC can now be refreshed.'
+          ? 'Both original NIGHT payment legs finalized. Refresh the originally reviewed recipient ACC to check its balance.'
           : 'The original NIGHT payment remains pending. Keep its IDs and resume only those legs.',
       );
     } catch (error) {

@@ -8,6 +8,7 @@ import {
   type NightSendIntent,
   type NightSendLeg,
   type NightSendRequest,
+  type NightUnresolvedObservation,
 } from '../src/midnames/night-send.js';
 import { createMidnamesNameService } from '../src/midnames/resolver.js';
 import type { PreparedValueSubmission } from '@input-output-hk/mn-passport-protocol';
@@ -32,6 +33,7 @@ function fixture() {
     supportedTarget: true,
     balance: 10n as bigint | undefined,
     absent: false,
+    outage: false,
     stopBeforeDeposit: false,
     dropDepositReply: false,
     finalized: new Set<string>(),
@@ -44,13 +46,14 @@ function fixture() {
   const legs = new Map<string, NightSendLeg>();
   const recoveryRecords: {
     original: NightSendIntent;
-    current: NightSendIntent;
+    current: NightSendIntent | NightUnresolvedObservation;
     withdrawal: NightSendLeg;
   }[] = [];
   const names = createMidnamesNameService(
     { networkId: request.networkId, namespace: 'night', registryAddress: 'd'.repeat(64) },
     {
       async readTarget() {
+        if (state.outage) throw new Error('indexer unavailable');
         if (state.absent) return undefined;
         return state.validTarget ? { kind: 'contract', address: state.address } : { kind: 'other' };
       },
@@ -279,7 +282,7 @@ test('a repointed name needs a fresh review to finish only the saved original de
     'a second repoint needs a new review; a fenced deposit does not',
   );
   assert.deepEqual(
-    recoveryRecords.map((row) => row.current.target),
+    recoveryRecords.map((row) => ('target' in row.current ? row.current.target : undefined)),
     ['d'.repeat(64), 'e'.repeat(64)],
   );
   assert.deepEqual(calls, [
@@ -293,6 +296,130 @@ test('a repointed name needs a fresh review to finish only the saved original de
     'recovery-record',
     'deposit',
   ]);
+});
+
+test('an unresolved name can repair only the exact finalized output at its original ACC', async () => {
+  for (const [kind, reason] of [
+    ['absent', 'Absent'],
+    ['invalid', 'InvalidRecord'],
+    ['outage', 'Unavailable'],
+    ['unsupported', 'UnsupportedTarget'],
+  ] as const) {
+    const { state, calls, ports, legs, recoveryRecords } = fixture();
+    state.finalized.add(withdrawal.hash);
+    state.stopBeforeDeposit = true;
+    await assert.rejects(sendNightByName(request, ports()), NightDepositInterrupted);
+    state.stopBeforeDeposit = false;
+    if (kind === 'absent') state.absent = true;
+    if (kind === 'invalid') state.validTarget = false;
+    if (kind === 'outage') state.outage = true;
+    if (kind === 'unsupported') state.address = 'd'.repeat(64);
+    const base = ports();
+    const recovery = {
+      ...base,
+      async isSupportedRecipient(address: string) {
+        return address === target;
+      },
+      async reviewUnresolvedOriginalDeposit(
+        original: NightSendIntent,
+        observation: NightUnresolvedObservation,
+        saved: NightSendLeg,
+      ) {
+        assert.equal(original.target, target);
+        assert.equal(observation.reason, reason);
+        assert.deepEqual(saved, withdrawal);
+        calls.push('repair-review');
+        return true;
+      },
+    };
+    await assert.rejects(sendNightByName(request, base), NightDepositInterrupted);
+    assert.equal(legs.has('deposit'), false);
+    state.duringDepositProof = () => {
+      state.absent = false;
+      state.validTarget = true;
+      state.outage = false;
+      state.address = target;
+    };
+    await assert.rejects(sendNightByName(request, recovery), NightDepositInterrupted);
+    assert.equal(legs.has('deposit'), false, 'a changed observation needs another review');
+    state.duringDepositProof = () => {};
+    if (kind === 'absent') state.absent = true;
+    if (kind === 'invalid') state.validTarget = false;
+    if (kind === 'outage') state.outage = true;
+    if (kind === 'unsupported') state.address = 'd'.repeat(64);
+    assert.equal((await sendNightByName(request, recovery)).phase, 'deposit-pending');
+    assert.equal(legs.get('deposit')?.hash, deposit.hash);
+    assert.equal(calls.filter((call) => call === 'sign').length, 1);
+    assert.equal(calls.filter((call) => call === 'withdraw').length, 1);
+    assert.equal(calls.filter((call) => call === 'deposit').length, 1);
+    assert.deepEqual(
+      recoveryRecords.map((row) =>
+        'reason' in row.current ? row.current.reason : row.current.target,
+      ),
+      [reason, reason],
+    );
+    state.finalized.add(deposit.hash);
+    assert.equal((await sendNightByName(request, recovery)).phase, 'completed');
+  }
+});
+
+test('unresolved repair refuses changed provider, lost original binding and failed durable review', async () => {
+  const { state, ports, legs, calls } = fixture();
+  state.finalized.add(withdrawal.hash);
+  state.stopBeforeDeposit = true;
+  await assert.rejects(sendNightByName(request, ports()), NightDepositInterrupted);
+  state.stopBeforeDeposit = false;
+  state.absent = true;
+  let reviews = 0;
+  const base = ports();
+  const recovery = {
+    ...base,
+    async reviewUnresolvedOriginalDeposit() {
+      reviews++;
+      return true;
+    },
+  };
+  const changedProvider = createMidnamesNameService(
+    { networkId: request.networkId, namespace: 'night', registryAddress: 'f'.repeat(64) },
+    {
+      async readTarget() {
+        return undefined;
+      },
+      async isSupportedAccount() {
+        return true;
+      },
+    },
+  );
+  await assert.rejects(
+    sendNightByName(request, { ...recovery, names: changedProvider }),
+    NightDepositInterrupted,
+  );
+  assert.equal(reviews, 0);
+  await assert.rejects(
+    sendNightByName(request, {
+      ...recovery,
+      async isSupportedRecipient() {
+        return false;
+      },
+    }),
+    NightDepositInterrupted,
+  );
+  assert.equal(reviews, 0);
+  await assert.rejects(
+    sendNightByName(request, {
+      ...recovery,
+      journal: {
+        ...base.journal,
+        async recordRecoveryReview() {
+          throw new Error('storage unavailable');
+        },
+      },
+    }),
+    NightDepositInterrupted,
+  );
+  assert.equal(reviews, 1);
+  assert.equal(legs.has('deposit'), false);
+  assert.deepEqual(calls, ['review', 'sign', 'withdraw']);
 });
 
 test('the original ACC binding must survive the recovery review and proof', async () => {

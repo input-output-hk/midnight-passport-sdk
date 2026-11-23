@@ -69,7 +69,7 @@ export function sameLocalNightIndexer(
 export function namedNightStatus(record: BrowserNightSendRecord | undefined): string {
   if (!record) return 'No named NIGHT payment is pending for this account.';
   const intent = record.intent;
-  const detail = `Original ${intent.requestId}: ${intent.amount} NIGHT smallest units to ${intent.name} (${intent.target}) via ${intent.providerId}.`;
+  const detail = `Original ${intent.requestId}: ${intent.amount} NIGHT smallest units reviewed for ${intent.name}; original ACC ${intent.target} via ${intent.providerId}. The current name status may differ.`;
   if (!record.withdrawal)
     return `${detail} The owner attempt has no saved transaction ID. Inspect Audit and the chain before any new payment; this attempt cannot be retried automatically.`;
   if (!record.deposit)

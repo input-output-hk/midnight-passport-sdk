@@ -160,6 +160,43 @@ test('post-withdrawal recovery observations survive reload and completion', asyn
   journal.close();
 });
 
+test('unresolved direct-ACC repair reviews are durable and bound to the original withdrawal', async () => {
+  const factory = new IDBFactory();
+  let journal = await openBrowserNightSendJournal(factory, candidateScope);
+  await journal.createIntent(intent);
+  await journal.fenceLeg('withdraw', withdrawal);
+  await assert.rejects(
+    journal.recordRecoveryReview(intent, { reason: 'UnsupportedTarget' }, withdrawal),
+    /observation is invalid/,
+  );
+  await assert.rejects(
+    journal.recordRecoveryReview(
+      intent,
+      { reason: 'Absent', currentTarget: '6'.repeat(64) },
+      withdrawal,
+    ),
+    /observation is invalid/,
+  );
+  await assert.rejects(
+    journal.recordRecoveryReview(intent, { reason: 'Unavailable' }, deposit),
+    /cannot be recorded/,
+  );
+  await journal.recordRecoveryReview(intent, { reason: 'Unavailable' }, withdrawal);
+  journal.close();
+
+  journal = await openBrowserNightSendJournal(factory, candidateScope);
+  const review = (await journal.readActive())?.recoveryReviews?.[0];
+  assert.ok(review);
+  assert.equal(review.unresolvedReason, 'Unavailable');
+  assert.equal(review.currentTarget, undefined);
+  assert.equal(review.originalTarget, intent.target);
+  assert.equal(review.withdrawalHash, withdrawal.hash);
+  await journal.fenceLeg('deposit', deposit);
+  await journal.archiveCompleted(intent, withdrawal, deposit, async () => true);
+  assert.deepEqual((await journal.readArchived(intent.requestId))?.recoveryReviews, [review]);
+  journal.close();
+});
+
 test('a known pre-owner refusal retires only the exact no-leg intent and retains its audit', async () => {
   const factory = new IDBFactory();
   let journal = await openBrowserNightSendJournal(factory, scope);

@@ -3,6 +3,7 @@ import {
   type NightSendIntent,
   type NightSendJournal,
   type NightSendLeg,
+  type NightUnresolvedObservation,
 } from './night-send.js';
 import { validNightCredentialHex } from './night-send-credential.js';
 import { localNightBinding } from './local-binding.js';
@@ -14,6 +15,9 @@ const hex32 = (value: unknown): value is string =>
   typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const uuid = (value: unknown): value is string =>
   typeof value === 'string' && /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(value);
+const unresolvedReason = (value: unknown): value is NightUnresolvedObservation['reason'] =>
+  typeof value === 'string' &&
+  ['Absent', 'InvalidRecord', 'Expired', 'Unavailable', 'UnsupportedTarget'].includes(value);
 
 export interface BrowserNightSendScope {
   readonly networkId: 'undeployed';
@@ -45,7 +49,8 @@ export interface NightRecoveryReview {
   readonly providerId: string;
   readonly namespace: 'night';
   readonly originalTarget: string;
-  readonly currentTarget: string;
+  readonly currentTarget?: string;
+  readonly unresolvedReason?: NightUnresolvedObservation['reason'];
   readonly withdrawalHash: string;
   readonly approvedAt: string;
 }
@@ -136,8 +141,14 @@ function checkedRecoveryReviews(
       row.providerId !== intent.providerId ||
       row.namespace !== intent.namespace ||
       row.originalTarget !== intent.target ||
-      !hex32(row.currentTarget) ||
-      row.currentTarget === intent.target ||
+      (row.unresolvedReason === undefined
+        ? !hex32(row.currentTarget) || row.currentTarget === intent.target
+        : !unresolvedReason(row.unresolvedReason) ||
+          (row.currentTarget !== undefined && !hex32(row.currentTarget)) ||
+          (row.unresolvedReason === 'UnsupportedTarget' && !hex32(row.currentTarget)) ||
+          (row.unresolvedReason !== 'UnsupportedTarget' &&
+            row.unresolvedReason !== 'Unavailable' &&
+            row.currentTarget !== undefined)) ||
       row.withdrawalHash !== withdrawal.hash ||
       typeof row.approvedAt !== 'string' ||
       !Number.isFinite(Date.parse(row.approvedAt))
@@ -149,7 +160,8 @@ function checkedRecoveryReviews(
       providerId: intent.providerId,
       namespace: 'night',
       originalTarget: intent.target,
-      currentTarget: row.currentTarget,
+      ...(typeof row.currentTarget === 'string' ? { currentTarget: row.currentTarget } : {}),
+      ...(unresolvedReason(row.unresolvedReason) ? { unresolvedReason: row.unresolvedReason } : {}),
       withdrawalHash: withdrawal.hash,
       approvedAt: row.approvedAt,
     };
@@ -386,13 +398,25 @@ function recoveryReviewMethod(
 ): NonNullable<NightSendJournal['recordRecoveryReview']> {
   return async (original, current, withdrawal) => {
     const expected = checkedIntent(original, scope);
-    const observed = checkedIntent(current, scope);
+    const unresolved = 'reason' in current ? current : undefined;
+    const observed = unresolved ? undefined : checkedIntent(current, scope);
     const saved = checkedLeg(withdrawal);
     if (
-      observed.target === expected.target ||
-      !same({ ...expected, target: observed.target }, observed)
+      observed &&
+      (observed.target === expected.target ||
+        !same({ ...expected, target: observed.target }, observed))
     )
       throw new Error('The recovered NIGHT name observation differs from the original scope.');
+    if (
+      unresolved &&
+      (!unresolvedReason(unresolved.reason) ||
+        (unresolved.currentTarget !== undefined && !hex32(unresolved.currentTarget)) ||
+        (unresolved.reason === 'UnsupportedTarget' && !unresolved.currentTarget) ||
+        (unresolved.reason !== 'UnsupportedTarget' &&
+          unresolved.reason !== 'Unavailable' &&
+          unresolved.currentTarget !== undefined))
+    )
+      throw new Error('The unresolved NIGHT name observation is invalid.');
     await access((row, tx) => {
       if (
         !row?.withdrawal ||
@@ -408,7 +432,11 @@ function recoveryReviewMethod(
         providerId: expected.providerId,
         namespace: 'night',
         originalTarget: expected.target,
-        currentTarget: observed.target,
+        ...(observed && { currentTarget: observed.target }),
+        ...(unresolved && {
+          unresolvedReason: unresolved.reason,
+          ...(unresolved.currentTarget && { currentTarget: unresolved.currentTarget }),
+        }),
         withdrawalHash: saved.hash,
         approvedAt: new Date().toISOString(),
       };

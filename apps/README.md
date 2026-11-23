@@ -1121,11 +1121,16 @@ amount and saved withdrawal ID. Declining leaves the original pending; approval
 does not withdraw again or redirect to the newly named ACC. The original ACC
 binding is checked again before the deposit is fenced. A changed registry or
 provider does not use this recovery path. The name is re-resolved just before
-the deposit fence; another repoint requires another review. An absent,
-non-contract, unsupported or unavailable current name remains pending for a
-separate original-output recovery path; this dialog does not repair those cases.
-Each approved observation (name, network, registry/provider, old and new ACC,
-withdrawal ID and time) is durably appended to the browser intent before deposit
+the deposit fence; another repoint requires another review. If the current
+name is absent, invalid/non-contract, expired, unsupported or unavailable,
+the page offers a distinct direct-ACC repair review for the **saved output and
+originally reviewed ACC only**. It states that the name cannot authorize the
+destination and shows the reason. The original ACC binding and observed name
+status are checked again before the deposit fence; a changed observation
+requires another review. This source path still needs native browser evidence.
+Each approved observation (name, network, registry/provider, original ACC,
+current ACC or unresolved status, withdrawal ID and time) is durably appended
+to the browser intent before deposit
 proof and retained in its archived history. This is a local audit record, not an
 ACC-signed name field or a cryptographic state proof.
 

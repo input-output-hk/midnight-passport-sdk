@@ -460,10 +460,15 @@ journal pending. Approval uses the one observed bridge output and does not
 repeat the owner withdrawal or pay the new named ACC. The original ACC binding
 is rechecked before the deposit fence; a changed registry refuses this path.
 The name is also re-resolved at that fence, and another repoint requires a new
-review. Absent, non-contract, unsupported or unavailable current names still
-leave the output pending; an independent original-output recovery action is
-open #318 work.
-Each approval writes the observed name/registry, old/current ACCs, withdrawal
+review. If the current name is absent, invalid/non-contract, expired,
+unsupported or unavailable, a distinct direct-ACC repair review may finish
+only the saved output at the originally reviewed ACC. The dialog states that
+the name cannot authorize the destination and shows the current observation.
+The original ACC binding and observation are rechecked before deposit; a
+changed observation requires another review. This path has source and
+connected-host tests; native browser evidence remains open.
+Each approval writes the observed name/registry, original ACC and current ACC
+or unresolved status, withdrawal
 ID and timestamp to the durable browser journal before proof. The record
 survives reload and archive; it is not an ACC signature or inclusion proof.
 An [isolated Ledger 9 browser run](../../examples/midnames-local/evidence/compact0361-native-postwithdraw-repoint-recovery-20261123.json)

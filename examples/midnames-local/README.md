@@ -95,8 +95,15 @@ review. The first run stopped at a read-only preflight assertion; the payment
 run's supervisor later failed on an obsolete balance assertion. Exact
 reconciliation verified canonical originals, 8/6/0 → 7/7/0 ACC balances,
 stopped resources and released lease. The original was not resubmitted.
-This qualifies a bounded local synthetic recovery only; absent or unsupported
-current names, real passkeys and online providers remain open.
+This qualifies a bounded local synthetic recovery only; native repair for
+absent or unsupported current names, real passkeys and online providers remain open.
+
+The next source preview adds a direct original-output repair review when the
+current name is absent, invalid/non-contract, expired, unsupported or
+unavailable after withdrawal. It retains the original ACC and withdrawal,
+records the unresolved status before proof, and checks the status and original
+ACC binding again before fencing the deposit. Source and connected-host tests
+pass; native browser and chain evidence for this mode remain open.
 
 The [routing-refusal receipt](evidence/compact0361-native-routing-refusals-20261123.json)
 then checked a live `UnshieldedAddr` target with the same bytes as a supported

@@ -1,4 +1,5 @@
 import {
+  PassportNameError,
   resolvePassportName,
   type PassportNameService,
 } from '@input-output-hk/mn-passport-account/names';
@@ -35,6 +36,15 @@ export interface NightSendLeg {
   readonly identifiers: readonly string[];
 }
 
+export type NightUnresolvedReason =
+  'Absent' | 'InvalidRecord' | 'Expired' | 'Unavailable' | 'UnsupportedTarget';
+
+/** A fresh name lookup that cannot authorize a new named destination. */
+export interface NightUnresolvedObservation {
+  readonly reason: NightUnresolvedReason;
+  readonly currentTarget?: string;
+}
+
 export interface NightSendJournal {
   readIntent(): Promise<NightSendIntent | undefined>;
   /** Exclusively create. A losing writer must fail before preparing a payment. */
@@ -51,7 +61,7 @@ export interface NightSendJournal {
   /** Durably pin each approved post-withdrawal mapping before another deposit proof. */
   recordRecoveryReview?(
     original: NightSendIntent,
-    current: NightSendIntent,
+    current: NightSendIntent | NightUnresolvedObservation,
     withdrawal: NightSendLeg,
   ): Promise<void>;
 }
@@ -115,6 +125,12 @@ interface NightSendCorePorts {
   reviewOriginalDeposit?(
     original: NightSendIntent,
     current: NightSendIntent,
+    withdrawal: NightSendLeg,
+  ): Promise<boolean>;
+  /** Explicit direct-ACC repair when the current name cannot authorize a named route. */
+  reviewUnresolvedOriginalDeposit?(
+    original: NightSendIntent,
+    observation: NightUnresolvedObservation,
     withdrawal: NightSendLeg,
   ): Promise<boolean>;
   /** Prepare a deposit funded by the original withdrawal output to the controlled wallet. */
@@ -190,6 +206,66 @@ async function resolveIntent(
   });
 }
 
+async function observeRecovery(
+  intent: NightSendIntent,
+  ports: Pick<NightSendPorts, 'names' | 'isSupportedRecipient'>,
+): Promise<NightSendIntent | NightUnresolvedObservation> {
+  const provider = ports.names.provider;
+  const sameProvider = () =>
+    provider.id === intent.providerId &&
+    provider.namespace === intent.namespace &&
+    provider.mode === 'external' &&
+    ports.names.provider === provider;
+  if (!sameProvider())
+    throw new NightSendPreflightError('NightNameChanged', 'The original name provider changed.');
+  let target;
+  try {
+    target = await resolvePassportName(ports.names, intent);
+  } catch (error) {
+    if (!(error instanceof PassportNameError) || error.code === 'InvalidQuery') throw error;
+    if (!sameProvider())
+      throw new NightSendPreflightError('NightNameChanged', 'The original name provider changed.');
+    return { reason: error.code };
+  }
+  if (!sameProvider() || (target && target.providerId !== intent.providerId))
+    throw new NightSendPreflightError('NightNameChanged', 'The original name provider changed.');
+  if (!target) return { reason: 'Absent' };
+  if (target.mode !== 'external' || target.namespace !== intent.namespace)
+    throw new NightSendPreflightError('NightNameChanged', 'The original name provider changed.');
+  if (target.accountAddress === intent.source)
+    return { reason: 'UnsupportedTarget', currentTarget: target.accountAddress };
+  let supported: boolean;
+  try {
+    supported = await ports.isSupportedRecipient(target.accountAddress, intent.networkId);
+  } catch {
+    if (!sameProvider())
+      throw new NightSendPreflightError('NightNameChanged', 'The original name provider changed.');
+    return { reason: 'Unavailable', currentTarget: target.accountAddress };
+  }
+  if (!sameProvider())
+    throw new NightSendPreflightError('NightNameChanged', 'The original name provider changed.');
+  if (!supported) return { reason: 'UnsupportedTarget', currentTarget: target.accountAddress };
+  return { ...intent, target: target.accountAddress };
+}
+
+function sameObservation(
+  reviewed: NightSendIntent | NightUnresolvedObservation,
+  current: NightSendIntent | NightUnresolvedObservation,
+) {
+  if ('reason' in reviewed || 'reason' in current)
+    return (
+      'reason' in reviewed &&
+      'reason' in current &&
+      reviewed.reason === current.reason &&
+      reviewed.currentTarget === current.currentTarget
+    );
+  return (
+    reviewed.target === current.target &&
+    reviewed.providerId === current.providerId &&
+    reviewed.namespace === current.namespace
+  );
+}
+
 function assertSameIntent(a: NightSendIntent, b: NightSendIntent) {
   if (
     a.requestId !== b.requestId ||
@@ -231,17 +307,13 @@ async function submitLeg(
   prepared: PreparedLeg,
   ports: NightSendPorts,
   prior?: NightSendLeg,
-  recoveryObservation?: NightSendIntent,
+  recoveryObservation?: NightSendIntent | NightUnresolvedObservation,
 ) {
   const original = checkedLeg(prepared.original);
   if (prior) requireDistinctLegs(prior, original);
   if (recoveryObservation) {
-    const current = await resolveIntent(intent, ports);
-    if (
-      current.target !== recoveryObservation.target ||
-      current.providerId !== recoveryObservation.providerId ||
-      current.namespace !== recoveryObservation.namespace
-    )
+    const current = await observeRecovery(intent, ports);
+    if (!sameObservation(recoveryObservation, current))
       throw new NightSendPreflightError(
         'NightNameChanged',
         'The name changed again during deposit recovery. Review the destination again.',
@@ -338,19 +410,23 @@ async function submitSelectedWithdrawal(
 
 async function depositOriginalWithdrawal(
   intent: NightSendIntent,
-  request: NightSendRequest,
   withdrawal: NightSendLeg,
   ports: NightSendPorts,
 ) {
-  const current = await resolveIntent(request, ports);
-  if (current.providerId !== intent.providerId || current.namespace !== intent.namespace)
-    throw new NightSendPreflightError(
-      'NightNameChanged',
-      'The name provider changed after withdrawal. Inspect the saved original.',
-    );
-  const repointed = current.target !== intent.target;
-  if (repointed) {
-    if (!ports.reviewOriginalDeposit || !ports.journal.recordRecoveryReview)
+  const current = await observeRecovery(intent, ports);
+  const needsRecovery = 'reason' in current || current.target !== intent.target;
+  if (needsRecovery) {
+    if (!ports.journal.recordRecoveryReview)
+      throw new NightSendPreflightError(
+        'NightNameChanged',
+        'The name cannot authorize the original deposit. Inspect the saved withdrawal.',
+      );
+    if ('reason' in current && !ports.reviewUnresolvedOriginalDeposit)
+      throw new NightSendPreflightError(
+        'NightNameUnavailable',
+        'The current name cannot be verified. Review the saved original ACC before deposit.',
+      );
+    if (!('reason' in current) && !ports.reviewOriginalDeposit)
       throw new NightSendPreflightError(
         'NightNameChanged',
         'The name changed after withdrawal. Inspect the saved original before deposit.',
@@ -360,7 +436,11 @@ async function depositOriginalWithdrawal(
         'NightRecipientUnsupported',
         'The originally reviewed ACC no longer has a supported binding.',
       );
-    if (!(await ports.reviewOriginalDeposit(intent, current, withdrawal)))
+    const approved =
+      'reason' in current
+        ? await ports.reviewUnresolvedOriginalDeposit?.(intent, current, withdrawal)
+        : await ports.reviewOriginalDeposit?.(intent, current, withdrawal);
+    if (!approved)
       throw new Error('The original deposit recovery was declined. The withdrawal remains saved.');
     await ports.journal.recordRecoveryReview(intent, current, withdrawal);
   } else assertSameIntent(intent, current);
@@ -370,7 +450,7 @@ async function depositOriginalWithdrawal(
     await ports.prepareDeposit(intent, withdrawal),
     ports,
     withdrawal,
-    repointed ? current : undefined,
+    needsRecovery ? current : undefined,
   );
 }
 
@@ -441,7 +521,7 @@ export async function sendNightByName(input: NightSendRequest, ports: NightSendP
 
   if (!deposit) {
     try {
-      deposit = await depositOriginalWithdrawal(intent, request, withdrawal, ports);
+      deposit = await depositOriginalWithdrawal(intent, withdrawal, ports);
     } catch (cause) {
       throw new NightDepositInterrupted(withdrawal, cause);
     }

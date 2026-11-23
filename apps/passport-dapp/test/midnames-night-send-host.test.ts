@@ -158,6 +158,7 @@ async function connectedJourney(
   provisionalLocal = false,
   refusal?: 'repoint-after-review' | 'non-contract-target' | 'unsupported-asset',
   recoverRepoint = false,
+  recoverUnavailable = false,
 ) {
   const factory = new IDBFactory();
   const finalized = new Set<string>();
@@ -168,6 +169,7 @@ async function connectedJourney(
   let loseDepositReply = false;
   let selected = true;
   let namedTarget = target;
+  let nameUnavailable = false;
   let switchAt: 'review' | 'withdrawal' | undefined;
   const originalTransaction: NightBridgeTransaction = {
     transactionHash: () => withdrawal.hash,
@@ -276,10 +278,13 @@ async function connectedJourney(
   const names = createMidnamesNameService(
     { networkId: 'undeployed', namespace: 'night', registryAddress: '3'.repeat(64) },
     {
-      readTarget: async () => ({
-        kind: refusal === 'non-contract-target' ? 'other' : 'contract',
-        address: namedTarget,
-      }),
+      readTarget: async () => {
+        if (nameUnavailable) throw new Error('name indexer unavailable');
+        return {
+          kind: refusal === 'non-contract-target' ? 'other' : 'contract',
+          address: namedTarget,
+        };
+      },
       isSupportedAccount: async () => true,
     },
   );
@@ -311,6 +316,20 @@ async function connectedJourney(
             assert.equal(current.target, '6'.repeat(64));
             assert.equal(saved.hash, withdrawal.hash);
             calls.push('recovery-review');
+            return true;
+          },
+        }),
+        ...(recoverUnavailable && {
+          reviewUnresolvedOriginalDeposit: async (
+            original: { target: string; requestId: string },
+            observation: { reason: string },
+            saved: { hash: string },
+          ) => {
+            assert.equal(original.target, target);
+            assert.equal(original.requestId, request.requestId);
+            assert.equal(observation.reason, 'Unavailable');
+            assert.equal(saved.hash, withdrawal.hash);
+            calls.push('repair-review');
             return true;
           },
         }),
@@ -387,8 +406,9 @@ async function connectedJourney(
   assert.equal((await host.readActive())?.deposit, undefined);
   host = await openHost();
   assert.deepEqual((await host.readActive())?.withdrawal, withdrawal);
-  namedTarget = '6'.repeat(64);
-  if (!recoverRepoint) {
+  if (recoverUnavailable) nameUnavailable = true;
+  else namedTarget = '6'.repeat(64);
+  if (!recoverRepoint && !recoverUnavailable) {
     await assert.rejects(
       () => host.send(request),
       (error) => {
@@ -412,7 +432,10 @@ async function connectedJourney(
   assert.equal((await host.send(request)).phase, 'completed');
   assert.equal(await host.readActive(), undefined);
   const journal = await openBrowserNightSendJournal(factory, selectedScope);
-  assert.equal((await journal.readArchived(request.requestId))?.deposit?.hash, deposit.hash);
+  const archived = await journal.readArchived(request.requestId);
+  assert.equal(archived?.deposit?.hash, deposit.hash);
+  if (recoverUnavailable)
+    assert.equal(archived?.recoveryReviews?.[0]?.unresolvedReason, 'Unavailable');
   journal.close();
   assert.deepEqual(calls, [
     'review',
@@ -421,11 +444,14 @@ async function connectedJourney(
     'observe-output',
     'prove-deposit',
     ...(recoverRepoint ? ['recovery-review'] : []),
+    ...(recoverUnavailable ? ['repair-review'] : []),
     'observe-output',
     'prove-deposit',
     'prepare-deposit',
     'submit-deposit',
   ]);
+
+  nameUnavailable = false;
 
   Object.defineProperty(account, 'address', { value: '6'.repeat(64), configurable: true });
   await assert.rejects(() => host.send(request), /selected NIGHT owner changed/);
@@ -511,6 +537,10 @@ test('connected NIGHT host reopens the original journal through withdrawal, depo
 
 test('connected NIGHT host resumes only the reviewed original deposit after a name repoint', async () => {
   await connectedJourney(network, false, undefined, true);
+});
+
+test('connected NIGHT host repairs the exact original deposit during a name outage', async () => {
+  await connectedJourney(network, false, undefined, false, true);
 });
 
 test('pinned local candidate reopens the same two-leg original and rejects a nonlocal endpoint', async () => {

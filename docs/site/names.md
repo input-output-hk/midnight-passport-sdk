@@ -967,9 +967,12 @@ ACC targets, amount and saved withdrawal ID. The host rechecks the old ACC's
 supported binding before fencing the deposit. It never sends that output to
 the new named ACC or repeats the withdrawal. A changed registry/provider
 refuses this recovery mode. The current name target is rechecked at the deposit
-fence; a second repoint requires a new review. An absent, non-contract,
-unsupported or unavailable current name leaves the saved output pending; a
-separate original-output repair action remains open #318 work. Source and
+fence; a second repoint requires a new review. An absent, invalid/non-contract,
+expired, unsupported or unavailable current name can use a distinct
+direct-ACC repair review for the saved output and originally reviewed ACC.
+The name does not authorize this destination; the dialog says so and shows
+the observed status. The original ACC binding and observation are checked
+again before deposit. A changed observation needs a new review. Source and
 connected-host tests cover the supported-repoint path. Each approved mapping
 observation is durably saved with the original withdrawal in the credential
 scoped browser journal and later archived; the name is still host checked, not
@@ -979,6 +982,8 @@ name repoint, a separate recovery review, and deposit of the saved output into
 the originally reviewed ACC. The archive retained the review after reload.
 The successful payment run's supervisor had an obsolete balance assertion;
 exact reconciliation verified the finalized IDs and balances without replay.
+The unresolved-name repair path has source and connected-host tests only; its
+native browser and chain acceptance remain open under #318.
 
 An [isolated Compact 0.36.1 native receipt](../../examples/midnames-local/evidence/compact0361-paid-name-night-send-20261123.json)
 resolved a previously paid, user-owned `.night` name to its contract target,

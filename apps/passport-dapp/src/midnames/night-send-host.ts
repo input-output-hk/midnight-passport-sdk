@@ -15,6 +15,7 @@ import {
   type NightSendIntent,
   type NightSendLeg,
   type NightSendRequest,
+  type NightUnresolvedObservation,
 } from './night-send.js';
 import { createNightOwnerWithdrawal } from './night-send-owner.js';
 import {
@@ -36,6 +37,11 @@ interface ConnectedNightSendOptions {
   readonly reviewOriginalDeposit?: (
     original: NightSendIntent,
     current: NightSendIntent,
+    withdrawal: NightSendLeg,
+  ) => Promise<boolean>;
+  readonly reviewUnresolvedOriginalDeposit?: (
+    original: NightSendIntent,
+    observation: NightUnresolvedObservation,
     withdrawal: NightSendLeg,
   ) => Promise<boolean>;
   /** Check that the selected account, credential and wallet still match this host. */
@@ -134,6 +140,30 @@ function checkedRecoveryReview(options: ConnectedNightSendOptions, checkSelected
   };
 }
 
+function checkedUnresolvedReview(options: ConnectedNightSendOptions, checkSelected: () => void) {
+  const review = options.reviewUnresolvedOriginalDeposit;
+  if (!review) return undefined;
+  return async (
+    original: NightSendIntent,
+    observation: NightUnresolvedObservation,
+    withdrawal: NightSendLeg,
+  ) => {
+    checkSelected();
+    const approved = await review(original, observation, withdrawal);
+    checkSelected();
+    return approved;
+  };
+}
+
+function checkedRecoveryCallbacks(options: ConnectedNightSendOptions, checkSelected: () => void) {
+  const reviewOriginalDeposit = checkedRecoveryReview(options, checkSelected);
+  const reviewUnresolvedOriginalDeposit = checkedUnresolvedReview(options, checkSelected);
+  return {
+    ...(reviewOriginalDeposit && { reviewOriginalDeposit }),
+    ...(reviewUnresolvedOriginalDeposit && { reviewUnresolvedOriginalDeposit }),
+  };
+}
+
 /** Compose the owner and device-held wallet without giving the resolver signing authority. */
 export async function createConnectedNightSend(
   options: ConnectedNightSendOptions,
@@ -177,7 +207,6 @@ export async function createConnectedNightSend(
     },
     { manifestSha256: network.manifestSha256, provisionalLocal: !!options.provisionalLocal },
   );
-  const reviewOriginalDeposit = checkedRecoveryReview(options, checkSelected);
   return {
     async send(request: NightSendRequest) {
       checkSelected();
@@ -196,7 +225,7 @@ export async function createConnectedNightSend(
             checkSelected();
             return approved;
           },
-          ...(reviewOriginalDeposit && { reviewOriginalDeposit }),
+          ...checkedRecoveryCallbacks(options, checkSelected),
           async submitWithdrawal(intent, beforeSubmit) {
             checkSelected();
             await ownerWithdrawal(intent, async (submission) => {

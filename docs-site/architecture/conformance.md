@@ -245,6 +245,14 @@ no replay, and cleanup. This remains local synthetic evidence, with no
 physical-passkey consent, online provider qualification, or ACC-signed name
 binding.
 
+The source now also offers a separate **direct original-output repair** when a
+saved withdrawal is final but the current name is absent, invalid/non-contract,
+expired, unsupported or unavailable. The user must review the unresolved
+status and original ACC, and the host rechecks both before deposit. The browser
+journal keeps the approval with the original withdrawal. Connected-host tests
+exercise an unavailable name service, but native browser and chain evidence for
+this repair mode are still pending; it does not qualify an online name route.
+
 ## Security promises in the pinned architecture
 
 The pinned [promises revision](https://github.com/midnightntwrk/passport/blob/99062671d939641cb9ed9274d3d18fce764d539a/docs/plans/PROMISES.md) specifies P5′ and P11–P16. These are product-level properties, not automatic effects of exposing an ACC circuit. The SDK's bounded status is:
