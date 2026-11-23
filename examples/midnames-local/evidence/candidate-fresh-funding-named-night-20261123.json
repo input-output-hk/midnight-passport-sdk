@@ -23,7 +23,9 @@
     "amountNightSmallestUnits": "10",
     "walletPreparationTxHash": "0096b6e92f6277bb9e9fa2687278cbc36447d397e90f345a9aceba185ebd3a88d0",
     "accDepositTxHash": "b047ceac56b9d4d26b157c410cf78d89c4fcff7e8c7dea84532be2af6130997d",
-    "canonicalIndexerCredit": true,
+    "accDepositBlockHeight": 90140,
+    "accDepositBlockHash": "8b7e437eea6da33a7f271ddd2403e2dedaa13f940afc813f75b14f26ad5d6b15",
+    "canonicalNodeAndIndexerCredit": true,
     "balanceAfter": "10",
     "distinctOriginalRequestsForThisAcc": 1,
     "postCreditDriverNote": "The test driver watched the worker endpoint instead of the page proxy, so its POST-count assertion failed after the successful credit. The durable reservation and an independent Indexer API v4 action query confirmed one exact deposit. No new request was sent."
@@ -61,6 +63,7 @@
   "privateReceiptSha256": {
     "freshAccount": "72c4bfceaaceae98e64534fc3271986b71af1e733747b062759df3dd17b4f1ef",
     "fundingChainCheck": "ec7edc1ae843f229e4bd6bbb57dec7ed929f5b4a93aa788a61b8244859666665",
+    "fundingCanonical": "311a5d956533efabdae934429722d792b4f2ea4c63f1bdb54bef180281ab8f60",
     "deviceWalletFunding": "61ae6a5742c3b7f8df70f1fdfe25540726c32ab451fcb79d37176d27332a6672",
     "dustRegistration": "8b9cd708fa6927471109e04abea6ff630e9335e9db9bf53a5ae82ba9a5145a5b",
     "postPaymentDriverFailure": "d35cd72f618d26e10c0aed05ff72474253ebf6eaf0476353cfdf83ed3ced8b02",
