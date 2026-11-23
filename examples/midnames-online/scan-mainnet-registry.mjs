@@ -66,7 +66,15 @@ async function scan() {
       `0x${block.hash}`,
     ]);
     assert.equal(nodeState, Buffer.from(state).toString('hex'));
-    const decoded = await getContractLedger(at, profile.registryAddress);
+    // Decode the exact bytes matched to the node, not a second indexer reply.
+    const verified = {
+      ...at,
+      async queryContractState(address) {
+        assert.equal(address, profile.registryAddress);
+        return observed;
+      },
+    };
+    const decoded = await getContractLedger(verified, profile.registryAddress);
     assert.equal(decoded.success, true);
     assert.equal(decoded.data.TLD, 'night');
 
@@ -85,6 +93,8 @@ async function scan() {
       BigInt(counts.contract + counts.shielded + counts.unshielded),
       decoded.data.id_to_data.size(),
     );
+    const rootRecord = decoded.data.id_to_data.lookup(decoded.data.ROOT_ZONE_ID);
+    const rootTargetIsZero = Buffer.from(rootRecord.target).every((byte) => byte === 0);
     assert.equal(await nodeResult('chain_getBlockHash', [block.height]), canonical);
     return {
       schemaVersion: 1,
@@ -106,6 +116,8 @@ async function scan() {
       nodeStateBytesMatchIndexer: true,
       registryTld: decoded.data.TLD,
       rootZoneId: rootId,
+      rootTargetClass: AddressType[rootRecord.target_type],
+      rootTargetIsZero,
       zoneRecords: String(decoded.data.id_to_data.size()),
       targetTypeCounts: counts,
       nonRootContractTargetCount: nonRootContractTargets,

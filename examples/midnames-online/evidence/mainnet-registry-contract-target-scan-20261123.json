@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "kind": "midnames-mainnet-node-anchored-contract-target-scan",
   "scanner": "examples/midnames-online/scan-mainnet-registry.mjs",
-  "observedAt": "2026-11-23T12:02:27.780Z",
+  "observedAt": "2026-11-23T12:08:16.405Z",
   "result": "NO_NONROOT_CONTRACT_TARGET_AT_SELECTED_BLOCK",
   "networkId": "mainnet",
   "indexerOrigin": "https://api.midnames.com",
@@ -10,14 +10,16 @@
   "nodeOrigin": "https://rpc.mainnet.midnight.network",
   "registryAddress": "83b0d57aba442f92e12b5cdf92642adb9927ccd554a9061b5bd0992fc72596bb",
   "selectedBlock": {
-    "height": 3579141,
-    "hash": "da6b78dbec18d4abcb0d48bf1b72578b2b317be3bb73c015153b186b3bc48e21"
+    "height": 3579200,
+    "hash": "2623e36b4a60b7f2bc0b039245927e91874bf55342b30b93df9fe9b0d9502fca"
   },
-  "nodeFinalizedHeight": 3579141,
+  "nodeFinalizedHeight": 3579200,
   "registryStateBytes": 107554,
   "nodeStateBytesMatchIndexer": true,
   "registryTld": "night",
   "rootZoneId": "0",
+  "rootTargetClass": "ContractAddr",
+  "rootTargetIsZero": true,
   "zoneRecords": "151",
   "targetTypeCounts": {
     "contract": 1,

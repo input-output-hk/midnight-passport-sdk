@@ -38,9 +38,10 @@ unqualified.
 
 A [later read-only Mainnet registry scan](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-online/evidence/mainnet-registry-contract-target-scan-20261123.json)
 compared the pinned registry's Indexer API v4 bytes with the public node at
-canonical finalized block 3,579,141. The 151 zone records contained one root
-contract target and 150 shielded targets, with no non-root contract target
-for a Passport ACC call at that block. This is a single indexer and one node;
+the same canonical finalized block. The 151 zone records contained a root
+tagged `ContractAddr` with an all-zero target and 150 shielded targets, with
+no non-root contract target for a Passport ACC call at that block. This is a
+single indexer and one node;
 it does not qualify independent providers, future state, an ACC mapping,
 public parent ownership, or cryptographic inclusion proof.
 

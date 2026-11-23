@@ -156,9 +156,9 @@ A [22 November mainnet observation](https://github.com/input-output-hk/midnight-
 
 A [23 November node-anchored registry scan](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-online/evidence/mainnet-registry-contract-target-scan-20261123.json)
 used an explicit v4 indexer and the public Mainnet node at the same canonical
-finalized block 3,579,141. The registry bytes matched. Its 151 zone records
-had one root contract target and 150 shielded targets, with **no non-root
-contract-call target**. This explains why the current pinned Mainnet snapshot
+finalized block. The registry bytes matched. Its 151 zone records had a root
+tagged `ContractAddr` with an all-zero target and 150 shielded targets, with
+**no non-root contract-call target**. This explains why the current pinned Mainnet snapshot
 cannot provide the independently known name-to-deployed-ACC mapping required
 by #315/#247. It is one indexer plus one node, not independent provider or
 inclusion-proof qualification; later state and other registries are untested.

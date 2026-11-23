@@ -240,10 +240,10 @@ online Passport profile.
 A later [23 November registry scan](../../examples/midnames-online/evidence/mainnet-registry-contract-target-scan-20261123.json)
 used the [read-only scanner](../../examples/midnames-online/scan-mainnet-registry.mjs)
 to compare the pinned Mainnet registry's Indexer API v4 state bytes with the
-public node at the same canonical finalized block. At block 3,579,141, all
-150 non-root records had shielded primary targets; the root held the only
-contract target. That snapshot supplies no name-to-ACC contract-call
-candidate. It uses one indexer and one node, with no independent provider or
+public node at the same canonical finalized block. At the recorded block, all
+150 non-root records had shielded primary targets; the root was tagged
+`ContractAddr` with an all-zero target. That snapshot supplies no name-to-ACC
+contract-call candidate. It uses one indexer and one node, with no independent provider or
 cryptographic inclusion proof, and does not establish future absence or
 ownership. Online Passport admission remains disabled.
 

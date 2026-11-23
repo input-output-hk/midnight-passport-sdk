@@ -69,10 +69,14 @@ nix develop -c pnpm --filter passport-dapp exec node --import tsx \
 ```
 
 The [23 November receipt](evidence/mainnet-registry-contract-target-scan-20261123.json)
-at block 3,579,141 found 151 zone records: the root's one contract target and
-150 shielded targets. It found **zero non-root contract targets** in that
+at its selected finalized block found 151 zone records: the root record was
+tagged `ContractAddr` with an all-zero target, and 150 names had shielded
+targets. It found **zero non-root contract targets** in that
 registry snapshot. The indexer state bytes matched the separately queried
-public node. This is a dated, single-indexer observation, not a claim that no
+public node. [MIP-0007](https://github.com/midnightntwrk/midnight-improvement-proposals/blob/main/mips/mip-0007-name-service-registry-and-resolver.md)
+routes a contract call through a `ContractAddr` primary
+target; a default/profile field or wallet target cannot fill that class. This
+is a dated, single-indexer observation, not a claim that no
 contract name exists on any later block or in another registry. It cannot
 provide the independently known name-to-deployed-ACC mapping, independent
 indexer operators, or public `passport.night` control required for online
