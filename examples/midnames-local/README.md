@@ -721,8 +721,11 @@ bytes, identifiers and status to the preserved original and checked both
 original block hashes against the node before the owner transfer. The demo's
 configured claim path already supplies `2001100`. For another chain, pin the
 observed block protocol and reconcile the same original before any retry.
-This receipt does not qualify a combined Passport page-to-chain claim with
-0.36.1, an online registry/provider, or a physical passkey.
+That earlier receipt alone does not qualify a combined Passport page-to-chain
+claim with 0.36.1, an online registry/provider, or a physical passkey. A later
+[connected page receipt](evidence/compact0361-page-claim-20261123.json)
+qualifies a bounded isolated page claim with a previously activated ACC and a
+virtual credential.
 
 The optional `standalone-0.36.1` reader profile admits only local `undeployed`
 registry reads with the same pinned verifier roster. A separate read-only
@@ -730,8 +733,10 @@ check of the retained isolated chain found both original transactions in
 canonical blocks and the transferred name still targeting the same ACC. Since
 the two compiler builds have identical verifier keys, the host must keep its
 deployment manifest and exact registry address to identify the 0.36.1 build.
-The demo launcher continues to select `standalone-0.35`; the new profile does
-not enable claim preparation, dispatch, or named NIGHT sending in the page.
+The demo launcher continues to select `standalone-0.35`. An explicitly
+isolated reference page can prepare and dispatch a 0.36.1 claim under its
+pinned registry, account and prover gates. Named NIGHT sending remains
+disabled for this profile.
 
 For an operator-controlled local registry, a separate root-assisted fixture
 can issue the name without a paid claim. It proves `create_domain` under the

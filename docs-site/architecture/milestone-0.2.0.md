@@ -4,7 +4,7 @@ pageClass: comparison-page
 
 # What remains for 0.2.0?
 
-**Milestone issue snapshot: 22 November 2026.** The [0.2.0 milestone](https://github.com/input-output-hk/midnight-passport-sdk/milestone/2) has **17 open issues and two closed issues** (#244 and #317). Of the five connected Midnames issues, [#315](https://github.com/input-output-hk/midnight-passport-sdk/issues/315), [#247](https://github.com/input-output-hk/midnight-passport-sdk/issues/247), [#316](https://github.com/input-output-hk/midnight-passport-sdk/issues/316), and [#318](https://github.com/input-output-hk/midnight-passport-sdk/issues/318) remain open because their full acceptance extends beyond the demonstrated local subset. The published package release remains [0.1.0-rc9](https://github.com/input-output-hk/midnight-passport-sdk/releases/tag/sdk-v0.1.0-rc9). Merged source and local receipts do not qualify an online network, real passkey provider, or a new release.
+**Milestone issue snapshot: 23 November 2026.** The [0.2.0 milestone](https://github.com/input-output-hk/midnight-passport-sdk/milestone/2) has **15 open issues and four closed issues** (#244, #317, #334, and #372). Of the five connected Midnames issues, [#315](https://github.com/input-output-hk/midnight-passport-sdk/issues/315), [#247](https://github.com/input-output-hk/midnight-passport-sdk/issues/247), [#316](https://github.com/input-output-hk/midnight-passport-sdk/issues/316), and [#318](https://github.com/input-output-hk/midnight-passport-sdk/issues/318) remain open because their full acceptance extends beyond the demonstrated local subset. The published package release remains [0.1.0-rc9](https://github.com/input-output-hk/midnight-passport-sdk/releases/tag/sdk-v0.1.0-rc9). Merged source and local receipts do not qualify an online network, real passkey provider, or a new release.
 
 The milestone groups candidate work; it does not commit every Passport v1.0 promise to one SDK release. [Architecture conformance](/architecture/conformance) maps the implemented subset to the broader target. [The host guide](/guides/hosts#midnames-source-preview) links the local operator and demo recipes.
 
@@ -23,8 +23,14 @@ continues to use its separately pinned 0.35 registry profile, and the broader
 A subsequent [isolated Chromium proof check](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-browser-owner-proof-20261123.json) used the pinned 0.36.1 browser
 client, a virtual PRF credential and the release prover. It displayed a
 fixture-supplied quote before automated approval, proved an unsent claim, and recovered the same
-owner commitment after reload. A complete Passport page-to-chain 0.36.1
-registration and indexed recovery still need a connected qualification run.
+owner commitment after reload. A later [connected Passport page receipt](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-page-claim-20261123.json)
+records one reviewed quote, owner proof, sponsor preparation, and dispatch on
+the isolated Ledger 9 chain. After the sponsor response was lost, the same
+browser profile recovered the indexed `SUCCESS`; the canonical node block and
+finalized registry owner and ACC target matched. The ACC was previously
+activated and opened through a fixture connector, and the credential was
+virtual. This qualifies that bounded local page-to-chain path, not combined
+ACC creation, physical passkeys, or online providers.
 
 ## Current Midnames delivery
 
@@ -127,7 +133,7 @@ restoration path and host checks. #318 remains open.
 
 At PR #370's head, all 13 Compact 0.36 ZKIR/prover/verifier key hashes matched the pinned Compact 0.35 registry and the generated reader decoded an existing local name. Proof and write were still open at that point; the later isolated 0.36.1 receipt above now qualifies one paid claim and owner transfer. A second independent online indexer and known online name-to-ACC mapping remain unqualified. The deployed 0.35 guard remains. Pending claim and funding operations require reconciliation of their original IDs; [#369](https://github.com/input-output-hk/midnight-passport-sdk/issues/369) tracks the legacy funding cases.
 
-[#363](https://github.com/input-output-hk/midnight-passport-sdk/issues/363) now has the isolated 0.36.1 exact-write and owner-control evidence above; it remains open until that evidence and documentation are reviewed and merged. [#334](https://github.com/input-output-hk/midnight-passport-sdk/issues/334) still tracks the complete failed-claim and browser-owned retry matrix. Legacy funding reservations remain pending under [#369](https://github.com/input-output-hk/midnight-passport-sdk/issues/369); missing ACC transaction IDs alone cannot prove non-submission. PR #370 adds a future pre-submit marker and exact-request release, but its real failure/recovery and those older records remain separate work. None of these open gates justifies replaying an uncertain original, clearing browser data, or resetting the shared chain.
+[#363](https://github.com/input-output-hk/midnight-passport-sdk/issues/363) now has the isolated 0.36.1 exact-write, owner-control, and connected page evidence above; it remains open until that evidence and documentation are reviewed and merged. Closed [#334](https://github.com/input-output-hk/midnight-passport-sdk/issues/334) records the bounded failed-claim and browser-owned retry path; the broader real-provider and combined account-creation gates remain. Legacy funding reservations remain pending under [#369](https://github.com/input-output-hk/midnight-passport-sdk/issues/369); missing ACC transaction IDs alone cannot prove non-submission. PR #370 added a pre-submit marker and exact-request release, but its older funding records remain separate work. None of these open gates justifies replaying an uncertain original, clearing browser data, or resetting the shared chain.
 
 A local source preview adds bounded sponsor archive lookup for the exact
 quote, owner-bound refusal of a sibling quote, and indexed-failure archival
@@ -141,8 +147,9 @@ sent the fresh prepared claim once from the reference browser through the
 sponsor HTTP fence, recovered after a lost response and browser restart, and
 confirmed indexed success to the same ACC. Quote issuance, owner proof, and
 balancing remained host-driven, with separate browser profiles for release and
-retry. Signed `e3ec3608` later qualified page release and successful retry in one profile after importing the fixture-prepared failed original. Signed `4a6c7642` then [qualified both preparations in one page profile](https://github.com/input-output-hk/midnight-passport-sdk/blob/7c9acc2bf9b6a9a996ff7a95b0b40954376689c8/examples/midnames-local/evidence/release-ledger9-page-two-originals-20261120.json), including exact indexed failure archival, retained browser history, fresh reviewed retry and canonical success to the same ACC. #334 remains open for combined ACC create/open,
-real-provider consent, and the negative native matrix. The separate 0.36.1
+retry. Signed `e3ec3608` later qualified page release and successful retry in one profile after importing the fixture-prepared failed original. Signed `4a6c7642` then [qualified both preparations in one page profile](https://github.com/input-output-hk/midnight-passport-sdk/blob/7c9acc2bf9b6a9a996ff7a95b0b40954376689c8/examples/midnames-local/evidence/release-ledger9-page-two-originals-20261120.json), including exact indexed failure archival, retained browser history, fresh reviewed retry and canonical success to the same ACC. Closed #334 records that bounded retry path; combined ACC create/open,
+real-provider consent, and the negative native matrix beyond the closed issue's
+bounded acceptance. The separate 0.36.1
 proof/write evaluation is recorded above for #363.
 
 ## Other open 0.2.0 work
@@ -160,7 +167,7 @@ proof/write evaluation is recorded above for #363.
 
 ## Next qualification sequence
 
-1. Review and merge the isolated Compact 0.36.1 paid-claim and owner-control evidence, preserving the older 0.35 failure originals and separately pinned ordinary demo.
-2. Qualify combined ACC create/open followed by the page-owned claim. The current isolated native pass prepares both originals in one persistent page profile but supplies an already activated ACC through the fixture connector; retain both original IDs through each failure boundary.
+1. Review and merge the isolated Compact 0.36.1 paid-claim, owner-control, and connected page evidence, preserving the older 0.35 failure originals and separately pinned ordinary demo.
+2. Qualify combined ACC create/open followed by the page-owned claim. The current isolated 0.36.1 native page pass opens a previously activated ACC through a fixture connector; retain the exact original ID through each failure boundary.
 3. Qualify a known live online contract mapping with authenticated, replaceable Indexer API v4 providers before enabling any online profile. Treat MIP-0007's delegated resolver and public `passport.night` namespace as separate upstream dependencies.
 4. Recheck the five issue criteria at the exact merged source and close only the demonstrated subset or record the remaining acceptance explicitly. A local synthetic credential does not qualify a real provider or human approval.

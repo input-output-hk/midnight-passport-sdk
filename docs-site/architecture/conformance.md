@@ -59,17 +59,24 @@ changed. All 13 registry verifier keys matched the deployed roster, so this
 did not replace a maintenance-retired verifier. The run used an isolated
 chain, synthetic owner and sponsor, one self-hosted indexer, and the existing
 deletion-credit guard. It advances the local P2/P8 name-and-provider subset;
-P5 total-loss recovery remains unqualified. A connected Passport
-page-to-chain 0.36.1 claim, online registry/provider, independent inclusion
-proof, and real passkey custody also remain unqualified. The ordinary shared
+P5 total-loss recovery remains unqualified. Online registry/provider,
+independent inclusion proof, and real passkey custody also remain
+unqualified. The ordinary shared
 demo still pins its separate 0.35 registry profile.
 
 The next [isolated Chromium check](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-browser-owner-proof-20261123.json) proved a reviewed but unsent 0.36.1 claim
 with a virtual PRF credential, then recovered the same owner commitment after
 reload. It made no proof request before automated approval of the fixture
 quote. The pinned browser
-client and prepared artifact hashes are reproducible locally; this does not
-establish a connected Passport page submission or human-provider consent.
+client and prepared artifact hashes are reproducible locally. A later
+[connected Passport page claim](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-page-claim-20261123.json)
+used the isolated 0.36.1 registry, a virtual credential, an already activated
+ACC opened through a fixture connector, and one self-hosted indexer. One
+reviewed quote, owner proof, sponsor preparation and dispatch reached indexed
+`SUCCESS`; the page recovered the original after a lost response and reload.
+The node-canonical block and finalized owner and ACC target matched. This
+qualifies that bounded local claim, not human-provider consent or combined
+ACC creation and registration.
 
 **Local recovery source preview, 20 November 2026:** The sponsor can now
 recognize its exact quote in a bounded private archive, refuse a superseded

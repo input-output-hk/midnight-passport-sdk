@@ -336,26 +336,32 @@ the existing deletion-credit guard, Compact runtime 0.21 and one physical
 Midnight.js 5.0.0/Ledger v9 1.0.0 proof tree. A separate pinned Ledger v9
 1.0.2 wallet balanced sponsor fees through serialized bytes. This is an
 isolated local compatibility result, not a new ordinary demo profile or a
-qualification of online names, full browser issuance, or real passkeys.
+qualification of online names or real passkeys. A later connected browser
+claim is recorded below.
 
 The source reader also accepts an explicit local `standalone-0.36.1` profile
 for this registry's byte-identical verifier roster. A retained-chain read
 checked the paid claim, owner transfer, and current name-to-ACC binding at
 node-canonical blocks through that profile. Verifier equality alone cannot
 identify which compiler produced a deployed contract, so the host must pin
-the deployment address and its own build record. The reference page keeps
-registration and named sending disabled for this profile until its complete
-page-to-chain and named-send paths are qualified. The ordinary local demo remains on
+the deployment address and its own build record. An explicitly isolated
+reference page can prepare and dispatch a claim with this profile under its
+pinned registry, account, network and prover gates. Named NIGHT sending remains
+disabled for this profile. The ordinary shared demo remains on
 `standalone-0.35`.
 
 A subsequent [isolated headless Chromium check](../../examples/midnames-local/evidence/compact0361-browser-owner-proof-20261123.json) used the pinned 0.36.1 browser
 client and a virtual PRF credential to prove a reviewed, **unsent** claim from
 fixture-supplied terms. It made no proof request before automated quote
 approval and recovered the same naming
-commitment after reload. This validates the local browser owner-proof step;
-the complete Passport page, sponsor submission and indexed recovery remain
-separate acceptance work. Registration and named sending stay disabled in the
-ordinary page for this profile.
+commitment after reload. This validates the local browser owner-proof step.
+A later [connected page claim](../../examples/midnames-local/evidence/compact0361-page-claim-20261123.json)
+on the isolated Ledger 9 chain obtained one quote, proved its virtual owner,
+prepared and dispatched one original, then recovered indexed `SUCCESS` after
+the sponsor response was lost and the page reloaded. The node-canonical block
+and finalized registry owner and ACC target matched. The ACC was previously
+activated and opened through a fixture connector. Combined ACC creation,
+physical passkey custody and online provider qualification remain open.
 
 For an online deployment, the host must configure its actual registry address
 and a funded sponsor wallet through `PASSPORT_SPONSOR_SEED` in the service
@@ -495,8 +501,8 @@ records the exact transactions and canonical blocks. The ACC connector still
 supplies an already activated test account, and the naming credential is
 virtual. This does not prove combined ACC creation, real-provider custody,
 online registry agreement or total-loss name continuity.
-Issue #334 remains open for the broader failure matrix and combined
-onboarding/provider paths.
+Closed issue #334 records the bounded failure/retry path; combined
+onboarding and real-provider acceptance remain separate work.
 If legacy storage contains multiple original claims,
 enter an original name to inspect it before preparing another.
 The synthetic full-app Chromium fixture now follows create/open into this form:
