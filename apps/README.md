@@ -1127,7 +1127,9 @@ the page offers a distinct direct-ACC repair review for the **saved output and
 originally reviewed ACC only**. It states that the name cannot authorize the
 destination and shows the reason. The original ACC binding and observed name
 status are checked again before the deposit fence; a changed observation
-requires another review. This source path still needs native browser evidence.
+requires another review. An [isolated non-contract name repair](../examples/midnames-local/evidence/compact0361-native-unresolved-name-original-repair-20261123.json)
+passed in a connected mock-passkey browser at signed source `9a8fb50`; the
+other unresolved statuses still need native qualification.
 Each approved observation (name, network, registry/provider, original ACC,
 current ACC or unresolved status, withdrawal ID and time) is durably appended
 to the browser intent before deposit

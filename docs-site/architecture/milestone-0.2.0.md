@@ -113,8 +113,11 @@ An absent, invalid/non-contract, expired,
 unsupported or unavailable current name can use a distinct direct-ACC repair
 review for only the saved output and originally reviewed ACC. The host rechecks
 the original binding and observed name status before deposit. This path has
-source and connected-host tests; native browser and chain evidence remain
-open.
+source and connected-host tests. An [isolated non-contract name repair](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-native-unresolved-name-original-repair-20261123.json)
+at signed source `9a8fb50` finalized one withdrawal, changed the name target
+class to `UnshieldedAddr`, then reviewed and finalized only the saved deposit
+to the original ACC. Canonical balances moved 7/0/7 → 6/1/7; a fresh browser
+found the archived repair review. Other unresolved statuses remain native-open.
 
 An [isolated native browser run](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-native-postwithdraw-repoint-recovery-20261123.json)
 at signed source `a215ba3` finalized one withdrawal, repointed the name to a

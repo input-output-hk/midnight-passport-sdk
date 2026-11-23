@@ -250,8 +250,11 @@ saved withdrawal is final but the current name is absent, invalid/non-contract,
 expired, unsupported or unavailable. The user must review the unresolved
 status and original ACC, and the host rechecks both before deposit. The browser
 journal keeps the approval with the original withdrawal. Connected-host tests
-exercise an unavailable name service, but native browser and chain evidence for
-this repair mode are still pending; it does not qualify an online name route.
+exercise an unavailable name service. An [isolated non-contract name repair](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-native-unresolved-name-original-repair-20261123.json)
+also passed in a connected mock-passkey browser at signed source `9a8fb50`:
+one canonical withdrawal, owner target-class change, explicit direct repair,
+and one deposit to the original ACC. This does not qualify the other unresolved
+statuses, a physical passkey, or an online name route.
 
 ## Security promises in the pinned architecture
 

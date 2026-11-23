@@ -982,8 +982,14 @@ name repoint, a separate recovery review, and deposit of the saved output into
 the originally reviewed ACC. The archive retained the review after reload.
 The successful payment run's supervisor had an obsolete balance assertion;
 exact reconciliation verified the finalized IDs and balances without replay.
-The unresolved-name repair path has source and connected-host tests only; its
-native browser and chain acceptance remain open under #318.
+The [isolated non-contract name repair](../../examples/midnames-local/evidence/compact0361-native-unresolved-name-original-repair-20261123.json)
+at signed source `9a8fb50` finalized a 1 NIGHT withdrawal before the owner
+changed the name's target class to `UnshieldedAddr`. A fresh mock-passkey
+browser reviewed `InvalidRecord`, deposited the exact saved output into the
+original ACC, and archived the durable repair review. Canonical balances
+moved source/original/other 7/0/7 → 6/1/7 with no second withdrawal. The
+supervisor passed and released the native lease. Other unresolved statuses,
+physical passkeys and online providers remain unqualified under #318.
 
 An [isolated Compact 0.36.1 native receipt](../../examples/midnames-local/evidence/compact0361-paid-name-night-send-20261123.json)
 resolved a previously paid, user-owned `.night` name to its contract target,

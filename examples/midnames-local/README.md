@@ -103,7 +103,14 @@ current name is absent, invalid/non-contract, expired, unsupported or
 unavailable after withdrawal. It retains the original ACC and withdrawal,
 records the unresolved status before proof, and checks the status and original
 ACC binding again before fencing the deposit. Source and connected-host tests
-pass; native browser and chain evidence for this mode remain open.
+pass. The [isolated non-contract name repair receipt](evidence/compact0361-native-unresolved-name-original-repair-20261123.json)
+at signed source `9a8fb50` records one finalized withdrawal at block 1627,
+an owner-authorized `UnshieldedAddr` target-class update at block 1637, and a
+separate direct repair review followed by the exact original deposit at block
+1646. Same-block ACC balances moved source/original/other 7/0/7 → 6/1/7.
+A fresh read-only browser audit found one archived repair review, no active
+intent; the native supervisor stopped exact resources and released its lease.
+Other unresolved statuses, real passkeys and online providers remain open.
 
 The [routing-refusal receipt](evidence/compact0361-native-routing-refusals-20261123.json)
 then checked a live `UnshieldedAddr` target with the same bytes as a supported

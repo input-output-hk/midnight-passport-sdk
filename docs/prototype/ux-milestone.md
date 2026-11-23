@@ -466,7 +466,9 @@ only the saved output at the originally reviewed ACC. The dialog states that
 the name cannot authorize the destination and shows the current observation.
 The original ACC binding and observation are rechecked before deposit; a
 changed observation requires another review. This path has source and
-connected-host tests; native browser evidence remains open.
+connected-host tests. An [isolated non-contract name repair](../../examples/midnames-local/evidence/compact0361-native-unresolved-name-original-repair-20261123.json)
+also passed in a mock-passkey browser; other unresolved statuses still need
+native qualification.
 Each approval writes the observed name/registry, original ACC and current ACC
 or unresolved status, withdrawal
 ID and timestamp to the durable browser journal before proof. The record
