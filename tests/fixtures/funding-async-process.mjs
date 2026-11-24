@@ -1,5 +1,5 @@
 import { writeFileSync } from 'node:fs';
-import { appendFile, writeFile } from 'node:fs/promises';
+import { appendFile, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
   createFileFundingStore,
@@ -9,9 +9,15 @@ import {
 
 const [mode, root] = process.argv.slice(2);
 if (
-  !['hold', 'hold-after-submit', 'reopen', 'proof-fail', 'unknown-submit', 'credit'].includes(
-    mode ?? '',
-  ) ||
+  ![
+    'hold',
+    'hold-after-submit',
+    'slow-proof',
+    'reopen',
+    'proof-fail',
+    'unknown-submit',
+    'credit',
+  ].includes(mode ?? '') ||
   !root
 )
   throw new Error('invalid funding process fixture');
@@ -36,6 +42,23 @@ const server = createServer({ host: '127.0.0.1', corsOrigin: 'http://localhost:5
         if (mode === 'hold') {
           await writeFile(join(root, 'started'), '1');
           return new Promise(() => {});
+        }
+        if (mode === 'slow-proof') {
+          await writeFile(join(root, 'started'), '1');
+          for (;;) {
+            try {
+              if ((await readFile(join(root, 'release-proof'), 'utf8')) === '1') break;
+            } catch (error) {
+              if (
+                typeof error !== 'object' ||
+                error === null ||
+                !('code' in error) ||
+                error.code !== 'ENOENT'
+              )
+                throw error;
+            }
+            await new Promise((resolve) => setTimeout(resolve, 25));
+          }
         }
         if (mode === 'proof-fail') {
           await recordProgress({ stage: 'acc-not-submitted' });

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { createServer, request as httpRequest } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -19,7 +19,7 @@ const request = {
 
 /** @typedef {{ requestId: string, accountAddress: string, color: string, amount: string, state: string, progress?: { balanceBefore: string, preparationTxId?: string, depositTxId?: string, phase?: string, phaseStartedAt?: string }, result?: { requestId: string, txId: string, preparationTxId?: string, creditedBalance: string } }} FundingStatus */
 
-/** @param {'hold' | 'hold-after-submit' | 'reopen' | 'proof-fail' | 'unknown-submit' | 'credit'} mode @param {string} root */
+/** @param {'hold' | 'hold-after-submit' | 'slow-proof' | 'reopen' | 'proof-fail' | 'unknown-submit' | 'credit'} mode @param {string} root */
 async function childServer(mode, root) {
   const env = { ...process.env };
   delete env.NODE_TEST_CONTEXT;
@@ -195,6 +195,61 @@ async function waitForFile(path, expected) {
     await new Promise((resolve) => setTimeout(resolve, 25));
   }
 }
+
+test(
+  'a long ACC proof outlives the client wait, then completes under one original without a quota escape',
+  { timeout: 15000 },
+  async (t) => {
+    const root = await mkdtemp(join(tmpdir(), 'passport-funding-slow-proof-'));
+    t.after(() => rm(root, { recursive: true, force: true }));
+    const first = await childServer('slow-proof', root);
+    t.after(first.close);
+    const base = `http://127.0.0.1:${first.port}/v1/faucet/fund`;
+    assert.equal((await postFunding(base, request)).status, 202);
+    await waitForFile(join(root, 'started'), '1');
+    const pending = await observe(base, request.requestId);
+    assert.equal(pending.state, 'pending');
+    assert.equal(pending.progress?.phase, 'acc-proof');
+    assert.equal(pending.progress?.preparationTxId, 'fixture-wallet-preparation');
+    const clientWait = AbortSignal.timeout(150); // A compressed browser wait window.
+    await assert.rejects(
+      async () => {
+        for (;;) {
+          clientWait.throwIfAborted();
+          if ((await observe(base, request.requestId)).state === 'complete') return;
+          await new Promise((resolve) => setTimeout(resolve, 25));
+        }
+      },
+      { name: 'TimeoutError' },
+    );
+    assert.equal((await observe(base, request.requestId)).state, 'pending');
+    assert.equal((await postFunding(base, request)).status, 409);
+    assert.equal(
+      (
+        await postFunding(base, {
+          ...request,
+          requestId: '22345678-1234-1234-1234-123456789abc',
+          amount: '20',
+        })
+      ).status,
+      429,
+    );
+    await writeFile(join(root, 'release-proof'), '1');
+    const complete = await waitForState(base, request.requestId, 'complete');
+    assert.equal(complete.result?.txId, 'fixture-acc-deposit');
+    assert.equal(complete.result?.creditedBalance, '10');
+    assert.equal((await postFunding(base, request)).status, 200);
+    assert.equal(await readFile(join(root, 'dispatches'), 'utf8'), `${request.requestId}\n`);
+    assert.equal(await readFile(join(root, 'acc-submissions'), 'utf8'), `${request.requestId}\n`);
+    await first.close();
+    const second = await childServer('reopen', root);
+    t.after(second.close);
+    const reopened = `http://127.0.0.1:${second.port}/v1/faucet/fund`;
+    assert.deepEqual(await observe(reopened, request.requestId), complete);
+    assert.equal((await postFunding(reopened, request)).status, 200);
+    assert.equal(await readFile(join(root, 'dispatches'), 'utf8'), `${request.requestId}\n`);
+  },
+);
 
 test(
   'pre-submit proof failure releases only its marked original and restores daily capacity',

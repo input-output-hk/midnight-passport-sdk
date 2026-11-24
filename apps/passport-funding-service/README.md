@@ -113,8 +113,14 @@ the node. In that run, wallet preparation took about 20.9 seconds, ACC proof
 about 1.3 seconds, wallet balancing about 0.7 seconds, the node submission
 call about 16.7 seconds and credit confirmation about 2.1 seconds. These phase timings
 are diagnostic, not transaction finality evidence or permission to retry an
-uncertain original. The separate older pending shared-chain original is still
-unresolved; a named send from this freshly funded ACC remains to be qualified.
+uncertain original. A separate [fresh virtual-passkey browser run](../../examples/midnames-local/evidence/candidate-virtual-prf-funded-named-night-20261124.json)
+funded a newly activated candidate ACC with 10 NIGHT, then completed a reviewed
+1 NIGHT send to a `.night` recipient through both ACC transaction legs. The
+process-level async funding checks also simulate a held ACC-proof stage beyond a client wait,
+confirm same-ID completion and restart replay, and refuse a second request
+while the first consumes daily quota. These checks compress the waiting period;
+they do not reproduce the older shared-chain proof duration. That older pending
+original remains unresolved and was not retried.
 
 The funding service defaults to packaged `acc-s3r1.1`. An explicit source-only
 `acc-s3r1.1-zkir036` path verifies the candidate manifest and generated module
