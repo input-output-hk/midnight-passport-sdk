@@ -15,7 +15,7 @@ import {
 } from 'playwright-core';
 import { createServer } from 'vite';
 import { claimDispatchPath } from '../src/midnames/claim-dispatch.js';
-import { claimReceipt } from '../src/midnames/claim-receipt.js';
+import { claimName, claimReceipt } from '../src/midnames/claim-receipt.js';
 import { reveal } from './journeys/ui.js';
 
 assert.equal(process.env.PASSPORT_MIDNAMES_NATIVE, '1');
@@ -34,7 +34,7 @@ const input = JSON.parse(readFileSync(resolve(output, 'page-claim-input.json'), 
 };
 assert.match(input.registryAddress, /^[0-9a-f]{64}$/);
 assert.match(input.accountAddress, /^[0-9a-f]{64}$/);
-assert.match(input.name, /^[a-z0-9]+\.night$/);
+assert.ok(claimName(input.name));
 assert.match(input.registryPayee, /^[0-9a-f]{64}$/);
 assert.match(input.sponsorPaymentAddress, /^[0-9a-f]{64}$/);
 assert.match(input.night, /^[0-9]+$/);
@@ -328,6 +328,34 @@ try {
     localStorage.setItem('native-naming-credential', id);
   })()`);
   await open(page, true);
+  if (candidate) {
+    // Only this isolated candidate fixture pins the suggested label. Restore
+    // native entropy immediately after the one 12-byte suggestion request.
+    await page.evaluate(`(() => {
+      const original = crypto.getRandomValues.bind(crypto);
+      Object.defineProperty(crypto, 'getRandomValues', {
+        configurable: true,
+        value(array) {
+          if (array instanceof Uint8Array && array.length === 12) {
+            array.fill(7);
+            delete crypto.getRandomValues;
+            return array;
+          }
+          return original(array);
+        },
+      });
+    })()`);
+    await page.locator('#claim-review-quote').click();
+    await page
+      .locator('#claim-recovery-status')
+      .getByText(/Suggestion only\. Continue registration/)
+      .waitFor();
+    assert.equal(await page.locator('#claim-recovery-name').inputValue(), input.name);
+    assert.deepEqual(
+      { quoteRequests, proofRequests, prepareRequests, dispatchRequests },
+      { quoteRequests: 0, proofRequests: 0, prepareRequests: 0, dispatchRequests: 0 },
+    );
+  }
   if (input.prepareFailedInPage) {
     assert.equal(input.failedOriginal, undefined);
     await page.locator('#claim-recovery-name').fill(input.name);

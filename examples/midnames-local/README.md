@@ -1531,7 +1531,12 @@ reviews and sends a fresh claim after restoring the policy. It verifies the
 final binding at one canonical block. This qualification reader explicitly
 admits the candidate only for this run. The native page harness substitutes
 the login connector, while the page's naming reader now uses the explicit
-local candidate route. Combined ACC creation still needs separate evidence.
+local candidate route. For this lane, the browser starts with an empty name and
+clicks **Continue registration** once to suggest a `demo-<24 hex>.night` label.
+The fixture pins only that suggestion's 12 random bytes to `07` and restores
+browser entropy immediately; it asserts no quote, proof, preparation or claim
+dispatch occurred. A second Continue action starts the usual reviewed claim.
+Combined ACC creation still needs separate evidence.
 
 ```sh
 PASSPORT_MIDNAMES_CANDIDATE_ASSETS=/absolute/path/to/verified-candidate-assets \

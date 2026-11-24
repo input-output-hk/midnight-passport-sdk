@@ -570,7 +570,7 @@ try {
       const { qualifyPageRetry } = await import('./claim-page-retry-fixture.mjs');
       const result = await qualifyPageRetry({
         output,
-        quoteName: 'charlie.night',
+        quoteName: candidateClaim ? 'demo-070707070707070707070707.night' : 'charlie.night',
         ref,
         assets,
         modulePath,
