@@ -107,7 +107,7 @@ candidate-to-named-send local lane. Its separate older ambiguous funding
 original remains pending; physical passkeys, online providers, and a release
 still require their own evidence.
 
-A later [isolated native held-proof check](https://github.com/input-output-hk/midnight-passport-sdk/blob/codex/373-archived-quote-recovery/examples/midnames-local/evidence/candidate-held-proof-guard-release-20261124.json)
+A later [isolated native held-proof check](https://github.com/input-output-hk/midnight-passport-sdk/blob/d060089175522e2d4bb01538b5080d996f1ba4cc/examples/midnames-local/evidence/candidate-held-proof-guard-release-20261124.json)
 at signed `15c7a12f` completed one candidate NIGHT deposit proof but held its
 response before the worker's final-hash fence. The operator released the exact
 guarded original, then delivered the response. The reservation remained
