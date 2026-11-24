@@ -17,12 +17,11 @@ import { dirname } from 'node:path';
 import type { ServiceWire } from '@input-output-hk/mn-passport-protocol';
 import type { FundingObservation, FundingProgress, FundingStore } from './funding-route.js';
 import type { FundingCreditEvidence, FundingRejectionEvidence } from './funding-reconciliation.js';
-
-interface ProgressRecord {
-  readonly balanceBefore: string;
-  readonly preparationTxId?: string;
-  readonly depositTxId?: string;
-}
+import {
+  advanceFundingProgress,
+  validProgressRecord,
+  type ProgressRecord,
+} from './funding-progress-phase.js';
 
 interface Entry {
   readonly request: ServiceWire.FundAccRequest;
@@ -139,18 +138,7 @@ function validEntry(id: string, value: unknown): value is Entry {
     BigInt(String(request.amount)) > MAX_AMOUNT
   )
     return false;
-  if (value.progress !== undefined) {
-    if (
-      !record(value.progress) ||
-      typeof value.progress.balanceBefore !== 'string' ||
-      !NONNEGATIVE_DECIMAL.test(value.progress.balanceBefore) ||
-      BigInt(value.progress.balanceBefore) > MAX_AMOUNT ||
-      (value.progress.preparationTxId !== undefined &&
-        !validTxId(value.progress.preparationTxId)) ||
-      (value.progress.depositTxId !== undefined && !validTxId(value.progress.depositTxId))
-    )
-      return false;
-  }
+  if (value.progress !== undefined && !validProgressRecord(value.progress)) return false;
   if (value.noSubmit !== undefined && value.noSubmit !== true) return false;
   if (value.noSubmit && (value.progress?.preparationTxId || value.progress?.depositTxId))
     return false;
@@ -537,28 +525,7 @@ export function createFileFundingStore(file: string): FundingStore {
         }
         if (old.noSubmit || old.accNotSubmitted)
           throw new Error('funding request is marked as not submitted');
-        let next: ProgressRecord;
-        if (progress.stage === 'balance-observed') {
-          if (
-            !NONNEGATIVE_DECIMAL.test(progress.balanceBefore) ||
-            BigInt(progress.balanceBefore) > MAX_AMOUNT ||
-            (previous && previous.balanceBefore !== progress.balanceBefore)
-          )
-            throw new Error('funding initial balance is invalid or changed');
-          next = previous ?? { balanceBefore: progress.balanceBefore };
-        } else if (progress.stage === 'prepared') {
-          if (!previous || previous.depositTxId || !validTxId(progress.preparationTxId))
-            throw new Error('funding preparation milestone is out of order');
-          if (previous.preparationTxId && previous.preparationTxId !== progress.preparationTxId)
-            throw new Error('funding preparation transaction changed');
-          next = { ...previous, preparationTxId: progress.preparationTxId };
-        } else {
-          if (!previous || !validTxId(progress.txId))
-            throw new Error('funding submission milestone is out of order');
-          if (previous.depositTxId && previous.depositTxId !== progress.txId)
-            throw new Error('funding deposit transaction changed');
-          next = { ...previous, depositTxId: progress.txId };
-        }
+        const next = advanceFundingProgress(previous, progress);
         state.requests[requestId] = { ...old, progress: next };
         save(file, state);
       });

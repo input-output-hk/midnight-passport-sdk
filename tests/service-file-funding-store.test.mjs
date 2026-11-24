@@ -97,12 +97,19 @@ test('wallet milestones survive a restart and make a pending request inspectable
   await store.recordProgress(request.requestId, { stage: 'submitted', txId: depositTxId });
   const inspection = inspectFileFundingStore(path);
   assert.equal(inspection.lockPresent, false);
+  assert.match(inspection.entries[0]?.progress?.phaseStartedAt ?? '', /^\d{4}-\d\d-\d\dT/);
   assert.deepEqual(inspection.entries, [
     {
       request,
       day: '2026-10-15',
       state: 'pending',
-      progress: { balanceBefore: '7', preparationTxId, depositTxId },
+      progress: {
+        balanceBefore: '7',
+        preparationTxId,
+        depositTxId,
+        phase: 'acc-submitted',
+        phaseStartedAt: inspection.entries[0]?.progress?.phaseStartedAt,
+      },
     },
   ]);
   assert.deepEqual(await createFileFundingStore(path).reserve(request, policy, '2026-10-15'), {
@@ -116,6 +123,31 @@ test('wallet milestones survive a restart and make a pending request inspectable
     creditedBalance: '17',
   });
   assert.equal(inspectFileFundingStore(path).entries[0]?.state, 'complete');
+});
+
+test('NIGHT proof and balance phases survive restart without weakening the submit fence', async () => {
+  const path = file();
+  const night = { ...request, color: '00'.repeat(32) };
+  const store = createFileFundingStore(path);
+  await store.reserve(night, { ...policy, color: night.color }, '2026-10-15');
+  await store.recordProgress(night.requestId, { stage: 'balance-observed', balanceBefore: '0' });
+  await store.recordProgress(night.requestId, { stage: 'prepared', preparationTxId: 'prep' });
+  await assert.rejects(store.recordProgress(night.requestId, { stage: 'balancing-started' }));
+  await store.recordProgress(night.requestId, { stage: 'proof-started' });
+  const restarted = createFileFundingStore(path);
+  assert.equal((await restarted.observe?.(night.requestId))?.progress?.phase, 'acc-proof');
+  await restarted.recordProgress(night.requestId, { stage: 'balancing-started' });
+  assert.equal((await restarted.observe?.(night.requestId))?.progress?.phase, 'wallet-balancing');
+  await restarted.recordProgress(night.requestId, { stage: 'submitted', txId: 'deposit' });
+  await restarted.recordProgress(night.requestId, { stage: 'credit-confirmation-started' });
+  const pending = await restarted.observe?.(night.requestId);
+  assert.equal(pending?.progress?.phase, 'credit-confirmation');
+  assert.equal(pending?.progress?.depositTxId, 'deposit');
+  assert.match(pending?.progress?.phaseStartedAt ?? '', /^\d{4}-\d\d-\d\dT/);
+  await assert.rejects(restarted.recordProgress(night.requestId, { stage: 'proof-started' }));
+  await assert.rejects(restarted.recordProgress(night.requestId, { stage: 'acc-not-submitted' }));
+  assert.ok(restarted.releaseAccNotSubmitted);
+  await assert.rejects(restarted.releaseAccNotSubmitted(night.requestId, 'operator'));
 });
 
 test('milestones fail closed when out of order or contradicted', async () => {

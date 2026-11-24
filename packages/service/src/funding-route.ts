@@ -40,15 +40,29 @@ export interface FundingObservation {
     readonly balanceBefore: string;
     readonly preparationTxId?: string;
     readonly depositTxId?: string;
+    /** Last durable work phase; this is progress information, not a no-submit proof. */
+    readonly phase?: FundingPhase;
+    readonly phaseStartedAt?: string;
   };
   readonly result?: ServiceWire.FundAccResponse;
 }
+
+export type FundingPhase =
+  | 'wallet-preparation'
+  | 'wallet-prepared'
+  | 'acc-proof'
+  | 'wallet-balancing'
+  | 'acc-submitted'
+  | 'credit-confirmation';
 
 /** Durable milestones for diagnosing an uncertain wallet outcome. */
 export type FundingProgress =
   | { readonly stage: 'balance-observed'; readonly balanceBefore: string }
   | { readonly stage: 'prepared'; readonly preparationTxId: string }
+  | { readonly stage: 'proof-started' }
+  | { readonly stage: 'balancing-started' }
   | { readonly stage: 'submitted'; readonly txId: string }
+  | { readonly stage: 'credit-confirmation-started' }
   /** Backend guarantees it has not entered a wallet operation capable of submitting value. */
   | { readonly stage: 'no-submit' }
   /** Measured NIGHT proof/balance failed after wallet preparation but before the ACC send fence. */
@@ -233,6 +247,20 @@ async function executeFunding(
   options: FundingRouteOptions,
   request: ServiceWire.FundAccRequest,
 ): Promise<{ readonly status: number; readonly body: unknown }> {
+  const startedAt = Date.now();
+  const logPhase = (stage: string) => {
+    try {
+      (options.log ?? console.error)(
+        JSON.stringify({
+          requestId: request.requestId,
+          stage,
+          elapsedMs: Math.max(0, Date.now() - startedAt),
+        }),
+      );
+    } catch {
+      // Logging is observational and must not change the durable funding outcome.
+    }
+  };
   let stage: FundingProgress['stage'] | 'admitted' = 'admitted';
   let noSubmit = false;
   let accNotSubmitted = false;
@@ -242,6 +270,7 @@ async function executeFunding(
       stage = progress.stage;
       noSubmit = progress.stage === 'no-submit';
       accNotSubmitted = progress.stage === 'acc-not-submitted';
+      logPhase(progress.stage);
     });
     if (
       result.requestId !== request.requestId ||
@@ -251,6 +280,7 @@ async function executeFunding(
     )
       throw new Error('funding backend returned an invalid confirmation');
     await options.store.complete(request.requestId, result);
+    logPhase('credited');
     return { status: 200, body: result };
   } catch (error) {
     return fundingFailureResult(

@@ -319,9 +319,13 @@ test('a submitted but unconfirmed deposit leaves durable progress for inspection
   assert.equal((await svc.post()).status, 502);
   assert.equal((await svc.post()).status, 409);
   assert.equal(svc.calls.length, 1);
-  assert.deepEqual(inspectFileFundingStore(path).entries[0]?.progress, {
+  const progress = inspectFileFundingStore(path).entries[0]?.progress;
+  assert.match(progress?.phaseStartedAt ?? '', /^\d{4}-\d\d-\d\dT/);
+  assert.deepEqual(progress, {
     balanceBefore: '2',
     depositTxId: 'ab'.repeat(32),
+    phase: 'acc-submitted',
+    phaseStartedAt: progress?.phaseStartedAt,
   });
 });
 

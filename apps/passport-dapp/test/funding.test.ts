@@ -11,6 +11,7 @@ import {
   parseFundingOriginalStatus,
   waitForFundingOriginal,
   savedFundingAssets,
+  fundingProgressMessage,
 } from '../src/funding.js';
 import { EventLog } from '../src/event-log.js';
 import { demoActivityObservation } from '../src/activity-observations.js';
@@ -18,6 +19,19 @@ import { plainError } from '../src/flows.js';
 
 const color = 'ab'.repeat(32);
 const row = { color, amount: '10', availability: 'insufficient' } as const;
+test('funding progress identifies the durable proof and balance phases', () => {
+  assert.match(
+    fundingProgressMessage({ phase: 'wallet-preparation' }),
+    /Preparing the funding wallet/,
+  );
+  assert.match(fundingProgressMessage({ phase: 'acc-proof' }), /Proving the ACC deposit/);
+  assert.match(fundingProgressMessage({ phase: 'wallet-balancing' }), /Balancing the proved/);
+  assert.match(
+    fundingProgressMessage({ phase: 'credit-confirmation' }),
+    /Waiting for confirmed ACC credit/,
+  );
+  assert.match(fundingProgressMessage({ preparationTxId: 'prepared' }), /Proving the ACC deposit/);
+});
 test('saved funding remains selectable after inventory disappears on reload', () => {
   const account = 'cd'.repeat(32);
   const network = 'undeployed';

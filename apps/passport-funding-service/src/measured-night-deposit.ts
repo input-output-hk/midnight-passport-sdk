@@ -34,8 +34,11 @@ export function verifyMeasuredNightDepositCall(actions: readonly unknown[], targ
 async function prepareMeasuredNightDeposit(
   request: UnboundNightDepositRequest,
   walletProvider: WalletProvider,
+  recordProgress: (progress: FundingProgress) => Promise<void>,
 ) {
+  await recordProgress({ stage: 'proof-started' });
   const proven = await proveUnboundNightDeposit(request);
+  await recordProgress({ stage: 'balancing-started' });
   const balanced = await walletProvider.balanceTx({
     version: 'v9',
     tx: Transaction.deserialize('signature', 'proof', 'pre-binding', proven),
@@ -85,7 +88,7 @@ export async function submitMeasuredNightDeposit(
   recordProgress: (progress: FundingProgress) => Promise<void>,
 ): Promise<{ readonly txId: string }> {
   return submitMeasuredNightDepositAfterPreparation(
-    () => prepareMeasuredNightDeposit(request, walletProvider),
+    () => prepareMeasuredNightDeposit(request, walletProvider, recordProgress),
     async (tx) => {
       await midnightProvider.submitTx({ version: 'v9', tx });
     },

@@ -17,7 +17,7 @@ const request = {
   amount: '10',
 };
 
-/** @typedef {{ requestId: string, accountAddress: string, color: string, amount: string, state: string, progress?: { balanceBefore: string, preparationTxId?: string, depositTxId?: string }, result?: { requestId: string, txId: string, preparationTxId?: string, creditedBalance: string } }} FundingStatus */
+/** @typedef {{ requestId: string, accountAddress: string, color: string, amount: string, state: string, progress?: { balanceBefore: string, preparationTxId?: string, depositTxId?: string, phase?: string, phaseStartedAt?: string }, result?: { requestId: string, txId: string, preparationTxId?: string, creditedBalance: string } }} FundingStatus */
 
 /** @param {'hold' | 'hold-after-submit' | 'reopen' | 'proof-fail' | 'unknown-submit' | 'credit'} mode @param {string} root */
 async function childServer(mode, root) {
@@ -119,7 +119,9 @@ for (const mode of /** @type {const} */ (['hold', 'hold-after-submit']))
         `${reopened}/${request.requestId}?accountAddress=${request.accountAddress}`,
       );
       assert.equal(status.status, 200);
-      assert.deepEqual(await status.json(), {
+      const observed = /** @type {FundingStatus} */ (await status.json());
+      assert.match(observed.progress?.phaseStartedAt ?? '', /^\d{4}-\d\d-\d\dT/);
+      assert.deepEqual(observed, {
         requestId: request.requestId,
         accountAddress: request.accountAddress,
         color: request.color,
@@ -128,6 +130,8 @@ for (const mode of /** @type {const} */ (['hold', 'hold-after-submit']))
         progress: {
           balanceBefore: '0',
           preparationTxId: 'fixture-wallet-preparation',
+          phase: mode === 'hold' ? 'acc-proof' : 'acc-submitted',
+          phaseStartedAt: observed.progress?.phaseStartedAt,
           ...(mode === 'hold-after-submit' && { depositTxId: 'fixture-acc-deposit' }),
         },
       });
@@ -206,7 +210,10 @@ test(
     assert.deepEqual(released.progress, {
       balanceBefore: '0',
       preparationTxId: 'fixture-wallet-preparation',
+      phase: 'acc-proof',
+      phaseStartedAt: released.progress?.phaseStartedAt,
     });
+    assert.match(released.progress?.phaseStartedAt ?? '', /^\d{4}-\d\d-\d\dT/);
     assert.equal(await readFile(join(root, 'dispatches'), 'utf8'), `${request.requestId}\n`);
     await assert.rejects(readFile(join(root, 'acc-submissions')), { code: 'ENOENT' });
     await first.close();
@@ -261,7 +268,10 @@ test(
       balanceBefore: '0',
       preparationTxId: 'fixture-wallet-preparation',
       depositTxId: 'fixture-acc-deposit',
+      phase: 'acc-submitted',
+      phaseStartedAt: pending.progress?.phaseStartedAt,
     });
+    assert.match(pending.progress?.phaseStartedAt ?? '', /^\d{4}-\d\d-\d\dT/);
     assert.equal(
       (
         await postFunding(reopened, {

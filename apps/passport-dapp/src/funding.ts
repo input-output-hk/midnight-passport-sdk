@@ -106,6 +106,29 @@ export interface FundingOriginalStatus {
   readonly progress?: Record<string, unknown>;
 }
 
+/** The phase is an observation of the same original, never permission to retry it. */
+export function fundingProgressMessage(progress: FundingOriginalStatus['progress']): string {
+  switch (progress?.phase) {
+    case 'wallet-preparation':
+      return 'Preparing the funding wallet transaction…';
+    case 'wallet-prepared':
+      return 'Funding wallet prepared. Waiting for ACC proof…';
+    case 'acc-proof':
+      return 'Proving the ACC deposit…';
+    case 'wallet-balancing':
+      return 'Balancing the proved ACC deposit with the funding wallet…';
+    case 'acc-submitted':
+    case 'credit-confirmation':
+      return 'Funding deposit was sent. Waiting for confirmed ACC credit…';
+    default:
+      return progress?.depositTxId
+        ? 'Funding deposit was sent. Waiting for confirmed ACC credit…'
+        : progress?.preparationTxId
+          ? 'Funding wallet is prepared. Proving the ACC deposit…'
+          : 'Funding is processing. The original request is saved and can be checked after reload…';
+  }
+}
+
 export interface FundingConfirmation extends FundingOriginalIdentity {
   readonly amount: string;
   readonly txId: string;

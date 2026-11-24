@@ -85,7 +85,14 @@ the funding process. Once the request is durably reserved,
 `POST /v1/faucet/fund` returns `202` with its original request ID. Authenticated,
 read-only `GET /v1/faucet/fund/<requestId>?accountAddress=<hex>` reports that
 same reservation as `pending`, `complete`, or `released`, with its last durable
-wallet milestone. The demo proxies this as `GET /v1/demo/funding/<requestId>`;
+wallet milestone. For a measured local NIGHT deposit, the pending status now
+distinguishes wallet preparation, ACC proof, wallet balancing, submitted ACC
+transaction, and credit confirmation. Its `phaseStartedAt` is observational;
+it never proves that a stopped worker did not submit. The funding service logs
+each durable phase with elapsed milliseconds from the original worker start,
+then logs confirmed credit. These times can isolate a slow proof without
+changing the request ID or the submit fence. The demo proxies the status as
+`GET /v1/demo/funding/<requestId>`;
 the bearer token stays server-side. **Continue funding** reads the original
 after reload, even if current wallet inventory is unavailable. A completed
 result clears only its matching browser ID; a proved no-credit release requires

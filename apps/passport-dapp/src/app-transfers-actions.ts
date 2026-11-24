@@ -13,6 +13,7 @@ import {
   fundingStorageKeys,
   storedFundingOriginal,
   checkedFundingConfirmation,
+  fundingProgressMessage,
 } from './funding.js';
 
 import type { DemoActionHost } from './app-model.js';
@@ -70,13 +71,7 @@ export class TransferActions {
           ...(!continuingOriginal && { amount: asset.amount }),
         },
         (progress) => {
-          this.host.status(
-            progress?.depositTxId
-              ? 'Funding deposit was sent. Waiting for confirmed ACC credit…'
-              : progress?.preparationTxId
-                ? 'Funding wallet is prepared. Proving the ACC deposit…'
-                : 'Funding is processing. The original request is saved and can be checked after reload…',
-          );
+          this.host.status(fundingProgressMessage(progress));
         },
       );
       if (status.state === 'released')

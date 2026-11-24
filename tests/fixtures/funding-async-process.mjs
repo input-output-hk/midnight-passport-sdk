@@ -32,6 +32,7 @@ const server = createServer({ host: '127.0.0.1', corsOrigin: 'http://localhost:5
         await appendFile(join(root, 'dispatches'), `${request.requestId}\n`);
         await recordProgress({ stage: 'balance-observed', balanceBefore: '0' });
         await recordProgress({ stage: 'prepared', preparationTxId: 'fixture-wallet-preparation' });
+        await recordProgress({ stage: 'proof-started' });
         if (mode === 'hold') {
           await writeFile(join(root, 'started'), '1');
           return new Promise(() => {});
@@ -40,6 +41,7 @@ const server = createServer({ host: '127.0.0.1', corsOrigin: 'http://localhost:5
           await recordProgress({ stage: 'acc-not-submitted' });
           throw new Error('fixture proof failed before ACC send fence');
         }
+        await recordProgress({ stage: 'balancing-started' });
         await recordProgress({ stage: 'submitted', txId: 'fixture-acc-deposit' });
         await appendFile(join(root, 'acc-submissions'), `${request.requestId}\n`);
         if (mode === 'hold-after-submit') {
