@@ -536,6 +536,27 @@ test('JubJub unshielded withdrawal admits only the exact local Ledger 9 candidat
       await account.withdrawUnshielded(request);
       assert.equal(w.calls.at(-1), 'withdraw_unshielded_with_jubjub');
       assert.equal(w.sessionFlows.length, before + 1);
+      await assert.rejects(account.withdrawUnshielded({ ...request, color: '01'.repeat(32) }), {
+        code: 'BindingUnsupported',
+      });
+      const { rotateViewingKey, removeDevice, addDevice, readShieldedHoldings } = account;
+      assert.ok(rotateViewingKey);
+      assert.ok(removeDevice);
+      assert.ok(addDevice);
+      assert.ok(readShieldedHoldings);
+      for (const unsupported of [
+        () => rotateViewingKey(),
+        () => removeDevice('22'.repeat(32)),
+        () => addDevice(/** @type {any} */ ({})),
+        () => readShieldedHoldings(),
+      ]) {
+        await assert.rejects(unsupported(), { code: 'BindingUnsupported' });
+      }
+      assert.equal(
+        w.sessionFlows.length,
+        before + 1,
+        'unsupported routes never open a key session',
+      );
     } else {
       await assert.rejects(account.withdrawUnshielded(request), { code: 'BindingUnsupported' });
       assert.equal(w.sessionFlows.length, before);

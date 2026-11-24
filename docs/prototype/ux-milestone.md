@@ -196,6 +196,10 @@ registry. The [isolated page-to-chain receipt](../../examples/midnames-local/evi
 records one reviewed page original, sponsor dispatch, indexed SUCCESS and
 same-profile recovery after a lost response. Its source ACC was activated
 before the browser run, and its login connector and credential were synthetic.
+The provisional account route is limited to local creation/opening, read-only
+views and NIGHT-only unshielded withdrawal. Other asset colors and unqualified
+device, rotation, shielded and grant operations are refused before a new owner
+key session; the complete key roster does not expand that support set.
 
 The [subsequent real-connector run](../../examples/midnames-local/evidence/compact0361-real-connector-onboarding-20261123.json)
 created a fresh ACC, claimed a new `.night` name, and reopened both in one

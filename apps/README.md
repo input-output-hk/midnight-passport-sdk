@@ -974,6 +974,12 @@ It requires a separately verified `PASSPORT_ARTEFACT_DIR`,
 endpoints. Vite checks the candidate manifest and generated module before
 building; the service checks the full asset tree at startup. The public SDK
 binding remains provisional, and the ordinary demo keeps `acc-s3r1.1`.
+The candidate account API allows local account creation/opening, read-only
+account views, and unshielded NIGHT withdrawal for the named payment. It
+refuses non-NIGHT withdrawals, device enrollment, viewing-key rotation,
+device removal and shielded holdings before a key session. Shielded spending
+and grant mutations also remain unsupported on this binding. Its 52 packaged
+verifier keys do not grant application support for all 52 operations.
 Candidate funding is separately provisioned. Candidate named NIGHT sending
 requires the local launcher's explicit `--night-send` with `--claim --funding`;
 it does not activate for an ordinary demo or online binding.

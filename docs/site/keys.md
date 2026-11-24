@@ -63,8 +63,11 @@ This is an artifact candidate, **not a supported account binding**. The source
 registry carries its provisional pins for explicit host qualification, while
 `resolveBinding` and `SUPPORTED_BINDINGS` still admit only `acc-s3r1.1`.
 The source account service can explicitly select the candidate with a separate
-verified asset tree; the demo account admission still refuses it. The published
-key service image and default account service continue to select `acc-s3r1.1`.
+verified asset tree. An explicitly isolated local demo can create/open a candidate
+account and use its NIGHT-only unshielded value route; device enrollment,
+viewing-key rotation, shielded holdings/spend and grants remain unavailable.
+Normal SDK admission still refuses the provisional binding. The published key
+service image and default account service continue to select `acc-s3r1.1`.
 A deployed ACC whose maintenance authority was retired cannot
 have its verifier keys replaced; the candidate requires a fresh contract and
 separate operation/provider acceptance. Keep the two key caches isolated.
