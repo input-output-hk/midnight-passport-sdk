@@ -924,6 +924,13 @@ See the [funding image and operator guide](passport-funding-service/README.md).
 ## Midnames lookup source preview
 
 The demo's optional Midnames reader uses the existing **Name service** panel.
+For an external provider result, **Open this Passport account** re-reads the
+exact name as a contract-call target and requires the address, provider and
+namespace to match the displayed result. It then enters the existing **Open by
+ACC address** consent and enrolled-passkey flow with that exact address. A
+changed, missing or unavailable name leaves login untouched and requires a
+new lookup. The mock provider never offers this button; no name lookup grants
+account control or changes a transfer recipient.
 Set the base build inputs in the [naming adapter guide](../docs/site/names.md#source-preview-midnames-210).
 A configured lookup reads the registry's contract target and verifies the
 deployed ACC binding at the same indexer block before displaying it. The

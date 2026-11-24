@@ -81,6 +81,13 @@ details**. This is
 a standalone local `.night` demonstration; name
 registration is optional and can happen in a later session.
 
+With an external Midnames provider configured, open **Demo tools → Settings →
+Name service**, look up an exact `.night` name, then select **Open this Passport
+account**. The page rechecks the name's contract target and enters the existing
+full-address consent and enrolled-passkey login. A changed or unavailable name
+requires a new lookup. The synthetic mock provider does not offer this action;
+the lookup itself does not authorize account control.
+
 The opt-in local Midnames profile adds a separate **Send NIGHT to a Passport
 name** form under **Passport account → Withdraw**. It requires a JubJub ACC,
 connected built-in wallet, `undeployed` chain, pinned standalone registry and

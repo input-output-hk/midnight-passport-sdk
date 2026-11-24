@@ -164,9 +164,14 @@ read-only audit checked the exact original and indexer state at a
 node-confirmed finalized block, including the owner commitment, contract
 target, supported ACC binding and typed contract-call resolution. The browser
 wrote PASS; its Node wrapper stayed alive after Chrome closed and was stopped,
-so the supervisor receipt is FAIL while cleanup and lease release passed. This
-is a two-step local demonstration: the lookup does not authorize account
-control, and the demo has no automatic open-by-name action.
+so the supervisor receipt is FAIL while cleanup and lease release passed. At
+that receipt's source head, this was a two-step local demonstration. Current
+source also offers **Open this Passport account** for an external provider
+result: it rechecks the exact name as a contract-call target and refuses a
+missing, changed or unavailable result before entering the existing full-address
+consent and enrolled-passkey flow. The mock provider cannot offer this path.
+The new button has a headless synthetic provider check, not a connected native
+or physical-passkey acceptance result. Lookup alone never grants account control.
 
 For any non-`undeployed` network or non-loopback indexer, the two known-mapping
 inputs and a complete second indexer path are fail-closed readiness gates.

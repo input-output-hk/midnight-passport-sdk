@@ -285,7 +285,23 @@ try {
     candidateQualification,
     import.meta.env.VITE_MIDNAMES_NIGHT_MIXED_RECIPIENT === '1' ? 'acc-s3r1.1' : undefined,
   );
-  showDemoNameService(naming ?? createMockNameService(network), network);
+  showDemoNameService(naming ?? createMockNameService(network), network, (address) => {
+    const input = byId<HTMLInputElement>('open-address');
+    const action = byId<HTMLButtonElement>('openAt');
+    if (input.disabled) return false;
+    const previous = input.value;
+    input.value = address;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    if (action.disabled) {
+      input.value = previous;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      return false;
+    }
+    workspace.show('overview');
+    byId<HTMLDetailsElement>('overview-open-address').open = true;
+    action.click();
+    return true;
+  });
   if (
     naming?.provider.mode === 'external' &&
     localNightNetwork(network) &&

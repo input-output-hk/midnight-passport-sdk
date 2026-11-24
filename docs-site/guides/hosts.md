@@ -112,4 +112,11 @@ The browser passed, but its Node wrapper stayed alive after Chrome closed and
 was terminated, so the supervisor receipt is FAIL even though cleanup and lease
 release completed. This is a two-step local flow with a synthetic credential.
 The lookup does not grant account control or establish a public name owner.
+Current source also offers **Open this Passport account** for an external
+provider result. It rechecks the exact name as a contract-call target and
+requires the address, provider and namespace to match before entering the
+existing full-address consent and enrolled-passkey flow. A changed or
+unavailable result leaves login untouched. The mock provider never offers
+this action. A headless synthetic provider check covers the new button; the
+native receipt above exercised the earlier separate address control.
 See the [demo configuration and evidence](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/site/names.md#source-preview-midnames-210).

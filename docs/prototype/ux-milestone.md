@@ -108,6 +108,14 @@ NIGHT control. Account setup on a new chain is a separate stage; a newly
 created source remains unfunded until the operator funds it.
 
 The Name service panel can use an explicitly configured Midnames registry.
+A source-preview **Open this Passport account** button appears only for an
+external provider result. It rechecks the operation-specific contract target
+and unchanged address/provider/namespace before entering the existing exact
+address consent and enrolled-passkey login. A changed or unavailable result
+leaves login untouched; the mock never offers the button. A headless synthetic
+provider check covers the unchanged, repointed and unavailable cases. The
+earlier native name-to-open receipt used the separate address control directly,
+so this new button still needs connected native and physical-provider review.
 A partial configuration disables lookup and shows the setup requirement.
 Lookup reads the registry and supported target ACC at one indexer block,
 then displays the checked contract target without initiating an account or
