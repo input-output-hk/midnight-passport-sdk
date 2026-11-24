@@ -1165,6 +1165,17 @@ chain; source/recipient balances moved 10/6 → 9/7. The earlier ambiguous
 funding original belongs to a different ACC and remains pending. This is
 local mock-passkey evidence, not physical-passkey or online acceptance.
 
+An [isolated virtual-PRF browser receipt](../../examples/midnames-local/evidence/candidate-virtual-prf-funded-named-night-20261124.json)
+at signed `1a54b95a` adds one continuous fresh-account-to-payment run on the
+retained Ledger 9 chain. A JubJub-first candidate ACC received 10 NIGHT by one
+durable funding request; its separately funded device wallet registered DUST
+after its own review. One named-payment review then sent 1 NIGHT to the
+candidate-binding `v36claim23.night` ACC. Both saved legs reached canonical
+finality; source/recipient balances moved 10/6 → 9/7 and the browser archived
+one intent. The run closed its owned processes and lease. The older ambiguous
+funding request remains pending and was not retried. Virtual WebAuthn does not
+establish physical-provider, online, or browser-restart acceptance.
+
 The local candidate launcher sets `VITE_MIDNAMES_NIGHT_SEND=1` only with
 `--night-send --claim --funding` and `--candidate-assets`. Its default candidate
 page leaves the control disabled.

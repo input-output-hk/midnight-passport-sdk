@@ -1391,7 +1391,7 @@ connected candidate payment. A fresh isolated
 [native run](../examples/midnames-local/evidence/candidate-acc-adapter-named-night-send-20261122.json)
 settled both legs at one signed head, using the exported deposit adapter for
 the recipient. It did not exercise the connected browser host, passkey consent
-or IndexedDB payment recovery; those remain the launch gate.
+or IndexedDB payment recovery at that head.
 The candidate device deposit request now carries the binding and manifest pin
 through the wallet worker's parser and IndexedDB fence. A synthetic headless
 browser check covers that boundary and its saved-original refusal; it does not
@@ -1406,7 +1406,8 @@ confirmed a 10-unit deposit, indexed finality and same-ID replay. A
 [headless Passport page run](../examples/midnames-local/evidence/candidate-funding-browser-20261122.json)
 then confirmed another 10-unit NIGHT deposit, finalized Indexer API v4 action
 and reload without resubmission. It used an existing-account connector fixture;
-the full passkey/worker path and named payment remain separate acceptance work.
+the full passkey/worker path and named payment were separate acceptance work at
+that head.
 The source-only funding flow now accepts a durable asynchronous original and
 reads its status through the loopback Passport service. **Continue funding**
 checks that original after a page reload or inventory outage; it never issues a
@@ -1414,3 +1415,13 @@ second POST for the saved request ID. A separate fresh candidate attempt remains
 pending after its earlier 180-second proxy timeout. This change does not resolve
 or release that original, nor does a simulated browser path establish a fresh
 native funding pass at this head.
+A later [isolated native browser run](../examples/midnames-local/evidence/candidate-virtual-prf-funded-named-night-20261124.json)
+at signed `1a54b95a` exercised that combined local path with a fresh virtual
+PRF credential and JubJub-first candidate ACC. One durable funding request
+credited 10 NIGHT, the separate device wallet funded and registered DUST, and
+one reviewed payment to `v36claim23.night` finalized its withdrawal and
+deposit. The ACC moved 10 → 9 NIGHT and the named recipient 6 → 7; the browser
+archived one intent without an active payment. Its exact containers stopped
+and native lease released. The earlier pending funding original was neither
+cleared nor retried. This run does not qualify a physical passkey, online
+provider, or browser-process recovery of that payment.

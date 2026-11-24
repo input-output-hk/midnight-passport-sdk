@@ -299,8 +299,8 @@ confirmed its original request, indexed 10-unit NIGHT credit and same-ID
 replay. A separate [headless Passport page run](../../examples/midnames-local/evidence/candidate-funding-browser-20261122.json)
 confirmed a second 10-unit NIGHT credit through the live candidate services,
 finalized chain action and reload without a duplicate request. It selected the
-existing ACC through a test connector; the combined passkey/worker path remains
-open. The connected named NIGHT page source
+existing ACC through a test connector; the combined passkey/worker path was
+still open at that head. The connected named NIGHT page source
 now checks the exact candidate binding and manifest through page selection,
 owner review, host admission and deposit preflight. Its browser journal also
 pins the candidate profile so a stable or changed binding cannot resume its
@@ -326,6 +326,15 @@ on a later signed head exercised the automatic finality wait and finished
 without that extra click. This is a synthetic-credential local result, not
 physical-passkey or online-provider acceptance. The candidate launcher stays
 disabled without its explicit opt-in.
+
+The [isolated virtual-PRF browser run](../../examples/midnames-local/evidence/candidate-virtual-prf-funded-named-night-20261124.json)
+at signed `1a54b95a` passed the continuous local flow with a fresh
+JubJub-first ACC. Its one durable request credited 10 NIGHT, its device wallet
+funded and registered DUST, and one reviewed payment to `v36claim23.night`
+finalized both saved legs. Source/recipient balances moved 10/6 → 9/7, with
+one archived and no active payment. All owned containers stopped and the lease
+released. The earlier ambiguous funding original remains pending; this run
+does not qualify physical passkeys, online naming or a browser-process restart.
 
 An unavailable indexer leaves the original receipt intact and reports the
 check as unavailable. Without claim preparation or sponsor dispatch, the panel

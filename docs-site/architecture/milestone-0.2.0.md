@@ -96,6 +96,17 @@ held one completed intent with no active duplicate. The earlier ambiguous
 funding original belongs to another ACC and remains pending. This local pass
 does not close long-proof recovery, physical passkey, online or release gates.
 
+An [exact-head isolated virtual-PRF browser run](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/candidate-virtual-prf-funded-named-night-20261124.json)
+on signed `1a54b95a` combined fresh JubJub-first ACC creation, one durable
+10 NIGHT credit, separate device-wallet funding and reviewed DUST registration,
+then one reviewed 1 NIGHT payment to the candidate-binding
+`v36claim23.night` ACC. Both saved legs reached canonical finality at API v4;
+balances moved 10/6 → 9/7. The browser archived one intent, the owned stack
+stopped, and the native lease released. This closes #380's fresh funded
+candidate-to-named-send local lane. Its separate older ambiguous funding
+original remains pending; physical passkeys, online providers, and a release
+still require their own evidence.
+
 An [isolated owner target proof](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-native-target-proof-20261123.json)
 then used the transferred `v36claim23.night` witness to prove one
 `update_target` call with pinned 0.36.1 artifacts. The fixture removed
