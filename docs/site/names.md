@@ -1245,6 +1245,17 @@ isolated page harness. Combined ACC creation and claim in the ordinary demo,
 real passkey approval, the broader recovery matrix and online naming remain
 unqualified.
 
+The [generated-name local retry](../../examples/midnames-local/evidence/candidate-generated-name-claim-20261124.json)
+exercised the same paid page-to-chain flow starting with an empty name. One
+Continue click suggested a deterministic `demo-<24 hex>.night` label in the
+isolated browser fixture and made no quote, proof, preparation or dispatch
+request. The next click reviewed the claim; after one indexed failure, a fresh
+original recovered indexed success and the same-ACC binding at a canonical
+finalized block. The test fixed only the suggestion bytes and restored browser
+entropy immediately. Its virtual credential and fixture login connector do not
+establish physical-provider, ordinary-demo candidate admission, or online
+qualification.
+
 The low-level `adapter-midnight-js` NIGHT deposit preflight recognizes the
 candidate manifest only with an explicit `provisionalLocal` opt-in and loopback
 Ledger 9 / Indexer API v4 endpoints. A separate

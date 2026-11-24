@@ -1,0 +1,94 @@
+{
+  "activatedAccAddress": "6f863b93404107e72b9e3b6b2b1cb019be99d30fec7488345f5caccca3665f40",
+  "candidateBinding": "acc-s3r1.1-zkir036",
+  "cleanup": {
+    "inputsUnchanged": true,
+    "leaseReleased": true,
+    "ownedContainersStopped": 3,
+    "retainedVolumes": true,
+    "unrelatedResourcesControlled": 0
+  },
+  "images": [
+    {
+      "arch": "arm64",
+      "id": "sha256:0c1ad548d523c1109aa1f16daab1bf72dcb78c7e17b8a8c6d97424ad0eba7b8a",
+      "service": "node",
+      "tag": "ghcr.io/midnight-ntwrk/midnight-node@sha256:0c1ad548d523c1109aa1f16daab1bf72dcb78c7e17b8a8c6d97424ad0eba7b8a"
+    },
+    {
+      "arch": "arm64",
+      "id": "sha256:119f35db548ba1c390845f215bb1e928e73038bef7c315825aee0461bd54499d",
+      "service": "indexer",
+      "tag": "ghcr.io/midnight-ntwrk/indexer-standalone@sha256:119f35db548ba1c390845f215bb1e928e73038bef7c315825aee0461bd54499d"
+    },
+    {
+      "arch": "arm64",
+      "id": "sha256:787ef99db4b4706eb14d94ad389ca45f1c09bcdf740afecb01899bfbda63dc64",
+      "service": "proof-server",
+      "tag": "ghcr.io/midnight-ntwrk/proof-server@sha256:787ef99db4b4706eb14d94ad389ca45f1c09bcdf740afecb01899bfbda63dc64"
+    }
+  ],
+  "indexedReceiptSha256": "c01fb9f2982ad3119dd91642a37ed4d02407e067cab48bc8827aa978a8c22ebc",
+  "journey": {
+    "accountCreationConnectorCalls": 1,
+    "bothOriginalsPreparedInPassportPage": true,
+    "connectorWasFixture": true,
+    "firstOriginal": {
+      "archivedAfterBrowserReload": true,
+      "browserDispatchTransport": "unknown",
+      "browserReleaseReason": "CLAIM_SEGMENT_FAILURE",
+      "dispatches": 1,
+      "indexedClaimFailure": true,
+      "transactionIdentifiers": [
+        "009a55808bd5fc2dce74259d0c2f1af52a3b3f434304a64c08824bfa817f2f261b",
+        "00f8897281f5b533721094f9cd8dbdb6a456a59867656ae808d32887483aa57036"
+      ],
+      "transactionSha256": "d9bcec533a8f1f5249a7d8c16e3f3b2e081f30966e7f221e82876ec1235234f3"
+    },
+    "pageDispatchRequests": 2,
+    "pagePrepareRequests": 2,
+    "pageProofRequests": 2,
+    "pageQuoteRequests": 2,
+    "retry": {
+      "canonicalFinalizedBlock": {
+        "hash": "2693edd7fd41b4f2a411beffb02b35928c7b303679c76a9886bb96fa58aff7be",
+        "height": 89
+      },
+      "dispatches": 1,
+      "indexedSuccess": true,
+      "lostSponsorResponse": true,
+      "recoveredInSameBrowserProfile": true,
+      "registryBoundToSameAcc": true,
+      "transactionIdentifiers": [
+        "00be36e7b9c1228eda63873301d84463055af4f0eaa8ba9e443cdf5e23241a5432",
+        "00db87c17a3ae82834aaab0da8f0438717b470e140c85d457a7592420db625e5af"
+      ],
+      "transactionSha256": "dab04a0d6d32dc5cadd780f2003eda9b8df70323b833422f1c713588d76079c8"
+    }
+  },
+  "kind": "isolated-candidate-generated-name-paid-claim-retry",
+  "limits": [
+    "The suggested label was deterministic only in this isolated browser fixture; this receipt does not establish randomness quality, reservation, or availability outside this run.",
+    "The ACC was deployed and activated by the isolated native runner before browser login. The page connector supplied that account, and the naming credential was virtual. This does not qualify a combined create/open and claim ceremony or physical passkey provider.",
+    "The candidate ACC reader was admitted only by this local qualification harness. The ordinary SDK and demo still refuse the provisional binding. This is one paid local standalone .night failure/retry, not online provider admission or a released package."
+  ],
+  "name": "demo-070707070707070707070707.night",
+  "networkId": "undeployed",
+  "observedAt": "2026-11-24",
+  "originalTransactionCount": 20,
+  "pageReceiptSha256": "6e5773ee0f42e17f36f7e26e63c807eaf703fd0ceb5eade234f755f574b34dfe",
+  "parentReceiptSha256": "5451dc8c8ad1424b8dd116d3fdd8376114da03eedfdc785e1c561fe9596465f6",
+  "registryAddress": "fe15780ad2eb58a5ce45fd35604ec73173026a94b2f0c59088f9d65f028f97e0",
+  "registryProfile": "standalone-0.35",
+  "result": "PASS",
+  "schemaVersion": 1,
+  "sourceDirty": false,
+  "sourceHead": "cd7367ea3acdd66a9267f8d1bdfb18e0d173bac0",
+  "suggestion": {
+    "firstContinueSuggestedWithoutQuoteProofPrepareOrDispatch": true,
+    "secondContinueReviewedAndStartedClaim": true,
+    "startedWithEmptyName": true,
+    "testEntropy": "12 bytes of 0x07 for this suggestion only"
+  },
+  "workerReceiptSha256": "e80d9d3eb8bf658f84dbcf75a42ca2bbdc5d509d4b9e5add773c0c1224299f3f"
+}

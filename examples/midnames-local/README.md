@@ -1562,6 +1562,18 @@ fixture and its naming credential was virtual. Combined ACC creation and
 claim, real passkey-provider consent, and online service admission need
 separate evidence.
 
+The signed `cd7367e` [generated-name native run](evidence/candidate-generated-name-claim-20261124.json)
+also started the Passport page with an empty name. Its first Continue click
+suggested `demo-070707070707070707070707.night` without requesting a quote or
+proof, preparing a claim, or dispatching one. Only that suggestion's 12 random
+bytes were fixed by the test fixture; browser entropy was restored immediately.
+A second Continue click began the reviewed paid claim. The first original
+failed on chain and was archived after browser reload. The fresh retry
+dispatched once, recovered a lost sponsor response, and bound the suggested
+name to the same ACC at a canonical finalized block. This isolated fixture
+still uses a virtual naming credential and a fixture login connector; it does
+not qualify a physical passkey or combined account creation and claim.
+
 The signed `a20a9b9` negative run `midnames-night-browser-decline-20261116a`
 passed on isolated `undeployed`. Chromium displayed the same exact review and
 clicked **Decline**. The source/target balances stayed 10/0 with zero owner
