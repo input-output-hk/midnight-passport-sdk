@@ -101,6 +101,16 @@ or empty ACC balance leaves the original pending for operator reconciliation.
 The service never restarts a wallet operation from a pending record after a
 process restart.
 
+A [fresh isolated Ledger 9 receipt](../../examples/midnames-local/evidence/candidate-funding-phases-20261124.json)
+records one candidate ACC deposit with a durable `202`, same-ID completion,
+exact 0-to-10 NIGHT action credit and a finalized deposit block checked against
+the node. In that run, wallet preparation took about 20.9 seconds, ACC proof
+about 1.3 seconds, wallet balancing about 0.7 seconds, node submission about
+16.7 seconds and credit confirmation about 2.1 seconds. These phase timings
+are diagnostic, not transaction finality evidence or permission to retry an
+uncertain original. The separate older pending shared-chain original is still
+unresolved; a named send from this freshly funded ACC remains to be qualified.
+
 The funding service defaults to packaged `acc-s3r1.1`. An explicit source-only
 `acc-s3r1.1-zkir036` path verifies the candidate manifest and generated module
 before loading it, then routes NIGHT deposits through the pinned adapter. It

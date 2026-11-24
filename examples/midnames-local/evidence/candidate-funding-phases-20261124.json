@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "scope": "fresh dedicated-wallet candidate ACC NIGHT deposit on isolated Ledger 9, followed by independent finalized API v4 action and node-block audit",
+  "sourceHead": "331f81f814d84fc8f662c30a1e9fafa2d3cb768f",
+  "networkId": "undeployed",
+  "bindingId": "acc-s3r1.1-zkir036",
+  "indexerApi": "v4",
+  "accountAddress": "df7d39c0d95cb22859152ae05f9e0b46efaa36be6166e1f2621b748b61815dce",
+  "requestId": "f72f6eb9-02e4-44e8-af5b-ac9425c5fce7",
+  "asset": "NIGHT",
+  "amountBaseUnits": "10",
+  "postStatus": 202,
+  "fundingPostCount": 1,
+  "sameIdStatus": "complete",
+  "preparationTxId": "00e36f0bf6eda9d6bcb6fbab5e09819396046c6af83e90f52f590d6acdb769e963",
+  "depositTxId": "d38f00148a1435fd7527262e811f291ef28470c04ccc16ab1ede6ed2e565fbbd",
+  "balanceBefore": "0",
+  "creditedBalance": "10",
+  "elapsedMsFromWorkerStart": {
+    "balanceObserved": 101,
+    "preparationConfirmed": 20895,
+    "accProofStarted": 20906,
+    "walletBalancingStarted": 22205,
+    "depositSubmitted": 22931,
+    "creditConfirmationStarted": 39655,
+    "creditConfirmed": 41779
+  },
+  "depositBlock": {
+    "height": 2459,
+    "hash": "204e156a3925c23c9689f18a63157dcca8ecf4019279d71a9446cc0160c2dd6f",
+    "transactionStatus": "SUCCESS",
+    "protocolVersion": 2001100,
+    "canonicalAgainstNode": true
+  },
+  "finalizedAuditHeight": 2463,
+  "accActionReplay": {
+    "matchingDepositActions": 1,
+    "entryPoint": "deposit_unshielded",
+    "previousBalance": "0",
+    "creditedBalance": "10",
+    "exactDeltaVerified": true
+  },
+  "resources": "isolated node/indexer/prover and owned service processes stopped; lease released; chain volumes, private reservations and original receipt retained; shared Ledger 9 stack untouched",
+  "limits": [
+    "This run used a previously created and activated candidate ACC; it did not test a new browser account creation or passkey ceremony.",
+    "It proved native funding and finalized credit, not a subsequent named NIGHT send from this ACC.",
+    "A distinct older shared-chain funding original remains pending and was neither retried nor cleared.",
+    "The elapsed stages describe this one native run and do not explain the older pending original."
+  ]
+}
