@@ -107,6 +107,16 @@ candidate-to-named-send local lane. Its separate older ambiguous funding
 original remains pending; physical passkeys, online providers, and a release
 still require their own evidence.
 
+A later [isolated native held-proof check](https://github.com/input-output-hk/midnight-passport-sdk/blob/codex/373-archived-quote-recovery/examples/midnames-local/evidence/candidate-held-proof-guard-release-20261124.json)
+at signed `15c7a12f` completed one candidate NIGHT deposit proof but held its
+response before the worker's final-hash fence. The operator released the exact
+guarded original, then delivered the response. The reservation remained
+released with no deposit transaction ID, and the ACC action count and NIGHT
+balance remained 15 and 9. The wallet preparation ID was retained; this only
+qualifies the new guarded worker's ACC pre-submit boundary, not the older
+unguarded original or all of #380's fault cases. The isolated stack stopped
+and the shared stack was untouched.
+
 An [isolated owner target proof](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-native-target-proof-20261123.json)
 then used the transferred `v36claim23.night` witness to prove one
 `update_target` call with pinned 0.36.1 artifacts. The fixture removed

@@ -241,6 +241,13 @@ been submitted, so preserve and inspect its preparation ID. Release is an
 operator action, never an automatic browser retry. An older request without
 the guard cannot use this mode; keep its reservation for reconciliation.
 
+An [isolated Ledger 9 held-proof receipt](../../examples/midnames-local/evidence/candidate-held-proof-guard-release-20261124.json)
+tests this exact boundary with a real completed ACC proof response held at a
+loopback proxy. The operator released the guarded original before delivering
+that response. The reservation stayed released without a deposit transaction
+ID, and the target ACC action count and NIGHT balance did not change. This is
+one local synthetic run; the separate older unguarded original remains pending.
+
 For the specific old local NIGHT path that retried a node gas rejection four
 times, an operator can instead release an uncredited request after preserving
 the exact node log and checking that those four rejections belong to the one
