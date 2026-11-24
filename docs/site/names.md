@@ -170,8 +170,21 @@ source also offers **Open this Passport account** for an external provider
 result: it rechecks the exact name as a contract-call target and refuses a
 missing, changed or unavailable result before entering the existing full-address
 consent and enrolled-passkey flow. The mock provider cannot offer this path.
-The new button has a headless synthetic provider check, not a connected native
-or physical-passkey acceptance result. Lookup alone never grants account control.
+The button also has headless synthetic-provider checks for changed, missing and
+unavailable results. Lookup alone never grants account control.
+
+A later [connected name-button run](../../examples/midnames-local/evidence/compact0361-verified-name-button-to-passkey-open-20261124.json)
+used a fresh ACC and paid `.night` claim on the same isolated chain. After one
+deliberately lost sponsor response, the page recovered the registered claim,
+reloaded, resolved the name, rechecked its typed contract target through **Open
+this Passport account**, and opened the same ACC with its enrolled virtual PRF
+credential and the existing full-address consent. One quote, owner proof,
+preparation and dispatch were observed; there was no second dispatch. A separate
+read-only audit confirmed the exact original transaction and registry/ACC state
+at a node-confirmed finalized block. The browser and supervisor receipts passed;
+the supervisor Node wrapper needed termination after it had written its PASS
+receipt and completed cleanup. Physical passkeys and online provider acceptance
+remain unqualified.
 
 For any non-`undeployed` network or non-loopback indexer, the two known-mapping
 inputs and a complete second indexer path are fail-closed readiness gates.

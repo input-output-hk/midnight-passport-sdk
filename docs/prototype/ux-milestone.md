@@ -115,7 +115,10 @@ address consent and enrolled-passkey login. A changed or unavailable result
 leaves login untouched; the mock never offers the button. A headless synthetic
 provider check covers the unchanged, repointed and unavailable cases. The
 earlier native name-to-open receipt used the separate address control directly,
-so this new button still needs connected native and physical-provider review.
+while a [later isolated connected run](../../examples/midnames-local/evidence/compact0361-verified-name-button-to-passkey-open-20261124.json)
+exercised the new button through the real connector and enrolled virtual PRF
+credential after a fresh paid name claim. Physical passkey and online-provider
+review remain open.
 A partial configuration disables lookup and shows the setup requirement.
 Lookup reads the registry and supported target ACC at one indexer block,
 then displays the checked contract target without initiating an account or

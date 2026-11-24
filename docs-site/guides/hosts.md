@@ -119,4 +119,11 @@ existing full-address consent and enrolled-passkey flow. A changed or
 unavailable result leaves login untouched. The mock provider never offers
 this action. A headless synthetic provider check covers the new button; the
 native receipt above exercised the earlier separate address control.
+An [additional isolated connected run](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-verified-name-button-to-passkey-open-20261124.json)
+exercised the new button after a fresh paid name claim: it rechecked the typed
+contract target, entered the existing consent and virtual PRF passkey flow, and
+opened the same ACC. Its independent original-transaction audit passed. The
+browser and supervisor receipts passed, though the completed supervisor Node
+wrapper required termination. Physical passkeys and online providers remain
+unqualified.
 See the [demo configuration and evidence](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/site/names.md#source-preview-midnames-210).

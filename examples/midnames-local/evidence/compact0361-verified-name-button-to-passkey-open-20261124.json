@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "kind": "isolated-ledger9-compact0361-verified-name-button-to-passkey-open",
+  "date": "2026-11-24",
+  "sourceHead": "7f7e85207b545b33805590e41211a6fb63d06fe2",
+  "profile": {
+    "networkId": "undeployed",
+    "registry": "standalone-0.36.1",
+    "registryAddress": "3d0502ab6b226f12ad621fb6c4e5e9882c75b2df479545cd65d1325f7ad30591",
+    "accountBinding": "acc-s3r1.1-zkir036",
+    "indexerApi": "v4",
+    "transactionProtocolVersion": 2001100,
+    "browserCredential": "synthetic virtual PRF",
+    "accountConnector": "real browser connector",
+    "chain": "retained isolated Ledger 9 chain, separate from the shared demo"
+  },
+  "browser": {
+    "result": "PASS",
+    "name": "v36pagea906044e.night",
+    "createdAndActivatedAccount": "df7d39c0d95cb22859152ae05f9e0b46efaa36be6166e1f2621b748b61815dce",
+    "quoteRequests": 1,
+    "ownerProofRequests": 1,
+    "sponsorPrepareRequests": 1,
+    "dispatchRequests": 1,
+    "sponsorResponseStatusBeforeInterception": 202,
+    "responseDroppedToPage": true,
+    "registeredAfterLostResponse": true,
+    "nameResolvedToAccountAfterReload": true,
+    "verifiedNameButtonRecheckedAndOpenedSameAccount": true,
+    "registeredAfterReload": true,
+    "secondDispatch": false,
+    "pageErrors": 0
+  },
+  "original": {
+    "sha256": "88c4ff8703f10af01f8a85adc019ba3e0f344058f2f2c275d92d19cb1077ebe8",
+    "identifiers": [
+      "009f3058197ded69a74d0b7e3f0e9383d7f88f2f3aff744c97f65c2cbb124833a9",
+      "0098363738f462d7f34e1a8dea55a050a29f08a230b23c26b655dd6ea62ab8ddc3"
+    ],
+    "indexedStatus": "SUCCESS",
+    "canonicalBlock": {
+      "hash": "32e9c101212aab350448b31a647f067fd3818215adfaf9e717f85546c9c177b3",
+      "height": 2412
+    },
+    "finalizedBlock": {
+      "height": 2412,
+      "hash": "32e9c101212aab350448b31a647f067fd3818215adfaf9e717f85546c9c177b3"
+    },
+    "registryOwnerCommitment": "4fb969527fa91cba4fe26009b86819bb51825e4a4924b721af85ba8ffa93b1dc",
+    "registryTarget": {
+      "kind": "contract",
+      "address": "df7d39c0d95cb22859152ae05f9e0b46efaa36be6166e1f2621b748b61815dce"
+    },
+    "supportedAccount": true,
+    "typedContractCallResolutionMatched": true
+  },
+  "cleanup": {
+    "supervisorReceipt": "PASS; the completed Node wrapper required SIGTERM after writing the receipt",
+    "ownedContainersStopped": 3,
+    "nativeLeaseReleased": true,
+    "sharedStackUntouched": true,
+    "isolatedVolumesAndPrivateJournalsRetained": true
+  },
+  "privateReceiptSha256": {
+    "supervisor": "a7158914efa4b880c80b2427617331a097932b37bcdcad1f2fe0e783623609ad",
+    "browser": "84bb373dc836bd802a37e4584a069409e9fce30e84f85f7fc9f67b9af0bfccb0",
+    "original": "633eef97e80817b4eaf1a21ab2fb7663df24ab98a876f0518a1b1023194e063b",
+    "canonicalAudit": "b9bc9bb5efd8ae8a5a3c71ac16f086e936501258ed390e5fb919d75991c32b27"
+  },
+  "limits": "The name was rechecked immediately before the button entered the existing exact-address consent and enrolled-passkey login. The passkey authorized ACC opening, not name ownership. The independent audit checked the transaction against the canonical node block and registry/ACC indexer state at a node-confirmed finalized block; it did not compare state bytes against node RPC. This local single-indexer, virtual-credential run does not qualify physical passkeys, browser-process PRF restoration, public passport.night ownership, online providers, or production images."
+}
