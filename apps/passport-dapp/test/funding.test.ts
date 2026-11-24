@@ -20,17 +20,19 @@ import { plainError } from '../src/flows.js';
 const color = 'ab'.repeat(32);
 const row = { color, amount: '10', availability: 'insufficient' } as const;
 test('funding progress identifies the durable proof and balance phases', () => {
-  assert.match(
-    fundingProgressMessage({ phase: 'wallet-preparation' }),
-    /Preparing the funding wallet/,
-  );
-  assert.match(fundingProgressMessage({ phase: 'acc-proof' }), /Proving the ACC deposit/);
-  assert.match(fundingProgressMessage({ phase: 'wallet-balancing' }), /Balancing the proved/);
+  assert.match(fundingProgressMessage({ phase: 'wallet-preparation' }), /preparation started/);
+  assert.match(fundingProgressMessage({ phase: 'acc-proof' }), /proof started/);
+  assert.match(fundingProgressMessage({ phase: 'wallet-balancing' }), /balancing started/);
+  assert.match(fundingProgressMessage({ phase: 'acc-submitted' }), /ID saved/);
   assert.match(
     fundingProgressMessage({ phase: 'credit-confirmation' }),
-    /Waiting for confirmed ACC credit/,
+    /Checking confirmed ACC credit/,
   );
-  assert.match(fundingProgressMessage({ preparationTxId: 'prepared' }), /Proving the ACC deposit/);
+  assert.match(fundingProgressMessage({ depositTxId: 'deposit' }), /ID saved/);
+  assert.match(
+    fundingProgressMessage({ preparationTxId: 'prepared' }),
+    /Checking the saved request/,
+  );
 });
 test('saved funding remains selectable after inventory disappears on reload', () => {
   const account = 'cd'.repeat(32);

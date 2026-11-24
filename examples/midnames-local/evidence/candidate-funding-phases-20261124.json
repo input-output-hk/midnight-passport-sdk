@@ -21,7 +21,7 @@
     "preparationConfirmed": 20895,
     "accProofStarted": 20906,
     "walletBalancingStarted": 22205,
-    "depositSubmitted": 22931,
+    "depositSubmissionFenced": 22931,
     "creditConfirmationStarted": 39655,
     "creditConfirmed": 41779
   },

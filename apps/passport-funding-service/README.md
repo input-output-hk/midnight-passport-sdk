@@ -86,9 +86,14 @@ the funding process. Once the request is durably reserved,
 read-only `GET /v1/faucet/fund/<requestId>?accountAddress=<hex>` reports that
 same reservation as `pending`, `complete`, or `released`, with its last durable
 wallet milestone. For a measured local NIGHT deposit, the pending status now
-distinguishes wallet preparation, ACC proof, wallet balancing, submitted ACC
-transaction, and credit confirmation. Its `phaseStartedAt` is observational;
-it never proves that a stopped worker did not submit. The funding service logs
+distinguishes wallet preparation, ACC proof, wallet balancing, the durable
+pre-submit fence and credit confirmation. The `acc-submitted` phase mirrors the
+existing `submitted` milestone: the transaction ID was saved immediately **before** calling the node;
+it does not prove the node received or accepted it. The later
+`credit-confirmation` phase means that call returned, not that credit is final.
+Its `phaseStartedAt` is observational;
+it records the last durable phase even if the worker has since stopped, and
+never proves that a stopped worker did not submit. The funding service logs
 each durable phase with elapsed milliseconds from the original worker start,
 then logs confirmed credit. These times can isolate a slow proof without
 changing the request ID or the submit fence. The demo proxies the status as
@@ -105,8 +110,8 @@ A [fresh isolated Ledger 9 receipt](../../examples/midnames-local/evidence/candi
 records one candidate ACC deposit with a durable `202`, same-ID completion,
 exact 0-to-10 NIGHT action credit and a finalized deposit block checked against
 the node. In that run, wallet preparation took about 20.9 seconds, ACC proof
-about 1.3 seconds, wallet balancing about 0.7 seconds, node submission about
-16.7 seconds and credit confirmation about 2.1 seconds. These phase timings
+about 1.3 seconds, wallet balancing about 0.7 seconds, the node submission
+call about 16.7 seconds and credit confirmation about 2.1 seconds. These phase timings
 are diagnostic, not transaction finality evidence or permission to retry an
 uncertain original. The separate older pending shared-chain original is still
 unresolved; a named send from this freshly funded ACC remains to be qualified.

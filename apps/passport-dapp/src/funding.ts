@@ -110,22 +110,23 @@ export interface FundingOriginalStatus {
 export function fundingProgressMessage(progress: FundingOriginalStatus['progress']): string {
   switch (progress?.phase) {
     case 'wallet-preparation':
-      return 'Preparing the funding wallet transaction…';
+      return 'Funding wallet preparation started. Checking the saved request…';
     case 'wallet-prepared':
-      return 'Funding wallet prepared. Waiting for ACC proof…';
+      return 'Funding wallet prepared. Checking the saved request…';
     case 'acc-proof':
-      return 'Proving the ACC deposit…';
+      return 'ACC proof started. Checking the saved request…';
     case 'wallet-balancing':
-      return 'Balancing the proved ACC deposit with the funding wallet…';
+      return 'Wallet balancing started. Checking the saved request…';
     case 'acc-submitted':
+      return 'Deposit transaction ID saved. Checking its submission result…';
     case 'credit-confirmation':
-      return 'Funding deposit was sent. Waiting for confirmed ACC credit…';
+      return 'Node submission returned. Checking confirmed ACC credit…';
     default:
       return progress?.depositTxId
-        ? 'Funding deposit was sent. Waiting for confirmed ACC credit…'
+        ? 'Deposit transaction ID saved. Checking its submission result…'
         : progress?.preparationTxId
-          ? 'Funding wallet is prepared. Proving the ACC deposit…'
-          : 'Funding is processing. The original request is saved and can be checked after reload…';
+          ? 'Funding wallet prepared. Checking the saved request…'
+          : 'Funding request saved. Checking its progress after reload…';
   }
 }
 
