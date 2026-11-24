@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import type { Page } from 'playwright-core';
 import type { JourneyHarness } from './types.js';
-import { click, navClick, approve, select } from './ui.js';
+import { click, navClick, approve, select, observeCredentialAccess } from './ui.js';
 import { address, night } from './constants.js';
 
 const custom = 'cd'.repeat(32);
@@ -200,6 +200,111 @@ export async function checkFundingRecovery(h: JourneyHarness) {
     h.flags.customFundingUnavailable = false;
     h.flags.unknownFunding = false;
     delete h.flags.holdFundingRead;
+    await h.archiveObservations(page, h.arm);
+    await page.close();
+  }
+}
+
+/** A reserved request can outlive the page while proof is still pending. */
+export async function checkPendingProofResumesAfterReloadWithoutAnotherPost(h: JourneyHarness) {
+  const priorOutage = h.flags.serviceUnavailable;
+  h.flags.serviceUnavailable = false;
+  const page = await h.newPage();
+  const previousBalance = h.state.night;
+  const postsBefore = h.fundingIds.length;
+  try {
+    await approve(page, 'create');
+    await h.waitStatus(page, /is created\./);
+    await navClick(page, '#account-tab-deposit');
+    await ready(page);
+    h.flags.asyncFunding = true;
+    h.flags.holdFundingProof = true;
+    h.flags.pendingFundingStatusReads = 0;
+    await click(page, '#fund');
+    await page
+      .locator('#status')
+      .filter({ hasText: /ACC proof started/ })
+      .waitFor();
+    const original = h.fundingIds.at(-1);
+    assert.ok(original && h.heldFunding.has(original));
+    assert.equal(h.fundingIds.length, postsBefore + 1);
+    assert.equal(h.state.night, previousBalance, 'a pending proof cannot credit the ACC');
+    assert.equal(
+      await page.evaluate((storageKey) => localStorage.getItem(storageKey), key(night)),
+      original,
+    );
+
+    await h.archiveObservations(page, h.arm);
+    await page.reload();
+    await page
+      .locator('#status')
+      .filter({ hasText: /^Ready\./ })
+      .waitFor({ state: 'attached' });
+    await observeCredentialAccess(page);
+    await approve(page, 'open');
+    await h.waitStatus(page, /opened/);
+    await navClick(page, '#account-tab-deposit');
+    await ready(page);
+    assert.match(await page.locator('#fund').innerText(), /Continue funding/);
+    const promptsBeforeContinue = await credentials(page);
+    h.flags.holdFundingProof = false;
+    await click(page, '#fund');
+    await h.waitStatus(page, new RegExp(`account balance: ${previousBalance + 10}`));
+    assert.equal(h.fundingIds.length, postsBefore + 1, 'reload must not create a second POST');
+    assert.equal(h.state.night, previousBalance + 10);
+    assert.equal(h.fundedIds.get(original), previousBalance + 10);
+    assert.equal(
+      await page.evaluate((storageKey) => localStorage.getItem(storageKey), key(night)),
+      null,
+    );
+    assert.equal(
+      await credentials(page),
+      promptsBeforeContinue,
+      'funding continuation needs no passkey',
+    );
+    h.done('account-actions.pending-proof-resumes-after-reload-without-another-post');
+
+    await ready(page);
+    h.flags.holdFundingProof = true;
+    h.flags.dropFundingAck = true;
+    await click(page, '#fund');
+    await h.waitStatus(page, /failed\./, /Funding confirmation is unavailable/);
+    const lostAckOriginal = h.fundingIds.at(-1);
+    assert.ok(lostAckOriginal && lostAckOriginal !== original);
+    assert.ok(h.heldFunding.has(lostAckOriginal), 'the sponsor reserved the original');
+    assert.equal(h.fundingIds.length, postsBefore + 2);
+    assert.equal(h.state.night, previousBalance + 10, 'lost ACK cannot imply a credit');
+    assert.equal(
+      await page.evaluate((storageKey) => localStorage.getItem(storageKey), key(night)),
+      lostAckOriginal,
+    );
+    await page.reload();
+    await page
+      .locator('#status')
+      .filter({ hasText: /^Ready\./ })
+      .waitFor({ state: 'attached' });
+    await observeCredentialAccess(page);
+    await approve(page, 'open');
+    await h.waitStatus(page, /opened/);
+    await navClick(page, '#account-tab-deposit');
+    await ready(page);
+    assert.match(await page.locator('#fund').innerText(), /Continue funding/);
+    const promptsBeforeLostAckContinue = await credentials(page);
+    h.flags.dropFundingAck = false;
+    h.flags.holdFundingProof = false;
+    await click(page, '#fund');
+    await h.waitStatus(page, new RegExp(`account balance: ${previousBalance + 20}`));
+    assert.equal(h.fundingIds.length, postsBefore + 2, 'lost ACK must not cause a second POST');
+    assert.equal(h.state.night, previousBalance + 20);
+    assert.equal(h.fundedIds.get(lostAckOriginal), previousBalance + 20);
+    assert.equal(await credentials(page), promptsBeforeLostAckContinue);
+    h.done('account-actions.lost-funding-ack-resumes-after-reload-without-another-post');
+  } finally {
+    h.flags.asyncFunding = false;
+    h.flags.holdFundingProof = false;
+    h.flags.dropFundingAck = false;
+    h.flags.pendingFundingStatusReads = 0;
+    h.flags.serviceUnavailable = priorOutage;
     await h.archiveObservations(page, h.arm);
     await page.close();
   }

@@ -30,12 +30,45 @@ function fundingAssets(h: JourneyHarness, catchingUp: boolean) {
 }
 
 async function fundingStatusRoute(h: JourneyHarness, route: Route, url: URL) {
-  const { flags, fundedIds } = h;
+  const { flags, fundedIds, heldFunding, state } = h;
   const requestId = url.pathname.slice('/v1/demo/funding/'.length);
   h.calls.push('funding-status');
   if (flags.unknownFunding || flags.serviceUnavailable) {
     await route.fulfill({ status: 503, json: { error: 'Synthetic funding status unavailable' } });
     return;
+  }
+  const held = heldFunding.get(requestId);
+  if (held && flags.holdFundingProof) {
+    await route.fulfill({
+      json: {
+        requestId,
+        accountAddress: address,
+        color: held.color,
+        amount: '10',
+        state: 'pending',
+        progress: {
+          balanceBefore: String(
+            held.color === night ? state.night : (state.tokens?.[held.color] ?? 0),
+          ),
+          preparationTxId: '71'.repeat(32),
+          phase: 'acc-proof',
+          phaseStartedAt: held.phaseStartedAt,
+        },
+      },
+    });
+    return;
+  }
+  if (held) {
+    if (held.color === night) state.night += 10;
+    else {
+      const balances = (state.tokens ??= {});
+      balances[held.color] = (balances[held.color] ?? 0) + 10;
+    }
+    fundedIds.set(
+      requestId,
+      held.color === night ? state.night : (state.tokens?.[held.color] ?? 0),
+    );
+    heldFunding.delete(requestId);
   }
   const creditedBalance = fundedIds.get(requestId);
   const pending = (flags.pendingFundingStatusReads ?? 0) > 0;
@@ -44,7 +77,7 @@ async function fundingStatusRoute(h: JourneyHarness, route: Route, url: URL) {
     json: {
       requestId,
       accountAddress: address,
-      color: night,
+      color: held?.color ?? night,
       amount: '10',
       state: pending || creditedBalance === undefined ? 'pending' : 'complete',
       ...(!pending &&
@@ -57,7 +90,7 @@ async function fundingStatusRoute(h: JourneyHarness, route: Route, url: URL) {
 }
 
 async function fundingPostRoute(h: JourneyHarness, route: Route) {
-  const { flags, state, fundedIds, fundingIds } = h;
+  const { flags, state, fundedIds, heldFunding, fundingIds } = h;
   const data = route.request().postDataJSON() as { requestId: string; color: string };
   fundingIds.push(data.requestId);
   if (flags.rejectFundingPreflight) {
@@ -76,6 +109,22 @@ async function fundingPostRoute(h: JourneyHarness, route: Route) {
       status: 503,
       json: { error: 'Synthetic funding outcome unknown; reconcile original ID' },
     });
+    return;
+  }
+  if (flags.holdFundingProof) {
+    if (heldFunding.has(data.requestId)) {
+      await route.fulfill({ status: 409, json: { error: 'Original request already reserved' } });
+      return;
+    }
+    heldFunding.set(data.requestId, {
+      color: data.color,
+      phaseStartedAt: new Date().toISOString(),
+    });
+    if (flags.dropFundingAck) {
+      await route.abort('failed');
+      return;
+    }
+    await route.fulfill({ status: 202, json: { requestId: data.requestId, state: 'pending' } });
     return;
   }
   if (!fundedIds.has(data.requestId)) {

@@ -336,4 +336,16 @@ export default [
     arms: ['p256', 'jubjub'],
     group: 'account-actions',
   },
+  {
+    id: 'account-actions.pending-proof-resumes-after-reload-without-another-post',
+    name: 'pending funding proof resumes after reload with its saved request and no second POST',
+    arms: ['p256', 'jubjub'],
+    group: 'account-actions',
+  },
+  {
+    id: 'account-actions.lost-funding-ack-resumes-after-reload-without-another-post',
+    name: 'lost funding response resumes after reload with its saved request and no second POST',
+    arms: ['p256', 'jubjub'],
+    group: 'account-actions',
+  },
 ];
