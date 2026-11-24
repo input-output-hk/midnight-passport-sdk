@@ -14,6 +14,8 @@ The funding service owns a **different wallet** that sends allowed assets into a
 
 A legacy request with only a preparation ID can be released after an operator attributes four node gas rejections and verifies an empty mempool and unchanged complete ACC history; its original reservation remains as a tombstone. A missing final hash alone does not prove that the ACC call was never sent. The browser clears an old ID only after the exact reconciled receipt, and a further click starts a new request. Keep the funding bearer token out of browser storage and bundles. The demo's local funding proxy is a bounded evaluation path, not a production authentication design.
 
+New measured local NIGHT requests persist an `accSubmitGuard` before ACC proof. If a worker stops during proof or balancing, an operator can release that exact pending request with `--release-guarded-pre-submit yes`. The release and final-hash fence use one store lock: a released worker cannot enter the ACC submitter, and a recorded final hash refuses release. The wallet self-transfer may already have happened, so preserve and inspect its preparation ID. Older requests without this guard remain pending for independent reconciliation. [Funding operations](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/passport-funding-service/README.md) gives the exact command and constraints.
+
 The source-preview funding route also supports `Prefer: respond-async`: it
 durably reserves the ID before returning `202`, continues the proof in the
 funding process, and exposes an authenticated read-only status for that exact

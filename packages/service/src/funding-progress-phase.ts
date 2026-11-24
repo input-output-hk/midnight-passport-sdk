@@ -122,7 +122,10 @@ function confirmationProgress(previous: ProgressRecord | undefined) {
 /** Phase labels never authorize release; the original transaction fence remains separate. */
 export function advanceFundingProgress(
   previous: ProgressRecord | undefined,
-  progress: Exclude<FundingProgress, { readonly stage: 'no-submit' | 'acc-not-submitted' }>,
+  progress: Exclude<
+    FundingProgress,
+    { readonly stage: 'no-submit' | 'acc-not-submitted' | 'acc-submit-guard' }
+  >,
 ): ProgressRecord {
   switch (progress.stage) {
     case 'balance-observed':

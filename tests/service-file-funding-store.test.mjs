@@ -232,6 +232,24 @@ test('a durable measured NIGHT pre-submit marker releases only the ACC deposit',
   assert.equal(readdirSync(join(path, '..')).filter((name) => name.includes('.backup-')).length, 1);
 });
 
+test('guarded release refuses a legacy original and any original past the final-hash fence', async () => {
+  const path = file();
+  const store = createFileFundingStore(path);
+  const night = { ...request, color: '00'.repeat(32) };
+  const nightPolicy = { ...policy, color: night.color };
+  await store.reserve(night, nightPolicy, '2026-10-15');
+  await store.recordProgress(night.requestId, { stage: 'balance-observed', balanceBefore: '0' });
+  await store.recordProgress(night.requestId, { stage: 'prepared', preparationTxId: 'prep' });
+  assert.ok(store.releaseGuardedPreSubmit);
+  await assert.rejects(store.releaseGuardedPreSubmit(night.requestId, 'operator'));
+  await store.recordProgress(night.requestId, { stage: 'acc-submit-guard' });
+  await store.recordProgress(night.requestId, { stage: 'proof-started' });
+  await store.recordProgress(night.requestId, { stage: 'balancing-started' });
+  await store.recordProgress(night.requestId, { stage: 'submitted', txId: 'deposit-hash' });
+  await assert.rejects(store.releaseGuardedPreSubmit(night.requestId, 'operator'));
+  assert.equal(inspectFileFundingStore(path).entries[0]?.state, 'pending');
+});
+
 test('missing preparation, other assets and a final hash cannot assert no ACC submission', async () => {
   for (const mode of ['missing-preparation', 'other-asset', 'submitted']) {
     const path = file();

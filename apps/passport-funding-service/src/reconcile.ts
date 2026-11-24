@@ -21,6 +21,7 @@ const requestId = option('--request-id');
 const operator = option('--operator');
 const release = option('--release-no-submit');
 const releaseAcc = option('--release-acc-not-submitted');
+const releaseGuarded = option('--release-guarded-pre-submit');
 const confirm = option('--confirm-credit');
 const rejected = option('--release-rejected');
 const nodeLogFile = option('--node-log');
@@ -31,7 +32,8 @@ if (
   !file ||
   !requestId ||
   !operator ||
-  [release, releaseAcc, confirm, rejected].filter((value) => value === 'yes').length !== 1
+  [release, releaseAcc, releaseGuarded, confirm, rejected].filter((value) => value === 'yes')
+    .length !== 1
 )
   throw new Error(
     'pass --file PATH --request-id UUID --operator ID and exactly one reconciliation mode',
@@ -62,6 +64,8 @@ const allowed = new Set([
   release,
   '--release-acc-not-submitted',
   releaseAcc,
+  '--release-guarded-pre-submit',
+  releaseGuarded,
   '--confirm-credit',
   confirm,
   '--release-rejected',
@@ -93,6 +97,10 @@ if (release === 'yes') {
     throw new Error('request has no durable ACC-not-submitted marker');
   if (!store.releaseAccNotSubmitted) throw new Error('funding store cannot release this marker');
   await store.releaseAccNotSubmitted(requestId, operator);
+} else if (releaseGuarded === 'yes') {
+  if (before.accSubmitGuard !== true) throw new Error('request has no durable ACC submit guard');
+  if (!store.releaseGuardedPreSubmit) throw new Error('funding store cannot release this guard');
+  await store.releaseGuardedPreSubmit(requestId, operator);
 } else if (rejected === 'yes') {
   if (!nodeLogFile) throw new Error('node log is required');
   const fd = openSync(nodeLogFile, constants.O_RDONLY | constants.O_NOFOLLOW);

@@ -38,6 +38,7 @@ const server = createServer({ host: '127.0.0.1', corsOrigin: 'http://localhost:5
         await appendFile(join(root, 'dispatches'), `${request.requestId}\n`);
         await recordProgress({ stage: 'balance-observed', balanceBefore: '0' });
         await recordProgress({ stage: 'prepared', preparationTxId: 'fixture-wallet-preparation' });
+        await recordProgress({ stage: 'acc-submit-guard' });
         await recordProgress({ stage: 'proof-started' });
         if (mode === 'hold') {
           await writeFile(join(root, 'started'), '1');
@@ -82,7 +83,10 @@ const server = createServer({ host: '127.0.0.1', corsOrigin: 'http://localhost:5
     },
     now: () => new Date('2026-10-15T12:00:00Z'),
     log: (message) => {
-      if (mode === 'unknown-submit' && JSON.parse(message).code === 'FundingOutcomeUnknown')
+      if (
+        (mode === 'unknown-submit' || mode === 'slow-proof') &&
+        JSON.parse(message).code === 'FundingOutcomeUnknown'
+      )
         writeFileSync(join(root, 'outcome-unknown'), '1');
     },
   }),

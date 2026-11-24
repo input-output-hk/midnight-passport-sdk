@@ -223,6 +223,24 @@ for the earlier preflight boundary. Neither mode accepts a request with no marke
 or an uncertain final submission. Legacy pending requests without a marker stay
 pending for independent chain and wallet reconciliation.
 
+New measured local NIGHT requests also persist an `accSubmitGuard` after wallet
+preparation and before ACC proof. If the worker stops during proof or balancing,
+the operator can release that exact guarded reservation:
+
+```sh
+nix develop -c pnpm --filter passport-funding-service reconcile --file \
+  "$HOME/.midnight-passport/funding-reservations.json" \
+  --request-id '<original UUID>' --operator '<your-id>' --release-guarded-pre-submit yes
+```
+
+The file lock makes release atomic with the final transaction-hash fence. A
+released worker cannot record the final hash or call the ACC submitter; a
+recorded final hash refuses release. This only proves no **ACC deposit** was
+submitted by the guarded worker. The earlier wallet self-transfer may have
+been submitted, so preserve and inspect its preparation ID. Release is an
+operator action, never an automatic browser retry. An older request without
+the guard cannot use this mode; keep its reservation for reconciliation.
+
 For the specific old local NIGHT path that retried a node gas rejection four
 times, an operator can instead release an uncredited request after preserving
 the exact node log and checking that those four rejections belong to the one

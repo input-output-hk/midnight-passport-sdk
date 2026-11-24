@@ -65,6 +65,9 @@ export async function submitMeasuredNightDepositAfterPreparation<T>(
   submit: (tx: T) => Promise<void>,
   recordProgress: (progress: FundingProgress) => Promise<void>,
 ): Promise<{ readonly txId: string }> {
+  // This guard is durable before proof starts. The store serializes an operator release
+  // against the final-hash fence; a released worker cannot reach submit(tx).
+  await recordProgress({ stage: 'acc-submit-guard' });
   let prepared: Awaited<ReturnType<typeof prepare>>;
   try {
     prepared = await prepare();

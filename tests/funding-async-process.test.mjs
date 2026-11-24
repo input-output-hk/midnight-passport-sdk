@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { createFileFundingStore, inspectFileFundingStore } from '../packages/service/dist/index.js';
 
 const request = {
   requestId: '12345678-1234-1234-1234-123456789abc',
@@ -247,6 +248,45 @@ test(
     const reopened = `http://127.0.0.1:${second.port}/v1/faucet/fund`;
     assert.deepEqual(await observe(reopened, request.requestId), complete);
     assert.equal((await postFunding(reopened, request)).status, 200);
+    assert.equal(await readFile(join(root, 'dispatches'), 'utf8'), `${request.requestId}\n`);
+  },
+);
+
+test(
+  'operator release of a guarded proof wins the final fence and prevents the live worker from submitting',
+  { timeout: 15000 },
+  async (t) => {
+    const root = await mkdtemp(join(tmpdir(), 'passport-funding-guard-release-'));
+    t.after(() => rm(root, { recursive: true, force: true }));
+    const first = await childServer('slow-proof', root);
+    t.after(first.close);
+    const base = `http://127.0.0.1:${first.port}/v1/faucet/fund`;
+    assert.equal((await postFunding(base, request)).status, 202);
+    await waitForFile(join(root, 'started'), '1');
+    const file = join(root, 'reservations.json');
+    assert.equal(inspectFileFundingStore(file).entries[0]?.accSubmitGuard, true);
+    const store = createFileFundingStore(file);
+    assert.ok(store.releaseGuardedPreSubmit);
+    await store.releaseGuardedPreSubmit(request.requestId, 'operator');
+    await writeFile(join(root, 'release-proof'), '1');
+    await waitForFile(join(root, 'outcome-unknown'), '1');
+    assert.equal((await observe(base, request.requestId)).state, 'released');
+    await assert.rejects(readFile(join(root, 'acc-submissions')), { code: 'ENOENT' });
+    await first.close();
+    const second = await childServer('reopen', root);
+    t.after(second.close);
+    const reopened = `http://127.0.0.1:${second.port}/v1/faucet/fund`;
+    assert.equal((await postFunding(reopened, request)).status, 409);
+    assert.equal(
+      (
+        await postFunding(reopened, {
+          ...request,
+          requestId: '22345678-1234-1234-1234-123456789abc',
+          amount: '20',
+        })
+      ).status,
+      202,
+    );
     assert.equal(await readFile(join(root, 'dispatches'), 'utf8'), `${request.requestId}\n`);
   },
 );

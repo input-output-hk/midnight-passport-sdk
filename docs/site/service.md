@@ -279,6 +279,14 @@ marker. See the [funding operations guide](https://github.com/input-output-hk/mi
 for inspection and recovery commands. This is a source preview, not an RC9 image
 or an online-network qualification.
 
+New measured local NIGHT requests persist an `accSubmitGuard` before ACC proof.
+The reference store can release a guarded pending request only while its final
+deposit hash is absent. Release and the hash fence share one lock, so a released
+worker cannot enter the ACC submitter; if the hash fence wins, release is
+refused. The operator must explicitly use `--release-guarded-pre-submit yes`
+for the original ID. This does not undo or classify the wallet preparation
+transfer. Older unguarded requests remain pending for reconciliation.
+
 Version axis: the new `FundingProgress` stage and released `FundingReservation`
 reason are source additions for the proposed 0.2.0 line, not a change to RC9's
 published types. Hosts with exhaustive switches need to handle them when opting

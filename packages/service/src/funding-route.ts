@@ -29,7 +29,8 @@ export type FundingReservation =
   | { readonly state: 'complete'; readonly result: ServiceWire.FundAccResponse }
   | {
       readonly state: 'released';
-      readonly reason: 'preflight-failed' | 'acc-not-submitted' | 'node-rejected';
+      readonly reason:
+        'preflight-failed' | 'acc-not-submitted' | 'guarded-pre-submit' | 'node-rejected';
     }
   | { readonly state: 'pending' | 'conflict' | 'daily-limit' };
 
@@ -63,6 +64,8 @@ export type FundingProgress =
   | { readonly stage: 'balancing-started' }
   | { readonly stage: 'submitted'; readonly txId: string }
   | { readonly stage: 'credit-confirmation-started' }
+  /** Durable guard: this measured NIGHT worker must pass the store's final-hash fence before submit. */
+  | { readonly stage: 'acc-submit-guard' }
   /** Backend guarantees it has not entered a wallet operation capable of submitting value. */
   | { readonly stage: 'no-submit' }
   /** Measured NIGHT proof/balance failed after wallet preparation but before the ACC send fence. */
@@ -85,6 +88,8 @@ export interface FundingStore {
   releaseNoSubmit(requestId: string, actor: string): Promise<void>;
   /** Release only a durable measured-NIGHT marker proving the ACC submitter was not entered. */
   releaseAccNotSubmitted?(requestId: string, actor: string): Promise<void>;
+  /** Release a guarded measured-NIGHT request only if its final-hash fence has not won the lock. */
+  releaseGuardedPreSubmit?(requestId: string, actor: string): Promise<void>;
   /** Atomically persist independently verified deposit evidence and the original result. */
   completeReconciled(
     requestId: string,

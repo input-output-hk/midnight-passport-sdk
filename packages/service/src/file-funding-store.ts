@@ -30,10 +30,12 @@ interface Entry {
   readonly result?: ServiceWire.FundAccResponse;
   readonly noSubmit?: true;
   readonly accNotSubmitted?: true;
+  readonly accSubmitGuard?: true;
   readonly release?: {
     readonly actor: string;
     readonly at: string;
-    readonly reason: 'preflight-failed' | 'acc-not-submitted' | 'node-rejected';
+    readonly reason:
+      'preflight-failed' | 'acc-not-submitted' | 'guarded-pre-submit' | 'node-rejected';
     readonly evidence?: FundingRejectionEvidence;
   };
   readonly reconciliation?: FundingCreditEvidence & { readonly actor: string; readonly at: string };
@@ -81,6 +83,14 @@ function validRelease(value: Record<string, unknown>): boolean {
     return value.noSubmit === true && release.evidence === undefined;
   if (release.reason === 'acc-not-submitted')
     return value.accNotSubmitted === true && release.evidence === undefined;
+  if (release.reason === 'guarded-pre-submit')
+    return (
+      value.accSubmitGuard === true &&
+      record(value.progress) &&
+      !!value.progress.preparationTxId &&
+      !value.progress.depositTxId &&
+      release.evidence === undefined
+    );
   if (
     release.reason !== 'node-rejected' ||
     value.noSubmit ||
@@ -143,6 +153,16 @@ function validEntry(id: string, value: unknown): value is Entry {
   if (value.noSubmit && (value.progress?.preparationTxId || value.progress?.depositTxId))
     return false;
   if (!validAccNotSubmitted(value, request)) return false;
+  if (value.accSubmitGuard !== undefined) {
+    if (
+      value.accSubmitGuard !== true ||
+      value.noSubmit ||
+      request.networkId !== 'undeployed' ||
+      request.color !== '00'.repeat(32) ||
+      !value.progress?.preparationTxId
+    )
+      return false;
+  }
   if (value.release !== undefined && !validRelease(value)) return false;
   if (value.reconciliation !== undefined) {
     if (
@@ -209,6 +229,7 @@ export interface FundingInspection {
     readonly result?: ServiceWire.FundAccResponse;
     readonly noSubmit?: true;
     readonly accNotSubmitted?: true;
+    readonly accSubmitGuard?: true;
     readonly release?: Entry['release'];
     readonly reconciliation?: Entry['reconciliation'];
   }[];
@@ -228,6 +249,7 @@ export function inspectFileFundingStore(file: string): FundingInspection {
       ...(entry.result && { result: entry.result }),
       ...(entry.noSubmit && { noSubmit: entry.noSubmit }),
       ...(entry.accNotSubmitted && { accNotSubmitted: entry.accNotSubmitted }),
+      ...(entry.accSubmitGuard && { accSubmitGuard: entry.accSubmitGuard }),
       ...(entry.release && { release: entry.release }),
       ...(entry.reconciliation && { reconciliation: entry.reconciliation }),
     })),
@@ -306,7 +328,12 @@ function releaseMarkedNoSubmit(file: string, requestId: string, actor: string): 
   });
 }
 
-function releaseMarkedAccNotSubmitted(file: string, requestId: string, actor: string): void {
+function releaseMarkedAccPreSubmit(
+  file: string,
+  requestId: string,
+  actor: string,
+  reason: 'acc-not-submitted' | 'guarded-pre-submit',
+): void {
   withFundingLock(file, () => {
     if (!ACTOR.test(actor)) throw new Error('operator identity is invalid');
     const state = load(file);
@@ -316,15 +343,15 @@ function releaseMarkedAccNotSubmitted(file: string, requestId: string, actor: st
       old.result ||
       old.release ||
       old.noSubmit ||
-      !old.accNotSubmitted ||
+      (reason === 'acc-not-submitted' ? !old.accNotSubmitted : !old.accSubmitGuard) ||
       !old.progress?.preparationTxId ||
       old.progress.depositTxId
     )
-      throw new Error('only a proved ACC pre-submit reservation may be released');
+      throw new Error('only a marked ACC pre-submit reservation may be released');
     backup(file);
     state.requests[requestId] = {
       ...old,
-      release: { actor, at: new Date().toISOString(), reason: 'acc-not-submitted' },
+      release: { actor, at: new Date().toISOString(), reason },
     };
     save(file, state);
   });
@@ -523,6 +550,22 @@ export function createFileFundingStore(file: string): FundingStore {
           save(file, state);
           return;
         }
+        if (progress.stage === 'acc-submit-guard') {
+          if (
+            old.noSubmit ||
+            old.accNotSubmitted ||
+            old.accSubmitGuard ||
+            old.request.networkId !== 'undeployed' ||
+            old.request.color !== '00'.repeat(32) ||
+            !previous?.preparationTxId ||
+            previous.depositTxId ||
+            previous.phase !== 'wallet-prepared'
+          )
+            throw new Error('ACC submit guard is out of order');
+          state.requests[requestId] = { ...old, accSubmitGuard: true };
+          save(file, state);
+          return;
+        }
         if (old.noSubmit || old.accNotSubmitted)
           throw new Error('funding request is marked as not submitted');
         const next = advanceFundingProgress(previous, progress);
@@ -534,7 +577,10 @@ export function createFileFundingStore(file: string): FundingStore {
       releaseMarkedNoSubmit(file, requestId, actor);
     },
     async releaseAccNotSubmitted(requestId, actor) {
-      releaseMarkedAccNotSubmitted(file, requestId, actor);
+      releaseMarkedAccPreSubmit(file, requestId, actor, 'acc-not-submitted');
+    },
+    async releaseGuardedPreSubmit(requestId, actor) {
+      releaseMarkedAccPreSubmit(file, requestId, actor, 'guarded-pre-submit');
     },
     async completeReconciled(requestId, actor, result, evidence) {
       completeVerifiedCredit(file, requestId, actor, result, evidence);
