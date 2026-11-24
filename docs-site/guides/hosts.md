@@ -36,6 +36,7 @@ A [one-head local browser receipt](https://github.com/input-output-hk/midnight-p
 covers fresh ACC creation, name claim, funding, device-wallet DUST, and named
 two-leg payments with original-only recovery. It uses a synthetic passkey and
 the shared local chain; human-provider and online qualification remain separate.
+
 An [isolated virtual-PRF browser receipt](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/candidate-virtual-prf-funded-named-night-20261124.json)
 also covers one fresh JubJub-first candidate ACC, durable 10 NIGHT funding,
 separate wallet DUST registration, and a reviewed 1 NIGHT named payment with

@@ -1415,6 +1415,7 @@ second POST for the saved request ID. A separate fresh candidate attempt remains
 pending after its earlier 180-second proxy timeout. This change does not resolve
 or release that original, nor does a simulated browser path establish a fresh
 native funding pass at this head.
+
 A later [isolated native browser run](../examples/midnames-local/evidence/candidate-virtual-prf-funded-named-night-20261124.json)
 at signed `1a54b95a` exercised that combined local path with a fresh virtual
 PRF credential and JubJub-first candidate ACC. One durable funding request
