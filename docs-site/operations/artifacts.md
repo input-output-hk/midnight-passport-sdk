@@ -44,6 +44,12 @@ nix develop -c node packages/contract/bin/stage-acc-candidate-assets.mjs \
   --output /persistent/cache/acc-s3r1.1-zkir036-assets
 ```
 
+An installed local candidate package exposes the same command as
+`mn-passport-stage-candidate-assets`. Invoke it from the installed consumer's
+toolchain with those three paths; the package manager's linked binary runs the
+same manifest and file checks. This is local artifact qualification, not a
+published binding.
+
 On a volume that supports copy-on-write clones, append `--require-reflink` to
 avoid a full second copy of the large prover keys. The command refuses that
 option if the filesystem cannot clone them.
@@ -58,9 +64,10 @@ verifier reads and transaction proof configuration to that tree together.
 Preserve the original tree for existing ACCs.
 
 This is an **artifact candidate, not a supported SDK binding**. The published
-key-service image and reference demo still select `acc-s3r1.1`; the source
-account service and source key service can select the candidate only explicitly.
-The demo's account admission still refuses the candidate. An existing ACC with retired maintenance authority cannot have
+key-service image and ordinary reference demo still select `acc-s3r1.1`. The
+source account service, key service and isolated Ledger 9 demo can select the
+candidate only with their explicit local guards and exact artifact pin. An
+existing ACC with retired maintenance authority cannot have
 its verifier keys replaced. The candidate needs separate account deployment,
 host routing and operation/provider qualification before support is advertised.
 The [version decision](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/adr/0020-ledger9-acc-key-generation-binding.md)

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
   existsSync,
@@ -22,6 +23,26 @@ import { stageAccCandidateAssets } from '../packages/contract/bin/stage-acc-cand
 const packageRoot = new URL('../packages/contract/', import.meta.url);
 /** @param {Uint8Array} bytes */
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
+
+test('candidate staging module remains importable with a non-file argv', () => {
+  const missing = join(tmpdir(), `passport-stage-cli-absent-${process.pid}`);
+  assert.equal(existsSync(missing), false);
+  const moduleUrl = new URL(
+    '../packages/contract/bin/stage-acc-candidate-assets.mjs',
+    import.meta.url,
+  );
+  const child = spawnSync(
+    process.execPath,
+    [
+      '--input-type=module',
+      '-e',
+      `process.argv[1] = ${JSON.stringify(missing)}; await import(${JSON.stringify(moduleUrl.href)}); console.log('imported')`,
+    ],
+    { encoding: 'utf8' },
+  );
+  assert.equal(child.status, 0, child.stderr);
+  assert.equal(child.stdout.trim(), 'imported');
+});
 
 test('candidate staging refuses absent provers and preserves both inputs and the output path', async (t) => {
   const root = mkdtempSync(join(tmpdir(), 'passport-candidate-assets-'));
@@ -56,6 +77,19 @@ test('candidate staging refuses absent provers and preserves both inputs and the
     if (name.startsWith('keys/'))
       writeFileSync(join(keyDir, name.slice(5)), Buffer.from(encoded, 'base64'));
   }
+  const linkedCli = join(root, 'staging-cli.mjs');
+  symlinkSync(
+    new URL('../packages/contract/bin/stage-acc-candidate-assets.mjs', import.meta.url),
+    linkedCli,
+  );
+  const cli = spawnSync(
+    process.execPath,
+    [linkedCli, '--source', sourceDir, '--keys', keyDir, '--output', outputDir],
+    { encoding: 'utf8' },
+  );
+  assert.notEqual(cli.status, 0, 'A linked staging CLI must execute and refuse the missing prover');
+  assert.match(cli.stderr, /keys\/activate_initial_device_with_jubjub\.prover/);
+  assert.equal(existsSync(outputDir), false);
   await assert.rejects(
     stageAccCandidateAssets({ sourceDir, keyDir, outputDir }),
     /keys\/activate_initial_device_with_jubjub\.prover/,
