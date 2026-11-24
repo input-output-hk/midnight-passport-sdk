@@ -1256,6 +1256,13 @@ entropy immediately. Its virtual credential and fixture login connector do not
 establish physical-provider, ordinary-demo candidate admission, or online
 qualification.
 
+The optional host claim panel labels an opened ACC **Passport setup pending**
+until an exact original check and current registry binding agree. A suggested
+name, paid quote, prepared original, or unavailable registry remains pending;
+only the verified same-ACC binding is **Registered**. This is a truthful P2
+setup label in the local demo, not proof that the account satisfies the
+specification's free `passport.night` assignment or total-loss continuity.
+
 The low-level `adapter-midnight-js` NIGHT deposit preflight recognizes the
 candidate manifest only with an explicit `provisionalLocal` opt-in and loopback
 Ledger 9 / Indexer API v4 endpoints. A separate

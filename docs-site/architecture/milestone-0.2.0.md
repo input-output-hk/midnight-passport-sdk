@@ -302,6 +302,11 @@ reviewed paid claim. A failed original was archived after reload, and one fresh
 retry recovered indexed success and the same-ACC binding at a finalized block.
 The browser fixture fixed only the suggestion bytes. This is local virtual
 credential evidence; physical-provider and online admission remain open.
+The optional claim panel now labels an opened ACC **Passport setup pending**
+until an exact original check and current registry binding agree; a suggestion
+or uncertain claim does not present as a completed named Passport. This local
+status label does not satisfy public `passport.night` issuance or same-name
+recovery after total credential loss.
 
 The shared [local demo launcher](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local) attaches to a compatible Ledger 9 stack and does not start it again. [PR #367](https://github.com/input-output-hk/midnight-passport-sdk/pull/367) packaged that setup; [PR #368](https://github.com/input-output-hk/midnight-passport-sdk/pull/368) enabled optional registration and NIGHT funding with distinct sponsor and funding wallets. The browser must explicitly confirm the saved claim before sending. A prepared receipt is not an issued name.
 

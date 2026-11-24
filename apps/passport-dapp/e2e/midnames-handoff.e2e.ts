@@ -225,7 +225,7 @@ try {
   await page.locator('#passport-name-setup').waitFor({ state: 'visible' });
   await page
     .locator('#passport-name-setup-status')
-    .getByText(/Name registration/)
+    .getByText(/^Passport setup pending\. Name registration/)
     .waitFor();
   assert.match(
     await page.locator('#passport-name-setup').innerText(),
@@ -239,6 +239,10 @@ try {
     .locator('#claim-recovery-status')
     .getByText(/Suggestion only\. Continue registration/)
     .waitFor();
+  assert.match(
+    (await page.locator('#passport-name-setup-status').textContent()) ?? '',
+    /^Passport setup pending\./,
+  );
   const suggested = await page.locator('#claim-recovery-name').inputValue();
   assert.match(suggested, /^demo-[a-f0-9]{24}\.night$/);
   assert.equal(await page.evaluate(() => localStorage.getItem('handoff-quotes')), null);
@@ -262,6 +266,10 @@ try {
     .locator('#passport-name-setup-status')
     .getByText(/^Registered\./)
     .waitFor();
+  assert.doesNotMatch(
+    (await page.locator('#passport-name-setup-status').textContent()) ?? '',
+    /setup pending/,
+  );
 
   await page.goto(`${origin}/?alternate`);
   await ready();
@@ -269,7 +277,7 @@ try {
   await page.locator('#passport-name-setup').waitFor({ state: 'visible' });
   assert.match(
     (await page.locator('#passport-name-setup-status').textContent()) ?? '',
-    /^Name registration\./,
+    /^Passport setup pending\. Name registration\./,
   );
   await page.locator('#claim-recovery-name').fill(original.name);
   await page.locator('#claim-recovery-check').click();
@@ -333,6 +341,10 @@ try {
       .locator('#claim-recovery-status')
       .getByText(/Claim check unavailable/)
       .waitFor();
+    assert.match(
+      (await retryPage.locator('#passport-name-setup-status').textContent()) ?? '',
+      /^Passport setup pending\./,
+    );
     assert.equal(await retryPage.locator('#claim-release-failed').isVisible(), false);
 
     await retryPage.evaluate(() => localStorage.setItem('handoff-claim-status', 'failed'));
@@ -519,7 +531,7 @@ try {
     assert.equal(await preparationPage.locator('#claim-dispatch').isVisible(), true);
     assert.match(
       (await preparationPage.locator('#passport-name-setup-status').textContent()) ?? '',
-      /^Name registration\./,
+      /^Passport setup pending\. Name registration\./,
     );
     assert.equal(await preparationPage.locator('#claim-recovery-name').inputValue(), original.name);
     await preparationPage.locator('#claim-recovery-name').fill('');
@@ -543,6 +555,10 @@ try {
       .locator('#claim-recovery-status')
       .getByText(/The original claim is pending\. This attempt is preserved/)
       .waitFor();
+    assert.match(
+      (await preparationPage.locator('#passport-name-setup-status').textContent()) ?? '',
+      /^Passport setup pending\./,
+    );
     assert.equal(await preparationPage.locator('#claim-release-failed').isVisible(), false);
     await preparationPage.evaluate(() =>
       localStorage.setItem('handoff-claim-status', 'registered'),

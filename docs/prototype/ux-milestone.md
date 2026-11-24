@@ -177,6 +177,12 @@ credential. It restores that selection after reopening and keeps the setup pendi
 transaction and current registry record match. It does not deploy another ACC
 or automatically send a claim. Availability and imported-receipt checks do not
 select a name; enter it again after a reload. The panel can save a standalone sponsor receipt.
+The Balances claim status explicitly says **Passport setup pending** while an
+opened ACC lacks that verified name binding, including during suggestion,
+preparation, uncertainty and an unavailable registry read. It says
+**Registered** only after checking the exact original and current binding.
+The label describes named setup in this optional host demo; it does not gate
+independent SDK account operations.
 For a retained original, reopening also checks the sponsor's dispatch fence and
 shows **Prepared but never sent** when the sponsor confirms that state and the
 registry still shows the name available. It does not show registration success.

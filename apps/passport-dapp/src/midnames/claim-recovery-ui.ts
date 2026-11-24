@@ -11,6 +11,7 @@ import {
 } from './claim-retry.js';
 import { createClaimSendReview } from './claim-send-review.js';
 import { installClaimSuggestion } from './claim-suggestion-ui.js';
+import { claimReport, initialClaimStatus } from './claim-status.js';
 import {
   claimDigest,
   claimReceipt,
@@ -61,19 +62,6 @@ function claimConflict(error: unknown): string | undefined {
     : undefined;
 }
 
-function claimReport(status: HTMLElement, onSetupStatus?: (message: string) => void) {
-  return (message: string) => {
-    status.textContent = message;
-    onSetupStatus?.(message.startsWith('Registered.') ? message : `Name registration. ${message}`);
-  };
-}
-
-function initialClaimStatus(recovery: ClaimRecovery, account: PassportAccount | undefined): string {
-  if (!account) return 'Open an account with its passkey.';
-  return recovery.preparation || recovery.dispatch
-    ? 'Choose a .night name for this account.'
-    : 'Read-only .night profile. Check or retain an existing original receipt; claiming is unavailable.';
-}
 function assertClaimContext(
   account: PassportAccount | undefined,
   currentAccount: () => PassportAccount | undefined,
@@ -504,7 +492,7 @@ export function showClaimRecovery(
   const status = byId('claim-recovery-status');
   byId<HTMLDetailsElement>('claim-recovery-details').open =
     import.meta.env.VITE_MIDNAMES_CLAIM_PREPARATION !== '1';
-  const report = claimReport(status, onSetupStatus);
+  const report = claimReport(status, currentAccount, onSetupStatus);
   const preparation =
     recovery.preparation &&
     showClaimPreparation(recovery.preparation, recovery.registryAddress, status, name);

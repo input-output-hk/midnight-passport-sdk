@@ -80,6 +80,11 @@ before offering a new quote. Raw receipts are under **Receipt and recovery
 details**. This is
 a standalone local `.night` demonstration; name
 registration is optional and can happen in a later session.
+Until the exact original and current registry binding agree, the claim panel
+labels the named Passport setup **pending**, including after ACC activation,
+a suggested name, or an uncertain sponsor response. Only a verified binding
+shows **Registered**. The ACC remains usable through its independent SDK
+account APIs while named setup is pending.
 
 With an external Midnames provider configured, open **Demo tools → Settings →
 Name service**, look up an exact `.night` name, then select **Open this Passport
