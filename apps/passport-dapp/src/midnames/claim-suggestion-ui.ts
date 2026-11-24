@@ -40,6 +40,7 @@ async function suggestClaimName(
 
 export function installClaimSuggestion(
   button: HTMLButtonElement,
+  review: HTMLButtonElement,
   recovery: ClaimRecovery,
   currentAccount: () => PassportAccount | undefined,
   name: HTMLInputElement,
@@ -47,12 +48,18 @@ export function installClaimSuggestion(
   busy: () => boolean,
 ) {
   button.hidden = !recovery.preparation && !recovery.dispatch;
-  button.addEventListener('click', () => {
+  const suggest = () => {
     if (busy()) return;
     const account = currentAccount();
     void suggestClaimName(recovery, currentAccount, name, report).catch(() => {
       if (account === currentAccount())
         report('Name suggestion unavailable. Keep the original selection and try again later.');
     });
+  };
+  button.addEventListener('click', suggest);
+  review.addEventListener('click', (event) => {
+    if (name.value !== '') return;
+    event.preventDefault();
+    suggest();
   });
 }

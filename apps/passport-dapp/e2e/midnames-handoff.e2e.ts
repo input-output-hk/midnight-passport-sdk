@@ -449,6 +449,16 @@ try {
       .waitFor({ state: 'attached' });
     await preparationPage.locator('#create').click();
     await preparationPage.locator('#passport-name-setup').waitFor({ state: 'visible' });
+    assert.equal(await preparationPage.locator('#claim-review-quote').isVisible(), true);
+    await preparationPage.locator('#claim-review-quote').click();
+    await preparationPage
+      .locator('#claim-recovery-status')
+      .getByText(/Suggestion only\. Continue registration/)
+      .waitFor();
+    const skippedSelection = await preparationPage.locator('#claim-recovery-name').inputValue();
+    assert.match(skippedSelection, /^demo-[a-f0-9]{24}\.night$/);
+    assert.deepEqual(await counts(), { quotes: 0, proofs: 0, preparations: 0, creates: 1 });
+    assert.deepEqual(httpQuotes, []);
     await preparationPage.locator('#claim-recovery-name').fill(original.name);
     assert.equal(await preparationPage.locator('#claim-review-quote').isVisible(), true);
     assert.equal(await preparationPage.locator('#claim-prepare').isVisible(), false);

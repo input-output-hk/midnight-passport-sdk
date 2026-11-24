@@ -3,8 +3,7 @@ import { byId } from '../ui-dom.js';
 import { ClaimSponsorFundingError } from './claim-dispatch.js';
 import { openClaimJournal, type ClaimJournal } from './claim-journal.js';
 import { showClaimPreparation } from './claim-preparation-ui.js';
-import { reviewedDispatchQuote } from './claim-quote.js';
-import { ClaimSponsorBusy } from './claim-quote.js';
+import { ClaimSponsorBusy, reviewedDispatchQuote } from './claim-quote.js';
 import {
   releaseExpiredUnsent,
   releaseVerifiedFailure,
@@ -493,6 +492,7 @@ export function showClaimRecovery(
   const form = byId<HTMLFormElement>('claim-recovery');
   const name = byId<HTMLInputElement>('claim-recovery-name');
   const suggest = byId<HTMLButtonElement>('claim-suggest-name');
+  const review = byId<HTMLButtonElement>('claim-review-quote');
   const receipt = byId<HTMLTextAreaElement>('claim-recovery-receipt');
   const availability = byId<HTMLButtonElement>('claim-check-availability');
   const retain = byId<HTMLButtonElement>('claim-recovery-retain');
@@ -515,7 +515,7 @@ export function showClaimRecovery(
   );
   form.hidden = false;
   let busy = false;
-  installClaimSuggestion(suggest, recovery, currentAccount, name, report, () => busy);
+  installClaimSuggestion(suggest, review, recovery, currentAccount, name, report, () => busy);
   name.addEventListener('input', () => {
     sendReview.clear();
     release.hidden = true;

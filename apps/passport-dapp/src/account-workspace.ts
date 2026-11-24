@@ -65,7 +65,7 @@ export function createAccountWorkspace(
   const setupTitle = element('h3', 'Register a .night name');
   const setupHelp = element(
     'p',
-    'You can register a local .night name after activating your ACC, or come back later. Registration is complete when the original transaction and current registry binding agree.',
+    'You can register a local .night name after activating your ACC, or come back later. Leave the name blank and choose Continue registration for a local suggestion. Registration is complete when the original transaction and current registry binding agree.',
   );
   const setupStatus = element('p', 'Open the account with its passkey to register a name.');
   setupStatus.id = 'passport-name-setup-status';

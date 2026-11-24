@@ -162,10 +162,12 @@ remain open qualification.
 
 The opt-in **Register a .night name** panel on Passport account → Balances
 appears after creation or passkey-based opening of the target ACC. The claim
-panel can suggest a random local `demo-<24 hex characters>.night` label when the field is empty;
+panel can suggest a random local `demo-<24 hex characters>.night` label when the field is empty,
+either through its suggestion button or an empty **Continue registration** click;
 it first checks for an earlier selection under the same credential and restores
 that selection instead of replacing its original. A suggestion is not an issued
-name, reservation, quote or transaction. The user still reviews the registry
+name, reservation, quote or transaction. After an empty Continue click, the user
+reviews the suggested name and clicks Continue again for a quote. The user still reviews the registry
 result, quote, passkey request and payment separately. The claim
 profile requires the observed Indexer v4 transaction protocol
 pin (`2001100` on both the shared Ledger 9 demo and the release-image isolated fixture).
