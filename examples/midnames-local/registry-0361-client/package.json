@@ -1,0 +1,22 @@
+{
+  "name": "midnames-registry-0361-native-fixture",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@midnight-ntwrk/compact-js": "3.0.0",
+    "@midnight-ntwrk/compact-runtime": "0.21.0",
+    "@midnight-ntwrk/midnight-js-contracts": "5.0.0",
+    "@midnight-ntwrk/midnight-js-http-client-proof-provider": "5.0.0",
+    "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "5.0.0",
+    "@midnight-ntwrk/midnight-js-network-id": "5.0.0-rc.2",
+    "@midnight-ntwrk/midnight-js-node-zk-config-provider": "5.0.0",
+    "@midnight-ntwrk/midnight-js-protocol": "5.0.0",
+    "@midnight-ntwrk/midnight-js-types": "5.0.0",
+    "@midnightntwrk/ledger-v9": "1.0.0"
+  },
+  "overrides": {
+    "effect": "3.22.4",
+    "graphql-ws": "6.4.2",
+    "object-inspect": "1.13.4"
+  }
+}

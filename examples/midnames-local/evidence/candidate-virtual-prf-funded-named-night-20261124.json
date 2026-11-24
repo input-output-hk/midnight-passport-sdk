@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "kind": "candidate-virtual-prf-funded-named-night",
+  "result": "PASS_WITH_LIMITS",
+  "sourceHead": "1a54b95a4688eeeb770971c6961b782eec7fbab2",
+  "profile": {
+    "networkId": "undeployed",
+    "stack": "retained, explicitly isolated Ledger 9 node/indexer/prover; shared stack untouched",
+    "indexerApi": "v4",
+    "registryProfile": "standalone-0.36.1",
+    "registryAddress": "3d0502ab6b226f12ad621fb6c4e5e9882c75b2df479545cd65d1325f7ad30591",
+    "candidateBinding": "acc-s3r1.1-zkir036",
+    "candidateManifestSha256": "590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f",
+    "credential": "fresh virtual PRF-capable WebAuthn credential, JubJub-first ACC",
+    "chainAnchor": {
+      "height": 248,
+      "hash": "0fb8190454485ce59475438174baf9d21f8630dada758f962b1673cc5f456dc5"
+    }
+  },
+  "account": {
+    "source": "265607dd8ea4d9aaf65dfa633133f0285d19dd14812e60935f287aef8739c611",
+    "recipient": "14c1181524e783ac7a11d225583cb33c842a144aa89294b765393a5e12794053",
+    "name": "v36claim23.night",
+    "recipientBinding": "acc-s3r1.1-zkir036"
+  },
+  "funding": {
+    "originalRequestId": "f112af10-5105-4f57-96fb-9e2ebb9babc9",
+    "acceptedStatus": 202,
+    "result": "canonical credit",
+    "creditedBalance": "10",
+    "deviceWalletOriginal": "2d2d7727f579f9b4493d242d1c9384b2c312b13854ae9b7411c275d2213e2d45",
+    "deviceWalletBlock": 3125,
+    "dustRegistrationOriginal": "3814d27f33a64cafdd14543d39ab630110816d16d50868391e7d8a3f7219afcb",
+    "dustRegistrationReviewCount": 1
+  },
+  "namedPayment": {
+    "intentId": "d9382c34-06d7-44f4-bf43-3fd3026c34bb",
+    "amount": "1",
+    "reviewCount": 1,
+    "withdrawalOriginal": "70b63d01b003df0347eadd1e94f0d08f450334cb9a3c848d0232b539ba53de47",
+    "withdrawalFinalizedBlock": 3138,
+    "depositOriginal": "32c24d6b5614d456267c744aa0a1b63e64607ecc0befcac5f41a4c651e9e43e7",
+    "depositFinalizedBlock": 3150,
+    "sourceBalanceBefore": "10",
+    "sourceBalanceAfter": "9",
+    "recipientBalanceBefore": "6",
+    "recipientBalanceAfter": "7",
+    "initialJournal": {
+      "active": 0,
+      "history": 0
+    },
+    "finalJournal": {
+      "active": 0,
+      "history": 1
+    },
+    "browserErrors": []
+  },
+  "cleanup": {
+    "inputsUnchanged": true,
+    "ownedContainersStopped": true,
+    "leaseReleased": true,
+    "retainedChainVolumes": true
+  },
+  "limits": [
+    "Synthetic virtual credential and local isolated chain only; no physical passkey, online provider, or released-package acceptance.",
+    "This run completes one continuous browser payment; reload and lost-response recovery are separate browser checks.",
+    "The older pending funding original in issue #380 was not cleared, retried, or reclassified."
+  ]
+}

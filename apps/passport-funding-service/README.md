@@ -80,6 +80,48 @@ color, amount, transaction ID and confirmed ACC balances for NIGHT and the test 
 or when the Passport service is bound beyond loopback. The operator CLI remains available as
 `demo fund`.
 
+In this source preview, the browser seam requests `Prefer: respond-async` from
+the funding process. Once the request is durably reserved,
+`POST /v1/faucet/fund` returns `202` with its original request ID. Authenticated,
+read-only `GET /v1/faucet/fund/<requestId>?accountAddress=<hex>` reports that
+same reservation as `pending`, `complete`, or `released`, with its last durable
+wallet milestone. For a measured local NIGHT deposit, the pending status now
+distinguishes wallet preparation, ACC proof, wallet balancing, the durable
+pre-submit fence and credit confirmation. The `acc-submitted` phase mirrors the
+existing `submitted` milestone: the transaction ID was saved immediately **before** calling the node;
+it does not prove the node received or accepted it. The later
+`credit-confirmation` phase means that call returned, not that credit is final.
+Its `phaseStartedAt` is observational;
+it records the last durable phase even if the worker has since stopped, and
+never proves that a stopped worker did not submit. The funding service logs
+each durable phase with elapsed milliseconds from the original worker start,
+then logs confirmed credit. These times can isolate a slow proof without
+changing the request ID or the submit fence. The demo proxies the status as
+`GET /v1/demo/funding/<requestId>`;
+the bearer token stays server-side. **Continue funding** reads the original
+after reload, even if current wallet inventory is unavailable. A completed
+result clears only its matching browser ID; a proved no-credit release requires
+a separate explicit new click. An uncertain worker stop, missing transaction ID
+or empty ACC balance leaves the original pending for operator reconciliation.
+The service never restarts a wallet operation from a pending record after a
+process restart.
+
+A [fresh isolated Ledger 9 receipt](../../examples/midnames-local/evidence/candidate-funding-phases-20261124.json)
+records one candidate ACC deposit with a durable `202`, same-ID completion,
+exact 0-to-10 NIGHT action credit and a finalized deposit block checked against
+the node. In that run, wallet preparation took about 20.9 seconds, ACC proof
+about 1.3 seconds, wallet balancing about 0.7 seconds, the node submission
+call about 16.7 seconds and credit confirmation about 2.1 seconds. These phase timings
+are diagnostic, not transaction finality evidence or permission to retry an
+uncertain original. A separate [fresh virtual-passkey browser run](../../examples/midnames-local/evidence/candidate-virtual-prf-funded-named-night-20261124.json)
+funded a newly activated candidate ACC with 10 NIGHT, then completed a reviewed
+1 NIGHT send to a `.night` recipient through both ACC transaction legs. The
+process-level async funding checks also simulate a held ACC-proof stage beyond a client wait,
+confirm same-ID completion and restart replay, and refuse a second request
+while the first consumes daily quota. These checks compress the waiting period;
+they do not reproduce the older shared-chain proof duration. That older pending
+original remains unresolved and was not retried.
+
 The funding service defaults to packaged `acc-s3r1.1`. An explicit source-only
 `acc-s3r1.1-zkir036` path verifies the candidate manifest and generated module
 before loading it, then routes NIGHT deposits through the pinned adapter. It
@@ -180,6 +222,31 @@ absence is not implied by this release. The `--release-no-submit` mode is only
 for the earlier preflight boundary. Neither mode accepts a request with no marker
 or an uncertain final submission. Legacy pending requests without a marker stay
 pending for independent chain and wallet reconciliation.
+
+New measured local NIGHT requests also persist an `accSubmitGuard` after wallet
+preparation and before ACC proof. If the worker stops during proof or balancing,
+the operator can release that exact guarded reservation:
+
+```sh
+nix develop -c pnpm --filter passport-funding-service reconcile --file \
+  "$HOME/.midnight-passport/funding-reservations.json" \
+  --request-id '<original UUID>' --operator '<your-id>' --release-guarded-pre-submit yes
+```
+
+The file lock makes release atomic with the final transaction-hash fence. A
+released worker cannot record the final hash or call the ACC submitter; a
+recorded final hash refuses release. This only proves no **ACC deposit** was
+submitted by the guarded worker. The earlier wallet self-transfer may have
+been submitted, so preserve and inspect its preparation ID. Release is an
+operator action, never an automatic browser retry. An older request without
+the guard cannot use this mode; keep its reservation for reconciliation.
+
+An [isolated Ledger 9 held-proof receipt](../../examples/midnames-local/evidence/candidate-held-proof-guard-release-20261124.json)
+tests this exact boundary with a real completed ACC proof response held at a
+loopback proxy. The operator released the guarded original before delivering
+that response. The reservation stayed released without a deposit transaction
+ID, and the target ACC action count and NIGHT balance did not change. This is
+one local synthetic run; the separate older unguarded original remains pending.
 
 For the specific old local NIGHT path that retried a node gas rejection four
 times, an operator can instead release an uncredited request after preserving

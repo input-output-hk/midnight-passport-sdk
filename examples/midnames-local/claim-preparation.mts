@@ -157,12 +157,7 @@ export function createClaimPreparationJournal(
     return true;
   }
 
-  function wasRefused(
-    id: string,
-    digest: string,
-    source = directory,
-    ownerCommitment?: string,
-  ): boolean {
+  function wasRefused(id: string, digest: string, source = directory): boolean {
     const marker = readClaimRecord(join(source, `quote-decision-${id}.json`), claimReceiptLimit);
     if (marker === undefined) return false;
     if (
@@ -173,9 +168,8 @@ export function createClaimPreparationJournal(
       marker.digest !== digest ||
       !['refused', 'intent', 'archive-refused'].includes(String(marker.kind)) ||
       (marker.kind === 'archive-refused' &&
-        (!ownerCommitment ||
-          !('ownerCommitment' in marker) ||
-          marker.ownerCommitment !== ownerCommitment))
+        'ownerCommitment' in marker &&
+        !claimHex(marker.ownerCommitment))
     )
       throw new Error('Claim decision differs from the original quote.');
     return marker.kind === 'refused' || marker.kind === 'archive-refused';
@@ -212,8 +206,11 @@ export function createClaimPreparationJournal(
     if (sourceDispatch.preparedReceipt()?.quoteSha256 === digest)
       throw new Error('The original prepared receipt differs from its intent.');
     const sourceDecision = join(source, `quote-decision-${id}.json`);
-    const refusal = { kind: 'archive-refused', digest, ownerCommitment };
-    if (!recordOnce(sourceDecision, refusal) && !wasRefused(id, digest, source, ownerCommitment)) {
+    // No decision for this quote reached balance, so the sponsor never bound
+    // its owner. A lookup caller cannot establish that owner retroactively.
+    // The browser still releases only its own quote-and-owner reservation.
+    const refusal = { kind: 'archive-refused', digest };
+    if (!recordOnce(sourceDecision, refusal) && !wasRefused(id, digest, source)) {
       const decision = readClaimRecord(sourceDecision, claimReceiptLimit);
       if (
         !decision ||
@@ -554,7 +551,7 @@ export function createClaimPreparationJournal(
         );
       refuseQuoteSupersededByOriginal(quote.id, digest, ownerCommitment, source, sourceDispatch);
       const result = find(quote.id, digest, ownerCommitment, undefined, source, sourceDispatch);
-      if (!result && wasRefused(quote.id, digest, source, ownerCommitment))
+      if (!result && wasRefused(quote.id, digest, source))
         throw new ClaimPreIntentRefusal('The sponsor refused before any balance intent.');
       return result;
     },

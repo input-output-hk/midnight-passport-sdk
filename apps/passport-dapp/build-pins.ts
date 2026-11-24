@@ -42,10 +42,18 @@ export function readDemoBinding(
     return id;
   }
   if (id !== 'acc-s3r1.1-zkir036') throw new Error('passport-dapp: unknown ACC binding');
+  const shared035 =
+    env.VITE_MIDNAMES_REGISTRY_PROFILE === 'standalone-0.35' &&
+    env.PASSPORT_MIDNAMES_0361_ISOLATED !== '1';
+  const isolated0361 =
+    env.MIDNIGHT_STACK === 'isolated-ledger9' &&
+    env.VITE_MIDNAMES_REGISTRY_PROFILE === 'standalone-0.36.1' &&
+    env.VITE_MIDNAMES_0361_ISOLATED === '1' &&
+    env.PASSPORT_MIDNAMES_0361_ISOLATED === '1';
   if (
     env.PASSPORT_CANDIDATE_LOCAL !== '1' ||
     pins.networkId !== 'undeployed' ||
-    env.VITE_MIDNAMES_REGISTRY_PROFILE !== 'standalone-0.35' ||
+    !(shared035 || isolated0361) ||
     pins.manifestSha256 !== candidate.manifestSha256
   )
     throw new Error('passport-dapp: provisional ACC requires the exact local candidate profile');

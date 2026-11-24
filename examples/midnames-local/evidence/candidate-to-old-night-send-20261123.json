@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "result": "PASS",
+  "scope": "Isolated Ledger 9 synthetic-owner candidate-source to old-binding recipient NIGHT diagnostic",
+  "sourceCommit": "e54fbff04975c79f0b727cd24b55e097fe069148",
+  "sourceBinding": "acc-s3r1.1-zkir036 (provisional; complete pinned 0.36.1 key roster)",
+  "recipientBinding": "acc-s3r1.1 (supported 0.35 key roster)",
+  "registryProfile": "standalone-0.35",
+  "proofServerImage": "ghcr.io/midnight-ntwrk/proof-server@sha256:787ef99db4b4706eb14d94ad389ca45f1c09bcdf740afecb01899bfbda63dc64",
+  "source": "131f51213b7de7542052c205e20008ecbcecebd4116df24e0552bb5af75da55b",
+  "recipient": "fd976bb4f318450c7dd52c6188cddf9b52719ed6fbb378b3de994ce5a58c63dc",
+  "registryAddress": "a07eef5bc81cfbbfcc9f94d27b4a11314a2684858fd44315a8ef85f555d629a2",
+  "name": "alice.night",
+  "amountNight": "4",
+  "balances": {
+    "before": {
+      "source": "10",
+      "target": "0"
+    },
+    "afterWithdrawal": {
+      "source": "6",
+      "target": "0"
+    },
+    "final": {
+      "source": "6",
+      "target": "4"
+    }
+  },
+  "withdrawal": {
+    "identifier": "00835df065045bbc9b1ebb7489cc7912dea0745beeb52d3fb57938d04553fd02bc",
+    "txHash": "faa41a9b112ef07bf9ef1d9cff904af7b0bfc4e10865f68fb1f90d3d12953b6c",
+    "blockHeight": 98,
+    "succeeded": true,
+    "blockHash": "88778f3624f485dbaa05e1d9d2ad672c51624ced3444a75e993a0f33a2d84435",
+    "actions": ["131f51213b7de7542052c205e20008ecbcecebd4116df24e0552bb5af75da55b"]
+  },
+  "deposit": {
+    "identifier": "003843b168f6006121a2faedb741951a2516619b1f11d1b069016fdcbc1fc2143b",
+    "txHash": "73d1f64f23fddc94bdcf547b87c1902cf367c17b5e3f1d4a5de85c965b231760",
+    "blockHeight": 102,
+    "succeeded": true,
+    "blockHash": "c0362c0d31cf0659aa4809a9a79938246da173e743c6bb9d42e2b2ed72c00ecc",
+    "actions": ["fd976bb4f318450c7dd52c6188cddf9b52719ed6fbb378b3de994ce5a58c63dc"]
+  },
+  "ownerApprovals": 1,
+  "deviceSignatures": 1,
+  "dispatches": {
+    "withdraw": 1,
+    "deposit": 1
+  },
+  "replayBroadcasts": 0,
+  "exactBridgeOutputConsumed": true,
+  "adapterDepositUsed": false,
+  "rostersCheckedOnChain": [
+    "candidate source: 52 exact candidate verifier assignments, retired maintenance authority",
+    "old recipient: 52 exact old verifier assignments, retired maintenance authority"
+  ],
+  "preOwnerRefusals": [
+    "unsupported shielded asset",
+    "11 NIGHT against 10 NIGHT live source balance"
+  ],
+  "parentReceiptSha256": "2dc06dda9ffcf61a0a4dcc4fda42d0b6a6f96aabe59a478de8fcc32f432c9b84",
+  "workerReceiptSha256": "5f4ab76d924bde7036e85cb21bce8afb4f81ffdece3910b6b114e1530a7fd232",
+  "cleanup": {
+    "ownedContainersStopped": 3,
+    "retainedVolumes": true,
+    "unrelatedResourcesControlled": 0,
+    "leaseReleased": true,
+    "inputsUnchanged": true
+  },
+  "attempts": [
+    {
+      "suffix": "a",
+      "result": "FAIL",
+      "stage": "dirty-source isolation guard, before Docker; corrected by signed commit"
+    },
+    {
+      "suffix": "b",
+      "result": "FAIL",
+      "stage": "selected subnet already occupied, before Docker stack creation; retried on unused subnet"
+    },
+    {
+      "suffix": "c",
+      "result": "PASS"
+    }
+  ],
+  "limits": [
+    "The lane uses a root-owned fixture name and synthetic owner review; it does not qualify real passkey consent or paid name issuance.",
+    "The old recipient deposit uses the reference compiled contract and old proof provider. It does not exercise the exported adapter with an independently selected recipient network/artifact bundle.",
+    "The browser and durable intent currently have no recipient-binding pin. Mixed-version sends must remain unavailable in the product until name resolution, review, recovery, and proof selection bind the recipient version independently of the source.",
+    "This proves only one candidate-source/old-recipient pair on a fresh isolated local chain, not old-source/candidate-recipient or online support."
+  ]
+}

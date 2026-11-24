@@ -15,7 +15,7 @@ import {
 } from 'playwright-core';
 import { createServer } from 'vite';
 import { claimDispatchPath } from '../src/midnames/claim-dispatch.js';
-import { claimReceipt } from '../src/midnames/claim-receipt.js';
+import { claimName, claimReceipt } from '../src/midnames/claim-receipt.js';
 import { reveal } from './journeys/ui.js';
 
 assert.equal(process.env.PASSPORT_MIDNAMES_NATIVE, '1');
@@ -34,12 +34,18 @@ const input = JSON.parse(readFileSync(resolve(output, 'page-claim-input.json'), 
 };
 assert.match(input.registryAddress, /^[0-9a-f]{64}$/);
 assert.match(input.accountAddress, /^[0-9a-f]{64}$/);
-assert.match(input.name, /^[a-z0-9]+\.night$/);
+assert.ok(claimName(input.name));
 assert.match(input.registryPayee, /^[0-9a-f]{64}$/);
 assert.match(input.sponsorPaymentAddress, /^[0-9a-f]{64}$/);
 assert.match(input.night, /^[0-9]+$/);
 assert.match(input.maximumDust, /^[0-9]+$/);
 const candidate = input.candidate;
+const releaseRegistry = process.env.PASSPORT_MIDNAMES_0361_ISOLATED === '1';
+if (releaseRegistry) {
+  assert.ok(candidate, 'The release-registry page lane requires the pinned candidate ACC.');
+  assert.equal(process.env.MIDNIGHT_STACK, 'isolated-ledger9');
+  assert.equal(process.env.VITE_MIDNAMES_0361_ISOLATED, '1');
+}
 if (candidate) {
   assert.equal(candidate.bindingId, 'acc-s3r1.1-zkir036');
   assert.equal(
@@ -48,7 +54,9 @@ if (candidate) {
   );
   assert.equal(
     candidate.modulePath,
-    resolve(output, '..', 'candidate-account-runtime/account.mjs'),
+    releaseRegistry
+      ? resolve(process.env.PASSPORT_MIDNAMES_CANDIDATE_ASSETS ?? '', 'contract/index.js')
+      : resolve(output, '..', 'candidate-account-runtime/account.mjs'),
   );
   assert.ok(process.env.PASSPORT_MIDNAMES_CANDIDATE_ASSETS);
   assert.equal(
@@ -63,9 +71,11 @@ assert.match(ownerPort ?? '', /^[1-9][0-9]{0,4}$/);
 assert.equal(process.env.MN_INDEXER_URL, 'http://127.0.0.1:18108/api/v4/graphql');
 assert.equal(process.env.MN_INDEXER_WS_URL, 'ws://127.0.0.1:18108/api/v4/graphql/ws');
 Object.assign(process.env, {
-  PASSPORT_MANIFEST_SHA256: '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f',
+  PASSPORT_MANIFEST_SHA256: releaseRegistry
+    ? candidate?.manifestSha256
+    : '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f',
   PASSPORT_NETWORK_ID: 'undeployed',
-  VITE_MIDNAMES_REGISTRY_PROFILE: 'standalone-0.35',
+  VITE_MIDNAMES_REGISTRY_PROFILE: releaseRegistry ? 'standalone-0.36.1' : 'standalone-0.35',
   VITE_MIDNAMES_REGISTRY_ADDRESS: input.registryAddress,
   VITE_MIDNAMES_NAMESPACE: 'night',
   VITE_MIDNAMES_NETWORK_ID: 'undeployed',
@@ -318,6 +328,34 @@ try {
     localStorage.setItem('native-naming-credential', id);
   })()`);
   await open(page, true);
+  if (candidate) {
+    // Only this isolated candidate fixture pins the suggested label. Restore
+    // native entropy immediately after the one 12-byte suggestion request.
+    await page.evaluate(`(() => {
+      const original = crypto.getRandomValues.bind(crypto);
+      Object.defineProperty(crypto, 'getRandomValues', {
+        configurable: true,
+        value(array) {
+          if (array instanceof Uint8Array && array.length === 12) {
+            array.fill(7);
+            delete crypto.getRandomValues;
+            return array;
+          }
+          return original(array);
+        },
+      });
+    })()`);
+    await page.locator('#claim-review-quote').click();
+    await page
+      .locator('#claim-recovery-status')
+      .getByText(/Suggestion only\. Continue registration/)
+      .waitFor();
+    assert.equal(await page.locator('#claim-recovery-name').inputValue(), input.name);
+    assert.deepEqual(
+      { quoteRequests, proofRequests, prepareRequests, dispatchRequests },
+      { quoteRequests: 0, proofRequests: 0, prepareRequests: 0, dispatchRequests: 0 },
+    );
+  }
   if (input.prepareFailedInPage) {
     assert.equal(input.failedOriginal, undefined);
     await page.locator('#claim-recovery-name').fill(input.name);
@@ -457,16 +495,28 @@ try {
   assert.ok(reviewedTerms.includes(`Register ${input.name}`));
   assert.ok(reviewedTerms.includes(`Passport account ${input.accountAddress}`));
 
+  let completeInterception!: () => void;
+  let failInterception!: (error: unknown) => void;
+  const interception = new Promise<void>((resolve, reject) => {
+    completeInterception = resolve;
+    failInterception = reject;
+  });
   await page.route('**' + claimDispatchPath, async (route) => {
-    const response = await route.fetch({ maxRetries: 0, maxRedirects: 0 });
-    assert.equal(response.status(), 202);
-    lostResponse = true;
-    await route.abort('failed');
+    try {
+      const response = await route.fetch({ maxRetries: 0, maxRedirects: 0 });
+      assert.equal(response.status(), 202);
+      lostResponse = true;
+      await route.abort('failed');
+      completeInterception();
+    } catch (error) {
+      failInterception(error);
+    }
   });
   const sent = page.waitForEvent('requestfailed', {
     predicate: (request) => request.url().endsWith(claimDispatchPath),
   });
   await page.locator('#claim-dispatch').click();
+  await interception;
   await sent;
   assert.equal(dispatchRequests, expectedAttempts);
   await browser.close();

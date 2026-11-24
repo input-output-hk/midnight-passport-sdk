@@ -66,6 +66,7 @@ export function createJourneyHarness(
     calls: [],
     fundingIds: [],
     fundedIds: new Map(),
+    heldFunding: new Map(),
     contexts: [],
     flags: {
       unknownFunding: false,

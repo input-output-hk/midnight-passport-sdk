@@ -2,6 +2,8 @@ import {
   canFund,
   fundingDescription,
   preferredFundingAsset,
+  savedFundingAssets,
+  storedFundingOriginal,
   type DemoFundingAsset,
 } from './funding.js';
 
@@ -56,7 +58,7 @@ export class ActionControls {
     this.dom.buttons.unlockRoutine.disabled = busy || !this.model.account;
     this.dom.buttons.unlockOwner.disabled = busy || !this.model.account;
     this.dom.buttons.startSession.disabled =
-      busy || !this.model.account || this.model.assetsByColor.size === 0;
+      busy || !this.model.account || this.dom.grantAsset.options.length === 0;
     this.dom.buttons.endSession.disabled = false;
     this.dom.buttons.revokeSession.disabled = busy || !this.model.account;
     this.dom.buttons.create.disabled = busy || !this.model.ready;
@@ -76,11 +78,11 @@ export class ActionControls {
     this.dom.buttons.issueGrant.disabled =
       busy ||
       !this.model.account ||
-      this.model.assetsByColor.size === 0 ||
+      this.dom.grantAsset.options.length === 0 ||
       !/^[0-9a-f]{64}$/.test(this.dom.grantGrantee.value.trim());
     this.dom.buttons.issueGrant
       .closest('li')
-      ?.toggleAttribute('hidden', this.model.assetsByColor.size === 0);
+      ?.toggleAttribute('hidden', this.dom.grantAsset.options.length === 0);
     this.dom.buttons.revokeGrant.disabled =
       busy || !this.model.account || !/^[0-9a-f]{64}$/.test(this.dom.revokeGrantId.value.trim());
     this.dom.grantGrantee.disabled = busy || !this.model.account;
@@ -114,20 +116,29 @@ export class ActionControls {
     this.dom.buttons.walletDust.disabled = busy || !this.model.wallet.unshieldedAddress;
   };
   renderValueButtons = (busy: boolean) => {
-    this.dom.buttons.fund.disabled = !canFund(
-      busy,
-      !!this.model.account,
-      this.model.assetsByColor.get(this.dom.fundingSelect.value),
+    const selected = this.model.assetsByColor.get(this.dom.fundingSelect.value);
+    const continuing = !!(
+      this.model.account &&
+      selected &&
+      storedFundingOriginal(
+        localStorage,
+        this.model.header.network,
+        this.model.account.address,
+        selected.color,
+      )
     );
-    byId('fund-desc').textContent = fundingDescription(
-      this.model.assetsByColor.get(this.dom.fundingSelect.value),
-    );
+    this.dom.buttons.fund.disabled = !continuing && !canFund(busy, !!this.model.account, selected);
+    if (busy || !this.model.account || !selected) this.dom.buttons.fund.disabled = true;
+    this.dom.buttons.fund.textContent = continuing ? 'Continue funding' : 'Fund Passport account';
+    byId('fund-desc').textContent = continuing
+      ? 'Check the saved funding request. This does not send another deposit.'
+      : fundingDescription(selected);
     this.dom.fundingSelect.disabled = busy || !this.model.account;
     this.dom.buttons.fund
       .closest('li')
       ?.toggleAttribute('hidden', this.model.assetsByColor.size === 0);
     this.dom.buttons.withdraw.disabled =
-      busy || !this.model.account || this.model.assetsByColor.size === 0;
+      busy || !this.model.account || this.dom.withdrawalSelect.options.length === 0;
     this.dom.withdrawalSelect.disabled = busy || !this.model.account;
     this.dom.withdrawalAmount.disabled = busy || !this.model.account;
     this.dom.withdrawalRecipient.disabled = busy || !this.model.account;
@@ -140,7 +151,7 @@ export class ActionControls {
       byId('account-named-night').dataset.blocked === 'true';
     this.dom.buttons.withdraw
       .closest('li')
-      ?.toggleAttribute('hidden', this.model.assetsByColor.size === 0);
+      ?.toggleAttribute('hidden', this.dom.withdrawalSelect.options.length === 0);
     this.dom.copyButton.disabled =
       busy || (this.model.log.runs.length === 0 && this.model.log.traceEntries.length === 0);
   };
@@ -148,18 +159,30 @@ export class ActionControls {
     const previousFunding = this.dom.fundingSelect.value;
     const previousWithdrawal = this.dom.withdrawalSelect.value;
     const previousGrant = this.dom.grantAsset.value;
-    this.model.assetsByColor = new Map(assets.map((asset) => [asset.color, asset]));
+    const retained = this.model.account
+      ? savedFundingAssets(localStorage, this.model.header.network, this.model.account.address)
+      : [];
+    const visibleAssets = [
+      ...new Map([...retained, ...assets].map((asset) => [asset.color, asset])).values(),
+    ];
+    this.model.assetsByColor = new Map(visibleAssets.map((asset) => [asset.color, asset]));
     this.dom.fundingSelect.replaceChildren(
-      ...assets.map((asset) => {
+      ...visibleAssets.map((asset) => {
         const option = el(
           'option',
           undefined,
-          asset.color === '00'.repeat(32)
-            ? `NIGHT (${asset.amount} smallest units)`
-            : `Test token ${shorten(asset.color, 6, 4)} (${asset.amount} units)`,
+          asset.amount === '0'
+            ? asset.color === '00'.repeat(32)
+              ? 'NIGHT original funding request'
+              : `Test token ${shorten(asset.color, 6, 4)} original funding request`
+            : asset.color === '00'.repeat(32)
+              ? `NIGHT (${asset.amount} smallest units)`
+              : `Test token ${shorten(asset.color, 6, 4)} (${asset.amount} units)`,
         );
         option.value = asset.color;
-        option.disabled = asset.availability !== 'available';
+        option.disabled =
+          asset.availability !== 'available' &&
+          !retained.some((original) => original.color === asset.color);
         if (option.disabled)
           option.textContent +=
             asset.availability === 'insufficient'
@@ -194,7 +217,9 @@ export class ActionControls {
         return option;
       }),
     );
-    this.model.fundingAsset = preferredFundingAsset(assets, previousFunding);
+    this.model.fundingAsset = preferredFundingAsset(visibleAssets, previousFunding);
+    if (!this.model.fundingAsset && retained.length)
+      this.model.fundingAsset = visibleAssets.find((asset) => asset.color === retained[0]?.color);
     this.dom.fundingSelect.value = this.model.fundingAsset?.color ?? '';
     if (this.model.assetsByColor.has(previousWithdrawal))
       this.dom.withdrawalSelect.value = previousWithdrawal;

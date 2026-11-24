@@ -5,7 +5,7 @@ import { randomBytes } from 'node:crypto';
 import { createServer } from 'node:http';
 import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync } from 'node:fs';
 import { isAbsolute, join, resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   createMidnamesIndexer,
   createMidnamesLedgerReads,
@@ -20,18 +20,31 @@ import { verifyDemoArtefacts } from '../../scripts/demo-artifact-pin.mjs';
 import { assertOtherClaimJournalsSettled } from './claim-journal-selection.mts';
 
 const networkId = 'undeployed';
-const indexerUrl = 'http://127.0.0.1:8088/api/v4/graphql';
-const indexerWsUrl = 'ws://127.0.0.1:8088/api/v4/graphql/ws';
-const nodeUrl = 'http://127.0.0.1:9944';
+const registryProfile = process.env.VITE_MIDNAMES_REGISTRY_PROFILE ?? 'standalone-0.35';
+assert.ok(registryProfile === 'standalone-0.35' || registryProfile === 'standalone-0.36.1');
+const isolated0361 = registryProfile === 'standalone-0.36.1';
+if (isolated0361)
+  for (const [name, value] of [
+    ['PASSPORT_MIDNAMES_0361_ISOLATED', '1'],
+    ['VITE_MIDNAMES_0361_ISOLATED', '1'],
+    ['MIDNIGHT_STACK', 'isolated-ledger9'],
+  ])
+    assert.equal(process.env[name], value, `The 0.36.1 claim host requires ${name}=${value}.`);
+const indexerPort = isolated0361 ? 18108 : 8088;
+const indexerUrl = `http://127.0.0.1:${indexerPort}/api/v4/graphql`;
+const indexerWsUrl = `ws://127.0.0.1:${indexerPort}/api/v4/graphql/ws`;
+const nodeUrl = isolated0361 ? 'http://127.0.0.1:19964' : 'http://127.0.0.1:9944';
 const candidateBinding = process.env.PASSPORT_BINDING_ID === 'acc-s3r1.1-zkir036';
+if (isolated0361)
+  assert.ok(candidateBinding, 'The isolated 0.36.1 claim host requires the pinned candidate ACC.');
 if (candidateBinding) verifyDemoArtefacts(process.env);
 else
   assert.ok(
     !process.env.PASSPORT_BINDING_ID || process.env.PASSPORT_BINDING_ID === 'acc-s3r1.1',
     'Unknown local claim ACC binding.',
   );
-// This pinned Compact 0.35 registry proves through its owned compatibility
-// sidecar. The candidate ACC itself uses the shared release prover separately.
+// The ordinary 0.35 registry uses its owned compatibility sidecar. The
+// isolated 0.36.1 registry uses the release prover at the same dedicated port.
 const proverUrl = 'http://127.0.0.1:16320';
 const origin = 'http://localhost:5173';
 const claimProtocolVersion = Number(process.env.VITE_MIDNAMES_CLAIM_PROTOCOL_VERSION);
@@ -98,7 +111,7 @@ assert.ok(
     ownerPort !== 5173,
 );
 privateDirectory(journalDir);
-await verifyPreparedRegistry(prepared);
+await verifyPreparedRegistry(prepared, () => {}, registryProfile);
 const seed = privateSeed(seedPath);
 const walletModule = await import(pathToFileURL(join(reference, 'src/node/wallet.ts')).href);
 assert.deepEqual(walletModule.CONFIG, {
@@ -137,7 +150,7 @@ try {
       source,
       networkId,
       candidateBinding ? 'acc-s3r1.1-zkir036' : 'acc-s3r1.1',
-      'standalone-0.35',
+      registryProfile,
       candidateBinding
         ? {
             bindingId: 'acc-s3r1.1-zkir036',
@@ -208,7 +221,11 @@ try {
     {
       assets: join(prepared, 'managed'),
       modulePath: join(prepared, 'managed/contract/index.js'),
-      ref: reference,
+      ref: isolated0361
+        ? fileURLToPath(new URL('./registry-0361-client/', import.meta.url))
+        : reference,
+      registryProfile,
+      ...(isolated0361 && { proverUrl }),
     },
     {
       networkId,

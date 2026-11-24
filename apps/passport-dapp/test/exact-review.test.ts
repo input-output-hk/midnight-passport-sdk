@@ -51,6 +51,7 @@ const namedNight: NightSendIntent = {
   asset: 'NIGHT',
   amount: '1',
   target: 'cd'.repeat(32),
+  recipientBindingId: 'acc-s3r1.1',
   providerId: 'midnames:' + 'ef'.repeat(32),
   namespace: 'night',
   operations: NIGHT_SEND_OPERATIONS,
@@ -110,6 +111,7 @@ test('named NIGHT page action binds the target and both ACC operations in one ow
       namedNight.name,
       namedNight.providerId.slice('midnames:'.length),
       namedNight.target,
+      namedNight.recipientBindingId!,
       namedNight.requestId,
       ...namedNight.operations,
       recipientAddress,
@@ -120,6 +122,7 @@ test('named NIGHT page action binds the target and both ACC operations in one ow
     assert.doesNotThrow(() => assertExactNamedNight(namedNight));
     for (const changed of [
       { target: '34'.repeat(32) },
+      { recipientBindingId: 'acc-s3r1.1-zkir036' },
       { name: 'bob.night' },
       { providerId: 'midnames:' + '34'.repeat(32) },
       { bridge: '34'.repeat(32) },
@@ -181,6 +184,16 @@ test('named NIGHT review admits only the exact local candidate pin with an expli
   });
   assert.equal(reviewed.kind, 'withdraw');
   assert.match(exactReviewText(reviewed), new RegExp(pin));
+  assert.match(exactReviewText(reviewed), /Recipient binding: acc-s3r1\.1/);
+  assert.throws(
+    () =>
+      admitExactReview({
+        ...candidate,
+        namedNight: { ...namedNight, recipientBindingId: 'acc-unknown' },
+        localCandidate: { manifestSha256: pin, provisionalLocal: true },
+      }),
+    { code: 'UserCancelled' },
+  );
 });
 
 test('wrong action, context, route, human address or malformed value cannot stage a transfer', async () =>

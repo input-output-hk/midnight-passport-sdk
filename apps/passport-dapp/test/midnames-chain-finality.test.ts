@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createMidnamesNodeFinality } from '../src/midnames/chain-finality.js';
+import {
+  createMidnamesNodeFinality,
+  createMidnamesNodeStateVerifier,
+} from '../src/midnames/chain-finality.js';
 
 const pin = {
   nodeUrl: 'https://node.example.test/rpc',
@@ -81,4 +84,46 @@ test('an unavailable or oversized node reply cannot authenticate an indexer read
     createMidnamesNodeFinality(pin, async () => new Response('x'.repeat(17_000)))(block),
     { code: 'Unavailable' },
   );
+});
+
+test('node state must match the indexer bytes at the exact selected block', async () => {
+  const address = '44'.repeat(32);
+  const bytes = Uint8Array.of(0, 127, 255);
+  const key = `midnight_contractState:["${address}","0x${block.hash}"]`;
+  const calls: string[] = [];
+  await createMidnamesNodeStateVerifier(pin, node({ [key]: '007fff' }, calls))(
+    address,
+    block,
+    bytes,
+  );
+  assert.deepEqual(calls, [key]);
+  for (const response of ['007ffe', '0x007fff', '007f', null, 7, 'zz7fff'])
+    await assert.rejects(
+      createMidnamesNodeStateVerifier(pin, node({ [key]: response }))(address, block, bytes),
+      { code: 'Unavailable' },
+    );
+  await assert.rejects(
+    createMidnamesNodeStateVerifier(pin, async () => new Response('x'.repeat(4_200_000)))(
+      address,
+      block,
+      bytes,
+    ),
+    { code: 'Unavailable' },
+  );
+});
+
+test('malformed state-verification inputs refuse before the node request', async () => {
+  let requests = 0;
+  const verify = createMidnamesNodeStateVerifier(pin, async () => {
+    requests++;
+    throw new Error('must not request');
+  });
+  for (const [address, selected, observed] of [
+    ['0x' + '44'.repeat(32), block, Uint8Array.of(1)],
+    ['44'.repeat(32), { ...block, hash: '0x' + block.hash }, Uint8Array.of(1)],
+    ['44'.repeat(32), block, new Uint8Array()],
+    ['44'.repeat(32), block, new Uint8Array(2 * 1024 * 1024 + 1)],
+  ] as const)
+    await assert.rejects(verify(address, selected, observed), { code: 'InvalidRecord' });
+  assert.equal(requests, 0);
 });

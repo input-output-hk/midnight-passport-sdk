@@ -37,6 +37,13 @@ covers fresh ACC creation, name claim, funding, device-wallet DUST, and named
 two-leg payments with original-only recovery. It uses a synthetic passkey and
 the shared local chain; human-provider and online qualification remain separate.
 
+An [isolated virtual-PRF browser receipt](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/candidate-virtual-prf-funded-named-night-20261124.json)
+also covers one fresh JubJub-first candidate ACC, durable 10 NIGHT funding,
+separate wallet DUST registration, and a reviewed 1 NIGHT named payment with
+both original legs finalized. It used Indexer API v4, a retained isolated
+Ledger 9 chain, and a synthetic credential. The earlier pending funding
+original was not retried or cleared.
+
 The reference demo pins the published Midnames 2.1.0 reader for lookups. Its
 generated reader matches the pinned
 [`ledger-9-live` commit](https://github.com/midnames/ns-sdk/tree/f8f2edd425221b95c9158d74e7318d2fbb4f61b2),
@@ -51,8 +58,10 @@ For supported-target lookups, the local launcher supplies a confirmed claim
 block and node URL. The browser checks that the indexer's selected block is
 canonical and finalized on that node before reading the registry or ACC.
 Online configuration requires a separate node origin and a confirmed non-genesis
-chain pin. The indexer still supplies trusted contract-state bytes at that
-block; this is not a state proof or an online qualification.
+chain pin. The browser compares each indexer state with the node's
+`midnight_contractState` bytes at that block, refusing a mismatch or unavailable
+RPC. This trusts the configured node; it is not a cryptographic state proof or
+an online qualification.
 To create that registry on a healthy local stack after activating an ACC, use
 the [pinned local bootstrap recipe](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/README.md#bootstrap-the-registry-on-an-existing-local-stack).
 It records the deployment waves and keeps root naming authority private; the
@@ -98,4 +107,30 @@ withdrawal and one deposit after durable original-intent recovery, with 6/4
 final ACC balances. The reference demo now has an opt-in owner send page and a
 connected local candidate payment receipt. Human passkey consent and online
 naming remain separate qualification gates.
+
+A [connected local name-to-open receipt](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-name-to-authorized-open-20261124.json)
+records a fresh ACC and paid `.night` claim on an isolated Ledger 9 chain. After
+reload, the browser resolved the name and supplied its address to the separate
+**Open by address** control; the enrolled virtual PRF passkey opened that exact
+ACC. A separate read-only audit checked the exact original and indexer state
+at a node-confirmed finalized block, including the owner commitment, contract
+target, supported binding and typed contract-call result.
+The browser passed, but its Node wrapper stayed alive after Chrome closed and
+was terminated, so the supervisor receipt is FAIL even though cleanup and lease
+release completed. This is a two-step local flow with a synthetic credential.
+The lookup does not grant account control or establish a public name owner.
+Current source also offers **Open this Passport account** for an external
+provider result. It rechecks the exact name as a contract-call target and
+requires the address, provider and namespace to match before entering the
+existing full-address consent and enrolled-passkey flow. A changed or
+unavailable result leaves login untouched. The mock provider never offers
+this action. A headless synthetic provider check covers the new button; the
+native receipt above exercised the earlier separate address control.
+An [additional isolated connected run](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-verified-name-button-to-passkey-open-20261124.json)
+exercised the new button after a fresh paid name claim: it rechecked the typed
+contract target, entered the existing consent and virtual PRF passkey flow, and
+opened the same ACC. Its independent original-transaction audit passed. The
+browser and supervisor receipts passed, though the completed supervisor Node
+wrapper required termination. Physical passkeys and online providers remain
+unqualified.
 See the [demo configuration and evidence](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/site/names.md#source-preview-midnames-210).

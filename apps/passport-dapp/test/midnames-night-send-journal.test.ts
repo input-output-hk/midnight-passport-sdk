@@ -25,8 +25,49 @@ const intent: NightSendIntent = {
   namespace: 'night',
   operations: NIGHT_SEND_OPERATIONS,
 };
+const stableIntent = { ...intent, recipientBindingId: 'acc-s3r1.1' };
+const candidateIntent = { ...intent, recipientBindingId: 'acc-s3r1.1-zkir036' };
 const withdrawal = { hash: 'e'.repeat(64), identifiers: ['0'.repeat(66)] };
 const deposit = { hash: 'f'.repeat(64), identifiers: ['1'.repeat(66)] };
+
+test('candidate-source originals pin an old recipient through reload and recovery review', async () => {
+  const factory = new IDBFactory();
+  const mixed = { ...intent, recipientBindingId: 'acc-s3r1.1' };
+  let journal = await openBrowserNightSendJournal(factory, candidateScope);
+  await assert.rejects(
+    journal.createIntent({ ...mixed, recipientBindingId: 'acc-unknown' }),
+    /Stored NIGHT intent is invalid/,
+  );
+  await journal.createIntent(mixed);
+  journal.close();
+
+  journal = await openBrowserNightSendJournal(factory, candidateScope);
+  assert.deepEqual(await journal.readIntent(), mixed);
+  await journal.fenceLeg('withdraw', withdrawal);
+  await assert.rejects(
+    journal.recordRecoveryReview(
+      { ...mixed, recipientBindingId: 'acc-s3r1.1-zkir036' },
+      { ...mixed, target: '6'.repeat(64) },
+      withdrawal,
+    ),
+    /cannot be recorded/,
+  );
+  await journal.recordRecoveryReview(
+    mixed,
+    { ...mixed, target: '6'.repeat(64), recipientBindingId: 'acc-s3r1.1-zkir036' },
+    withdrawal,
+  );
+  journal.close();
+
+  journal = await openBrowserNightSendJournal(factory, candidateScope);
+  assert.deepEqual(await journal.readIntent(), mixed);
+  const review = (await journal.readActive())?.recoveryReviews?.[0];
+  assert.equal(review?.originalBindingId, 'acc-s3r1.1');
+  assert.equal(review?.currentBindingId, 'acc-s3r1.1-zkir036');
+  assert.equal(review?.originalTarget, intent.target);
+  assert.equal(review?.currentTarget, '6'.repeat(64));
+  journal.close();
+});
 
 test('candidate originals retain their binding pin and cannot cross a stable or changed profile', async () => {
   const factory = new IDBFactory();
@@ -44,7 +85,7 @@ test('candidate originals retain their binding pin and cannot cross a stable or 
     /Invalid browser NIGHT payment scope/,
   );
   const reopened = await openBrowserNightSendJournal(factory, candidateScope);
-  assert.deepEqual(await reopened.readIntent(), intent);
+  assert.deepEqual(await reopened.readIntent(), candidateIntent);
   reopened.close();
 
   const legacyFactory = new IDBFactory();
@@ -66,12 +107,12 @@ test('one source ACC keeps one active intent across tabs, reload and credential 
     second.createIntent(intent),
   ]);
   assert.deepEqual(results.map((result) => result.status).sort(), ['fulfilled', 'rejected']);
-  assert.deepEqual(await first.readIntent(), intent);
+  assert.deepEqual(await first.readIntent(), stableIntent);
   first.close();
   second.close();
 
   const reopened = await openBrowserNightSendJournal(factory, scope);
-  assert.deepEqual(await reopened.readIntent(), intent);
+  assert.deepEqual(await reopened.readIntent(), stableIntent);
   await assert.rejects(
     reopened.createIntent({ ...intent, requestId: 'b1234567-a123-4123-8123-a123456789ab' }),
     /Reconcile the original/,
@@ -108,10 +149,94 @@ test('each transaction fence is durable, ordered and never replaced after a lost
   assert.deepEqual(await journal.readActive(), {
     version: 1,
     credentialId,
-    intent,
+    intent: stableIntent,
     withdrawal,
     deposit,
   });
+  journal.close();
+});
+
+test('post-withdrawal recovery observations survive reload and completion', async () => {
+  const factory = new IDBFactory();
+  let journal = await openBrowserNightSendJournal(factory, candidateScope);
+  await journal.createIntent(intent);
+  await assert.rejects(
+    journal.recordRecoveryReview(intent, { ...intent, target: '6'.repeat(64) }, withdrawal),
+    /cannot be recorded/,
+  );
+  await journal.fenceLeg('withdraw', withdrawal);
+  await assert.rejects(
+    journal.recordRecoveryReview(
+      intent,
+      { ...intent, providerId: `midnames:${'8'.repeat(64)}`, target: '6'.repeat(64) },
+      withdrawal,
+    ),
+    /differs from the original scope/,
+  );
+  await journal.recordRecoveryReview(intent, { ...intent, target: '6'.repeat(64) }, withdrawal);
+  journal.close();
+
+  journal = await openBrowserNightSendJournal(factory, candidateScope);
+  const reviewed = (await journal.readActive())?.recoveryReviews;
+  assert.ok(reviewed && reviewed.length === 1);
+  const first = reviewed[0];
+  assert.ok(first);
+  assert.deepEqual((({ approvedAt: _approvedAt, ...rest }) => rest)(first), {
+    name: intent.name,
+    networkId: intent.networkId,
+    providerId: intent.providerId,
+    namespace: intent.namespace,
+    originalTarget: intent.target,
+    originalBindingId: 'acc-s3r1.1-zkir036',
+    currentTarget: '6'.repeat(64),
+    currentBindingId: 'acc-s3r1.1-zkir036',
+    withdrawalHash: withdrawal.hash,
+  });
+  assert.ok(Number.isFinite(Date.parse(first.approvedAt)));
+  await journal.fenceLeg('deposit', deposit);
+  await journal.archiveCompleted(intent, withdrawal, deposit, async () => true);
+  assert.deepEqual((await journal.readArchived(intent.requestId))?.recoveryReviews, reviewed);
+  await assert.rejects(
+    journal.recordRecoveryReview(intent, { ...intent, target: '7'.repeat(64) }, withdrawal),
+    /cannot be recorded/,
+  );
+  journal.close();
+});
+
+test('unresolved direct-ACC repair reviews are durable and bound to the original withdrawal', async () => {
+  const factory = new IDBFactory();
+  let journal = await openBrowserNightSendJournal(factory, candidateScope);
+  await journal.createIntent(intent);
+  await journal.fenceLeg('withdraw', withdrawal);
+  await assert.rejects(
+    journal.recordRecoveryReview(intent, { reason: 'UnsupportedTarget' }, withdrawal),
+    /observation is invalid/,
+  );
+  await assert.rejects(
+    journal.recordRecoveryReview(
+      intent,
+      { reason: 'Absent', currentTarget: '6'.repeat(64) },
+      withdrawal,
+    ),
+    /observation is invalid/,
+  );
+  await assert.rejects(
+    journal.recordRecoveryReview(intent, { reason: 'Unavailable' }, deposit),
+    /cannot be recorded/,
+  );
+  await journal.recordRecoveryReview(intent, { reason: 'Unavailable' }, withdrawal);
+  journal.close();
+
+  journal = await openBrowserNightSendJournal(factory, candidateScope);
+  const review = (await journal.readActive())?.recoveryReviews?.[0];
+  assert.ok(review);
+  assert.equal(review.unresolvedReason, 'Unavailable');
+  assert.equal(review.currentTarget, undefined);
+  assert.equal(review.originalTarget, intent.target);
+  assert.equal(review.withdrawalHash, withdrawal.hash);
+  await journal.fenceLeg('deposit', deposit);
+  await journal.archiveCompleted(intent, withdrawal, deposit, async () => true);
+  assert.deepEqual((await journal.readArchived(intent.requestId))?.recoveryReviews, [review]);
   journal.close();
 });
 
@@ -123,7 +248,7 @@ test('a known pre-owner refusal retires only the exact no-leg intent and retains
     journal.retireRefused({ ...intent, bridge: 'e'.repeat(64) }, 'name-recheck'),
     /exact unsubmitted/,
   );
-  assert.deepEqual(await journal.readIntent(), intent);
+  assert.deepEqual(await journal.readIntent(), stableIntent);
   await journal.retireRefused(intent, 'name-recheck');
   assert.equal(await journal.readActive(), undefined);
   journal.close();
@@ -131,14 +256,14 @@ test('a known pre-owner refusal retires only the exact no-leg intent and retains
   journal = await openBrowserNightSendJournal(factory, scope);
   const refused = await journal.readRefused(intent.requestId);
   assert.equal(refused?.reason, 'name-recheck');
-  assert.deepEqual(refused?.intent, intent);
+  assert.deepEqual(refused?.intent, stableIntent);
   assert.equal(refused?.withdrawal, undefined);
   assert.equal(refused?.deposit, undefined);
   assert.ok(Number.isFinite(Date.parse(refused?.refusedAt ?? '')));
   await assert.rejects(journal.createIntent(intent), /already archived/);
   const next = { ...intent, requestId: 'b1234567-a123-4123-8123-a123456789ab' };
   await journal.createIntent(next);
-  assert.deepEqual(await journal.readIntent(), next);
+  assert.deepEqual(await journal.readIntent(), { ...next, recipientBindingId: 'acc-s3r1.1' });
   await assert.rejects(journal.retireRefused(intent, 'name-recheck'), /exact unsubmitted/);
   journal.close();
 
@@ -215,12 +340,12 @@ test('completed original is archived without losing its IDs; a new request can t
     (({ archivedAt: _archivedAt, ...rest }) => rest)(
       (await journal.readArchived(intent.requestId))!,
     ),
-    { version: 1, credentialId, intent, withdrawal, deposit },
+    { version: 1, credentialId, intent: stableIntent, withdrawal, deposit },
   );
   await assert.rejects(journal.createIntent(intent), /already archived/);
   const next = { ...intent, requestId: 'b1234567-a123-4123-8123-a123456789ab' };
   await journal.createIntent(next);
-  assert.deepEqual(await journal.readIntent(), next);
+  assert.deepEqual(await journal.readIntent(), { ...next, recipientBindingId: 'acc-s3r1.1' });
   await assert.rejects(journal.createIntent(intent), /Reconcile the original/);
   journal.close();
 });

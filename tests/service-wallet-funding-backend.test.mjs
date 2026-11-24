@@ -69,6 +69,7 @@ test('wallet backend submits a permissionless deposit and waits for the ACC cred
     { stage: 'balance-observed', balanceBefore: '0' },
     { stage: 'prepared', preparationTxId: 'preparation-tx' },
     { stage: 'submitted', txId: 'tx-1' },
+    { stage: 'credit-confirmation-started' },
   ]);
 });
 
@@ -114,6 +115,7 @@ test('measured NIGHT route durably fences the exact hash before submission', asy
     'exact-hash',
   );
   assert.equal(events.filter((event) => event.stage === 'submitted').length, 1);
+  assert.equal(events.at(-1)?.stage, 'credit-confirmation-started');
 });
 
 test('wallet backend rejects unlisted and wrong-version contracts before spending', async () => {

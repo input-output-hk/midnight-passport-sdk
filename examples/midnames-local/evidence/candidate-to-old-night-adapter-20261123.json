@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "result": "PASS",
+  "scope": "Isolated Ledger 9 synthetic-owner candidate-source to old-recipient named NIGHT send through the exported deposit adapter",
+  "sourceCommit": "253f714ba9030136e943e3c4134d037b7b4b5e74",
+  "sourceBinding": "acc-s3r1.1-zkir036 (provisional)",
+  "recipientBinding": "acc-s3r1.1 (supported 0.35 roster)",
+  "registryProfile": "standalone-0.35",
+  "proofServerImage": "ghcr.io/midnight-ntwrk/proof-server@sha256:787ef99db4b4706eb14d94ad389ca45f1c09bcdf740afecb01899bfbda63dc64",
+  "source": "524430bc3bd2fd0e453f823eb5bcdd06016fb441b2d75e4610090ee15ad2c049",
+  "recipient": "a9536a8c3be14ec3c3aa7e009c251c57086ca9fa1894cb8178225d5d8cb7d888",
+  "name": "alice.night",
+  "defaultField": "different-profile-default",
+  "amountNight": "4",
+  "balances": {
+    "before": { "source": "10", "recipient": "0" },
+    "afterWithdrawal": { "source": "6", "recipient": "0" },
+    "final": { "source": "6", "recipient": "4" }
+  },
+  "withdrawal": {
+    "identifier": "00fe102888b55c91822bd318ca21594b8a6202792c6cb109b96257e7c952a14496",
+    "txHash": "0556055c3f070a9f89f221db0c6e61323e39e4ab473f36c31ddacff97cbdf58e",
+    "blockHeight": 93,
+    "blockHash": "0b9467fa5c410f2bfbe5a1563ba8dd4a39fda7b05a279a841406da93fac0680d",
+    "succeeded": true
+  },
+  "deposit": {
+    "identifier": "00c17acfee2f0663dbdea0e221a2b175feeb0ab1bacff431444d0e688e971fe499",
+    "txHash": "57ea17815f6458866ae7717c75689d396fa7e5a6965182a9ee897faee8647cc0",
+    "blockHeight": 96,
+    "blockHash": "d85d9e9a84a22ade61ffb05955a97d6259a5b16861af044c6be43f78a1eb3bd3",
+    "succeeded": true
+  },
+  "ownerApprovals": 1,
+  "deviceSignatures": 1,
+  "dispatches": { "withdrawal": 1, "deposit": 1 },
+  "replayBroadcasts": 0,
+  "exactBridgeOutputConsumed": true,
+  "exportedAdapterDepositUsed": true,
+  "recipientArtifactBinding": "acc-s3r1.1",
+  "parentReceiptSha256": "8909ed863b7a1d1abdfacddcdb0d63a67106acce8816ad47ea942fdd8f8855c4",
+  "workerReceiptSha256": "7bdbf6e7f777988b7afbf72f77aaa4c609038d96352caed71ab7c78dd2bb7e5e",
+  "cleanup": {
+    "ownedContainersStopped": 3,
+    "retainedVolumes": true,
+    "unrelatedResourcesControlled": 0,
+    "leaseReleased": true,
+    "inputsUnchanged": true
+  },
+  "limits": [
+    "This run uses a root-owned fixture name and synthetic owner review; it does not qualify a real passkey provider.",
+    "It exercises the exported adapter in the isolated native fixture, not the connected browser page or old-binding proof service. The mixed browser payment and saved-original recovery remain pending.",
+    "The candidate binding remains provisional. This does not qualify installed-package or online support, nor any untested ACC circuit."
+  ]
+}

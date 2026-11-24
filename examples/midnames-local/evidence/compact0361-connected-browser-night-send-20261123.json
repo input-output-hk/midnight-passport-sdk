@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "kind": "isolated-ledger9-compact0361-connected-browser-named-night-send",
+  "date": "2026-11-23",
+  "result": "PAYMENT_AND_FRESH_PROCESS_REOPEN_PASS_WITH_PRESERVED_FIRST_DRIVER_TIMEOUT",
+  "sourceHead": "d37e7a5625d7edd637e5ec0493297450c325b78d",
+  "profile": {
+    "registry": "standalone-0.36.1",
+    "accountBinding": "acc-s3r1.1-zkir036",
+    "networkId": "undeployed",
+    "indexerApi": "v4",
+    "proofServer": "release Ledger 9 prover 9.0.2",
+    "browserCredential": "development mock PRF passkey, JubJub signing",
+    "accountConnector": "real Passport browser connector",
+    "chain": "retained isolated Ledger 9 chain, separate from the shared demo"
+  },
+  "name": "v36pagea5e19b88.night",
+  "registryAddress": "3d0502ab6b226f12ad621fb6c4e5e9882c75b2df479545cd65d1325f7ad30591",
+  "sourceAcc": "f746d060ef93d3264abf124cd0bee9498ee929aea02c8a18d5aef651f2a55bed",
+  "recipientAcc": "c3ed40e0d020ee0be2b8df92cdb26bf69b9f50c6bcd81d8ebf43f2c3f667f756",
+  "amountNightSmallestUnits": "1",
+  "steps": {
+    "freshJubjubAccCreatedAndActivatedInBrowser": true,
+    "sameProfileAccReopenedBeforePayment": true,
+    "separateSponsorFundedAccNight": "10",
+    "deviceWalletFundedFromIsolatedGenesis": true,
+    "deviceWalletFundingCanonicalBlock": 1192,
+    "deviceWalletDustRegistrationFinalized": true,
+    "paidNameResolvedToExpectedRecipient": true,
+    "namedPaymentOwnerCeremonyReviewed": true,
+    "latePaymentTermsReviewed": true,
+    "paymentReviewConfirmations": 1,
+    "browserJournalHistoryEntriesForIntent": 1,
+    "browserJournalActiveEntriesForSourceAfterPayment": 0,
+    "browserJournalHistoryVisibleAfterPageReload": true,
+    "accountReopenedAfterPayment": true
+  },
+  "payment": {
+    "intentId": "4f151fa7-2620-4437-96da-00a3e8279f82",
+    "withdrawal": {
+      "txHash": "211b3b478bdb4df9fbef0c97128de0378742d82a717546366b9800c6a84b5d89",
+      "blockHeight": 1215,
+      "indexedSuccessAndNodeCanonicalBlockMatched": true
+    },
+    "deposit": {
+      "txHash": "40fa6ad82629fb4b6e315cd1d3d7d2caf0b93c8054b5e6ed3093dc176a08da68",
+      "blockHeight": 1219,
+      "indexedSuccessAndNodeCanonicalBlockMatched": true
+    }
+  },
+  "preservedDriverFailure": {
+    "reason": "After both legs finalized, the first headless verification driver reloaded the page but clicked a hidden Open button in the retained tab layout. It did not send another payment. The failure receipt still observed one archived payment, no active payment, and the completed status; a separate canonical audit reconfirmed both original hashes before releasing the lease. A fresh-process read-only continuation subsequently reopened and refreshed the same ACC.",
+    "secondPaymentAttempted": false
+  },
+  "readOnlyContinuation": {
+    "sourceHead": "1a869778c3a241adfb22c22898b42f3418ecbd6a",
+    "sameRetainedChainAndBrowserProfile": true,
+    "finalizedSnapshot": {
+      "blockHeight": 1228,
+      "blockHash": "fd367183689373c4fc2f308d0fac66fdf5013cbf3761758344ee008661736490"
+    },
+    "balancesNightSmallestUnits": {
+      "source": "9",
+      "recipient": "5"
+    },
+    "freshChromeProcessOpenedSourceWithSameMockPasskey": true,
+    "sourceAccStateRefreshedFromChain": true,
+    "archivedPaymentEntries": 1,
+    "activePaymentEntries": 0,
+    "paymentResent": false,
+    "privateReceiptSha256": {
+      "balances": "c05d6da2082eb2ad8ea527b66406f786946888e05cdc0949e965709c2452ec69",
+      "browserReopen": "84b9486d8e0c68603fd11575df8b6d95033cba50f035b8145873faada7bc8055",
+      "supervisor": "2b1b374a172fabc00c3006478ddb01a5dd79593f0c702a3c3f07810844e97c77"
+    }
+  },
+  "privateReceiptSha256": {
+    "accountCreation": "12d997a1234977d0c9db6b95c9f695f21008f2eb1dcefa3a59853427ae29179f",
+    "accFundingSupervisor": "9f1fafc8a4de27a939cfd804185b351bd07de0e66ba753811f7a3e408a979108",
+    "deviceWalletFunding": "0e9bf7dc035503e41dce87b1d277e1cbbdb38dd246b7debfd3944b8b3826e38b",
+    "dustRegistration": "c766f5a13faee57201dc523ed48eaebb61bf644952c419b7087d36056bbecede",
+    "paymentAndDriverFailure": "0074de7fdb77168f3adc3bc2725683a79874ef3e6b7b26cc0aa2397695434798",
+    "canonicalAudit": "7fe9886a2872eb6fd60853fbe607e49178a961bf5133ee0032f22b18f91b2bb7"
+  },
+  "cleanup": {
+    "exactOwnedNodeAndIndexerStopped": true,
+    "sharedStackAndReleaseProverUntouched": true,
+    "nativeLeaseReleasedAfterCanonicalAudit": true,
+    "readOnlyContinuationResourcesStoppedAndLeaseReleased": true,
+    "volumesOriginalsAndFailedReceiptRetainedPrivately": true
+  },
+  "limits": "This qualifies one connected 0.36.1 browser named NIGHT payment and a later read-only same-profile reopen with a development mock passkey and local services. The sender and recipient ACC balances were checked at one subsequent node-finalized block. It does not qualify a physical passkey, independent online provider, production image, released SDK, or all negative/retry paths. The recipient name was registered in an earlier browser run on this retained chain; the balance check was in the later continuation, not the original payment process."
+}

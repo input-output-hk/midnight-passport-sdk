@@ -2,14 +2,21 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { IDBFactory } from 'fake-indexeddb';
 import type { PassportAccount } from '@input-output-hk/mn-passport-protocol';
-import type { PassportNameService } from '@input-output-hk/mn-passport-account/names';
+import {
+  PassportNameError,
+  type PassportNameService,
+} from '@input-output-hk/mn-passport-account/names';
 import type { NetworkConfig, Prover } from '@input-output-hk/mn-passport-account/ports';
 import { accModule } from '../src/acc-module.js';
 import { createMidnamesNameService } from '../src/midnames/resolver.js';
 import { createConnectedNightSend } from '../src/midnames/night-send-host.js';
 import { openBrowserNightSendJournal } from '../src/midnames/night-send-journal.js';
 import type { NightBridgeTransaction } from '../src/midnames/night-bridge-output.js';
-import { NightDepositInterrupted, type NightSendRequest } from '../src/midnames/night-send.js';
+import {
+  NightDepositInterrupted,
+  NightSendPreflightError,
+  type NightSendRequest,
+} from '../src/midnames/night-send.js';
 import type { DevWallet } from '../src/wallet/contracts.js';
 
 const source = 'a'.repeat(64);
@@ -146,14 +153,25 @@ test('stable NIGHT host refuses a candidate-pinned journal scope before wallet a
   assert.equal(walletTouched, false);
 });
 
-async function connectedJourney(network: NetworkConfig, provisionalLocal = false) {
+async function connectedJourney(
+  network: NetworkConfig,
+  provisionalLocal = false,
+  refusal?:
+    'repoint-after-review' | 'non-contract-target' | 'unsupported-asset' | 'recipient-old-binding',
+  recoverRepoint = false,
+  recoverUnavailable = false,
+  mixedRecipient = false,
+) {
   const factory = new IDBFactory();
   const finalized = new Set<string>();
   const calls: string[] = [];
   let address = bridgeAddress;
   let indexerUri = network.indexerUrl;
   let failProof = true;
+  let loseDepositReply = false;
   let selected = true;
+  let namedTarget = target;
+  let nameUnavailable = false;
   let switchAt: 'review' | 'withdrawal' | undefined;
   const originalTransaction: NightBridgeTransaction = {
     transactionHash: () => withdrawal.hash,
@@ -244,6 +262,7 @@ async function connectedJourney(network: NetworkConfig, provisionalLocal = false
         assert.deepEqual(original, deposit);
         assert.deepEqual((await host.readActive())?.deposit, deposit);
         calls.push('submit-deposit');
+        if (loseDepositReply) throw new Error('deposit response lost after dispatch');
         return '00' + 'f'.repeat(64);
       },
       balanceWithdrawalFee: async () => {
@@ -261,55 +280,139 @@ async function connectedJourney(network: NetworkConfig, provisionalLocal = false
   const names = createMidnamesNameService(
     { networkId: 'undeployed', namespace: 'night', registryAddress: '3'.repeat(64) },
     {
-      readTarget: async () => ({ kind: 'contract', address: target }),
+      readTarget: async () => {
+        if (nameUnavailable) throw new Error('name indexer unavailable');
+        return {
+          kind: refusal === 'non-contract-target' ? 'other' : 'contract',
+          address: namedTarget,
+        };
+      },
       isSupportedAccount: async () => true,
     },
   );
   const selectedScope = provisionalLocal
     ? { ...scope, bindingId: network.bindingId, manifestSha256: network.manifestSha256 }
     : scope;
-  const host = await createConnectedNightSend(
-    {
-      account,
-      scope: selectedScope,
-      wallet,
-      names,
-      isSupportedRecipient: async () => true,
-      readSourceBalance: async () => 10n,
-      review: async () => {
-        calls.push('review');
-        return true;
-      },
-      checkScope: () => {},
-      checkApproved: () => calls.push('approved'),
-      network,
-      provisionalLocal,
-      binding: accModule,
-      prover: {
-        proveTx: async () => {
-          throw new Error('Proof is injected for this test.');
+  const openHost = () =>
+    createConnectedNightSend(
+      {
+        account,
+        scope: selectedScope,
+        wallet,
+        names,
+        isSupportedRecipient: async () =>
+          refusal === 'recipient-old-binding' || mixedRecipient ? 'acc-s3r1.1' : network.bindingId,
+        readSourceBalance: async () => 10n,
+        review: async () => {
+          calls.push('review');
+          if (refusal === 'repoint-after-review') namedTarget = '6'.repeat(64);
+          return true;
         },
-      } satisfies Prover,
-    },
-    factory,
-    {
-      journal: openBrowserNightSendJournal,
-      finalized: async (_indexer, _node, original) =>
-        finalized.has(original.hash)
-          ? { transaction: originalTransaction, blockHash: '4'.repeat(64), blockHeight: 7 }
-          : undefined,
-      prove: async (value) => {
-        assert.equal(value.target, target);
-        assert.equal(value.amount, 4n);
-        assert.equal(value.provisionalLocal, provisionalLocal);
-        calls.push('prove-deposit');
-        if (failProof) throw new Error('proof unavailable');
-        return Uint8Array.of(7);
+        ...(recoverRepoint && {
+          reviewOriginalDeposit: async (
+            original: { target: string; requestId: string },
+            current: { target: string },
+            saved: { hash: string },
+          ) => {
+            assert.equal(original.target, target);
+            assert.equal(original.requestId, request.requestId);
+            assert.equal(current.target, '6'.repeat(64));
+            assert.equal(saved.hash, withdrawal.hash);
+            calls.push('recovery-review');
+            return true;
+          },
+        }),
+        ...(recoverUnavailable && {
+          reviewUnresolvedOriginalDeposit: async (
+            original: { target: string; requestId: string },
+            observation: { reason: string },
+            saved: { hash: string },
+          ) => {
+            assert.equal(original.target, target);
+            assert.equal(original.requestId, request.requestId);
+            assert.equal(observation.reason, 'Unavailable');
+            assert.equal(saved.hash, withdrawal.hash);
+            calls.push('repair-review');
+            return true;
+          },
+        }),
+        checkScope: () => {},
+        checkApproved: () => calls.push('approved'),
+        network,
+        provisionalLocal,
+        binding: accModule,
+        ...(mixedRecipient && {
+          oldRecipient: {
+            network: {
+              ...network,
+              bindingId: 'acc-s3r1.1',
+              manifestSha256: '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f',
+              artefactUrl: 'http://127.0.0.1:8788/v1/zk/acc-s3r1.1',
+            },
+            binding: accModule,
+            prover: {
+              proveTx: async () => ({ tx: Uint8Array.of(7), provenance: 'remote' as const }),
+            } satisfies Prover,
+          },
+        }),
+        prover: {
+          proveTx: async () => {
+            throw new Error('Proof is injected for this test.');
+          },
+        } satisfies Prover,
       },
-    },
-  );
+      factory,
+      {
+        journal: openBrowserNightSendJournal,
+        finalized: async (_indexer, _node, original) =>
+          finalized.has(original.hash)
+            ? { transaction: originalTransaction, blockHash: '4'.repeat(64), blockHeight: 7 }
+            : undefined,
+        prove: async (value) => {
+          assert.equal(value.target, target);
+          assert.equal(value.amount, 4n);
+          assert.equal(value.provisionalLocal, mixedRecipient ? false : provisionalLocal);
+          assert.equal(value.network.bindingId, mixedRecipient ? 'acc-s3r1.1' : network.bindingId);
+          calls.push('prove-deposit');
+          if (failProof) throw new Error('proof unavailable');
+          return Uint8Array.of(7);
+        },
+      },
+    );
+  let host = await openHost();
+
+  if (refusal) {
+    await assert.rejects(
+      () =>
+        host.send(refusal === 'unsupported-asset' ? { ...request, asset: 'shielded' } : request),
+      refusal === 'repoint-after-review'
+        ? (error: unknown) =>
+            error instanceof NightSendPreflightError && error.code === 'NightNameChanged'
+        : refusal === 'recipient-old-binding'
+          ? (error: unknown) =>
+              error instanceof NightSendPreflightError && error.code === 'NightRecipientUnsupported'
+          : refusal === 'non-contract-target'
+            ? (error: unknown) =>
+                error instanceof PassportNameError && error.code === 'InvalidRecord'
+            : /Unsupported or invalid standalone NIGHT payment/,
+    );
+    assert.equal(await host.readActive(), undefined);
+    const journal = await openBrowserNightSendJournal(factory, selectedScope);
+    assert.equal(await journal.readIntent(), undefined);
+    assert.equal(await journal.readLeg('withdraw'), undefined);
+    assert.equal(await journal.readLeg('deposit'), undefined);
+    assert.equal(
+      (await journal.readRefused(request.requestId))?.reason,
+      refusal === 'repoint-after-review' ? 'name-recheck' : undefined,
+    );
+    journal.close();
+    assert.deepEqual(calls, refusal === 'repoint-after-review' ? ['review'] : []);
+    return;
+  }
 
   assert.equal((await host.send(request)).phase, 'withdrawal-pending');
+  assert.deepEqual((await host.readActive())?.withdrawal, withdrawal);
+  host = await openHost();
   assert.deepEqual((await host.readActive())?.withdrawal, withdrawal);
   finalized.add(withdrawal.hash);
   await assert.rejects(
@@ -323,14 +426,42 @@ async function connectedJourney(network: NetworkConfig, provisionalLocal = false
   );
   assert.deepEqual((await host.readActive())?.withdrawal, withdrawal);
   assert.equal((await host.readActive())?.deposit, undefined);
+  host = await openHost();
+  assert.deepEqual((await host.readActive())?.withdrawal, withdrawal);
+  if (recoverUnavailable) nameUnavailable = true;
+  else namedTarget = '6'.repeat(64);
+  if (!recoverRepoint && !recoverUnavailable) {
+    await assert.rejects(
+      () => host.send(request),
+      (error) => {
+        assert.ok(error instanceof NightDepositInterrupted);
+        assert.match(String(error.cause), /name changed after withdrawal/);
+        return true;
+      },
+    );
+    assert.deepEqual((await host.readActive())?.withdrawal, withdrawal);
+    assert.equal((await host.readActive())?.deposit, undefined);
+    namedTarget = target;
+  }
   failProof = false;
+  loseDepositReply = true;
   assert.equal((await host.send(request)).phase, 'deposit-pending');
   assert.deepEqual((await host.readActive())?.deposit, deposit);
+  host = await openHost();
+  assert.deepEqual((await host.readActive())?.deposit, deposit);
+  loseDepositReply = false;
   finalized.add(deposit.hash);
   assert.equal((await host.send(request)).phase, 'completed');
   assert.equal(await host.readActive(), undefined);
   const journal = await openBrowserNightSendJournal(factory, selectedScope);
-  assert.equal((await journal.readArchived(request.requestId))?.deposit?.hash, deposit.hash);
+  const archived = await journal.readArchived(request.requestId);
+  assert.equal(archived?.deposit?.hash, deposit.hash);
+  assert.equal(
+    archived?.intent.recipientBindingId,
+    mixedRecipient ? 'acc-s3r1.1' : network.bindingId,
+  );
+  if (recoverUnavailable)
+    assert.equal(archived?.recoveryReviews?.[0]?.unresolvedReason, 'Unavailable');
   journal.close();
   assert.deepEqual(calls, [
     'review',
@@ -338,11 +469,15 @@ async function connectedJourney(network: NetworkConfig, provisionalLocal = false
     'approved',
     'observe-output',
     'prove-deposit',
+    ...(recoverRepoint ? ['recovery-review'] : []),
+    ...(recoverUnavailable ? ['repair-review'] : []),
     'observe-output',
     'prove-deposit',
     'prepare-deposit',
     'submit-deposit',
   ]);
+
+  nameUnavailable = false;
 
   Object.defineProperty(account, 'address', { value: '6'.repeat(64), configurable: true });
   await assert.rejects(() => host.send(request), /selected NIGHT owner changed/);
@@ -426,6 +561,14 @@ test('connected NIGHT host reopens the original journal through withdrawal, depo
   await connectedJourney(network);
 });
 
+test('connected NIGHT host resumes only the reviewed original deposit after a name repoint', async () => {
+  await connectedJourney(network, false, undefined, true);
+});
+
+test('connected NIGHT host repairs the exact original deposit during a name outage', async () => {
+  await connectedJourney(network, false, undefined, false, true);
+});
+
 test('pinned local candidate reopens the same two-leg original and rejects a nonlocal endpoint', async () => {
   const candidate = {
     ...network,
@@ -437,8 +580,30 @@ test('pinned local candidate reopens the same two-leg original and rejects a non
     artefactUrl: 'http://127.0.0.1:3000/v1/zk/acc-s3r1.1-zkir036',
   };
   await connectedJourney(candidate, true);
+  await connectedJourney(candidate, true, undefined, true);
+  await connectedJourney(candidate, true, undefined, false, false, true);
+  await connectedJourney(candidate, true, undefined, true, false, true);
   await assert.rejects(
     () => connectedJourney({ ...candidate, indexerUrl: 'http://remote/api/v4/graphql' }, true),
     /Unsupported pinned NIGHT deposit request/,
   );
+});
+
+test('pinned local connected host refuses moved, non-contract and unsupported-asset routes before owner signing', async () => {
+  const candidate = {
+    ...network,
+    bindingId: 'acc-s3r1.1-zkir036',
+    manifestSha256: '590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f',
+    indexerUrl: 'http://127.0.0.1:8088/api/v4/graphql',
+    indexerWsUrl: 'ws://127.0.0.1:8088/api/v4/graphql/ws',
+    nodeUrl: 'http://127.0.0.1:9944/',
+    artefactUrl: 'http://127.0.0.1:3000/v1/zk/acc-s3r1.1-zkir036',
+  };
+  for (const refusal of [
+    'repoint-after-review',
+    'non-contract-target',
+    'unsupported-asset',
+    'recipient-old-binding',
+  ] as const)
+    await connectedJourney(candidate, true, refusal);
 });

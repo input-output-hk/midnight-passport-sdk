@@ -5,7 +5,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { createServer } from 'node:net';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { demoSigningEnvironment } from './demo-signing.mjs';
 
@@ -31,6 +31,17 @@ if (
 const demoManifestPin =
   demoBindingId === binding.id ? manifestPin : candidateBinding.manifestSha256;
 const keyPort = 8788;
+const oldRecipientPort = 8788;
+const mixedRecipient = process.env.VITE_MIDNAMES_NIGHT_MIXED_RECIPIENT === '1';
+if (
+  mixedRecipient &&
+  (demoBindingId !== 'acc-s3r1.1-zkir036' ||
+    process.env.VITE_MIDNAMES_NIGHT_RECIPIENT_SERVICE_URL !==
+      `http://127.0.0.1:${oldRecipientPort}` ||
+    !process.env.PASSPORT_REGISTRY_FILE ||
+    !isAbsolute(process.env.PASSPORT_REGISTRY_FILE))
+)
+  throw new Error('demo: mixed recipient route requires the exact local candidate and old service');
 const fundingPortText = process.env.PASSPORT_FUNDING_PORT ?? '8789';
 const fundingPort = Number(fundingPortText);
 if (!/^[1-9][0-9]*$/.test(fundingPortText) || fundingPort < 1024 || fundingPort > 65535)
@@ -218,6 +229,7 @@ async function check(options) {
   }
   run('bash', [join(root, 'scripts/prototype-up.sh'), '--check']);
   if (options.keyService) await freePort(keyPort);
+  if (mixedRecipient && !options.keyService) await freePort(oldRecipientPort);
   if (options.funding) {
     if (!['undeployed', 'shared-ledger9'].includes(process.env.MIDNIGHT_STACK ?? 'undeployed'))
       throw new Error('--funding requires an eligible local Ledger 9 stack');
@@ -278,6 +290,14 @@ function waitForOwnedExit(child, timeoutMs = 45_000) {
   });
 }
 
+/** The old proof service directly owns its wallet and exits zero only after its drain.
+ * @param {import('node:child_process').ChildProcess} child */
+async function waitForOldRecipientExit(child) {
+  if (child.exitCode === null && child.signalCode === null) await waitForOwnedExit(child);
+  if (child.exitCode !== 0)
+    throw new Error('demo: old recipient service did not drain; preserve the sponsor lease');
+}
+
 /** @param {import('node:child_process').ChildProcess} child */
 async function waitForKeyService(child) {
   for (let attempt = 0; attempt < 900; attempt++) {
@@ -312,6 +332,36 @@ async function waitForFundingService(child) {
     await new Promise((done) => setTimeout(done, 1000));
   }
   throw new Error('funding service did not become ready within 3 minutes');
+}
+
+/** @param {import('node:child_process').ChildProcess} child */
+async function waitForOldRecipientService(child) {
+  for (let attempt = 0; attempt < 900; attempt++) {
+    if (child.exitCode !== null || child.signalCode !== null)
+      throw new Error('old recipient service exited before readiness');
+    try {
+      const response = await fetch(`http://127.0.0.1:${oldRecipientPort}/healthz`, {
+        signal: AbortSignal.timeout(1000),
+      });
+      if (response.ok) {
+        const health = await response.json();
+        if (
+          !health ||
+          typeof health !== 'object' ||
+          !('bindingId' in health) ||
+          !('manifestSha256' in health) ||
+          health.bindingId !== binding.id ||
+          health.manifestSha256 !== manifestPin
+        )
+          throw new Error('Old recipient service has the wrong artifact binding.');
+        return;
+      }
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('wrong artifact binding')) throw error;
+    }
+    await new Promise((done) => setTimeout(done, 1000));
+  }
+  throw new Error('old recipient service did not become ready within 15 minutes');
 }
 
 /** @param {DemoOptions} options */
@@ -405,6 +455,7 @@ async function up(options) {
   await check(options);
   const contractDir = prepare(options);
   const artefactDir = join(contractDir, 'contracts/managed/account');
+  /** @type {NodeJS.ProcessEnv} */
   const env = {
     ...process.env,
     PASSPORT_CONTRACT_DIR: contractDir,
@@ -418,12 +469,20 @@ async function up(options) {
   let prototype;
   /** @type {import('node:child_process').ChildProcess | undefined} */
   let funding;
+  /** @type {import('node:child_process').ChildProcess | undefined} */
+  let oldRecipient;
+  /** @type {() => void} */
+  let requestStop = () => {};
+  const stopping = new Promise((resolve) => {
+    requestStop = () => resolve(130);
+  });
   const cleanup = () => {
     stopOwned(funding);
-    // The shared launcher must drain its service before releasing the sponsor lease.
-    // Signalling its whole process group would kill that service first.
-    stopOwned(prototype, process.env.MIDNIGHT_STACK !== 'shared-ledger9');
     stopOwned(keys);
+    stopOwned(oldRecipient, false);
+    // With no old wallet to drain, the shared launcher can stop immediately.
+    if (!oldRecipient) stopOwned(prototype, process.env.MIDNIGHT_STACK !== 'shared-ledger9');
+    requestStop();
   };
   process.on('SIGINT', cleanup);
   process.on('SIGTERM', cleanup);
@@ -445,6 +504,31 @@ async function up(options) {
     const mainChild = spawnOwned('bash', [join(root, 'scripts/prototype-up.sh')], env);
     prototype = mainChild;
     await waitForPage(mainChild);
+    if (mixedRecipient) {
+      // Launch the service itself, so its exit status proves its wallet drain.
+      oldRecipient = spawnOwned(
+        'node',
+        [
+          '--import',
+          join(root, 'apps/passport-service/node_modules/tsx/dist/loader.mjs'),
+          join(root, 'apps/passport-service/src/main.ts'),
+        ],
+        {
+          ...env,
+          PASSPORT_SERVICE_PORT: String(oldRecipientPort),
+          PASSPORT_BINDING_ID: binding.id,
+          PASSPORT_MANIFEST_SHA256: manifestPin,
+          PASSPORT_ARTEFACT_DIR: artefactDir,
+          PASSPORT_CANDIDATE_LOCAL: '0',
+          PASSPORT_COMPAT_PROVER: '0',
+          PASSPORT_REGISTRY_FILE: `${env.PASSPORT_REGISTRY_FILE}.old-recipient`,
+        },
+      );
+      await waitForOldRecipientService(oldRecipient);
+      console.log(
+        `demo: old recipient proof service ready at http://127.0.0.1:${oldRecipientPort}`,
+      );
+    }
     if (options.funding) {
       console.log('demo: starting the dedicated ACC funding wallet');
       funding = spawnOwned('pnpm', ['prototype:funding-service'], env);
@@ -461,17 +545,25 @@ async function up(options) {
       );
       opened.unref();
     }
-    const status = await new Promise((done) => {
+    const mainExit = new Promise((done) => {
       /** @param {number | null} code @param {NodeJS.Signals | null} signal */
       const exited = (code, signal) => done(signal ? 130 : (code ?? 1));
       mainChild.once('exit', exited);
       if (mainChild.exitCode !== null || mainChild.signalCode !== null)
         exited(mainChild.exitCode, mainChild.signalCode);
     });
+    const status = await Promise.race([mainExit, stopping]);
     if (status !== 0 && status !== 130) process.exitCode = status;
   } finally {
-    cleanup();
+    stopOwned(funding);
+    stopOwned(keys);
+    stopOwned(oldRecipient, false);
     try {
+      // The old service shares the sponsor wallet. A failed drain retains the
+      // shared launcher's lease instead of admitting another wallet session.
+      if (oldRecipient) await waitForOldRecipientExit(oldRecipient);
+      // The shared launcher drains its own service before releasing the lease.
+      stopOwned(prototype, process.env.MIDNIGHT_STACK !== 'shared-ledger9');
       if (process.env.MIDNIGHT_STACK === 'shared-ledger9') await waitForOwnedExit(prototype);
     } finally {
       process.off('SIGINT', cleanup);

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "sourceHead": "163a61e9c72db427fac85b3e0ed1ea44b758b421",
+  "result": "PASS",
+  "tier": "isolated synthetic Chromium IndexedDB and local sponsor HTTP",
+  "scope": "Two independent browser storage profiles with separate synthetic credentials and owner commitments, one archived competing sponsor quote, and no chain transaction",
+  "observations": {
+    "firstUnrelatedLookup": "pre-intent refusal; no owner assigned by sponsor",
+    "legitimateBrowserAfterReload": "pre-intent refusal, exact local reservation released",
+    "wrongOwnerRelease": "refused",
+    "occupyingBrowserReservation": "retained",
+    "freshQuoteAfterRecovery": "distinct operation ID reserved",
+    "paymentSubmissions": 0
+  },
+  "limits": [
+    "The browser check uses synthetic owner commitments and does not prove a name claim or exercise a physical passkey.",
+    "Unit and HTTP tests cover recorded-owner refusal, prepared and unprepared archives, corrupt or missing archives, and concurrent retirement separately."
+  ]
+}

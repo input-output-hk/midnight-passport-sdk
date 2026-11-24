@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "kind": "isolated-ledger9-compact0361-connected-browser-named-night-refusals",
+  "date": "2026-11-23",
+  "result": "PASS_WITH_PRESERVED_FIRST_PROBE_TIMEOUT",
+  "sourceHead": "aab34a881d999a5d82c42d0346ee16b62912c158",
+  "profile": {
+    "registry": "standalone-0.36.1",
+    "accountBinding": "acc-s3r1.1-zkir036",
+    "networkId": "undeployed",
+    "indexerApi": "v4",
+    "proofServer": "release Ledger 9 prover 9.0.2, not used by either refusal",
+    "browserCredential": "same retained development mock PRF passkey and fresh headless Chrome process",
+    "chain": "retained isolated Ledger 9 chain, separate from the shared demo"
+  },
+  "sourceAcc": "f746d060ef93d3264abf124cd0bee9498ee929aea02c8a18d5aef651f2a55bed",
+  "recipientAcc": "c3ed40e0d020ee0be2b8df92cdb26bf69b9f50c6bcd81d8ebf43f2c3f667f756",
+  "priorPaymentIntentId": "4f151fa7-2620-4437-96da-00a3e8279f82",
+  "cases": [
+    {
+      "input": "v36pagea5e19b88.night, 10 NIGHT smallest units",
+      "sourceBalanceBefore": "9",
+      "resultCode": "NightInsufficientBalance",
+      "ownerPaymentReviews": 0,
+      "activePaymentIntents": 0,
+      "archivedPriorPayments": 1
+    },
+    {
+      "input": "missing36probe.night, 1 NIGHT smallest unit",
+      "resultCode": "NightNameUnavailable",
+      "ownerPaymentReviews": 0,
+      "activePaymentIntents": 0,
+      "archivedPriorPayments": 1
+    }
+  ],
+  "onChain": {
+    "before": {
+      "finalizedBlockHeight": 1290,
+      "finalizedBlockHash": "3d428e251b160170389a9876628b603575e0da889d64355a740b43867856ac0f",
+      "sourceNightSmallestUnits": "9",
+      "recipientNightSmallestUnits": "5"
+    },
+    "after": {
+      "finalizedBlockHeight": 1302,
+      "finalizedBlockHash": "c854e2cd3f910ee34658058562ce9cf943f1f7f497d0a160fd65f0933f48507f",
+      "sourceNightSmallestUnits": "9",
+      "recipientNightSmallestUnits": "5"
+    }
+  },
+  "preservedFirstProbeFailure": {
+    "reason": "The Passport page refused the first amount with NightInsufficientBalance, but the probe timed out matching obsolete wording. Its failed receipt showed no owner review, no active payment and the unchanged archived original. Exact owned containers and children were stopped, and a separate guarded reconciliation released that run's retained native lease before the corrected run.",
+    "paymentAttempted": false
+  },
+  "privateReceiptSha256": {
+    "firstProbeFailure": "65ca7826262c2bc67ad062bf93eef3d40cba6e24df9645292b85de450a0adb67",
+    "firstProbeReconciliation": "277f7f8f4af66c1d0ed2a012b6ddce40b1194326b1e19bd6a9013e79049a8e36",
+    "browserRefusals": "6dc24cff1b73b338fcfecaa0cd1c25ee4ce17ee18ed7be515f9c5f91910c1a75",
+    "balancesBefore": "4f180cd461f3528f05d3478a2661e597655a9ee98722345e52254708e8bb8e01",
+    "balancesAfter": "9f460a8fca0ce23373f7390fba1c37a0a2a779dc42995bf11b379606dbd1e95e",
+    "supervisor": "7d6dbad9f10c989e518af3689d7113450d60127e6a9340a01ee09ec0e6774f9e"
+  },
+  "cleanup": {
+    "exactIsolatedNodeAndIndexerStopped": true,
+    "firstFailedRunReconciledAndLeaseReleased": true,
+    "correctedRunLeaseReleased": true,
+    "sharedLedger9StackUntouched": true,
+    "volumesAndPrivateReceiptsRetained": true
+  },
+  "limits": "This qualifies two pre-owner refusals in the connected local 0.36.1 Passport page, using a development mock passkey and the retained isolated chain. It does not qualify a native on-chain name repoint, non-contract target, unsupported asset, failure between payment legs in a fresh browser process, physical passkey, independent online provider, production image or released SDK. The before/after balances and unchanged browser journal corroborate no payment from these refusals; they do not prove unrelated chain activity was absent."
+}

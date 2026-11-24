@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "kind": "isolated-ledger9-name-repoint-and-connected-self-recipient-refusal",
+  "date": "2026-11-23",
+  "scope": "Retained isolated Ledger 9 chain, Indexer API v4, release prover 9.0.2, synthetic name owner and fresh-process mock-passkey Passport browser.",
+  "ownerUpdateSourceCommit": "7a3dcc9e8751a737927cded4ecd6f8c8da21702e",
+  "browserSourceCommit": "262e430dd856ce0fad3a1ed027431f962281d067",
+  "name": "v36claim23.night",
+  "registryAddress": "3d0502ab6b226f12ad621fb6c4e5e9882c75b2df479545cd65d1325f7ad30591",
+  "originalTarget": "14c1181524e783ac7a11d225583cb33c842a144aa89294b765393a5e12794053",
+  "finalTarget": "f746d060ef93d3264abf124cd0bee9498ee929aea02c8a18d5aef651f2a55bed",
+  "ownerUpdate": {
+    "originalHash": "8b8d01ebf82d21203153634f0ed596f659f67c55cacd23510dfae7647422ca29",
+    "indexedStatus": "SUCCESS",
+    "canonicalBlock": {
+      "height": 1385,
+      "hash": "46ac8b533efbb0c527276d30b6c4e8ff00cb3a2f2911425cc18460459bb6ac53"
+    },
+    "checks": "The existing owner witness proved update_target; the exact balanced original was saved before one submission. API v4 indexed its hash, bytes and identifiers, the node confirmed its block, and the registry retained its owner commitment while changing its ContractAddr target."
+  },
+  "connectedBrowser": {
+    "result": "NightSelfRecipient",
+    "ownerReviews": 0,
+    "activePaymentIntents": 0,
+    "archivedPaymentIntentsUnchanged": 2,
+    "sourceAndPriorRecipientNightBefore": ["8", "6"],
+    "sourceAndPriorRecipientNightAfter": ["8", "6"],
+    "checks": "The same finalized-block registry read resolved the repointed name to the open sender ACC; the Passport page refused before owner review, and the post-refusal node/indexer audit found unchanged ACC balances and name target."
+  },
+  "cleanup": "The wallet, browser, services, exact isolated node/indexer containers and native lease stopped or released; all retained volumes and original receipts were preserved.",
+  "privateReceiptSha256": {
+    "ownerUpdate": "98e93767bf0d9fc9070db83cba597481ad02c3514cfebfd631c5918764582e1b",
+    "browserSupervisor": "6d6fbc5888138cdee4ac108fb908ad88dcbf1be84632b5158cec6d1317eec669",
+    "browserRefusal": "2da382958c8cf203376dfa58530cefd9fa47a8862aee63b860e1143abae0db3d"
+  },
+  "status": "PASS",
+  "limits": "This is a local synthetic self-recipient refusal after a completed name repoint. It does not prove a name change during an already reviewed send, non-contract or unsupported-asset refusals, online resolution, a physical passkey, or release acceptance."
+}

@@ -54,10 +54,55 @@ export function demoFundingRoute(config: ServiceConfig, env: NodeJS.ProcessEnv):
   };
   return async (req, res, requestUrl) => {
     if (requestUrl.pathname === '/v1/demo/value-call') return valueCall(context, req, res);
+    if (requestUrl.pathname.startsWith('/v1/demo/funding/'))
+      return fundingStatus(context, req, res, requestUrl);
     if (requestUrl.pathname !== '/v1/demo/funding') return false;
     if (req.method === 'GET') return fundingDiscovery(context, res, requestUrl);
     return deposit(context, req, res);
   };
+}
+
+async function fundingStatus(
+  context: FundingContext,
+  req: IncomingMessage,
+  res: ServerResponse,
+  requestUrl: URL,
+) {
+  const { config, url, token, deployments, checkedBackend } = context;
+  if (req.method !== 'GET') throw new HttpError(405, 'method not allowed');
+  if (req.headers.origin && req.headers.origin !== config.corsOrigin)
+    throw new HttpError(403, 'demo funding status requires the Passport demo origin');
+  const requestId = requestUrl.pathname.slice('/v1/demo/funding/'.length);
+  const accountAddress = requestUrl.searchParams.get('accountAddress');
+  if (!REQUEST_ID.test(requestId) || !accountAddress || !ADDRESS.test(accountAddress))
+    throw new HttpError(400, 'invalid funding status request');
+  if (!sponsoredAddresses(config, deployments).has(accountAddress))
+    throw new HttpError(403, 'account is not registered and deployed by this demo');
+  await checkedBackend();
+  const source = new URL(`/v1/faucet/fund/${requestId}`, url);
+  source.searchParams.set('accountAddress', accountAddress);
+  const response = await fetch(source, {
+    headers: { authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!response.ok) throw new HttpError(response.status, 'funding original is unavailable');
+  const result = (await response.json()) as Record<string, unknown>;
+  if (
+    result.requestId !== requestId ||
+    result.accountAddress !== accountAddress ||
+    typeof result.color !== 'string' ||
+    typeof result.amount !== 'string' ||
+    !/^[1-9][0-9]*$/.test(result.amount) ||
+    !['pending', 'complete', 'released'].includes(String(result.state)) ||
+    (result.state === 'complete' &&
+      (!result.result ||
+        typeof result.result !== 'object' ||
+        (result.result as Record<string, unknown>).requestId !== requestId))
+  )
+    throw new HttpError(502, 'funding service returned an invalid original');
+  res.setHeader('cache-control', 'no-store');
+  json(res, 200, result);
+  return true;
 }
 
 interface FundingContext {
@@ -184,7 +229,11 @@ async function deposit(context: FundingContext, req: IncomingMessage, res: Serve
   if (!asset) throw new HttpError(400, 'invalid funding asset');
   const response = await fetch(new URL('/v1/faucet/fund', url), {
     method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${token}`,
+      prefer: 'respond-async',
+    },
     signal: AbortSignal.timeout(180_000),
     body: JSON.stringify({
       requestId: fields.requestId,
@@ -197,6 +246,12 @@ async function deposit(context: FundingContext, req: IncomingMessage, res: Serve
     }),
   });
   const result = (await response.json()) as Record<string, unknown>;
+  if (response.status === 202) {
+    if (result.requestId !== fields.requestId || result.state !== 'pending')
+      throw new HttpError(502, 'funding service returned an invalid pending original');
+    json(res, 202, { requestId: fields.requestId, state: 'pending' });
+    return true;
+  }
   if (!response.ok) {
     const refusal = preflightRefusal(result, fields.requestId);
     if (refusal && [409, 503].includes(response.status)) {

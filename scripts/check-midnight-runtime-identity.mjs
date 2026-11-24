@@ -5,19 +5,41 @@ import { dirname, join, resolve, basename } from 'node:path';
 import { readFileSync, realpathSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
-const identityPackages = new Map([
-  ['@midnight-ntwrk/compact-js', '3.0.0-rc.3'],
-  ['@midnight-ntwrk/compact-runtime', '0.20.0'],
-  ['@midnightntwrk/ledger-v9', '1.0.0-rc.5'],
-]);
+const publishedRcIdentityPackages = Object.freeze(
+  Object.fromEntries([
+    ['@midnight-ntwrk/compact-js', '3.0.0-rc.3'],
+    ['@midnight-ntwrk/compact-runtime', '0.20.0'],
+    ['@midnightntwrk/ledger-v9', '1.0.0-rc.5'],
+  ]),
+);
+
+/** Current source packages retain the ACC runtime but use the released Ledger 9 package. */
+export const CURRENT_SOURCE_RUNTIME_VERSIONS = Object.freeze({
+  ...publishedRcIdentityPackages,
+  '@midnightntwrk/ledger-v9': '1.0.0',
+});
 
 /**
  * Follow declared Midnight dependencies from installed consumer entry packages. The Ledger 8
  * runtime uses an explicit alias and is deliberately outside this Ledger 9 identity check.
  * @param {string} consumer
  * @param {string[]} entries
+ * @param {Readonly<Record<string,string>>} [versions] Explicit source profile; default preserves published RC checks.
  */
-export function checkMidnightRuntimeIdentity(consumer, entries) {
+export function checkMidnightRuntimeIdentity(
+  consumer,
+  entries,
+  versions = publishedRcIdentityPackages,
+) {
+  const identityPackages = new Map(Object.entries(versions));
+  if (
+    identityPackages.size !== Object.keys(publishedRcIdentityPackages).length ||
+    Object.keys(publishedRcIdentityPackages).some(
+      (name) =>
+        !/^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/.test(identityPackages.get(name) ?? ''),
+    )
+  )
+    throw new Error('Incomplete pinned Midnight runtime version profile.');
   const pending = entries.map((name) => ({ name, from: join(resolve(consumer), 'package.json') }));
   const seen = new Set();
   /** @type {Map<string, Map<string, string[]>>} */

@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "scope": "one synthetic candidate NIGHT funding original on a retained isolated Ledger 9 chain; completed native proof response held before the ACC final-hash fence",
+  "result": "PASS_WITH_LIMITS",
+  "sourceHead": "15c7a12fc74966b4f27d8016199dd9ac22e2c302",
+  "networkId": "undeployed",
+  "bindingId": "acc-s3r1.1-zkir036",
+  "indexerApi": "v4",
+  "candidateManifestSha256": "590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f",
+  "chainAnchor": {
+    "height": 248,
+    "hash": "0fb8190454485ce59475438174baf9d21f8630dada758f962b1673cc5f456dc5"
+  },
+  "request": {
+    "requestId": "bdc5107d-c961-43a7-88ac-bae461870659",
+    "accountAddress": "563f27bec56b37d678d68597f6cdb75953ceb01f744de140c9dd2309001a016a",
+    "asset": "NIGHT",
+    "amountBaseUnits": "1",
+    "postStatus": 202,
+    "fundingPostCount": 1
+  },
+  "proofAndRelease": {
+    "walletPreparationTxId": "00dff5620902191604e658be9de5feef0dc390f4377779f9f7d681eb4796629642",
+    "accSubmitGuardRecordedBeforeProof": true,
+    "completedNativeProofResponseHeldAt": "2026-11-24T06:45:27.088Z",
+    "operatorReleaseAt": "2026-11-24T06:45:28.294Z",
+    "operatorReleaseReason": "guarded-pre-submit",
+    "completedProofResponseDeliveredAfterRelease": true,
+    "finalReservationState": "released",
+    "finalProgressPhase": "acc-proof",
+    "depositTxIdRecorded": false
+  },
+  "accReadback": {
+    "before": { "actionCount": 15, "nightBalance": "9" },
+    "after": { "actionCount": 15, "nightBalance": "9" },
+    "noNewAccActionObserved": true
+  },
+  "cleanup": {
+    "exactIsolatedNodeIndexerAndProverStopped": true,
+    "frozenInputsUnchanged": true,
+    "nativeLeaseReleased": true,
+    "sharedStackUntouched": true,
+    "chainVolumesAndPrivateOriginalRetained": true
+  },
+  "privateReceiptSha256": {
+    "supervisor": "9f23e1a06a3772db594dcd1aa344e4d3bbe9863acec6ada130ad2f2d1d351a7c",
+    "reservation": "fdb356e01020795ca9c73746e3b57038937419203a02dc33c38d011b9dea64a6",
+    "heldProofMarker": "faea3407e52966d579d891676411ff41ba6a9d2e6b7b139b61aebe62019a8c0a"
+  },
+  "limits": [
+    "This is one native held-proof operator-release run, not the complete process-level or online acceptance of issue #380.",
+    "The wallet preparation transaction may have been submitted before this guard; only the ACC deposit submission is ruled out for this guarded worker.",
+    "A distinct older shared-chain original lacks this guard and remains pending, untouched and unsafe to retry.",
+    "The test uses a synthetic local account and isolated chain, not a physical passkey, independent online provider or released package."
+  ]
+}

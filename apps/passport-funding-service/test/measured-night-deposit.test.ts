@@ -61,7 +61,28 @@ test('proof or balance failure records no ACC submission only before the send fe
     ),
     /proof failed/,
   );
-  assert.deepEqual(events, ['prepare', 'acc-not-submitted']);
+  assert.deepEqual(events, ['acc-submit-guard', 'prepare', 'acc-not-submitted']);
+});
+
+test('a failed guard write never starts proof or ACC submission', async () => {
+  const events: string[] = [];
+  await assert.rejects(
+    submitMeasuredNightDepositAfterPreparation(
+      async () => {
+        events.push('prepare');
+        return { tx: 'balanced', txId: 'exact-hash' };
+      },
+      async () => {
+        events.push('submit');
+      },
+      async (progress) => {
+        events.push(progress.stage);
+        throw new Error('guard write failed');
+      },
+    ),
+    /guard write failed/,
+  );
+  assert.deepEqual(events, ['acc-submit-guard']);
 });
 
 test('a failed no-ACC marker leaves the original request uncertain', async () => {
@@ -74,8 +95,8 @@ test('a failed no-ACC marker leaves the original request uncertain', async () =>
       async () => {
         submitted = true;
       },
-      async () => {
-        throw new Error('marker write failed');
+      async (progress) => {
+        if (progress.stage === 'acc-not-submitted') throw new Error('marker write failed');
       },
     ),
     /marker write failed/,
@@ -93,12 +114,12 @@ test('a failed final-hash fence never reaches the ACC submitter', async () => {
       },
       async (progress) => {
         events.push(progress.stage);
-        throw new Error('fence write failed');
+        if (progress.stage === 'submitted') throw new Error('fence write failed');
       },
     ),
     /fence write failed/,
   );
-  assert.deepEqual(events, ['submitted']);
+  assert.deepEqual(events, ['acc-submit-guard', 'submitted']);
 });
 
 test('submit failure and lost response retain the exact recorded hash', async () => {
@@ -116,7 +137,7 @@ test('submit failure and lost response retain the exact recorded hash', async ()
     ),
     /node response lost/,
   );
-  assert.deepEqual(events, ['submitted:exact-hash', 'submit']);
+  assert.deepEqual(events, ['acc-submit-guard:', 'submitted:exact-hash', 'submit']);
 });
 
 test('success sends only after the final hash is recorded', async () => {
@@ -133,5 +154,5 @@ test('success sends only after the final hash is recorded', async () => {
     ),
     { txId: 'exact-hash' },
   );
-  assert.deepEqual(events, ['submitted:exact-hash', 'submit:balanced']);
+  assert.deepEqual(events, ['acc-submit-guard:', 'submitted:exact-hash', 'submit:balanced']);
 });

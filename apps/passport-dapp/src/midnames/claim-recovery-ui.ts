@@ -3,8 +3,7 @@ import { byId } from '../ui-dom.js';
 import { ClaimSponsorFundingError } from './claim-dispatch.js';
 import { openClaimJournal, type ClaimJournal } from './claim-journal.js';
 import { showClaimPreparation } from './claim-preparation-ui.js';
-import { reviewedDispatchQuote } from './claim-quote.js';
-import { ClaimSponsorBusy } from './claim-quote.js';
+import { ClaimSponsorBusy, reviewedDispatchQuote } from './claim-quote.js';
 import {
   releaseExpiredUnsent,
   releaseVerifiedFailure,
@@ -12,6 +11,7 @@ import {
 } from './claim-retry.js';
 import { createClaimSendReview } from './claim-send-review.js';
 import { installClaimSuggestion } from './claim-suggestion-ui.js';
+import { claimReport, initialClaimStatus } from './claim-status.js';
 import {
   claimDigest,
   claimReceipt,
@@ -62,19 +62,6 @@ function claimConflict(error: unknown): string | undefined {
     : undefined;
 }
 
-function claimReport(status: HTMLElement, onSetupStatus?: (message: string) => void) {
-  return (message: string) => {
-    status.textContent = message;
-    onSetupStatus?.(message.startsWith('Registered.') ? message : `Name registration. ${message}`);
-  };
-}
-
-function initialClaimStatus(recovery: ClaimRecovery, account: PassportAccount | undefined): string {
-  if (!account) return 'Open an account with its passkey.';
-  return recovery.preparation || recovery.dispatch
-    ? 'Choose a .night name for this account.'
-    : 'Read-only .night profile. Check or retain an existing original receipt; claiming is unavailable.';
-}
 function assertClaimContext(
   account: PassportAccount | undefined,
   currentAccount: () => PassportAccount | undefined,
@@ -493,6 +480,7 @@ export function showClaimRecovery(
   const form = byId<HTMLFormElement>('claim-recovery');
   const name = byId<HTMLInputElement>('claim-recovery-name');
   const suggest = byId<HTMLButtonElement>('claim-suggest-name');
+  const review = byId<HTMLButtonElement>('claim-review-quote');
   const receipt = byId<HTMLTextAreaElement>('claim-recovery-receipt');
   const availability = byId<HTMLButtonElement>('claim-check-availability');
   const retain = byId<HTMLButtonElement>('claim-recovery-retain');
@@ -504,7 +492,7 @@ export function showClaimRecovery(
   const status = byId('claim-recovery-status');
   byId<HTMLDetailsElement>('claim-recovery-details').open =
     import.meta.env.VITE_MIDNAMES_CLAIM_PREPARATION !== '1';
-  const report = claimReport(status, onSetupStatus);
+  const report = claimReport(status, currentAccount, onSetupStatus);
   const preparation =
     recovery.preparation &&
     showClaimPreparation(recovery.preparation, recovery.registryAddress, status, name);
@@ -515,7 +503,7 @@ export function showClaimRecovery(
   );
   form.hidden = false;
   let busy = false;
-  installClaimSuggestion(suggest, recovery, currentAccount, name, report, () => busy);
+  installClaimSuggestion(suggest, review, recovery, currentAccount, name, report, () => busy);
   name.addEventListener('input', () => {
     sendReview.clear();
     release.hidden = true;

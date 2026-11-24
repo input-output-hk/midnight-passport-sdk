@@ -21,6 +21,7 @@ import type { MidnamesIndexerBlock } from './chain-finality.js';
 import {
   MIDNAMES_REGISTRY_VERIFIERS,
   STANDALONE_REGISTRY_VERIFIERS,
+  isStandaloneRegistryProfile,
   registryProfile,
   type MidnamesRegistryProfile,
 } from './registry-pins.js';
@@ -35,6 +36,35 @@ export interface CandidateAccountQualification {
   readonly manifestSha256: string;
   readonly decodeState: (state: InstanceType<typeof ContractState>) => ReturnType<typeof ledger>;
 }
+
+type ContractStateVerifier = (
+  address: string,
+  block: MidnamesIndexerBlock,
+  observed: Uint8Array,
+) => Promise<void>;
+
+type LedgerReads = MidnamesReads & {
+  readFinalizedBlock(): Promise<MidnamesIndexerBlock>;
+  readSupportedTargetAt(
+    name: string,
+    profile: Readonly<MidnamesProfile>,
+    block: MidnamesIndexerBlock,
+  ): Promise<DomainTarget | undefined>;
+  readSupportedTarget(
+    name: string,
+    profile: Readonly<MidnamesProfile>,
+  ): Promise<DomainTarget | undefined>;
+  hasDomain(name: string, profile: Readonly<MidnamesProfile>): Promise<boolean>;
+  readSupportedAccountBinding(
+    address: string,
+    requestedNetwork: string,
+  ): Promise<string | undefined>;
+  readSupportedNightBalance(address: string, requestedNetwork: string): Promise<bigint | undefined>;
+  readClaim(
+    name: string,
+    profile: Readonly<MidnamesProfile>,
+  ): Promise<{ readonly ownerCommitment: string; readonly target: DomainTarget } | undefined>;
+};
 
 function readDomainTarget(domain: DomainRecord): DomainTarget {
   try {
@@ -70,7 +100,9 @@ async function selectFinalizedBlock(
 function registryVerifierMap(profile: MidnamesRegistryProfile) {
   return new Map(
     Object.entries(
-      profile === 'standalone-0.35' ? STANDALONE_REGISTRY_VERIFIERS : MIDNAMES_REGISTRY_VERIFIERS,
+      isStandaloneRegistryProfile(profile)
+        ? STANDALONE_REGISTRY_VERIFIERS
+        : MIDNAMES_REGISTRY_VERIFIERS,
     ),
   );
 }
@@ -139,6 +171,33 @@ export async function admitAccBindingFromState(
   }
 }
 
+function checkReaderBindings(
+  networkId: string,
+  bindingId: string,
+  profile: MidnamesRegistryProfile,
+  candidate: CandidateAccountQualification | undefined,
+  additional: string | undefined,
+): void {
+  if (candidate) {
+    const pin = resolvePinnedBinding(candidate.bindingId);
+    if (
+      networkId !== 'undeployed' ||
+      !isStandaloneRegistryProfile(profile) ||
+      candidate.bindingId !== bindingId ||
+      !pin.provisional ||
+      candidate.manifestSha256 !== pin.manifestSha256
+    )
+      throw new Error('Candidate ACC qualification requires the exact local provisional pin.');
+  } else resolveBinding(bindingId);
+  if (
+    additional !== undefined &&
+    (additional !== 'acc-s3r1.1' || candidate?.bindingId !== 'acc-s3r1.1-zkir036')
+  )
+    throw new Error(
+      'Mixed recipient admission requires the exact local candidate and old binding.',
+    );
+}
+
 export function createMidnamesLedgerReads(
   provider: RegistryProvider,
   networkId: string,
@@ -146,46 +205,28 @@ export function createMidnamesLedgerReads(
   profileId: MidnamesRegistryProfile = 'midnames-2.1.0',
   candidate?: CandidateAccountQualification,
   verifyFinalizedBlock?: (block: MidnamesIndexerBlock) => Promise<void>,
-): MidnamesReads & {
-  readFinalizedBlock(): Promise<MidnamesIndexerBlock>;
-  readSupportedTargetAt(
-    name: string,
-    profile: Readonly<MidnamesProfile>,
-    block: MidnamesIndexerBlock,
-  ): Promise<DomainTarget | undefined>;
-  readSupportedTarget(
-    name: string,
-    profile: Readonly<MidnamesProfile>,
-  ): Promise<DomainTarget | undefined>;
-  hasDomain(name: string, profile: Readonly<MidnamesProfile>): Promise<boolean>;
-  readSupportedNightBalance(address: string, requestedNetwork: string): Promise<bigint | undefined>;
-  readClaim(
-    name: string,
-    profile: Readonly<MidnamesProfile>,
-  ): Promise<{ readonly ownerCommitment: string; readonly target: DomainTarget } | undefined>;
-} {
+  verifyContractState?: ContractStateVerifier,
+  additionalRecipientBindingId?: string,
+): LedgerReads {
   const pinnedProfile = registryProfile(profileId, networkId);
   const registryVerifiers = registryVerifierMap(pinnedProfile);
-  if (candidate) {
-    const pin = resolvePinnedBinding(candidate.bindingId);
-    if (
-      networkId !== 'undeployed' ||
-      pinnedProfile !== 'standalone-0.35' ||
-      candidate.bindingId !== bindingId ||
-      !pin.provisional ||
-      candidate.manifestSha256 !== pin.manifestSha256
-    )
-      throw new Error('Candidate ACC qualification requires the exact local provisional pin.');
-  } else resolveBinding(bindingId);
+  checkReaderBindings(networkId, bindingId, pinnedProfile, candidate, additionalRecipientBindingId);
   const readDomain = async (
     name: string,
     profile: Readonly<MidnamesProfile>,
     source: RegistryProvider = provider,
+    selected?: MidnamesIndexerBlock,
   ) => {
     if (profile.networkId !== networkId) throw new PassportNameError('InvalidQuery');
     // Check the registry fingerprint and resolve from the same observed state.
     const observed = await source.queryContractState(profile.registryAddress);
     if (!observed) throw new PassportNameError('Unavailable');
+    if (selected && verifyContractState)
+      await verifyContractState(
+        profile.registryAddress,
+        selected,
+        observed.contractState.serialize(),
+      );
     const snapshot: RegistryProvider = {
       ...source,
       async queryContractState(address) {
@@ -216,16 +257,27 @@ export function createMidnamesLedgerReads(
     address: string,
     requestedNetwork: string,
     source: RegistryProvider = provider,
+    selected?: MidnamesIndexerBlock,
   ) => {
     if (requestedNetwork !== networkId) return undefined;
     const observed = await source.queryContractState(address);
     if (!observed) return undefined;
+    if (selected && verifyContractState)
+      await verifyContractState(address, selected, observed.contractState.serialize());
     try {
       const account = observed.contractState.deserialize({ v9: ContractState });
       const detectedBinding = await detectAccBindingFromState(account);
-      if (!detectedBinding || detectedBinding !== bindingId) return undefined;
-      if (!candidate && !(await admitAccBindingFromState(account))) return undefined;
-      const decoded = candidate ? candidate.decodeState(account) : ledger(account.data);
+      if (
+        !detectedBinding ||
+        (detectedBinding !== bindingId && detectedBinding !== additionalRecipientBindingId)
+      )
+        return undefined;
+      if (detectedBinding !== candidate?.bindingId && !(await admitAccBindingFromState(account)))
+        return undefined;
+      const decoded =
+        candidate && detectedBinding === candidate.bindingId
+          ? candidate.decodeState(account)
+          : ledger(account.data);
       return decoded.booted && decoded.spec_version === 3n
         ? { bindingId: detectedBinding, ledger: decoded }
         : undefined;
@@ -245,13 +297,13 @@ export function createMidnamesLedgerReads(
       queryContractState: (address) =>
         provider.queryContractState(address, { type: 'blockHash', blockHash: selected.hash }),
     };
-    const domain = await readDomain(name, profile, source);
+    const domain = await readDomain(name, profile, source, selected);
     if (domain === undefined) return undefined;
     const target = readDomainTarget(domain);
     if (target.kind === 'contract') {
       if (!target.address || !ADDRESS.test(target.address))
         throw new PassportNameError('InvalidRecord');
-      if (!(await supportedAccount(target.address, networkId, source)))
+      if (!(await supportedAccount(target.address, networkId, source, selected)))
         throw new PassportNameError('InvalidRecord');
     }
     return target;
@@ -272,6 +324,9 @@ export function createMidnamesLedgerReads(
     },
     async isSupportedAccount(address, requestedNetwork) {
       return (await supportedAccount(address, requestedNetwork)) !== undefined;
+    },
+    async readSupportedAccountBinding(address, requestedNetwork) {
+      return (await supportedAccount(address, requestedNetwork))?.bindingId;
     },
     async readSupportedNightBalance(address, requestedNetwork) {
       const account = await supportedAccount(address, requestedNetwork);

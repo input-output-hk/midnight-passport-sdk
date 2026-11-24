@@ -1,6 +1,8 @@
 import type { PassportNameService } from '@input-output-hk/mn-passport-account/names';
 import type { PassportAccount } from '@input-output-hk/mn-passport-protocol';
 import { fetchCheckedV1Config, remoteV1Prover } from '@input-output-hk/mn-passport-adapter-service';
+import { resolveBinding } from '@input-output-hk/mn-passport-contract';
+import type { NetworkConfig } from '@input-output-hk/mn-passport-account/ports';
 import { ARTEFACT_URL, BINDING_ID, MANIFEST_SHA256, SERVICE_URL } from '../connector.js';
 import { assertExactNamedNight } from '../consent.js';
 import type { DemoActionHost } from '../app-model.js';
@@ -20,7 +22,9 @@ import {
 import {
   NightDepositInterrupted,
   type NightSendIntent,
+  type NightSendLeg,
   type NightSendRequest,
+  type NightUnresolvedObservation,
 } from './night-send.js';
 import {
   namedNightStatus,
@@ -69,7 +73,69 @@ async function readActive(
 }
 
 function reviewText(intent: NightSendIntent, balance: bigint, candidate: boolean): string {
-  return `Send NIGHT to a Passport name?\n\nName: ${intent.name}\nNetwork: ${intent.networkId}\nBinding: ${BINDING_ID}${candidate ? ` (local candidate ${MANIFEST_SHA256})` : ''}\nRegistry: ${intent.providerId.slice('midnames:'.length)}\nSource Passport ACC: ${intent.source}\nRecipient Passport ACC: ${intent.target}\nDevice wallet bridge: ${intent.bridge}\nAmount: ${intent.amount} NIGHT smallest units\nFresh source balance: ${balance} NIGHT smallest units\nOperations: ${intent.operations.join(' → ')}\nRequest: ${intent.requestId}\n\nThe ACC signs withdrawal to the bridge. This app checks the named destination and deposits that exact output into the recipient ACC. The two legs can finish at different times.`;
+  return `Send NIGHT to a Passport name?\n\nName: ${intent.name}\nNetwork: ${intent.networkId}\nSource binding: ${BINDING_ID}${candidate ? ` (local candidate ${MANIFEST_SHA256})` : ''}\nRecipient binding: ${intent.recipientBindingId ?? BINDING_ID}\nRegistry: ${intent.providerId.slice('midnames:'.length)}\nSource Passport ACC: ${intent.source}\nRecipient Passport ACC: ${intent.target}\nDevice wallet bridge: ${intent.bridge}\nAmount: ${intent.amount} NIGHT smallest units\nFresh source balance: ${balance} NIGHT smallest units\nOperations: ${intent.operations.join(' → ')}\nRequest: ${intent.requestId}\n\nThe ACC signs withdrawal to the bridge. This app checks the named destination and deposits that exact output into the recipient ACC. The two legs can finish at different times.`;
+}
+
+function originalDepositReviewText(
+  original: NightSendIntent,
+  current: NightSendIntent,
+  withdrawal: NightSendLeg,
+): string {
+  return `The name changed after your NIGHT withdrawal.\n\nName: ${original.name}\nNetwork: ${original.networkId}\nRegistry: ${original.providerId.slice('midnames:'.length)}\nOriginally reviewed Passport ACC: ${original.target}\nOriginal binding: ${original.recipientBindingId ?? BINDING_ID}\nCurrent named Passport ACC: ${current.target}\nCurrent binding: ${current.recipientBindingId ?? BINDING_ID}\nAmount: ${original.amount} NIGHT smallest units\nSaved withdrawal: ${withdrawal.hash}\nOperation now: deposit_unshielded into the originally reviewed ACC\nRequest: ${original.requestId}\n\nContinue the original deposit into ${original.target}? This uses only the saved withdrawal output. It does not withdraw again or redirect the payment to the new named ACC. Declining leaves the original withdrawal and its output pending for inspection.`;
+}
+
+function unresolvedDepositReviewText(
+  original: NightSendIntent,
+  observation: NightUnresolvedObservation,
+  withdrawal: NightSendLeg,
+): string {
+  const status = {
+    Absent: 'The name service reports no current record.',
+    InvalidRecord: 'The name service returned an invalid or non-contract record.',
+    Expired: 'The name record is expired.',
+    Unavailable: 'The current name or target binding could not be verified.',
+    UnsupportedTarget: 'The current name target is not a supported recipient ACC.',
+  }[observation.reason];
+  return `Finish the saved NIGHT withdrawal at its original ACC?\n\nName: ${original.name}\nNetwork: ${original.networkId}\nRegistry: ${original.providerId.slice('midnames:'.length)}\nCurrent name status: ${status}${observation.currentTarget ? `\nCurrent reported target: ${observation.currentTarget}` : ''}\nOriginally reviewed Passport ACC: ${original.target}\nOriginal binding: ${original.recipientBindingId ?? BINDING_ID}\nAmount: ${original.amount} NIGHT smallest units\nSaved withdrawal: ${withdrawal.hash}\nOperation now: deposit_unshielded into the originally reviewed ACC\nRequest: ${original.requestId}\n\nThis is direct recovery of the saved output, not a new named payment. The current name does not authorize this destination. The original ACC binding and saved output will be checked again before submission. No second withdrawal or redirect will occur. Declining keeps the original pending.`;
+}
+
+async function checkedOldRecipientPageRoute(network: NetworkConfig, candidate: boolean) {
+  const service = import.meta.env.VITE_MIDNAMES_NIGHT_RECIPIENT_SERVICE_URL;
+  const enabled = import.meta.env.VITE_MIDNAMES_NIGHT_MIXED_RECIPIENT === '1';
+  if (service && (!candidate || !enabled || !localNightService(service)))
+    throw new Error('The old recipient proof service requires an exact local candidate origin.');
+  if (candidate && enabled && !service)
+    throw new Error('Configure the old recipient proof service before a mixed named payment.');
+  if (!service) return undefined;
+  const pin = resolveBinding('acc-s3r1.1');
+  const config = await fetchCheckedV1Config(
+    service,
+    {
+      networkId: network.networkId,
+      bindingId: 'acc-s3r1.1',
+      manifestSha256: pin.manifestSha256,
+      artefactUrl: `${service.replace(/\/+$/, '')}/v1/zk/acc-s3r1.1`,
+    },
+    { fetch: tracedFetch },
+  );
+  if (
+    config.indexerUri !== network.indexerUrl ||
+    config.indexerWsUri !== network.indexerWsUrl ||
+    config.nodeUri !== network.nodeUrl
+  )
+    throw new Error('The old recipient proof service must use the source chain.');
+  return {
+    network: {
+      networkId: network.networkId,
+      bindingId: 'acc-s3r1.1',
+      manifestSha256: pin.manifestSha256,
+      indexerUrl: config.indexerUri,
+      indexerWsUrl: config.indexerWsUri,
+      nodeUrl: config.nodeUri,
+      artefactUrl: config.zkBaseUrl,
+    },
+    prover: remoteV1Prover(service, { fetch: tracedFetch }),
+  };
 }
 
 async function connectedPageSend(
@@ -123,7 +189,13 @@ async function connectedPageSend(
     BINDING_ID,
     registryProfile(import.meta.env.VITE_MIDNAMES_REGISTRY_PROFILE, scope.networkId),
     candidate,
+    undefined,
+    undefined,
+    candidate && import.meta.env.VITE_MIDNAMES_NIGHT_MIXED_RECIPIENT === '1'
+      ? 'acc-s3r1.1'
+      : undefined,
   );
+  const oldRecipient = await checkedOldRecipientPageRoute(network, !!candidate);
   if (requiresNewNightLegFee(active)) {
     const feeWallet = await wallet.descriptor.connect(scope.networkId);
     const dust = await feeWallet.getDustBalance();
@@ -138,7 +210,8 @@ async function connectedPageSend(
     scope,
     wallet,
     names: resolver,
-    isSupportedRecipient: reader.isSupportedAccount,
+    isSupportedRecipient: async (address, networkId) =>
+      (await reader.readSupportedAccountBinding(address, networkId)) ?? false,
     readSourceBalance: async (address) => {
       checkScope();
       const balance = await reader.readSupportedNightBalance(address, scope.networkId);
@@ -160,6 +233,31 @@ async function connectedPageSend(
       );
       return true;
     },
+    async reviewOriginalDeposit(original, current, withdrawal) {
+      host.stage('review');
+      const approved = window.confirm(originalDepositReviewText(original, current, withdrawal));
+      checkScope();
+      traceOperation(
+        approved ? 'namedNight.originalDepositApproved' : 'namedNight.originalDepositDeclined',
+        {
+          requestId: original.requestId,
+          withdrawal: withdrawal.hash,
+        },
+      );
+      return approved;
+    },
+    async reviewUnresolvedOriginalDeposit(original, observation, withdrawal) {
+      host.stage('review');
+      const approved = window.confirm(
+        unresolvedDepositReviewText(original, observation, withdrawal),
+      );
+      checkScope();
+      traceOperation(
+        approved ? 'namedNight.originalRepairApproved' : 'namedNight.originalRepairDeclined',
+        { requestId: original.requestId, withdrawal: withdrawal.hash, reason: observation.reason },
+      );
+      return approved;
+    },
     checkScope,
     checkApproved(intent) {
       host.stage('withdraw');
@@ -169,6 +267,12 @@ async function connectedPageSend(
     network,
     binding: accModule,
     prover: remoteV1Prover(SERVICE_URL, { fetch: tracedFetch }),
+    ...(oldRecipient && {
+      oldRecipient: {
+        ...oldRecipient,
+        binding: accModule,
+      },
+    }),
     provisionalLocal: !!candidate,
   });
 }
@@ -313,7 +417,7 @@ export function createNamedNightPage(
       await inspect();
       host.status(
         result.phase === 'completed'
-          ? 'Both original NIGHT payment legs finalized. The named recipient ACC can now be refreshed.'
+          ? 'Both original NIGHT payment legs finalized. Refresh the originally reviewed recipient ACC to check its balance.'
           : 'The original NIGHT payment remains pending. Keep its IDs and resume only those legs.',
       );
     } catch (error) {

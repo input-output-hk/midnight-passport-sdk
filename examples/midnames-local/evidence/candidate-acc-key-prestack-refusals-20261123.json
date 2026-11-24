@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "kind": "candidate-key-native-supervisor-prestack-refusals",
+  "result": "PASS",
+  "sourceHead": "3e0558fdf436cc74324cabae9d5f68ac8b179975",
+  "observedAt": "2026-11-23",
+  "profile": "pinned Nix shell, native Ledger 9 supervisor admission with a Docker-deny shim",
+  "cases": [
+    {
+      "input": "missing deposit_unshielded prover key",
+      "result": "ENOENT before native allocation",
+      "exitCode": 1,
+      "privateStderrSha256": "6136bebb4a4845cf553493f3d8bce476359ee7f0c2c737d5e8afa8b09893a1c3"
+    },
+    {
+      "input": "same-size corrupt deposit_unshielded prover key",
+      "result": "artefact hash mismatch before native allocation",
+      "exitCode": 1,
+      "privateStderrSha256": "e47be1d73e52ba3ee5208e2c20d8b8625683a46037fd42ccc1a49226367eddc8"
+    },
+    {
+      "input": "Compact 0.35 account assets under the candidate 0.36.1 pin",
+      "result": "manifest pin mismatch before native allocation",
+      "exitCode": 1,
+      "privateStderrSha256": "8dd740ebffd22031d9985eeb693e4a52fc3b1b87d36db6961bda1c5a82b18975"
+    }
+  ],
+  "originalCandidateDepositProverSha256BeforeAndAfter": "d8409e37efa3f142a8c9fb44a7a4c25397312317f9cf28f1243c1bba887f56a3",
+  "dockerCalls": 0,
+  "nativeOutputsAllocated": 0,
+  "nativeLeaseAcquired": false,
+  "privateReceiptSha256": {
+    "passingRun": "3a0164f074776b53ed9debbc30ab2e6a28926130ae969dc83fc67d96eaa8830b",
+    "preservedFirstHarnessFailure": "390c6f143b53300a00a00dfe976e30d1594bae1cd3c05635f1566263b3e74d7a"
+  },
+  "preservedFirstHarnessFailure": "The first attempt inherited LD_DYLD_PATH from Nix and stopped at the isolation override guard before asset verification. Its receipt and stderr are retained; the fixed source was signed and a fresh output name used.",
+  "limits": [
+    "These are native-supervisor pre-stack admission checks, not an on-chain negative run or a connected-browser proof request.",
+    "The old-binding input is refused under the candidate pin; this does not establish old-version proof or account compatibility on Ledger 9.",
+    "Mixed-version source and recipient admission, full candidate binding promotion, physical passkeys, online providers and released package provenance remain open."
+  ]
+}

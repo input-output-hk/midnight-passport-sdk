@@ -14,7 +14,10 @@ import { basename, dirname, join, resolve, sep } from 'node:path';
 import { auditInstalledBundle, packageArchive } from './consumer/installed-inputs.mjs';
 import { validateInstalledCases } from './consumer/installed-cases.mjs';
 import { checkConsumerTarballs, consumerSha256 } from './consumer-inputs.mjs';
-import { checkMidnightRuntimeIdentity } from './check-midnight-runtime-identity.mjs';
+import {
+  checkMidnightRuntimeIdentity,
+  CURRENT_SOURCE_RUNTIME_VERSIONS,
+} from './check-midnight-runtime-identity.mjs';
 
 const repository = resolve(import.meta.dirname, '..');
 const [mode] = process.argv.slice(2);
@@ -55,7 +58,8 @@ const names = () =>
   JSON.parse(readFileSync(join(bundle, 'manifest.json'), 'utf8')).files.map(
     (/** @type {{name:string}} */ f) => f.name,
   );
-const runtime = () => Object.keys(checkMidnightRuntimeIdentity(root, names())).sort();
+const runtime = () =>
+  Object.keys(checkMidnightRuntimeIdentity(root, names(), CURRENT_SOURCE_RUNTIME_VERSIONS)).sort();
 if (mode === 'prepare') {
   if (existsSync(root))
     throw Error('prepare requires a new consumer directory; failed preparations are retained');
@@ -101,7 +105,15 @@ if (mode === 'prepare') {
         type: 'module',
         packageManager,
         dependencies,
-        pnpm: { overrides: dependencies },
+        pnpm: {
+          overrides: {
+            ...dependencies,
+            // Mirror the signed source workspace's Ledger 9 pin. Without it,
+            // midnight-js-protocol may install its RC ledger beside the SDK's
+            // released ledger and split WASM class identity in this consumer.
+            '@midnightntwrk/ledger-v9': CURRENT_SOURCE_RUNTIME_VERSIONS['@midnightntwrk/ledger-v9'],
+          },
+        },
       },
       null,
       2,

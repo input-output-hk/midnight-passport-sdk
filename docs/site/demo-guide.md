@@ -30,6 +30,11 @@ network, journals and unknown IDs when investigating a failure.
 The browser runs at `http://localhost:5173`. The Passport, key and optional funding
 services normally use `8787`, `8788` and `8789`. The optional funding wallet supplies
 allowlisted ACC deposits; the fee sponsor and the user's built-in wallet are separate.
+In this source preview, **Fund Passport account** saves one request ID, then
+checks the funding service's durable status while the wallet proves and confirms
+the deposit. After a reload or inventory outage, **Continue funding** checks the
+same original without sending another deposit. A pending status is not proof of
+failure or no credit; keep it for operator reconciliation if the worker stopped.
 Use the [demo use cases]({{ '/use-cases/' | relative_url }}) for action prerequisites and
 [historical RC5 funding trace]({{ '/handover/' | relative_url }}) for that dated evidence.
 Use the app setup reference above for prerequisites and state preservation.
@@ -75,6 +80,18 @@ before offering a new quote. Raw receipts are under **Receipt and recovery
 details**. This is
 a standalone local `.night` demonstration; name
 registration is optional and can happen in a later session.
+Until the exact original and current registry binding agree, the claim panel
+labels the named Passport setup **pending**, including after ACC activation,
+a suggested name, or an uncertain sponsor response. Only a verified binding
+shows **Registered**. The ACC remains usable through its independent SDK
+account APIs while named setup is pending.
+
+With an external Midnames provider configured, open **Demo tools → Settings →
+Name service**, look up an exact `.night` name, then select **Open this Passport
+account**. The page rechecks the name's contract target and enters the existing
+full-address consent and enrolled-passkey login. A changed or unavailable name
+requires a new lookup. The synthetic mock provider does not offer this action;
+the lookup itself does not authorize account control.
 
 The opt-in local Midnames profile adds a separate **Send NIGHT to a Passport
 name** form under **Passport account → Withdraw**. It requires a JubJub ACC,
@@ -86,6 +103,20 @@ retry. See the [app configuration](https://github.com/input-output-hk/midnight-p
 and [naming limits]({{ '/names/' | relative_url }}). A connected local Ledger 9
 browser run finalized both original payment legs and recovered the same request
 after reload. Real-provider acceptance and an online profile remain open.
+For an isolated candidate-source demo with an older named recipient on the same
+chain, `--mixed-recipient` enables a separate pinned old-binding proof service.
+The page shows both ACC versions and retains the recipient version with the
+original payment. A [shared Ledger 9 connected browser run](../../examples/midnames-local/evidence/candidate-to-old-connected-browser-night-20261123.json)
+finalized one mixed-version payment and recovered a second payment's saved
+withdrawal after an interrupted recipient proof. The source was previously
+funded and the credential was a development mock; that run did not test fresh
+funding. Physical passkey and online acceptance remain open.
+A later [fresh local funding and named-send receipt](../../examples/midnames-local/evidence/candidate-fresh-funding-named-night-20261123.json)
+records one new synthetic candidate ACC credited with 10 NIGHT and a reviewed
+1 NIGHT payment to the old-binding `paidfix.night` ACC. Both legs finalized;
+the balances moved 10/6 → 9/7. Its device wallet needed separate local
+funding and DUST registration. An earlier ambiguous funding original remains
+pending; long-proof recovery, physical passkeys and online acceptance are open.
 
 ## Enter and navigate
 

@@ -6,10 +6,15 @@ import {
   requireMatchingFinalizedIndexerBlock,
 } from './resolver.js';
 import { isClaimSponsorOrigin, requestClaimDispatch } from './claim-dispatch.js';
-import { registryProfile } from './registry-pins.js';
+import {
+  isStandaloneRegistryProfile,
+  registryProfile,
+  type MidnamesRegistryProfile,
+} from './registry-pins.js';
 import { requireMidnamesV4IndexerPair } from './indexer-endpoints.js';
 import {
   createMidnamesNodeFinality,
+  createMidnamesNodeStateVerifier,
   type MidnamesIndexerBlock,
   type MidnamesNodePin,
 } from './chain-finality.js';
@@ -21,6 +26,8 @@ export interface MidnamesConfig {
   readonly claimSponsor?: string | undefined;
   /** Exact Indexer v4 transaction protocol observed on this chain, not the API version. */
   readonly claimProtocolVersion?: string | undefined;
+  /** Enables claims only for the explicitly isolated 0.36.1 local test chain. */
+  readonly isolated0361?: string | undefined;
   readonly registryProfile?: string | undefined;
   readonly registryAddress?: string | undefined;
   readonly namespace?: string | undefined;
@@ -163,7 +170,7 @@ function configuredIndexers(config: MidnamesConfig, networkId: string) {
 
 function requireCandidateLocal(
   candidate: CandidateAccountQualification | undefined,
-  profileId: string,
+  profileId: MidnamesRegistryProfile,
   networkId: string,
   http: string,
   ws: string,
@@ -171,7 +178,7 @@ function requireCandidateLocal(
 ): void {
   if (
     candidate &&
-    (profileId !== 'standalone-0.35' ||
+    (!isStandaloneRegistryProfile(profileId) ||
       networkId !== 'undeployed' ||
       !loopback(http) ||
       !loopback(ws) ||
@@ -180,9 +187,48 @@ function requireCandidateLocal(
     throw new Error('Candidate ACC naming requires one local standalone registry and indexer.');
 }
 
+function requireMixedNightRecipient(
+  additional: string | undefined,
+  candidate: CandidateAccountQualification | undefined,
+  profileId: MidnamesRegistryProfile,
+  online: boolean,
+): void {
+  if (
+    additional !== undefined &&
+    (candidate?.bindingId !== 'acc-s3r1.1-zkir036' ||
+      additional !== 'acc-s3r1.1' ||
+      !isStandaloneRegistryProfile(profileId) ||
+      online)
+  )
+    throw new Error('Mixed NIGHT recipient admission requires the isolated local candidate.');
+}
+
 function requirePairNodePin(verification: unknown, nodePin: MidnamesNodePin | undefined): void {
   if (verification && !nodePin)
     throw new Error('Two-provider naming requires a separately pinned finalized node.');
+}
+
+function supportsStandaloneClaim(
+  config: MidnamesConfig,
+  profileId: MidnamesRegistryProfile,
+  bindingId: string,
+  candidate: CandidateAccountQualification | undefined,
+  http: string,
+  ws: string,
+  verification: unknown,
+): boolean {
+  if (config.namespace !== 'night') return false;
+  if (profileId === 'standalone-0.35') return true;
+  return (
+    profileId === 'standalone-0.36.1' &&
+    bindingId === 'acc-s3r1.1-zkir036' &&
+    candidate?.bindingId === bindingId &&
+    config.isolated0361 === '1' &&
+    config.networkId === 'undeployed' &&
+    loopback(http) &&
+    loopback(ws) &&
+    verification === undefined
+  );
 }
 
 type MidnamesReader = Pick<
@@ -254,6 +300,7 @@ export function configureMidnames(
   bindingId: string,
   preparation?: ClaimPreparation,
   candidate?: CandidateAccountQualification,
+  additionalNightRecipientBindingId?: string,
 ): (PassportNameService & { readonly recovery?: ClaimRecovery }) | undefined {
   const { registryAddress, namespace, networkId, knownName, knownAccountAddress } = config;
   if (!preparation && Object.values(config).every((value) => value === undefined)) return undefined;
@@ -271,7 +318,9 @@ export function configureMidnames(
   const nodePin = configuredNodePin(config, online, http, verification?.http);
   requirePairNodePin(verification, nodePin);
   const verifyFinalizedBlock = nodePin && createMidnamesNodeFinality(nodePin);
-  const load = (readerHttp: string, readerWs: string) =>
+  const verifyContractState = nodePin && createMidnamesNodeStateVerifier(nodePin);
+  requireMixedNightRecipient(additionalNightRecipientBindingId, candidate, profileId, online);
+  const load = (readerHttp: string, readerWs: string, additional?: string) =>
     import('./ledger-reader.js').then(({ createMidnamesIndexer, createMidnamesLedgerReads }) =>
       createMidnamesLedgerReads(
         createMidnamesIndexer(networkId, readerHttp, readerWs),
@@ -280,22 +329,29 @@ export function configureMidnames(
         profileId,
         candidate,
         verifyFinalizedBlock,
+        verifyContractState,
+        additional,
       ),
     );
-  const lazyReads = (readerHttp: string, readerWs: string) => {
+  const lazyReads = (readerHttp: string, readerWs: string, additional?: string) => {
     let loaded: ReturnType<typeof load> | undefined;
     return () =>
-      (loaded ??= load(readerHttp, readerWs).catch((error: unknown) => {
+      (loaded ??= load(readerHttp, readerWs, additional).catch((error: unknown) => {
         loaded = undefined;
         throw error;
       }));
   };
   const reads = lazyReads(http, ws);
-  const verificationReads = verification && lazyReads(verification.http, verification.ws);
+  const nameReads = additionalNightRecipientBindingId
+    ? lazyReads(http, ws, additionalNightRecipientBindingId)
+    : reads;
+  const verificationReads =
+    verification &&
+    lazyReads(verification.http, verification.ws, additionalNightRecipientBindingId);
   const profile = { registryAddress, namespace, networkId };
   const service = configuredNameService(
     profile,
-    reads,
+    nameReads,
     verificationReads,
     knownName,
     knownAccountAddress,
@@ -303,7 +359,15 @@ export function configureMidnames(
   const guardKnown = async () => {
     if (knownName !== undefined) await service.resolve({ name: knownName, networkId });
   };
-  const standalone = profileId === 'standalone-0.35' && namespace === 'night';
+  const standalone = supportsStandaloneClaim(
+    config,
+    profileId,
+    bindingId,
+    candidate,
+    http,
+    ws,
+    verification,
+  );
   if (preparation && config.claimSponsor !== '1')
     throw new Error('Claim preparation requires the loopback standalone sponsor.');
   if (

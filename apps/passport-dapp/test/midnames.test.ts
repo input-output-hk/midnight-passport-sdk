@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   PassportNameError,
+  resolvePassportContractCallName,
   resolvePassportName,
   type PassportNameErrorCode,
 } from '@input-output-hk/mn-passport-account/names';
@@ -47,6 +48,32 @@ test('resolves the currently observed contract target for the captured registry 
   assert.equal((await resolvePassportName(adapter, query))?.accountAddress, account);
   address = repointed;
   assert.equal((await resolvePassportName(adapter, query))?.accountAddress, repointed);
+});
+
+test('contract-call context admits only a verified contract target', async () => {
+  const calls: string[] = [];
+  const adapter = createMidnamesNameService(profile, {
+    async readTarget(name) {
+      assert.equal(name, query.name);
+      calls.push('contract-target');
+      return { kind: 'contract', address: account };
+    },
+    async isSupportedAccount(address) {
+      assert.equal(address, account);
+      calls.push('binding');
+      return true;
+    },
+  });
+  const result = await resolvePassportContractCallName(adapter, query);
+  assert.equal(result?.accountAddress, account);
+  assert.deepEqual(calls, ['contract-target', 'binding']);
+  assert.equal(result?.addressClass, 'contract');
+  assert.equal(result?.resolvedOperation, 'contract-call');
+  const bad = createMidnamesNameService(
+    profile,
+    reads(async () => ({ kind: 'other', address: repointed })),
+  );
+  await assert.rejects(resolvePassportContractCallName(bad, query), code('InvalidRecord'));
 });
 
 test('uses an atomic target and ACC check when the provider supports one', async () => {
@@ -268,6 +295,39 @@ test('configured name lookup requires an explicit matching network, registry and
       'acc-s3r1.1',
     ),
   );
+  assert.equal(
+    configureMidnames(
+      { ...config, registryProfile: 'standalone-0.36.1' },
+      profile.networkId,
+      'acc-s3r1.1',
+    )?.recovery,
+    undefined,
+  );
+  assert.throws(() =>
+    configureMidnames(
+      { ...config, registryProfile: 'standalone-0.36.1', claimProtocolVersion: '2001100' },
+      profile.networkId,
+      'acc-s3r1.1',
+    ),
+  );
+  const isolated0361 = {
+    ...config,
+    namespace: 'night',
+    registryProfile: 'standalone-0.36.1',
+    isolated0361: '1',
+    claimProtocolVersion: '2001100',
+  };
+  assert.throws(() => configureMidnames(isolated0361, profile.networkId, 'acc-s3r1.1'));
+  assert.throws(() =>
+    configureMidnames({ ...isolated0361, isolated0361: '0' }, profile.networkId, 'acc-s3r1.1'),
+  );
+  assert.throws(() =>
+    configureMidnames(
+      { ...isolated0361, indexerUrl: 'https://indexer.example.test/api/v4/graphql' },
+      profile.networkId,
+      'acc-s3r1.1',
+    ),
+  );
   const standalone = { ...config, namespace: 'night', registryProfile: 'standalone-0.35' };
   const resolverOnly = configureMidnames(standalone, profile.networkId, 'acc-s3r1.1');
   assert.equal(resolverOnly?.provider.mode, 'external');
@@ -310,6 +370,13 @@ test('configured name lookup requires an explicit matching network, registry and
   assert.throws(() =>
     configureMidnames(
       { ...config, networkId: 'preview', registryProfile: 'standalone-0.35' },
+      'preview',
+      'acc-s3r1.1',
+    ),
+  );
+  assert.throws(() =>
+    configureMidnames(
+      { ...config, networkId: 'preview', registryProfile: 'standalone-0.36.1' },
       'preview',
       'acc-s3r1.1',
     ),
@@ -419,6 +486,31 @@ test('provisional ACC reader is confined to the local standalone registry', () =
     },
   };
   assert.ok(configureMidnames(local, 'undeployed', candidate.bindingId, undefined, candidate));
+  assert.ok(
+    configureMidnames(local, 'undeployed', candidate.bindingId, undefined, candidate, 'acc-s3r1.1'),
+  );
+  assert.throws(() =>
+    configureMidnames(local, 'undeployed', candidate.bindingId, undefined, candidate, 'unknown'),
+  );
+  const isolated0361 = {
+    ...local,
+    registryProfile: 'standalone-0.36.1',
+    isolated0361: '1',
+    claimProtocolVersion: '2001100',
+  };
+  assert.ok(
+    configureMidnames(isolated0361, 'undeployed', candidate.bindingId, undefined, candidate)
+      ?.recovery,
+  );
+  assert.throws(() =>
+    configureMidnames(
+      { ...isolated0361, isolated0361: '0' },
+      'undeployed',
+      candidate.bindingId,
+      undefined,
+      candidate,
+    ),
+  );
   assert.throws(
     () =>
       configureMidnames(

@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "kind": "isolated-ledger9-noncontract-name-original-output-repair",
+  "date": "2026-11-23",
+  "sourceHead": "9a8fb50a286162efd1094104d321b633d5148932",
+  "status": "PASS",
+  "profile": "Standalone Midnames 0.36.1 and acc-s3r1.1-zkir036 on retained isolated Ledger 9, Indexer API v4, release prover 9.0.2; connected mock-passkey Passport browser.",
+  "name": "v36claim23.night",
+  "registryAddress": "3d0502ab6b226f12ad621fb6c4e5e9882c75b2df479545cd65d1325f7ad30591",
+  "sourceAcc": "f746d060ef93d3264abf124cd0bee9498ee929aea02c8a18d5aef651f2a55bed",
+  "originalReviewedAcc": "14c1181524e783ac7a11d225583cb33c842a144aa89294b765393a5e12794053",
+  "otherAcc": "c3ed40e0d020ee0be2b8df92cdb26bf69b9f50c6bcd81d8ebf43f2c3f667f756",
+  "intentId": "4f116449-95da-48db-a37e-cf5fdc8ce90a",
+  "before": {
+    "canonicalBlock": {
+      "blockHeight": 1609,
+      "blockHash": "8c24925d752eedda4c4878403b321e5b54ca984a6956bbbe4ff425c7e408cfeb"
+    },
+    "balancesNight": {
+      "source": "7",
+      "original": "0",
+      "current": "7"
+    }
+  },
+  "withdrawal": {
+    "hash": "d47c4df85fc4978f8daab18dd92d00a7eadab30433e24a3f1055d81217e25c4a",
+    "canonicalBlockHeight": 1627,
+    "depositProofInterruptedBeforeOriginal": true
+  },
+  "ownerTargetClassUpdate": {
+    "hash": "f000cc92b835cbc57a8cd24dc1d96cddfe7ec526ceb1ac4c11bd1206f8c4314c",
+    "canonicalBlock": {
+      "height": 1637,
+      "hash": "5690ef196492a600d9dc1f7c787bef2a91d9d6ae5779f204a369632a0f31f7b9"
+    },
+    "indexedStatus": "SUCCESS",
+    "oldContractTarget": "14c1181524e783ac7a11d225583cb33c842a144aa89294b765393a5e12794053",
+    "newTargetBytes": "14c1181524e783ac7a11d225583cb33c842a144aa89294b765393a5e12794053",
+    "newTargetClass": "UnshieldedAddr"
+  },
+  "recovery": {
+    "browserContexts": 2,
+    "originalOnlyResumeConfirmations": 1,
+    "directRepairReviews": 1,
+    "observedNameStatus": "InvalidRecord",
+    "depositHash": "4cf544bd180f9756673678ee411679de4139050b5c89b4c734979c4bccc02370",
+    "depositCanonicalBlockHeight": 1646,
+    "sameWithdrawalReused": true,
+    "secondWithdrawal": false,
+    "depositedToOriginalAcc": true,
+    "activeJournalEntriesAfter": 0,
+    "archivedHistoryEntriesAfter": 7,
+    "durableReviewArchived": true
+  },
+  "after": {
+    "canonicalBlock": {
+      "blockHeight": 1647,
+      "blockHash": "dbf4d4148c15703c50dd5fcffa43f5f388be833b7ad8e23bdd6837d03e78aaef"
+    },
+    "balancesNight": {
+      "source": "6",
+      "original": "1",
+      "current": "7"
+    }
+  },
+  "cleanup": {
+    "exactIsolatedContainersStopped": true,
+    "nativeLeaseReleased": true,
+    "sharedStackUntouched": true,
+    "volumesAndPrivateOriginalsPreserved": true
+  },
+  "privateReceiptSha256": {
+    "beforeBalance": "b8862b44b619039d5212edf4802958f679ab38d935fdeceaaf6c4f8923cd4356",
+    "interruptedBrowser": "2d6893c5960b02f4afce75fbe470477d86e650060bd5f4691774f3f8f2f9a09e",
+    "ownerTargetClassUpdate": "e7d80b8767af24f6b2ebca61971209ce6e48aedb7ae79639cdd4570d75117a5b",
+    "recoveredBrowser": "2afcd98f706d5149071a578a1eace3a013054cac6a67894b57791f76214a0de6",
+    "afterBalance": "c200c8e60c0abe23809b45439a5ff6d31196ea64db04dcb8e529a6f1aad7faad",
+    "archivedBrowserAudit": "9d1cea876ca0793bc097244c4f7ea62026470c67c996b8723e80cfce7065fe96",
+    "supervisor": "56f4fe5c9950c834d817ec380e74324c141ebd9916c2eabc23521680788f0347"
+  },
+  "limits": "This qualifies one local synthetic non-contract name-class observation after withdrawal and explicit direct repair to the original supported ACC. Absent/expired/unavailable/unsupported current-name native cases, physical passkeys, online providers, independent state inclusion proof and a released binding remain open."
+}

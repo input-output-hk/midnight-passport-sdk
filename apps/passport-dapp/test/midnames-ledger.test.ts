@@ -22,6 +22,10 @@ import {
   partitionTranscripts,
 } from '@midnightntwrk/ledger-v9';
 import type { AccRegistry } from '@input-output-hk/mn-passport-contract';
+import {
+  PassportNameError,
+  resolvePassportContractCallName,
+} from '@input-output-hk/mn-passport-account/names';
 import { resolveBinding, resolvePinnedBinding } from '@input-output-hk/mn-passport-contract';
 import {
   admitAccBindingFromState,
@@ -29,10 +33,12 @@ import {
   createMidnamesLedgerReads,
   detectAccBindingFromState,
 } from '../src/midnames/ledger-reader.js';
+import { createMidnamesNameService } from '../src/midnames/resolver.js';
 import { MIDNAMES_REGISTRY_VERIFIERS } from '../src/midnames/registry-pins.js';
 
 const profile = { networkId: 'undeployed', namespace: 'night', registryAddress: '11'.repeat(32) };
 const target = '33'.repeat(32);
+const defaultFieldAddress = '22'.repeat(32);
 const claimSecret = new Uint8Array(32).fill(9);
 const coin = '00'.repeat(32);
 const payment = {
@@ -111,6 +117,35 @@ test('candidate account reads require the exact isolated local pin', () => {
   assert.doesNotThrow(() =>
     createMidnamesLedgerReads(provider, 'undeployed', bindingId, 'standalone-0.35', candidate),
   );
+  assert.doesNotThrow(() =>
+    createMidnamesLedgerReads(provider, 'undeployed', bindingId, 'standalone-0.36.1', candidate),
+  );
+  assert.doesNotThrow(() =>
+    createMidnamesLedgerReads(
+      provider,
+      'undeployed',
+      bindingId,
+      'standalone-0.35',
+      candidate,
+      undefined,
+      undefined,
+      'acc-s3r1.1',
+    ),
+  );
+  assert.throws(
+    () =>
+      createMidnamesLedgerReads(
+        provider,
+        'undeployed',
+        bindingId,
+        'standalone-0.35',
+        candidate,
+        undefined,
+        undefined,
+        'unknown-binding',
+      ),
+    /Mixed recipient admission/,
+  );
   assert.throws(
     () => createMidnamesLedgerReads(provider, 'undeployed', bindingId, 'standalone-0.35'),
     { code: 'UNSUPPORTED_BINDING' },
@@ -168,7 +203,12 @@ async function registryFixture() {
     createCircuitContext,
   }: {
     createCircuitContext(options: {
-      circuitId: 'create_domain' | 'transfer_domain';
+      circuitId:
+        | 'create_domain'
+        | 'transfer_domain'
+        | 'update_target'
+        | 'add_domain_field'
+        | 'update_domain_default_field';
       contractAddress: string;
       coinPublicKeyOrZswapState: string;
       contractState: typeof start.currentContractState.data;
@@ -194,7 +234,7 @@ async function registryFixture() {
     AddressType.ContractAddr,
     { is_some: true, value: 'profile' },
     payment,
-    fields([['profile', 'different-target']]),
+    fields([['profile', defaultFieldAddress]]),
   );
   const trace = created.context.callProofDataTrace[0];
   assert.ok(trace);
@@ -230,12 +270,81 @@ async function registryFixture() {
   );
   const transferTrace = transferred.context.callProofDataTrace[0];
   assert.ok(transferTrace);
-  return { result, state, trace, transferState, transferTrace };
+  const targetState = ContractState.deserialize(result.serialize());
+  const targetContext = createCircuitContext({
+    circuitId: 'update_target',
+    contractAddress: profile.registryAddress,
+    coinPublicKeyOrZswapState: coin,
+    contractState: targetState.data,
+    privateState: {},
+    time: 0,
+  });
+  const nameId = ledger(targetState.data).name_to_id.lookup({ domain: key, parent_id: root });
+  const updated = await claimant.circuits.update_target(
+    targetContext,
+    nameId,
+    new Uint8Array(32).fill(4),
+    AddressType.ContractAddr,
+  );
+  const targetTrace = updated.context.callProofDataTrace[0];
+  assert.ok(targetTrace);
+  const fieldState = ContractState.deserialize(result.serialize());
+  const fieldContext = createCircuitContext({
+    circuitId: 'add_domain_field',
+    contractAddress: profile.registryAddress,
+    coinPublicKeyOrZswapState: coin,
+    contractState: fieldState.data,
+    privateState: {},
+    time: 0,
+  });
+  const addedField = await claimant.circuits.add_domain_field(
+    fieldContext,
+    nameId,
+    'alternate',
+    defaultFieldAddress,
+  );
+  const fieldTrace = addedField.context.callProofDataTrace[0];
+  assert.ok(fieldTrace);
+  fieldState.data = addedField.context.callContext.currentQueryContext.state;
+  const defaultState = ContractState.deserialize(fieldState.serialize());
+  const defaultContext = createCircuitContext({
+    circuitId: 'update_domain_default_field',
+    contractAddress: profile.registryAddress,
+    coinPublicKeyOrZswapState: coin,
+    contractState: defaultState.data,
+    privateState: {},
+    time: 0,
+  });
+  const updatedDefault = await claimant.circuits.update_domain_default_field(
+    defaultContext,
+    nameId,
+    {
+      is_some: true,
+      value: 'alternate',
+    },
+  );
+  const defaultTrace = updatedDefault.context.callProofDataTrace[0];
+  assert.ok(defaultTrace);
+  return {
+    result,
+    state,
+    trace,
+    transferState,
+    transferTrace,
+    targetState,
+    targetTrace,
+    fieldState,
+    fieldTrace,
+    defaultState,
+    defaultTrace,
+    decodeRegistry: ledger,
+  };
 }
 
 function assertGasBoundary(
   state: ContractState,
   trace: Awaited<ReturnType<typeof registryFixture>>['trace'],
+  deletionExpected = true,
 ) {
   const initial = LedgerContractState.deserialize(state.serialize());
   const params = LedgerParameters.initialParameters();
@@ -253,7 +362,7 @@ function assertGasBoundary(
       : operation,
   );
   const measured = context().query(gather, model).gasCost;
-  assert.ok(measured.bytesDeleted > 0n);
+  assert.equal(measured.bytesDeleted > 0n, deletionExpected);
   assert.throws(
     () =>
       context().runTranscript(
@@ -286,8 +395,30 @@ test('transfer_domain replay refuses an overclaimed deletion credit', async () =
   assertGasBoundary(transferState, transferTrace);
 });
 
+test('update_target replay refuses an overclaimed deletion credit', async () => {
+  const { targetState, targetTrace } = await registryFixture();
+  assertGasBoundary(targetState, targetTrace);
+});
+
+test('field updates replay only with measured deletion credit', async () => {
+  const { fieldState, fieldTrace, defaultState, defaultTrace } = await registryFixture();
+  assertGasBoundary(fieldState, fieldTrace, false);
+  assertGasBoundary(defaultState, defaultTrace);
+});
+
 test('standalone naming calls are rebuilt before proof without deletion credit', async () => {
-  const { state, trace, transferState, transferTrace } = await registryFixture();
+  const {
+    state,
+    trace,
+    transferState,
+    transferTrace,
+    targetState,
+    targetTrace,
+    fieldState,
+    fieldTrace,
+    defaultState,
+    defaultTrace,
+  } = await registryFixture();
   const { withoutDeletionCredit } = (await import(
     new URL('../../../examples/midnames-local/deletion-credit.mjs', import.meta.url).href
   )) as {
@@ -303,6 +434,9 @@ test('standalone naming calls are rebuilt before proof without deletion credit',
   for (const [circuit, startingState, proof] of [
     ['create_domain', state, trace],
     ['transfer_domain', transferState, transferTrace],
+    ['update_target', targetState, targetTrace],
+    ['add_domain_field', fieldState, fieldTrace],
+    ['update_domain_default_field', defaultState, defaultTrace],
   ] as const) {
     const ledgerState = LedgerContractState.deserialize(startingState.serialize());
     const operation = ledgerState.operation(circuit);
@@ -382,7 +516,7 @@ test('standalone naming calls are rebuilt before proof without deletion credit',
 });
 
 test('installed Midnames v2.1 reads its generated registry over the Ledger 9 indexer wire format', async (t) => {
-  const { result, state } = await registryFixture();
+  const { result, state, decodeRegistry } = await registryFixture();
   let registryState = Buffer.from(result.serialize()).toString('hex');
   const ledgerParameters = Buffer.from(LedgerParameters.initialParameters().serialize()).toString(
     'hex',
@@ -430,6 +564,12 @@ test('installed Midnames v2.1 reads its generated registry over the Ledger 9 ind
     'acc-s3r1.1',
     'standalone-0.35',
   );
+  const registry = decodeRegistry(result.data);
+  const label = new Uint8Array(32).fill(255);
+  label.set(new TextEncoder().encode('alice'));
+  const id = registry.name_to_id.lookup({ domain: label, parent_id: registry.ROOT_ZONE_ID });
+  assert.equal(registry.id_to_data.lookup(id).default_field.value, 'profile');
+  assert.equal(registry.domain_fields.lookup(id).lookup('profile'), defaultFieldAddress);
   assert.deepEqual(await reads.readTarget('alice.night', profile), {
     kind: 'contract',
     address: target,
@@ -443,6 +583,18 @@ test('installed Midnames v2.1 reads its generated registry over the Ledger 9 ind
     target: { kind: 'contract', address: target },
   });
   assert.equal(queryCount, 2);
+  const operation = createMidnamesNameService(profile, {
+    readTarget: reads.readTarget,
+    isSupportedAccount: async (address) => address === target,
+  });
+  const contractCall = await resolvePassportContractCallName(operation, {
+    name: 'alice.night',
+    networkId: 'undeployed',
+  });
+  assert.equal(contractCall?.accountAddress, target);
+  assert.notEqual(contractCall?.accountAddress, defaultFieldAddress);
+  assert.equal(contractCall?.addressClass, 'contract');
+  assert.equal(contractCall?.resolvedOperation, 'contract-call');
   await assert.rejects(standalone.readTarget('alice.night', profile), { code: 'InvalidRecord' });
   assert.equal(await reads.readTarget('missing.night', profile), undefined);
   assert.equal(await reads.readClaim('missing.night', profile), undefined);
@@ -458,6 +610,7 @@ test('installed Midnames v2.1 reads its generated registry over the Ledger 9 ind
   const blockHash = 'aa'.repeat(32);
   const offsets: Array<{ address: string; offset: unknown }> = [];
   let blockReads = 0;
+  let accountObserved = false;
   const pinnedProvider = {
     async queryBlock() {
       blockReads++;
@@ -466,8 +619,17 @@ test('installed Midnames v2.1 reads its generated registry over the Ledger 9 ind
     async queryContractState(address: string, offset: unknown) {
       offsets.push({ address, offset });
       return address === profile.registryAddress
-        ? { contractState: { deserialize: () => result } }
-        : null;
+        ? { contractState: { deserialize: () => result, serialize: () => result.serialize() } }
+        : address === target && accountObserved
+          ? {
+              contractState: {
+                deserialize: () => {
+                  throw new Error('not an ACC');
+                },
+                serialize: () => Uint8Array.of(1, 2, 3),
+              },
+            }
+          : null;
     },
   } as unknown as Parameters<typeof createMidnamesLedgerReads>[0];
   const blocked = createMidnamesLedgerReads(
@@ -498,6 +660,66 @@ test('installed Midnames v2.1 reads its generated registry over the Ledger 9 ind
     { address: profile.registryAddress, offset: { type: 'blockHash', blockHash } },
     { address: target, offset: { type: 'blockHash', blockHash } },
   ]);
+  offsets.length = 0;
+  const checked: string[] = [];
+  const authenticated = createMidnamesLedgerReads(
+    pinnedProvider,
+    'undeployed',
+    'acc-s3r1.1',
+    undefined,
+    undefined,
+    async () => {},
+    async (address, selected, bytes) => {
+      assert.deepEqual(selected, { hash: blockHash, height: 100 });
+      checked.push(address);
+      assert.deepEqual(bytes, address === target ? Uint8Array.of(1, 2, 3) : result.serialize());
+    },
+  );
+  accountObserved = true;
+  await assert.rejects(authenticated.readSupportedTarget('alice.night', profile), {
+    code: 'InvalidRecord',
+  });
+  assert.deepEqual(checked, [profile.registryAddress, target]);
+  checked.length = 0;
+  offsets.length = 0;
+  const rejected = createMidnamesLedgerReads(
+    pinnedProvider,
+    'undeployed',
+    'acc-s3r1.1',
+    undefined,
+    undefined,
+    async () => {},
+    async (address) => {
+      checked.push(address);
+      throw new PassportNameError('Unavailable');
+    },
+  );
+  await assert.rejects(rejected.readSupportedTarget('alice.night', profile), {
+    code: 'Unavailable',
+  });
+  assert.deepEqual(checked, [profile.registryAddress]);
+  assert.deepEqual(offsets, [
+    { address: profile.registryAddress, offset: { type: 'blockHash', blockHash } },
+  ]);
+  checked.length = 0;
+  offsets.length = 0;
+  const rejectedAccount = createMidnamesLedgerReads(
+    pinnedProvider,
+    'undeployed',
+    'acc-s3r1.1',
+    undefined,
+    undefined,
+    async () => {},
+    async (address) => {
+      checked.push(address);
+      if (address === target) throw new PassportNameError('Unavailable');
+    },
+  );
+  await assert.rejects(rejectedAccount.readSupportedTarget('alice.night', profile), {
+    code: 'Unavailable',
+  });
+  assert.deepEqual(checked, [profile.registryAddress, target]);
+  accountObserved = false;
   offsets.length = 0;
   await assert.rejects(
     atomic.readSupportedTargetAt('alice.night', profile, { hash: '0x' + blockHash, height: 100 }),

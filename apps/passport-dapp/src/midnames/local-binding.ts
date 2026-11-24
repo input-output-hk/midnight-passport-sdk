@@ -12,3 +12,22 @@ export function localNightBinding(
     return provisionalLocal === true && manifestSha256 === pin.manifestSha256;
   return manifestSha256 === undefined || pin.manifestSha256 === manifestSha256;
 }
+
+/** A local source may use its own binding, or the pinned old recipient of a candidate source. */
+export function localNightRecipientBinding(
+  sourceBindingId: string,
+  recipientBindingId: string,
+  candidate?: { readonly manifestSha256: string; readonly provisionalLocal?: boolean },
+): boolean {
+  const manifest =
+    recipientBindingId === 'acc-s3r1.1-zkir036' ? candidate?.manifestSha256 : undefined;
+  return (
+    localNightBinding(
+      recipientBindingId,
+      manifest,
+      recipientBindingId === 'acc-s3r1.1-zkir036' && !!candidate?.provisionalLocal,
+    ) &&
+    (recipientBindingId === sourceBindingId ||
+      (sourceBindingId === 'acc-s3r1.1-zkir036' && recipientBindingId === 'acc-s3r1.1'))
+  );
+}

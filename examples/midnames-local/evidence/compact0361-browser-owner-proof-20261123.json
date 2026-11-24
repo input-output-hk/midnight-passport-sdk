@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "kind": "isolated-ledger9-compact0361-browser-owner-proof-only",
+  "date": "2026-11-23",
+  "environment": {
+    "registryProfile": "standalone-0.36.1",
+    "compiler": "0.36.1",
+    "compactRuntime": "0.21.0",
+    "indexerApi": "v4",
+    "ledger": "v9",
+    "browser": "Headless Chrome with virtual PRF-capable credential",
+    "proofServer": "Local release server on the retained isolated chain",
+    "registryAddress": "3d0502ab6b226f12ad621fb6c4e5e9882c75b2df479545cd65d1325f7ad30591",
+    "accountAddress": "14c1181524e783ac7a11d225583cb33c842a144aa89294b765393a5e12794053"
+  },
+  "checks": {
+    "prepared": "Exact 0.36.1 source, compiled module, 13 ZKIR circuits and 26 prover/verifier keys matched the committed manifest.",
+    "browserBundle": "Built from a separate exact-version release client lockfile; generated registry module and browser use the same physical Compact runtime.",
+    "reviewedQuote": "A fixture-supplied quote from live registry terms was displayed before automated approval; zero proof requests before approval; one owner proof after approval. No sponsor HTTP quote was requested.",
+    "reload": "The same virtual credential returned the same owner commitment after page reload.",
+    "result": "Two proved originals remained unsent. No payment or name claim was dispatched."
+  },
+  "provedUnsent": [
+    {
+      "name": "v36paged6b324.night",
+      "transactionSha256": "1c3a5d640d449a920e0a5abea6c3faa9dc867a0e588b799a527d0850f6b4d4dd",
+      "reviewedQuote": false
+    },
+    {
+      "name": "v36page14c676.night",
+      "transactionSha256": "e876db15022b8d8305ac08cca31a2710738da08cff1b249814feb6b163f969d5",
+      "reviewedQuote": true
+    }
+  ],
+  "cleanup": "All three exact isolated containers stopped, volumes and private proved bytes retained, native lease released. The shared stack was not restarted; the ordinary local demo was restored.",
+  "limits": "Proof-only browser fixture, not the full Passport page; no sponsor dispatch, indexed registration, physical authenticator, online provider or release acceptance. The ordinary demo still uses the 0.35 registry profile."
+}

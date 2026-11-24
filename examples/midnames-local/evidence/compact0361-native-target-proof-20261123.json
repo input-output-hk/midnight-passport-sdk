@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "kind": "isolated-ledger9-owner-target-proof-only",
+  "date": "2026-11-23",
+  "sourceCommit": "1402349c87cdeb2856648293632a195c353809ef",
+  "scope": "Retained isolated Ledger 9 chain and API v4 indexer; existing owner-controlled name; synthetic sponsor wallet; release proof server 9.0.2.",
+  "name": "v36claim23.night",
+  "registryAddress": "3d0502ab6b226f12ad621fb6c4e5e9882c75b2df479545cd65d1325f7ad30591",
+  "oldTarget": "14c1181524e783ac7a11d225583cb33c842a144aa89294b765393a5e12794053",
+  "proposedTarget": "f746d060ef93d3264abf124cd0bee9498ee929aea02c8a18d5aef651f2a55bed",
+  "checks": [
+    "Registry, owner commitment, and old ContractAddr target read from the finalized isolated chain before proof.",
+    "Existing owner witness proved one update_target call against pinned Compact 0.36.1 registry assets.",
+    "Pinned prover/verifier keys and BZKIR files were covered by a private augmented artifact manifest with integrity verification enabled.",
+    "Proven pre-binding bytes decoded as one registry update_target call with a proof.",
+    "Registry owner commitment and target were unchanged after proof; no transaction was balanced or submitted.",
+    "Wallet stopped, exact node/indexer containers stopped, inputs unchanged, native lease released."
+  ],
+  "proofBytesSha256": "24426c07cae59973ce103df183204ccda7d04cc33d2017ff3b2febd55b55a6bb",
+  "privateManifestSha256": "002dd0500e49dc49a75fa2d808a38cc6fc0495a3edfd762055bf8bd2cb63d88a",
+  "privateReceiptSha256": "a86ea8d4cebe79bd32a3382e38186e25edf55573726e358391c72af341960158",
+  "status": "PASS",
+  "limits": "Proof-only. No target-update submission, changed on-chain resolution, connected browser refusal, online environment, or physical passkey was qualified."
+}

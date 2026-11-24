@@ -4,7 +4,9 @@
  * The retained Compact 0.35 composer pads all four gas dimensions. Ledger 9
  * treats bytesDeleted as a credit: claiming more deletions than execution
  * produces, rejecting an otherwise valid call. Forgoing that credit is safe for
- * fees and leaves the program, effects, inputs and outputs unchanged.
+ * fees and leaves the program, effects, inputs and outputs unchanged. Some
+ * owner field calls measure zero deleted bytes; they still need the same
+ * one-call guard before using a zero-credit transcript.
  *
  * This is deliberately limited to single-call local naming and named-ACC
  * shielded deposit fixtures. ACC NIGHT funding needs its measured credit;
@@ -40,8 +42,14 @@ function rebuildWithCredit(
   const [guaranteed, fallible] = call.public.partitionedTranscript;
   if (!!guaranteed === !!fallible) throw new Error('Unexpected call transcript partition.');
   const transcript = guaranteed ?? fallible;
-  if (transcript.gas.bytesDeleted <= 0n && !allowed.includes('deposit_unshielded'))
-    throw new Error('The call transcript has no deletion credit to remove.');
+  if (
+    typeof transcript.gas.bytesDeleted !== 'bigint' ||
+    transcript.gas.bytesDeleted < 0n ||
+    (transcript.gas.bytesDeleted === 0n &&
+      circuit !== 'add_domain_field' &&
+      !allowed.includes('deposit_unshielded'))
+  )
+    throw new Error('The call transcript has invalid deletion credit.');
   const existing = intents[0].actions[0];
   const entry =
     typeof existing.entryPoint === 'string'
@@ -99,6 +107,9 @@ export function withoutDeletionCredit(result, state, networkId, ledger, types, c
   return rebuildWithCredit(result, state, networkId, ledger, types, contractAddress, 0n, [
     'create_domain',
     'transfer_domain',
+    'update_target',
+    'add_domain_field',
+    'update_domain_default_field',
     'deposit_shielded',
   ]);
 }

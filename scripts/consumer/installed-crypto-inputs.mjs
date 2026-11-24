@@ -2,7 +2,10 @@ import { lstatSync, readFileSync, realpathSync } from 'node:fs';
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { auditInstalledBundle } from './installed-inputs.mjs';
-import { checkMidnightRuntimeIdentity } from '../check-midnight-runtime-identity.mjs';
+import {
+  checkMidnightRuntimeIdentity,
+  CURRENT_SOURCE_RUNTIME_VERSIONS,
+} from '../check-midnight-runtime-identity.mjs';
 import { resolveCryptoExport } from './crypto/modules.mjs';
 import { qualityFile, qualityTree } from './installed-quality-inputs.mjs';
 
@@ -60,6 +63,7 @@ export function captureCryptoInputs(context) {
   const runtime = checkMidnightRuntimeIdentity(
     context.consumer,
     context.roots.map(({ name }) => name),
+    CURRENT_SOURCE_RUNTIME_VERSIONS,
   );
   if (JSON.stringify(Object.keys(runtime).sort()) !== JSON.stringify(prepared.runtimeIdentity))
     throw Error('Installed crypto runtime identity differs');

@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
-import { PassportNameError, resolvePassportName } from '../packages/account/dist/names.js';
+import {
+  PassportNameError,
+  resolvePassportContractCallName,
+  resolvePassportName,
+} from '../packages/account/dist/names.js';
 
 const query = { name: 'alice.passport.test', networkId: 'undeployed' };
 const record = { ...query, namespace: 'partner-example', accountAddress: '11'.repeat(32) };
@@ -43,6 +47,52 @@ test('custom provider supplies a checked network/namespace-scoped public hint', 
   assert.deepEqual(result, { ...record, providerId: provider.id, mode: 'external' });
   assert.equal(Object.isFrozen(result), true);
   assert.equal(JSON.stringify(result).includes('never-copy-this'), false);
+});
+
+test('ordinary lookup ignores unrecognized provider routing extensions', async () => {
+  const result = await resolvePassportName(
+    service(async () => ({
+      ...record,
+      addressClass: 'wallet',
+      resolvedOperation: 'default',
+    })),
+    query,
+  );
+  assert.deepEqual(result, { ...record, providerId: provider.id, mode: 'external' });
+});
+
+test('contract-call resolution requires an explicit matching provider acknowledgment', async () => {
+  let captured;
+  const adapter = service(async (request) => {
+    captured = request;
+    return {
+      ...record,
+      addressClass: 'contract',
+      resolvedOperation: 'contract-call',
+      privateProviderExtension: 'never-copy-this',
+    };
+  });
+  const result = await resolvePassportContractCallName(adapter, query);
+  assert.deepEqual(captured, { ...query, operation: 'contract-call' });
+  assert.equal(Object.isFrozen(captured), true);
+  assert.equal(result?.addressClass, 'contract');
+  assert.equal(result?.resolvedOperation, 'contract-call');
+  assert.equal(result?.accountAddress, record.accountAddress);
+  assert.equal(JSON.stringify(result).includes('never-copy-this'), false);
+  for (const response of [
+    record,
+    { ...record, addressClass: 'contract' },
+    { ...record, resolvedOperation: 'contract-call' },
+    { ...record, addressClass: 'unshielded', resolvedOperation: 'contract-call' },
+    { ...record, addressClass: 'contract', resolvedOperation: 'shielded-transfer' },
+  ])
+    await assert.rejects(
+      resolvePassportContractCallName(
+        service(async () => response),
+        query,
+      ),
+      code('InvalidRecord'),
+    );
 });
 
 test('absence is distinct from provider/transport failure and exceptions are redacted', async () => {

@@ -5,7 +5,10 @@ import { lstatSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
 import { join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { auditInstalledBundle } from './installed-inputs.mjs';
-import { checkMidnightRuntimeIdentity } from '../check-midnight-runtime-identity.mjs';
+import {
+  checkMidnightRuntimeIdentity,
+  CURRENT_SOURCE_RUNTIME_VERSIONS,
+} from '../check-midnight-runtime-identity.mjs';
 import { releasePackageDirectories } from '../release-package-list.mjs';
 
 export const sdkPrefix = '@input-output-hk/mn-passport-';
@@ -156,6 +159,7 @@ export function captureInstalledQuality(context) {
   const runtime = checkMidnightRuntimeIdentity(
     consumer,
     roots.map(({ name }) => name),
+    CURRENT_SOURCE_RUNTIME_VERSIONS,
   );
   if (JSON.stringify(Object.keys(runtime).sort()) !== JSON.stringify(prepared.runtimeIdentity))
     throw Error('prepared Midnight runtime identity differs');

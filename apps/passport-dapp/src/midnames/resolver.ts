@@ -63,8 +63,10 @@ export function createMidnamesNameService(
   return Object.freeze({
     provider,
     async resolve(query: Parameters<PassportNameService['resolve']>[0]) {
-      const { name, networkId } = query;
+      const { name, networkId, operation } = query;
       if (!canonicalQuery(name, networkId, profile.networkId, profile.namespace))
+        throw new PassportNameError('InvalidQuery');
+      if (operation !== undefined && operation !== 'contract-call')
         throw new PassportNameError('InvalidQuery');
       const atomic = reads.readSupportedTarget;
       const target = atomic
@@ -76,7 +78,13 @@ export function createMidnamesNameService(
       const accountAddress = target.address;
       if (!atomic && !(await reads.isSupportedAccount(accountAddress, networkId)))
         throw new PassportNameError('InvalidRecord');
-      return Object.freeze({ name, networkId, accountAddress, namespace: profile.namespace });
+      return Object.freeze({
+        name,
+        networkId,
+        accountAddress,
+        namespace: profile.namespace,
+        ...(operation && { addressClass: 'contract' as const, resolvedOperation: operation }),
+      });
     },
   });
 }
@@ -105,7 +113,11 @@ export function requireAgreeingMidnamesResolvers(
     provider,
     async resolve(query: Parameters<PassportNameService['resolve']>[0]) {
       if (!sameProvider()) throw new PassportNameError('Unavailable');
-      const exact = Object.freeze({ name: query.name, networkId: query.networkId });
+      const exact = Object.freeze({
+        name: query.name,
+        networkId: query.networkId,
+        ...(query.operation && { operation: query.operation }),
+      });
       const [first, second] = await Promise.all([
         resolvePassportName(primary, exact),
         resolvePassportName(witness, exact),
@@ -118,7 +130,9 @@ export function requireAgreeingMidnamesResolvers(
         first.providerId !== provider.id ||
         second.providerId !== provider.id ||
         first.accountAddress !== second.accountAddress ||
-        first.expiresAt !== second.expiresAt
+        first.expiresAt !== second.expiresAt ||
+        first.addressClass !== second.addressClass ||
+        first.resolvedOperation !== second.resolvedOperation
       )
         throw new PassportNameError('Unavailable');
       return Object.freeze({
@@ -127,6 +141,10 @@ export function requireAgreeingMidnamesResolvers(
         namespace: first.namespace,
         accountAddress: first.accountAddress,
         ...(first.expiresAt !== undefined && { expiresAt: first.expiresAt }),
+        ...(first.addressClass !== undefined && { addressClass: first.addressClass }),
+        ...(first.resolvedOperation !== undefined && {
+          resolvedOperation: first.resolvedOperation,
+        }),
       });
     },
   });
@@ -175,7 +193,10 @@ export function requireKnownMidnamesMapping(
         throw new PassportNameError('InvalidQuery');
       // Do not cache: a missing, transferred, or unavailable observation must
       // stop later lookups, including those for a different name.
-      const observed = await resolvePassportName(service, known);
+      const observed = await resolvePassportName(service, {
+        ...known,
+        ...(query.operation && { operation: query.operation }),
+      });
       if (!observed || observed.accountAddress !== accountAddress)
         throw new PassportNameError('InvalidRecord');
       return query.name === name ? observed : service.resolve(query);

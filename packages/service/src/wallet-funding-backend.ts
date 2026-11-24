@@ -113,6 +113,7 @@ export function createWalletFundingBackend(
         }
         if (!txId) throw new Error('deposit returned no transaction ID');
         if (!measuredNight) await recordProgress?.({ stage: 'submitted', txId });
+        await recordProgress?.({ stage: 'credit-confirmation-started' });
         const deadline = now() + confirmationMs;
         for (;;) {
           const credited = await balance(account, color);

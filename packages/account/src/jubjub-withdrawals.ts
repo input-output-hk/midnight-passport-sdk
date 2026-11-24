@@ -24,7 +24,11 @@ type JubjubHint = AccountHint & {
 const samePoint = (a: { x: bigint; y: bigint }, b: { x: bigint; y: bigint }) =>
   a.x === b.x && a.y === b.y;
 
-function requireUnshieldedCircuit(network: NetworkConfig, pure: JubjubPureCircuits): void {
+function requireUnshieldedCircuit(
+  network: NetworkConfig,
+  pure: JubjubPureCircuits,
+  color: Uint8Array,
+): void {
   // The Ledger 9 candidate is confined to the exact local artifact pin. A different
   // candidate manifest, network, or circuit still fails before opening a key session.
   const candidate =
@@ -33,11 +37,12 @@ function requireUnshieldedCircuit(network: NetworkConfig, pure: JubjubPureCircui
     network.manifestSha256 === '590d3c97db7fce05d5ea85a9bf37c82b7032c498703a2807276ca7ae0ca52e5f';
   if (
     (network.bindingId !== 'acc-s3r1.1' && !candidate) ||
-    !pure.challenge_withdraw_unshielded_with_jubjub
+    !pure.challenge_withdraw_unshielded_with_jubjub ||
+    (candidate && color.some((byte) => byte !== 0))
   )
     throw new PassportConnectorError(
       'BindingUnsupported',
-      'JubJub withdrawal needs the pinned challenge circuit.',
+      'JubJub withdrawal needs the pinned challenge circuit; the local candidate admits NIGHT only.',
     );
 }
 
@@ -66,7 +71,7 @@ export function jubjubWithdrawals(context: {
       return run(options, async (flow) => {
         const transfer = prepareUnshieldedWithdrawal(request);
         const pure = requirePure((await readBinding()).pureCircuits);
-        requireUnshieldedCircuit(network, pure);
+        requireUnshieldedCircuit(network, pure, transfer.color);
         if (record.status !== 'active')
           throw new PassportConnectorError('AccountNotFound', 'The JubJub ACC is not active.');
         const valueChain = await requireValueSubmissionChain(readChain, beforeSubmit);

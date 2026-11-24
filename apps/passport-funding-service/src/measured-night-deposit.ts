@@ -34,8 +34,11 @@ export function verifyMeasuredNightDepositCall(actions: readonly unknown[], targ
 async function prepareMeasuredNightDeposit(
   request: UnboundNightDepositRequest,
   walletProvider: WalletProvider,
+  recordProgress: (progress: FundingProgress) => Promise<void>,
 ) {
+  await recordProgress({ stage: 'proof-started' });
   const proven = await proveUnboundNightDeposit(request);
+  await recordProgress({ stage: 'balancing-started' });
   const balanced = await walletProvider.balanceTx({
     version: 'v9',
     tx: Transaction.deserialize('signature', 'proof', 'pre-binding', proven),
@@ -62,6 +65,9 @@ export async function submitMeasuredNightDepositAfterPreparation<T>(
   submit: (tx: T) => Promise<void>,
   recordProgress: (progress: FundingProgress) => Promise<void>,
 ): Promise<{ readonly txId: string }> {
+  // This guard is durable before proof starts. The store serializes an operator release
+  // against the final-hash fence; a released worker cannot reach submit(tx).
+  await recordProgress({ stage: 'acc-submit-guard' });
   let prepared: Awaited<ReturnType<typeof prepare>>;
   try {
     prepared = await prepare();
@@ -85,7 +91,7 @@ export async function submitMeasuredNightDeposit(
   recordProgress: (progress: FundingProgress) => Promise<void>,
 ): Promise<{ readonly txId: string }> {
   return submitMeasuredNightDepositAfterPreparation(
-    () => prepareMeasuredNightDeposit(request, walletProvider),
+    () => prepareMeasuredNightDeposit(request, walletProvider, recordProgress),
     async (tx) => {
       await midnightProvider.submitTx({ version: 'v9', tx });
     },

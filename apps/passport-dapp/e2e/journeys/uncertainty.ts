@@ -58,9 +58,9 @@ export async function checkUncertainFundingRetainsTheOriginalRequestID(
   const { waitStatus, fundingIds, done } = h;
   const { owner, original } = input;
   await click(owner, '#fund');
-  await waitStatus(owner, /failed\./, /Synthetic funding outcome unknown/);
+  await waitStatus(owner, /failed\./, /Original funding status is unavailable/);
   assert.equal(fundingIds.at(-1), original);
-  assert.equal(fundingIds.filter((id) => id === original).length, 2);
+  assert.equal(fundingIds.filter((id) => id === original).length, 1);
   h.flags.unknownFunding = false;
   done('account-actions.uncertain-funding-retains-the-original-request-id');
 }
@@ -90,7 +90,7 @@ export async function checkBalanceServiceOutageLabelsPriorSnapshotsWithout(
     'owner'
   >,
 ) {
-  const { waitStatus, done } = h;
+  const { waitStatus, fundingIds, done } = h;
   const { owner } = input;
   h.flags.serviceUnavailable = true;
   await click(owner, '#refresh');
@@ -99,8 +99,13 @@ export async function checkBalanceServiceOutageLabelsPriorSnapshotsWithout(
   assert.match(await owner.locator('#account-facts').innerText(), /Latest refresh unavailable/);
   assert.equal(
     await owner.locator('#fund').isDisabled(),
-    true,
-    'a failed current inventory read disables deposits',
+    false,
+    'a saved original remains checkable when inventory reads fail',
   );
+  assert.match(await owner.locator('#fund').innerText(), /Continue funding/);
+  const before = fundingIds.length;
+  await click(owner, '#fund');
+  await waitStatus(owner, /failed\./, /Original funding status is unavailable/);
+  assert.equal(fundingIds.length, before, 'status outage never dispatches a replacement');
   done('account-actions.balance-service-outage-labels-prior-snapshots-without');
 }

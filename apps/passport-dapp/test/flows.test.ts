@@ -335,6 +335,7 @@ test('named payment refusals and provider outage have actionable, fixed hints', 
   for (const code of [
     'NightUnsupportedRoute',
     'NightNameUnavailable',
+    'NightNameChanged',
     'NightSelfRecipient',
     'NightRecipientUnsupported',
     'NightSourceUnsupported',

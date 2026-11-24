@@ -13,7 +13,7 @@ import { Readable } from 'node:stream';
 
 const app = new URL('../../apps/passport-dapp/', import.meta.url);
 const load = (name) => import(import.meta.resolve(name, new URL('package.json', app).href));
-const endpoint = 'http://127.0.0.1:16320';
+const compatibilityProver = 'http://127.0.0.1:16320';
 const maximumProofRequest = 64 * 1024 * 1024;
 const routes = {
   '/owner-artifact/bzkir': 'zkir/create_domain.bzkir',
@@ -21,7 +21,23 @@ const routes = {
   '/owner-artifact/verifier': 'keys/create_domain.verifier',
 };
 
-async function relayProof(request, response, origin) {
+function selectedProver(profile, configured) {
+  if (profile === 'standalone-0.35') {
+    assert.ok(!configured || configured === compatibilityProver);
+    return compatibilityProver;
+  }
+  assert.equal(profile, 'standalone-0.36.1');
+  assert.ok(configured);
+  const url = new URL(configured);
+  assert.equal(url.protocol, 'http:');
+  assert.equal(url.hostname, '127.0.0.1');
+  assert.match(url.port, /^[1-9][0-9]{0,4}$/);
+  assert.equal(url.pathname, '/');
+  assert.ok(!url.username && !url.password && !url.search && !url.hash);
+  return url.origin;
+}
+
+async function relayProof(request, response, origin, endpoint) {
   const size = Number(request.headers['content-length']);
   if (
     request.method !== 'POST' ||
@@ -53,7 +69,7 @@ async function relayProof(request, response, origin) {
     .pipe(response);
 }
 
-function ownerMiddleware(assets, context, publicOrigin) {
+function ownerMiddleware(assets, context, publicOrigin, endpoint) {
   return {
     name: 'midnames-owner-local',
     configurePreviewServer(server) {
@@ -72,7 +88,7 @@ function ownerMiddleware(assets, context, publicOrigin) {
           return;
         }
         if (request.url === '/owner-proof/check' || request.url === '/owner-proof/prove') {
-          void relayProof(request, response, origin).catch(() => {
+          void relayProof(request, response, origin, endpoint).catch(() => {
             if (!response.headersSent) response.writeHead(502).end();
             else response.destroy();
           });
@@ -90,9 +106,12 @@ function ownerMiddleware(assets, context, publicOrigin) {
 }
 
 function stageOwnerSources(input, root) {
-  const manifest = JSON.parse(
-    readFileSync(new URL('registry-manifest.json', import.meta.url), 'utf8'),
-  );
+  const manifestFile =
+    input.registryProfile === 'standalone-0.36.1'
+      ? 'registry-manifest-0361.json'
+      : 'registry-manifest.json';
+  const manifestUrl = new URL(manifestFile, import.meta.url);
+  const manifest = JSON.parse(readFileSync(manifestUrl, 'utf8'));
   const registry = readFileSync(input.modulePath);
   assert.equal(
     createHash('sha256').update(registry).digest('hex'),
@@ -100,15 +119,12 @@ function stageOwnerSources(input, root) {
   );
   symlinkSync(join(input.ref, 'node_modules'), join(root, 'node_modules'));
   writeFileSync(join(root, 'registry.mjs'), registry);
-  for (const name of [
-    'registry-manifest.json',
-    'claim-owner-browser-entry.mjs',
-    'deletion-credit.mjs',
-  ])
+  copyFileSync(manifestUrl, join(root, 'registry-manifest.json'));
+  for (const name of ['claim-owner-browser-entry.mjs', 'deletion-credit.mjs'])
     copyFileSync(new URL(name, import.meta.url), join(root, name));
 }
 
-function ownerViteConfig(root, plugins) {
+function ownerViteConfig(root, plugins, profile) {
   return {
     root,
     configFile: false,
@@ -116,6 +132,14 @@ function ownerViteConfig(root, plugins) {
     plugins,
     resolve: {
       alias: [
+        ...(profile === 'standalone-0.36.1'
+          ? [
+              {
+                find: /^@midnight-ntwrk\/midnight-js-protocol\/ledger$/,
+                replacement: '@midnight-ntwrk/midnight-js-protocol/v9',
+              },
+            ]
+          : []),
         {
           find: /^(node:)?buffer$/,
           replacement: new URL('node_modules/buffer/index.js', app).pathname,
@@ -136,6 +160,9 @@ export async function startDemoOwnerBundle(
   origin = 'http://localhost:5173',
   port = 0,
 ) {
+  const profile = input.registryProfile ?? 'standalone-0.35';
+  assert.ok(profile === 'standalone-0.35' || profile === 'standalone-0.36.1');
+  const endpoint = selectedProver(profile, input.proverUrl);
   const demo = new URL(origin);
   assert.equal(demo.origin, origin);
   assert.equal(demo.protocol, 'http:');
@@ -158,11 +185,15 @@ export async function startDemoOwnerBundle(
       walletKeys: { coin: walletKeys.coin, encryption: walletKeys.encryption },
     };
     const removeStage = () => rmSync(root, { recursive: true, force: true });
-    const config = ownerViteConfig(root, [
-      wasm(),
-      ownerMiddleware(input.assets, context, origin),
-      { name: 'midnames-owner-stage', closePreviewServer: removeStage },
-    ]);
+    const config = ownerViteConfig(
+      root,
+      [
+        wasm(),
+        ownerMiddleware(input.assets, context, origin, endpoint),
+        { name: 'midnames-owner-stage', closePreviewServer: removeStage },
+      ],
+      profile,
+    );
     config.preview.port = port;
     config.base = '/owner-claim/';
     const entry = join(root, 'demo-entry.mjs');
@@ -185,7 +216,7 @@ export async function startDemoOwnerBundle(
 }
 
 export async function ownerPage(input, setPhase = () => {}) {
-  assert.equal(input.proverUrl, endpoint);
+  const endpoint = selectedProver(input.registryProfile ?? 'standalone-0.35', input.proverUrl);
   assert.equal(input.indexerUrl, 'http://127.0.0.1:18108/api/v4/graphql');
   assert.equal(input.indexerWsUrl, 'ws://127.0.0.1:18108/api/v4/graphql/ws');
   const reviewedQuote = input.reviewedQuote;
@@ -225,7 +256,11 @@ export async function ownerPage(input, setPhase = () => {}) {
       indexerWsUrl: input.indexerWsUrl,
       walletKeys: input.walletKeys,
     };
-    const config = ownerViteConfig(root, [wasm(), ownerMiddleware(input.assets, context)]);
+    const config = ownerViteConfig(
+      root,
+      [wasm(), ownerMiddleware(input.assets, context, undefined, endpoint)],
+      input.registryProfile ?? 'standalone-0.35',
+    );
     setPhase('browser-build');
     await build(config);
     const site = await preview(config);

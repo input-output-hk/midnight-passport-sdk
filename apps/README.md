@@ -56,6 +56,12 @@ still uses a virtual naming credential and an already activated ACC supplied by
 the fixture connector; combined account creation and real-provider custody
 remain unqualified.
 
+In the opt-in local claim panel, an opened ACC without a confirmed name is
+labelled **Passport setup pending**. A suggested name, quote, retained original,
+or unavailable registry read keeps that label. Only an exact original check
+against the current registry owner and ACC binding shows **Registered**. This
+host label does not make name registration mandatory for the SDK account API.
+
 A prototype of the Midnight Passport DApp Connector API and the web app that carries its heavy
 lifting. Design: [`docs/superpowers/specs/2026-10-06-passport-dapp-design.md`](../docs/superpowers/specs/2026-10-06-passport-dapp-design.md).
 
@@ -924,6 +930,13 @@ See the [funding image and operator guide](passport-funding-service/README.md).
 ## Midnames lookup source preview
 
 The demo's optional Midnames reader uses the existing **Name service** panel.
+For an external provider result, **Open this Passport account** re-reads the
+exact name as a contract-call target and requires the address, provider and
+namespace to match the displayed result. It then enters the existing **Open by
+ACC address** consent and enrolled-passkey flow with that exact address. A
+changed, missing or unavailable name leaves login untouched and requires a
+new lookup. The mock provider never offers this button; no name lookup grants
+account control or changes a transfer recipient.
 Set the base build inputs in the [naming adapter guide](../docs/site/names.md#source-preview-midnames-210).
 A configured lookup reads the registry's contract target and verifies the
 deployed ACC binding at the same indexer block before displaying it. The
@@ -967,14 +980,30 @@ It requires a separately verified `PASSPORT_ARTEFACT_DIR`,
 endpoints. Vite checks the candidate manifest and generated module before
 building; the service checks the full asset tree at startup. The public SDK
 binding remains provisional, and the ordinary demo keeps `acc-s3r1.1`.
+The candidate account API allows local account creation/opening, read-only
+account views, and unshielded NIGHT withdrawal for the named payment. It
+refuses non-NIGHT withdrawals, device enrollment, viewing-key rotation,
+device removal and shielded holdings before a key session. Shielded spending
+and grant mutations also remain unsupported on this binding. Its 52 packaged
+verifier keys do not grant application support for all 52 operations.
 Candidate funding is separately provisioned. Candidate named NIGHT sending
 requires the local launcher's explicit `--night-send` with `--claim --funding`;
 it does not activate for an ordinary demo or online binding.
-The candidate ACC proves through the shared Ledger 9 release prover on port
-6300. The launcher's separately owned compatibility prover on port 16320
-serves the pinned Compact 0.35 standalone name registry's claim proof. The
-launcher stops only that owned prover container and leaves the shared stack's
-volumes untouched.
+For a candidate source and an older `acc-s3r1.1` named recipient on the same
+local chain, add `--mixed-recipient`. This starts a separate old-binding proof
+service on loopback port 8788. The page independently checks each ACC's full
+on-chain verifier assignment, displays both bindings at review, saves the
+recipient binding in the original intent and selects that binding's proof
+artifacts for deposit and recovery. A missing or differently configured old
+service refuses before owner signing. A
+[connected shared-chain browser run](../examples/midnames-local/evidence/candidate-to-old-connected-browser-night-20261123.json)
+finalized one mixed payment and recovered a second after its deposit proof was
+interrupted. This remains a provisional local route; fresh candidate funding,
+physical passkey, online and installed-package support remain open.
+The candidate ACC and standalone name claims prove through the shared Ledger 9
+release prover on port 6300. Candidate mode does not start or reconcile the
+stable demo's separate Compact 0.35 compatibility prover on port 16320; its
+recorded container and the shared stack's volumes stay untouched.
 The [local candidate claim receipt](../examples/midnames-local/evidence/candidate-acc-combined-local-claim-20261122.json)
 records a same-profile synthetic account creation and paid name claim across
 signed heads, followed by a read-only final-head registration check. It does
@@ -1110,6 +1139,34 @@ review. A declined or changed route does not start the payment.
 Before that review, the page explains an absent name, self-recipient, unsupported
 ACC or insufficient balance separately. A naming provider outage is not treated
 as an absent name. These refusals start no owner ceremony or transaction.
+If the name resolves to a different supported ACC after the route review, the
+page archives the unsubmitted attempt, explains that the named destination
+changed, and asks for a fresh review. It does not reuse the earlier approval
+or start an owner withdrawal.
+If the withdrawal already finalized before the name moves, the browser keeps
+that exact withdrawal and offers a separate review to deposit its output into
+the **originally reviewed ACC**. The review shows both ACC addresses, the
+amount and saved withdrawal ID. Declining leaves the original pending; approval
+does not withdraw again or redirect to the newly named ACC. The original ACC
+binding is checked again before the deposit is fenced. A changed registry or
+provider does not use this recovery path. The name is re-resolved just before
+the deposit fence; another repoint requires another review. If the current
+name is absent, invalid/non-contract, expired, unsupported or unavailable,
+the page offers a distinct direct-ACC repair review for the **saved output and
+originally reviewed ACC only**. It states that the name cannot authorize the
+destination and shows the reason. The original ACC binding and observed name
+status are checked again before the deposit fence; a changed observation
+requires another review. An [isolated non-contract name repair](../examples/midnames-local/evidence/compact0361-native-unresolved-name-original-repair-20261123.json)
+passed in a connected mock-passkey browser at signed source `9a8fb50`; the
+later [self-target repair](../examples/midnames-local/evidence/compact0361-native-selftarget-original-repair-20261123.json)
+passed at signed source `f788c47` after the name was repointed to the sending
+ACC. Both finalized only the saved output at the original ACC. Absent, expired
+and unavailable observations still need native qualification.
+Each approved observation (name, network, registry/provider, original ACC,
+current ACC or unresolved status, withdrawal ID and time) is durably appended
+to the browser intent before deposit
+proof and retained in its archived history. This is a local audit record, not an
+ACC-signed name field or a cryptographic state proof.
 
 The selected account's original intent and each transaction ID stay in the
 browser journal. A pending withdrawal or deposit is displayed under the same
@@ -1121,9 +1178,33 @@ deposit IDs after reload without a second dispatch. It used a local mock JubJub
 credential and a funded device wallet. Real passkey/provider and online profiles
 remain unqualified. The configured indexer is trusted for
 transaction inclusion; the finalized block check does not prove inclusion.
+
+An [isolated post-withdrawal repoint recovery](../examples/midnames-local/evidence/compact0361-native-postwithdraw-repoint-recovery-20261123.json)
+at signed source `a215ba3` finalized one withdrawal, repointed the name to a
+second supported ACC, and then deposited the saved output into the originally
+reviewed ACC after a separate browser review. The browser archive retained the
+review after reload. Its first run stopped at a read-only preflight error; the
+successful payment run's supervisor then failed on an obsolete balance assertion.
+Both attempts were exactly reconciled, and the original was never resubmitted.
+
 The isolated `nix develop -c pnpm --filter passport-dapp test:midnames-night-page`
 browser check covers control visibility and the no-ID recovery refusal with a
 synthetic connector and registry; it does not perform a payment.
+The separately isolated `standalone-0.36.1` profile also requires
+`VITE_MIDNAMES_0361_ISOLATED=1`, `MIDNIGHT_STACK=isolated-ledger9`, and the
+exact `acc-s3r1.1-zkir036` candidate binding. Its native
+[named-payment receipt](../examples/midnames-local/evidence/compact0361-paid-name-night-send-20261123.json)
+shows one withdrawal, interruption recovery, and one deposit to a previously
+paid name. That sender was a Node JubJub fixture. A later
+[connected browser payment](../examples/midnames-local/evidence/compact0361-connected-browser-night-send-20261123.json)
+reviewed and finalized both legs from the Passport page with a development
+mock passkey. The [fresh-process recovery run](../examples/midnames-local/evidence/compact0361-connected-browser-night-recovery-20261123.json)
+then interrupted deposit proving after a finalized 1 NIGHT withdrawal,
+reopened the same synthetic ACC and journal in another Chrome process, and
+completed that original payment without another withdrawal. Canonical
+transaction checks and node-finalized snapshots confirmed one recipient
+deposit and balances 9/5 → 8/6. Physical passkeys, online providers and the
+broader native refusal matrix remain unqualified.
 
 ### Standalone Midnames claim recovery
 
@@ -1134,11 +1215,34 @@ does not prepare or send another claim.
 Standalone claim reconciliation requires an explicit
 `VITE_MIDNAMES_CLAIM_PROTOCOL_VERSION` alongside the Indexer API v4 URLs.
 The shared Ledger 9 demo launcher pins the observed transaction protocol
-`2001100`; the isolated fixture uses `2001000`. The values identify transaction
+`2001100`; an older isolated fixture uses `2001000`, while the current isolated
+0.36.1 chain also uses `2001100`. The values identify transaction
 formats, not GraphQL API revisions. A missing or unsupported pin disables the
 claim profile instead of misclassifying a finalized original as unavailable.
 Resolver-only standalone configurations can omit the pin; they keep name
 lookup and named sends but expose no claim recovery panel.
+
+The rebuilt `standalone-0.36.1` registry enables claim preparation and recovery
+only for the isolated Ledger 9 qualification profile. That profile requires the
+candidate ACC's exact asset manifest, loopback Indexer API v4 endpoints, and
+both `PASSPORT_MIDNAMES_0361_ISOLATED=1` and
+`VITE_MIDNAMES_0361_ISOLATED=1` with `MIDNIGHT_STACK=isolated-ledger9`.
+The ordinary shared demo keeps its 0.35 registry and compatibility prover.
+The [connected local receipt](../examples/midnames-local/evidence/compact0361-page-claim-20261123.json)
+records a Passport page, sponsor, release-prover proof, one paid claim and
+same-profile recovery on an isolated Ledger 9 chain. The account login
+connector and passkey were synthetic; the shared demo is not switched to this
+registry profile.
+
+The [later real-connector receipt](../examples/midnames-local/evidence/compact0361-real-connector-onboarding-20261123.json)
+uses the actual Passport connector to create and activate a new candidate ACC,
+claim a user-owned `.night` name, and reopen the same ACC and registered name
+after reload. Its corrected synthetic-browser run sent one reviewed original;
+an independent native audit matched the finalized registry target to that new
+ACC. The first run's browser reopen driver timed out after a successful claim;
+its saved original was audited without redispatch. Both runs used one isolated
+Ledger 9 node/indexer and a virtual credential. They do not qualify physical
+passkey custody or the online registry.
 
 An opt-in host can supply the demo's preparation adapter. The user reviews the
 exact sponsor quote and explicitly approves preparation. The form saves the
@@ -1193,10 +1297,11 @@ creation or passkey-based opening. Reviewing a valid quote for the already
 deployed ACC retains the selected `.night` name per registry, ACC, and
 credential. It restores that choice after reopening with the same credential
 and reconciles a retained original receipt. If the user has not chosen a name,
-**Suggest a local .night name** fills a random `demo-<24 hex characters>.night` candidate only
+**Suggest a local .night name** or **Continue registration** with the field empty
+fills a random `demo-<24 hex characters>.night` candidate only
 after checking for an earlier selection under that credential. It does not
-reserve, claim, fund or send; **Continue registration** still checks the
-registry and presents the quote before owner approval and payment confirmation.
+reserve, claim, fund or send; choose **Continue registration** again to check the
+registry and see the quote before owner approval and payment confirmation.
 Availability and imported-receipt
 checks leave the name unselected; enter it again after a reload. A pending claim stays visibly
 pending until the original transaction and current registry binding agree.
@@ -1245,6 +1350,9 @@ was archived remain recoverable through an exact bounded archive lookup; an
 unrelated occupying original never becomes their prepared receipt. Unit, HTTP
 and synthetic Chromium checks cover this path; a fresh native sponsor-side
 failed-original retirement is still a separate gate.
+If such a quote never entered balance, the sponsor refuses it without assigning
+its owner to the first lookup caller. The browser releases only its own saved
+quote and owner commitment; a recorded sponsor owner decision remains bound.
 The choice and public receipt live in this browser's IndexedDB, so a different
 device needs the original receipt and credential to recover it. This source
 preview does not establish name-owner recovery after total credential loss.
@@ -1296,7 +1404,7 @@ connected candidate payment. A fresh isolated
 [native run](../examples/midnames-local/evidence/candidate-acc-adapter-named-night-send-20261122.json)
 settled both legs at one signed head, using the exported deposit adapter for
 the recipient. It did not exercise the connected browser host, passkey consent
-or IndexedDB payment recovery; those remain the launch gate.
+or IndexedDB payment recovery at that head.
 The candidate device deposit request now carries the binding and manifest pin
 through the wallet worker's parser and IndexedDB fence. A synthetic headless
 browser check covers that boundary and its saved-original refusal; it does not
@@ -1311,4 +1419,23 @@ confirmed a 10-unit deposit, indexed finality and same-ID replay. A
 [headless Passport page run](../examples/midnames-local/evidence/candidate-funding-browser-20261122.json)
 then confirmed another 10-unit NIGHT deposit, finalized Indexer API v4 action
 and reload without resubmission. It used an existing-account connector fixture;
-the full passkey/worker path and named payment remain separate acceptance work.
+the full passkey/worker path and named payment were separate acceptance work at
+that head.
+The source-only funding flow now accepts a durable asynchronous original and
+reads its status through the loopback Passport service. **Continue funding**
+checks that original after a page reload or inventory outage; it never issues a
+second POST for the saved request ID. A separate fresh candidate attempt remains
+pending after its earlier 180-second proxy timeout. This change does not resolve
+or release that original, nor does a simulated browser path establish a fresh
+native funding pass at this head.
+
+A later [isolated native browser run](../examples/midnames-local/evidence/candidate-virtual-prf-funded-named-night-20261124.json)
+at signed `1a54b95a` exercised that combined local path with a fresh virtual
+PRF credential and JubJub-first candidate ACC. One durable funding request
+credited 10 NIGHT, the separate device wallet funded and registered DUST, and
+one reviewed payment to `v36claim23.night` finalized its withdrawal and
+deposit. The ACC moved 10 → 9 NIGHT and the named recipient 6 → 7; the browser
+archived one intent without an active payment. Its exact containers stopped
+and native lease released. The earlier pending funding original was neither
+cleared nor retried. This run does not qualify a physical passkey, online
+provider, or browser-process recovery of that payment.

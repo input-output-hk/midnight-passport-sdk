@@ -3,9 +3,11 @@ import {
   type NightSendIntent,
   type NightSendJournal,
   type NightSendLeg,
+  type NightUnresolvedObservation,
 } from './night-send.js';
 import { validNightCredentialHex } from './night-send-credential.js';
 import { localNightBinding } from './local-binding.js';
+import { checkedRecoveryReviews, unresolvedReason } from './night-send-review-record.js';
 
 const databaseName = 'mn-passport:night-send';
 const activeStore = 'active';
@@ -34,8 +36,24 @@ export interface BrowserNightSendRecord {
   readonly ownerStartedAt?: string;
   readonly withdrawal?: NightSendLeg;
   readonly deposit?: NightSendLeg;
+  /** Approved observations are retained even when a later proof or fence refuses. */
+  readonly recoveryReviews?: readonly NightRecoveryReview[];
 }
 type StoredNightSend = BrowserNightSendRecord;
+
+export interface NightRecoveryReview {
+  readonly name: string;
+  readonly networkId: 'undeployed';
+  readonly providerId: string;
+  readonly namespace: 'night';
+  readonly originalTarget: string;
+  readonly originalBindingId?: string;
+  readonly currentTarget?: string;
+  readonly currentBindingId?: string;
+  readonly unresolvedReason?: NightUnresolvedObservation['reason'];
+  readonly withdrawalHash: string;
+  readonly approvedAt: string;
+}
 
 interface ArchivedNightSend extends StoredNightSend {
   readonly archivedAt: string;
@@ -47,12 +65,33 @@ interface RefusedNightSend extends StoredNightSend {
     'name-recheck' | 'unsupported-fence' | 'sponsor-policy-rejection' | 'device-fee-rejection';
 }
 
+function validIntentNameRoute(
+  row: Record<string, unknown>,
+): row is Record<string, unknown> & { name: string; providerId: string } {
+  return (
+    typeof row.name === 'string' &&
+    row.name.length <= 256 &&
+    /^(?:[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?\.)+night$/.test(row.name) &&
+    typeof row.providerId === 'string' &&
+    /^midnames:[a-f0-9]{64}$/.test(row.providerId) &&
+    row.namespace === 'night' &&
+    Array.isArray(row.operations) &&
+    row.operations.length === NIGHT_SEND_OPERATIONS.length &&
+    row.operations.every((op, index) => op === NIGHT_SEND_OPERATIONS[index])
+  );
+}
+
 function checkedIntent(value: unknown, scope: BrowserNightSendScope): NightSendIntent {
   if (!value || typeof value !== 'object' || Array.isArray(value))
     throw new Error('Stored NIGHT intent is invalid.');
   const row = value as Record<string, unknown>;
   const amount = row.amount;
+  const sourceBindingId = scope.bindingId ?? 'acc-s3r1.1';
+  // Before recipient pins existed, this host admitted only the source binding.
+  const recipientBindingId = row.recipientBindingId ?? sourceBindingId;
   if (
+    (recipientBindingId !== sourceBindingId &&
+      !(sourceBindingId === 'acc-s3r1.1-zkir036' && recipientBindingId === 'acc-s3r1.1')) ||
     !uuid(row.requestId) ||
     row.networkId !== scope.networkId ||
     row.source !== scope.source ||
@@ -63,15 +102,7 @@ function checkedIntent(value: unknown, scope: BrowserNightSendScope): NightSendI
     typeof amount !== 'string' ||
     !/^[1-9][0-9]{0,38}$/.test(amount) ||
     BigInt(amount) >= 1n << 128n ||
-    typeof row.name !== 'string' ||
-    row.name.length > 256 ||
-    !/^(?:[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?\.)+night$/.test(row.name) ||
-    typeof row.providerId !== 'string' ||
-    !/^midnames:[a-f0-9]{64}$/.test(row.providerId) ||
-    row.namespace !== 'night' ||
-    !Array.isArray(row.operations) ||
-    row.operations.length !== NIGHT_SEND_OPERATIONS.length ||
-    row.operations.some((op, i) => op !== NIGHT_SEND_OPERATIONS[i])
+    !validIntentNameRoute(row)
   )
     throw new Error('Stored NIGHT intent is invalid.');
   return {
@@ -80,6 +111,7 @@ function checkedIntent(value: unknown, scope: BrowserNightSendScope): NightSendI
     source: scope.source,
     bridge: row.bridge,
     target: row.target,
+    recipientBindingId: recipientBindingId as string,
     asset: 'NIGHT',
     amount,
     name: row.name,
@@ -128,6 +160,7 @@ function checkedRow(value: unknown, scope: BrowserNightSendScope): StoredNightSe
   const intent = checkedIntent(row.intent, scope);
   const withdrawal = row.withdrawal === undefined ? undefined : checkedLeg(row.withdrawal);
   const deposit = row.deposit === undefined ? undefined : checkedLeg(row.deposit);
+  const recoveryReviews = checkedRecoveryReviews(row.recoveryReviews, intent, withdrawal);
   if ((deposit && !withdrawal) || (deposit && deposit.hash === withdrawal?.hash))
     throw new Error('Stored NIGHT payment legs are inconsistent.');
   return {
@@ -141,6 +174,7 @@ function checkedRow(value: unknown, scope: BrowserNightSendScope): StoredNightSe
     ...(row.ownerStartedAt && { ownerStartedAt: row.ownerStartedAt }),
     ...(withdrawal && { withdrawal }),
     ...(deposit && { deposit }),
+    ...(recoveryReviews && { recoveryReviews }),
   };
 }
 
@@ -326,6 +360,68 @@ function ownerAttemptMethods(
   };
 }
 
+function recoveryReviewMethod(
+  access: JournalAccess,
+  scope: BrowserNightSendScope,
+  key: string,
+): NonNullable<NightSendJournal['recordRecoveryReview']> {
+  return async (original, current, withdrawal) => {
+    const expected = checkedIntent(original, scope);
+    const unresolved = 'reason' in current ? current : undefined;
+    const observed = unresolved ? undefined : checkedIntent(current, scope);
+    const saved = checkedLeg(withdrawal);
+    if (
+      observed &&
+      (observed.target === expected.target ||
+        !same(
+          { ...expected, target: observed.target, recipientBindingId: observed.recipientBindingId },
+          observed,
+        ))
+    )
+      throw new Error('The recovered NIGHT name observation differs from the original scope.');
+    if (
+      unresolved &&
+      (!unresolvedReason(unresolved.reason) ||
+        (unresolved.currentTarget !== undefined && !hex32(unresolved.currentTarget)) ||
+        (unresolved.reason === 'UnsupportedTarget' && !unresolved.currentTarget) ||
+        (unresolved.reason !== 'UnsupportedTarget' &&
+          unresolved.reason !== 'Unavailable' &&
+          unresolved.currentTarget !== undefined))
+    )
+      throw new Error('The unresolved NIGHT name observation is invalid.');
+    await access((row, tx) => {
+      if (
+        !row?.withdrawal ||
+        row.deposit ||
+        !same(row.intent, expected) ||
+        !same(row.withdrawal, saved) ||
+        (row.recoveryReviews?.length ?? 0) >= 32
+      )
+        throw new Error('The original NIGHT deposit recovery cannot be recorded.');
+      const reviewed: NightRecoveryReview = {
+        name: expected.name,
+        networkId: 'undeployed',
+        providerId: expected.providerId,
+        namespace: 'night',
+        originalTarget: expected.target,
+        ...(expected.recipientBindingId && { originalBindingId: expected.recipientBindingId }),
+        ...(observed && { currentTarget: observed.target }),
+        ...(observed && { currentBindingId: observed.recipientBindingId }),
+        ...(unresolved && {
+          unresolvedReason: unresolved.reason,
+          ...(unresolved.currentTarget && { currentTarget: unresolved.currentTarget }),
+        }),
+        withdrawalHash: saved.hash,
+        approvedAt: new Date().toISOString(),
+      };
+      tx.objectStore(activeStore).put(
+        { ...row, recoveryReviews: [...(row.recoveryReviews ?? []), reviewed] },
+        key,
+      );
+    }, true);
+  };
+}
+
 /** One active original per ACC on this origin, serialized by IndexedDB across tabs. */
 export async function openBrowserNightSendJournal(
   factory: IDBFactory,
@@ -430,6 +526,7 @@ export async function openBrowserNightSendJournal(
         );
       }, true);
     },
+    recordRecoveryReview: recoveryReviewMethod(access, scope, key),
     ...ownerAttemptMethods(access, scope, key, historyKey),
   } satisfies NightSendJournal;
 

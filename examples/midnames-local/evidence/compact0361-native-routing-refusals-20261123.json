@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "kind": "isolated-ledger9-noncontract-and-changed-supported-acc-refusals",
+  "date": "2026-11-23",
+  "scope": "Retained isolated Ledger 9 chain, Indexer API v4, release prover 9.0.2, existing synthetic name owner, and connected mock-passkey Passport browser.",
+  "name": "v36claim23.night",
+  "registryAddress": "3d0502ab6b226f12ad621fb6c4e5e9882c75b2df479545cd65d1325f7ad30591",
+  "sourceAcc": "f746d060ef93d3264abf124cd0bee9498ee929aea02c8a18d5aef651f2a55bed",
+  "reviewedRecipientAcc": "14c1181524e783ac7a11d225583cb33c842a144aa89294b765393a5e12794053",
+  "changedRecipientAcc": "c3ed40e0d020ee0be2b8df92cdb26bf69b9f50c6bcd81d8ebf43f2c3f667f756",
+  "nonContractTarget": {
+    "sourceCommit": "ab073b668489bb88a6c2bdc48af0d6b1e4edbb2f",
+    "addressBytes": "14c1181524e783ac7a11d225583cb33c842a144aa89294b765393a5e12794053",
+    "addressClass": "UnshieldedAddr",
+    "ownerUpdateOriginalHash": "30658d51d82b69bec0e188659fae125909c8f840c40efb3fb1ae78e03b0a0d21",
+    "indexedStatus": "SUCCESS",
+    "canonicalBlock": {
+      "height": 1463,
+      "hash": "d5592c285f47bf062770fbc28163acdc8198f5ddf438416b747396efe2b303eb"
+    },
+    "browserResult": "InvalidRecord",
+    "ownerReviews": 0,
+    "activePaymentIntents": 0,
+    "archivedPaymentIntentsUnchanged": 3,
+    "sourceAndEarlierRecipientNightBefore": ["8", "6"],
+    "sourceAndEarlierRecipientNightAfter": ["8", "6"],
+    "checks": "The target had the bytes of a supported ACC but an UnshieldedAddr class. Same-block registry reads returned a non-contract target; the connected page refused before owner review or payment. No fallback to an ACC contract call occurred."
+  },
+  "changedSupportedAccAfterReview": {
+    "fixedSourceCommit": "7866ec2153cd1589c80a56af2c0424dc047a8696",
+    "restoredReviewedTargetBlock": {
+      "height": 1542,
+      "hash": "10998fb2581b639b940d78d5b765c94020945d9baf2b790cb7d574bbb1639706"
+    },
+    "ownerUpdateOriginalHash": "161c661ab6163fb85995338009fdb51da5a8e6895bd87e27a6618b5852fb8492",
+    "indexedStatus": "SUCCESS",
+    "canonicalBlock": {
+      "height": 1564,
+      "hash": "b03ce7677eaaa0fdcb775d41b16d08eb8d2db590728a53fbc1ae6718860fc23a"
+    },
+    "browserReviews": 1,
+    "browserResult": "NightNameChanged",
+    "journalRefusal": "name-recheck",
+    "activePaymentIntents": 0,
+    "newIntentOwnerStarted": false,
+    "newIntentWithdrawal": false,
+    "newIntentDeposit": false,
+    "interceptedProofRequests": 0,
+    "sourceAndEarlierRecipientNightBefore": ["8", "6"],
+    "sourceAndEarlierRecipientNightAfter": ["8", "6"],
+    "checks": "While the browser reviewed the first supported ACC, the existing name owner submitted one saved target update to another supported ACC. After node-canonical finality, the browser accepted the original review, re-resolved the name, archived the exact unsubmitted intent, and explained that the destination changed. No owner proof or payment leg started."
+  },
+  "observedBeforeFix": "At ab073b66 the same changed-supported-ACC case safely archived name-recheck with no proof or payment, but displayed a generic Error. The first browser harness timed out on an overly specific status matcher after the safe refusal. The finalized owner update was reconciled before the lease was released, and the later exact-head rerun verified the specific message.",
+  "cleanup": "Each wallet, browser, service and exact isolated node/indexer container stopped. The known original updates and native leases were reconciled or released; volumes and private original bytes were preserved. The shared Midnight stack was untouched.",
+  "privateReceiptSha256": {
+    "nonContractUpdate": "4fa2a5be712f036ba0453a1011797ed03e83b3f78c53318699a2282c790344d4",
+    "nonContractBrowser": "76b7c9b23ddf2ffb51601dd60855c5e5404c3a50cb2228a6b340d9a58a931f52",
+    "nonContractSupervisor": "6a8b61ae1b1b8d0a51fe40954aa7d2f2df152b27bdef38bba5e8488b5180972a",
+    "failedFirstBrowser": "e0eaa658e93fb0bf4e081fbb83643bc2c6d36eb4c9d7466b0da2ff0217115783",
+    "reconciledFirstSupervisor": "e126d0c9e0d418c3cff004aed529ddc10188dfbd40bf4a13dc03eaa0d3290bd2",
+    "fixedRestore": "ef40558ad231ae4e2dfa0d0fcd8dfd26722683c87647b176931223912b0dcd7e",
+    "fixedUpdate": "bb6edabde8bb7b30acc3f72a5c4afcc711edad8960c8f2f58da1a85b786a018f",
+    "fixedBrowser": "154d687a0ee9c7e6dd03656bbd26138f9e169bbe555e3c72a181ab915470e811",
+    "fixedSupervisor": "e97c510b1d4532979f3dd27cc78211746b213b545587653b44bafa7be75ffe3f",
+    "fixedBeforeBalance": "06eef7a3357993a7b14241b779dc153e8289641f28deaca3b2d28c8ecafd6f0c",
+    "fixedAfterBalance": "619437ba41c28832ce1a22d89225b19446d4e1dd0368c44a29593e4016c9643c"
+  },
+  "status": "PASS",
+  "limits": "These are local synthetic ContractAddr versus UnshieldedAddr and changed supported ACC routing cases. They do not qualify a physical passkey, online provider, native unsupported-asset send, independent state inclusion proof or a released binding."
+}

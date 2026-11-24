@@ -49,6 +49,14 @@ http.request = function (...args) {
 };
 const sha = (b) => createHash('sha256').update(b).digest('hex');
 const candidateNight = output.split('/').at(-1).startsWith('midnames-night-candidate-');
+const rosterNegative = output
+  .split('/')
+  .at(-1)
+  .startsWith('midnames-night-candidate-379-roster-negative-');
+const mixedRecipient = output
+  .split('/')
+  .at(-1)
+  .startsWith('midnames-night-candidate-379-mixed-recipient-');
 const candidateClaim = output.split('/').at(-1).startsWith('midnames-claim-candidate-');
 const candidateProfile = candidateNight || candidateClaim;
 const candidateAssets = process.env.PASSPORT_MIDNAMES_CANDIDATE_ASSETS;
@@ -153,6 +161,7 @@ try {
   wallet = await walletModule.createWallet('0'.repeat(63) + '1');
   await walletModule.syncWallet(wallet, 'isolated genesis sponsor');
   const providers = await walletModule.createProviders(wallet);
+  const oldProviders = mixedRecipient ? { ...providers } : undefined;
   if (candidatePin) {
     assert.ok(candidateAssets);
     providers.zkConfigProvider = new zk.NodeZkConfigProvider(candidateAssets, {
@@ -189,21 +198,38 @@ try {
       candidateAssets ?? join(ref, 'contracts/managed/account'),
     ),
   );
+  const oldAcc = mixedRecipient
+    ? await import(pathToFileURL(join(ref, 'contracts/managed/account/contract/index.js')).href)
+    : undefined;
+  const oldAccountCompiled = oldAcc
+    ? CompiledContract.make('account', oldAcc.Contract).pipe(
+        CompiledContract.withWitnesses({
+          held_coin: () => {
+            throw Error('No shielded spend');
+          },
+        }),
+        CompiledContract.withCompiledFileAssets(join(ref, 'contracts/managed/account')),
+      )
+    : undefined;
   const randomJubJubPoint = () =>
     acc.pureCircuits.compute_public_point_with_jubjub(
       BigInt('0x' + randomBytes(31).toString('hex')) + 1n,
     );
-  const deployAccount = async (label, pub, encKey) => {
+  const deployAccount = async (label, pub, encKey, oldBinding = false) => {
+    const selectedProviders = oldBinding ? oldProviders : providers;
+    const selectedCompiled = oldBinding ? oldAccountCompiled : accountCompiled;
+    const selectedAcc = oldBinding ? oldAcc : acc;
+    assert.ok(selectedProviders && selectedCompiled && selectedAcc);
     const salt = new Uint8Array(randomBytes(32));
     const privateStateId = 'midnames-' + label;
     step('deploy-' + label);
-    const address = await wave.deployAccountInWaves(providers, accountCompiled, {
+    const address = await wave.deployAccountInWaves(selectedProviders, selectedCompiled, {
       firstArm: 'jubjub',
       retireAuthority: true,
       privateStateId,
       initialPrivateState: {},
       args: [
-        acc.pureCircuits.derive_boot_commitment_with_jubjub(salt, pub),
+        selectedAcc.pureCircuits.derive_boot_commitment_with_jubjub(salt, pub),
         encKey,
         randomJubJubPoint(),
         new Uint8Array(64),
@@ -211,8 +237,8 @@ try {
       ],
     });
     step('activate-' + label);
-    await contracts.submitCallTx(providers, {
-      compiledContract: accountCompiled,
+    await contracts.submitCallTx(selectedProviders, {
+      compiledContract: selectedCompiled,
       contractAddress: address,
       circuitId: 'activate_initial_device_with_jubjub',
       privateStateId,
@@ -235,8 +261,25 @@ try {
     assert.equal(decoded.spec_version, 3n);
   };
   const encKeys = inbox.generateEncKeyPair();
-  const accountAddress = await deployAccount('account', randomJubJubPoint(), encKeys.publicKey);
-  if (candidatePin) {
+  const accountAddress = await deployAccount(
+    'account',
+    randomJubJubPoint(),
+    encKeys.publicKey,
+    mixedRecipient,
+  );
+  if (mixedRecipient) {
+    const onChain = key.deserialize(
+      (await providers.publicDataProvider.queryContractState(accountAddress)).serialize(),
+    );
+    assert.equal(onChain.operations().length, 52);
+    const oldRoster = ACC_REGISTRY.versions['acc-s3r1.1'];
+    assert.ok(oldRoster);
+    for (const [name, pin] of Object.entries(oldRoster.circuits))
+      if (pin.proof)
+        assert.equal(sha(onChain.operation(name)?.verifierKey), pin.hashes.verifierKey);
+    assert.deepEqual(onChain.maintenanceAuthority.committee, []);
+    step('verified-old-recipient-roster');
+  } else if (candidatePin) {
     await verifyCandidateAccount(accountAddress);
     step('verified-candidate-recipient-roster');
   }
@@ -400,9 +443,12 @@ try {
     'standalone-0.35',
     candidateQualification,
   );
+  const recipientReads = mixedRecipient
+    ? createMidnamesLedgerReads(indexer, 'undeployed', 'acc-s3r1.1', 'standalone-0.35')
+    : reads;
   const profile = { networkId: 'undeployed', namespace: 'night', registryAddress };
-  const service = createMidnamesNameService(profile, reads);
-  assert.deepEqual(await reads.readClaim('alice.night', profile), {
+  const service = createMidnamesNameService(profile, recipientReads);
+  assert.deepEqual(await recipientReads.readClaim('alice.night', profile), {
     ownerCommitment: expectedOwner,
     target: { kind: 'contract', address: accountAddress },
   });
@@ -524,7 +570,7 @@ try {
       const { qualifyPageRetry } = await import('./claim-page-retry-fixture.mjs');
       const result = await qualifyPageRetry({
         output,
-        quoteName: 'charlie.night',
+        quoteName: candidateClaim ? 'demo-070707070707070707070707.night' : 'charlie.night',
         ref,
         assets,
         modulePath,
@@ -651,9 +697,9 @@ try {
     const source = await deployAccount('source', device.pk, inbox.generateEncKeyPair().publicKey);
     if (candidatePin) {
       await verifyCandidateAccount(source);
-      assert.ok(await reads.isSupportedAccount(accountAddress, 'undeployed'));
+      assert.ok(await recipientReads.isSupportedAccount(accountAddress, 'undeployed'));
       assert.ok(await reads.isSupportedAccount(source, 'undeployed'));
-      step('verified-two-candidate-acc-rosters');
+      step(mixedRecipient ? 'verified-mixed-acc-rosters' : 'verified-two-candidate-acc-rosters');
     }
     const verifyHybridSource =
       hybridVerifier || fullVerifier
@@ -730,6 +776,88 @@ try {
       );
       assert.ok(await reads.isSupportedAccount(repointTarget, 'undeployed'));
     };
+    const probeRosterNegative = rosterNegative
+      ? async (verifyRefusal) => {
+          assert.ok(candidatePin);
+          const originalZk = providers.zkConfigProvider;
+          const changedCircuit = 'deposit_unshielded';
+          const substitute = new Uint8Array(
+            await originalZk.getVerifierKey('withdraw_unshielded_with_jubjub'),
+          );
+          assert.notEqual(
+            sha(substitute),
+            candidatePin.circuits[changedCircuit].hashes.verifierKey,
+          );
+          providers.zkConfigProvider = Object.assign(Object.create(originalZk), {
+            getVerifierKey: (id) =>
+              id === changedCircuit
+                ? Promise.resolve(new Uint8Array(substitute))
+                : originalZk.getVerifierKey(id),
+          });
+          let wrongRosterTarget;
+          try {
+            wrongRosterTarget = await deployAccount(
+              'wrong-roster',
+              randomJubJubPoint(),
+              inbox.generateEncKeyPair().publicKey,
+            );
+          } finally {
+            providers.zkConfigProvider = originalZk;
+          }
+          const observed = await providers.publicDataProvider.queryContractState(wrongRosterTarget);
+          const onChain = key.deserialize(observed.serialize());
+          assert.equal(onChain.operations().length, 52);
+          assert.deepEqual(onChain.maintenanceAuthority.committee, []);
+          const decoded = acc.ledger(
+            compactRuntime.ContractState.deserialize(observed.serialize()).data,
+          );
+          assert.equal(decoded.booted, true);
+          assert.equal(decoded.spec_version, 3n);
+          const mismatches = Object.entries(candidatePin.circuits)
+            .filter(
+              ([name, pin]) =>
+                pin.proof && sha(onChain.operation(name)?.verifierKey) !== pin.hashes.verifierKey,
+            )
+            .map(([name]) => name);
+          assert.deepEqual(mismatches, [changedCircuit]);
+          assert.equal(await reads.isSupportedAccount(wrongRosterTarget, 'undeployed'), false);
+          const updateNameTarget = async (address) => {
+            const live = registry.ledger(
+              (await providers.publicDataProvider.queryContractState(registryAddress)).data,
+            );
+            const nameId = live.name_to_id.lookup({ domain: nameKey, parent_id: rootId });
+            await contracts.submitCallTx(regProviders, {
+              compiledContract: compiled(rootSecret),
+              contractAddress: registryAddress,
+              circuitId: 'update_target',
+              privateStateId,
+              args: [
+                nameId,
+                new Uint8Array(Buffer.from(address, 'hex')),
+                registry.AddressType.ContractAddr,
+              ],
+            });
+          };
+          step('point-name-at-wrong-roster');
+          await updateNameTarget(wrongRosterTarget);
+          await verifyRefusal(wrongRosterTarget);
+          step('restore-name-after-roster-refusal');
+          await updateNameTarget(accountAddress);
+          assert.ok(await reads.isSupportedAccount(accountAddress, 'undeployed'));
+          return {
+            changedCircuit,
+            originalVerifierSha256: candidatePin.circuits[changedCircuit].hashes.verifierKey,
+            substitutedVerifierSha256: sha(substitute),
+            wrongRosterTarget,
+            restoredTarget: accountAddress,
+            refusal: 'InvalidRecord',
+            approvals: 0,
+            signatures: 0,
+            sent: { withdraw: 0, deposit: 0 },
+            balances: { source: '10', target: '0', wrongRoster: '0' },
+          };
+        }
+      : undefined;
     const proofReceipt = await qualifyNightSend({
       output,
       get,
@@ -741,6 +869,11 @@ try {
       ledger,
       binding: acc,
       reads,
+      recipientReads,
+      recipientBinding: mixedRecipient ? oldAcc : undefined,
+      recipientAssets: mixedRecipient ? join(ref, 'contracts/managed/account') : undefined,
+      recipientProviders: mixedRecipient ? oldProviders : undefined,
+      mixedRecipient,
       source,
       device,
       jubjubChallenges,
@@ -755,6 +888,7 @@ try {
       verifyHybridSource,
       candidateAssets: candidateNight ? candidateAssets : undefined,
       candidateManifestSha256: candidateNight ? candidatePin.manifestSha256 : undefined,
+      probeRosterNegative,
       step,
     });
     if (process.env.PASSPORT_MIDNAMES_BROWSER_REVIEW === '1') {

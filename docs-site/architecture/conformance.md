@@ -12,11 +12,12 @@ Here, **implemented subset** means this fork has a source path for the named ope
 
 The later source-preview resolver reads each requested name and its target ACC
 at one indexer block. This removes a registry/ACC tip mismatch inside one
-provider read, but the indexer still supplies the state bytes and may lag the
-chain. The local demo also checks each supported-target lookup against a
-separately pinned node's canonical finalized block. Neither check authenticates
-the indexer's contract-state bytes or establishes an online provider or the
-proposed MIP-0007 delegated resolver.
+provider read. The local demo checks each supported-target lookup against a
+separately pinned node's canonical finalized block, then compares the indexer's
+registry and ACC state bytes with that node's response at the same block.
+It refuses a mismatch, but still trusts the configured node and does not
+establish a cryptographic state proof, an online provider, or the proposed
+MIP-0007 delegated resolver.
 With two configured indexers, the browser now requires a matching selected
 finalized block and reads both providers at that exact block hash; a lagging
 reader refuses. This guards the comparison's block scope but remains source
@@ -35,6 +36,15 @@ control or delegation of that name, a contract-call ACC target, a second
 provider, or node-verified state. Public `passport.night` issuance remains
 unqualified.
 
+A [later read-only Mainnet registry scan](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-online/evidence/mainnet-registry-contract-target-scan-20261123.json)
+compared the pinned registry's Indexer API v4 bytes with the public node at
+the same canonical finalized block. The 151 zone records contained a root
+tagged `ContractAddr` with an all-zero target and 150 shielded targets, with
+no non-root contract target for a Passport ACC call at that block. This is a
+single indexer and one node;
+it does not qualify independent providers, future state, an ACC mapping,
+public parent ownership, or cryptographic inclusion proof.
+
 A later [independent local indexer read](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/independent-indexer-local-provenance-20261122.json)
 at signed `aa0d436d` used a second self-hosted Indexer API v4 instance with
 separate storage and credentials. Both indexers returned identical serialized
@@ -49,6 +59,34 @@ reproduced all 13 pinned circuit and key bytes and decoded an existing local
 name at a node-finalized block. It does not qualify a 0.36 proof or submitted
 claim, so the deployed 0.35 profile and its gas guard remain the demonstrated
 write path.
+
+A later [isolated 0.36.1 native receipt](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-native-name-control-20261123.json)
+adds one paid, owner-proved `create_domain` original and one owner-authorized
+`transfer_domain` original, each indexed `SUCCESS` with its raw bytes and
+canonical block hash checked against the retained Ledger 9 node. The name
+resolved to the same activated ACC before and after the owner commitment
+changed. All 13 registry verifier keys matched the deployed roster, so this
+did not replace a maintenance-retired verifier. The run used an isolated
+chain, synthetic owner and sponsor, one self-hosted indexer, and the existing
+deletion-credit guard. It advances the local P2/P8 name-and-provider subset;
+P5 total-loss recovery remains unqualified. Online registry/provider,
+independent inclusion proof, and real passkey custody also remain
+unqualified. The ordinary shared
+demo still pins its separate 0.35 registry profile.
+
+The next [isolated Chromium check](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-browser-owner-proof-20261123.json) proved a reviewed but unsent 0.36.1 claim
+with a virtual PRF credential, then recovered the same owner commitment after
+reload. It made no proof request before automated approval of the fixture
+quote. The pinned browser
+client and prepared artifact hashes are reproducible locally. A later
+[connected Passport page claim](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-page-claim-20261123.json)
+used the isolated 0.36.1 registry, a virtual credential, an already activated
+ACC opened through a fixture connector, and one self-hosted indexer. One
+reviewed quote, owner proof, sponsor preparation and dispatch reached indexed
+`SUCCESS`; the page recovered the original after a lost response and reload.
+The node-canonical block and finalized owner and ACC target matched. This
+qualifies that bounded local claim, not human-provider consent or combined
+ACC creation and registration.
 
 **Local recovery source preview, 20 November 2026:** The sponsor can now
 recognize its exact quote in a bounded private archive, refuse a superseded
@@ -100,7 +138,7 @@ provider, or a released candidate ACC binding.
 | --- | --- | --- |
 | ACC custody and account lifecycle · C1, C4, P1 | **Implemented subset.** The pinned [`acc-s3r1.1` binding](https://github.com/input-output-hk/midnight-passport-sdk/blob/8117a10f9938093d21d656f8c504398957c58ac9/packages/contract/src/capabilities.generated.ts), [account flows](/guides/account-lifecycle), and [asset guide](/guides/assets) cover deployment, activation, reads, deposits, and supported withdrawals. | This is one binding and supported circuit set, not all future ACC versions. Deployment, credential access, proof, sponsorship, and settlement still require host ports. [Upstream reference limits](https://github.com/midnightntwrk/passport/blob/99062671d939641cb9ed9274d3d18fce764d539a/contract/README.md) are separate from this SDK's qualification. |
 | Passkeys and signing · C5, C8, C9, P6 | **Implemented subset.** [WebAuthn adapter](https://github.com/input-output-hk/midnight-passport-sdk/tree/8117a10f9938093d21d656f8c504398957c58ac9/packages/adapter-webauthn/src), [key recipes](/architecture/keys-wallets), and account flows expose P-256 and PRF-derived JubJub paths. | Browser and authenticator support is profile-specific. The host owns consent and key lifetime; the SDK does not by itself enforce the architecture's complete owner-kernel isolation rule or qualify every provider. |
-| Names and DID · C2, C3, P2 | **Partial / absent.** [`account/names`](https://github.com/input-output-hk/midnight-passport-sdk/blob/8117a10f9938093d21d656f8c504398957c58ac9/packages/account/src/names.ts) is a checked optional naming port. A pinned local Midnames reader, separate named-value fixtures, and an opt-in quote-bound post-ACC claim source preview exist. The [#342 native browser claim](https://github.com/input-output-hk/midnight-passport-sdk/pull/342) passed at signed `9a19757` with one dispatch, lost-response recovery and alternate-credential refusal. The independent deposit and two-leg NIGHT send passed at earlier signed `d492487`; all used isolated `undeployed`. A later signed `b87ed6c` sender-browser native deposit displayed the exact name, registry/provider, full ACC, asset and amount before automated approval; one dispatch finalized and the owner independently verified its held coin. Signed `ec83ce9` then qualified an automated owner-browser review before a synthetic signature for the two-leg named NIGHT payment: one withdrawal, an interrupted deposit, original-intent recovery, and 10/0 → 6/0 → 6/4 ACC balances. Online source configuration checks a known name-to-ACC pair through two paths but has no qualified live mapping. The source allows explicit archival of an exact full failure or a verified failed claim segment with only the sponsor DUST fee succeeding. At signed `c757388`, a fresh isolated `undeployed` run qualified the indexed paid claim-segment failure, explicit Chromium release, archived-original recovery after restart, and one distinct successful host-driven retry. The original and retry each dispatched once; inputs and exact-owned cleanup were verified. A separate signed `e456638` isolated run passed fixture-issued quote display and automated approval in owner Chromium before the naming PRF/proof, then one sponsored dispatch and lost-response recovery; source and owned-resource checks passed. The first functional attempt retained `FAIL` after Docker cleanup timed out and was reconciled before the fresh pass. A later signed local run at `46add31e` qualified one sponsor HTTP quote before owner proof, reviewed page send, indexed success and same-profile lost-response recovery for an already activated ACC on an isolated chain. Signed `e3ec3608` later qualified import, release and successful retry in one virtual-credential browser profile, with one quote, proof, preparation and dispatch on the retry and exact-owned cleanup. The first failed original was prepared outside that earlier profile. At signed `4a6c7642`, both originals were prepared and dispatched once in one persistent Passport page profile; exact failure archival and same-ACC retry success passed. That earlier fixture did not include account create/open. A later one-head local synthetic-passkey run combined creation, claim and named payment; human review and a real provider remain unqualified. | The local `.night` registry and browser-scoped setup path do not supply supported public `passport.night` ownership, qualified real-provider create/open onboarding, online-provider qualification or authenticated chain-state provenance, name-owner recovery after credential loss, or DID creation/resolution. The automated sender and owner clicks and later mock-credential demo payment do not qualify human approval or real passkey consent. The known pair is an operator assertion, not proof of online qualification. The transitional registry's contract target is not the proposed MIP-0007 operation-context resolver. The demo mock remains distinct from the [architecture's name service](https://github.com/midnightntwrk/passport/blob/99062671d939641cb9ed9274d3d18fce764d539a/docs/plans/components/C2-name-service.md). See [0.2.0 work remaining](/architecture/milestone-0.2.0). |
+| Names and DID · C2, C3, P2 | **Partial / absent.** [`account/names`](https://github.com/input-output-hk/midnight-passport-sdk/blob/8117a10f9938093d21d656f8c504398957c58ac9/packages/account/src/names.ts) is a checked optional naming port. A pinned local Midnames reader, separate named-value fixtures, and an opt-in quote-bound post-ACC claim source preview exist. The [#342 native browser claim](https://github.com/input-output-hk/midnight-passport-sdk/pull/342) passed at signed `9a19757` with one dispatch, lost-response recovery and alternate-credential refusal. The independent deposit and two-leg NIGHT send passed at earlier signed `d492487`; all used isolated `undeployed`. A later signed `b87ed6c` sender-browser native deposit displayed the exact name, registry/provider, full ACC, asset and amount before automated approval; one dispatch finalized and the owner independently verified its held coin. Signed `ec83ce9` then qualified an automated owner-browser review before a synthetic signature for the two-leg named NIGHT payment: one withdrawal, an interrupted deposit, original-intent recovery, and 10/0 → 6/0 → 6/4 ACC balances. Online source configuration checks a known name-to-ACC pair through two paths but has no qualified live mapping. The source allows explicit archival of an exact full failure or a verified failed claim segment with only the sponsor DUST fee succeeding. At signed `c757388`, a fresh isolated `undeployed` run qualified the indexed paid claim-segment failure, explicit Chromium release, archived-original recovery after restart, and one distinct successful host-driven retry. The original and retry each dispatched once; inputs and exact-owned cleanup were verified. A separate signed `e456638` isolated run passed fixture-issued quote display and automated approval in owner Chromium before the naming PRF/proof, then one sponsored dispatch and lost-response recovery; source and owned-resource checks passed. The first functional attempt retained `FAIL` after Docker cleanup timed out and was reconciled before the fresh pass. A later signed local run at `46add31e` qualified one sponsor HTTP quote before owner proof, reviewed page send, indexed success and same-profile lost-response recovery for an already activated ACC on an isolated chain. Signed `e3ec3608` later qualified import, release and successful retry in one virtual-credential browser profile, with one quote, proof, preparation and dispatch on the retry and exact-owned cleanup. The first failed original was prepared outside that earlier profile. At signed `4a6c7642`, both originals were prepared and dispatched once in one persistent Passport page profile; exact failure archival and same-ACC retry success passed. That earlier fixture did not include account create/open. A later one-head local synthetic-passkey run combined creation, claim and named payment; human review and a real provider remain unqualified. A separate isolated Compact 0.36.1 run finalized both a paid name claim and a new-owner transfer to the same ACC under the matching 13-verifier roster; see the redacted receipt above. | The local `.night` registry and browser-scoped setup path do not supply supported public `passport.night` ownership, qualified real-provider create/open onboarding, online-provider qualification or authenticated chain-state provenance, name-owner recovery after credential loss, or DID creation/resolution. The automated sender and owner clicks and later mock-credential demo payment do not qualify human approval or real passkey consent. The known pair is an operator assertion, not proof of online qualification. The transitional registry's contract target is not the proposed MIP-0007 operation-context resolver. The demo mock remains distinct from the [architecture's name service](https://github.com/midnightntwrk/passport/blob/99062671d939641cb9ed9274d3d18fce764d539a/docs/plans/components/C2-name-service.md). See [0.2.0 work remaining](/architecture/milestone-0.2.0). |
 | Peer devices and lost-device continuation · C13, P3–P4 | **Partial.** [Device operations](/guides/devices-grants) and [known-address opening](/guides/account-lifecycle) support enrolled credentials with complete live rosters and host-held records. A private locator and owner-authorised registry admission exist as a separate [source experiment](https://github.com/input-output-hk/midnight-passport-sdk/pull/327). | No automatic cross-device private-state sync or integrated unknown-account discovery in normal create/open. Individual entry removal must not be interpreted as retirement of every entry for the same key; the [reference architecture records erratum 8](https://github.com/midnightntwrk/passport/blob/99062671d939641cb9ed9274d3d18fce764d539a/docs/arc42.md#63-device-addition-and-removal). |
 | Total-loss recovery · C14–C15, P5 and P5′ | **Absent from SDK.** The binding includes recovery circuits, but [account recovery limits](/guides/account-lifecycle) cover only a surviving or provider-restored credential. | No guardian/paper-key ceremony, recovery transport, veto-window client, or loss-of-all-credentials restoration. Upstream's [reference recovery path](https://github.com/midnightntwrk/passport/blob/99062671d939641cb9ed9274d3d18fce764d539a/docs/arc42.md#65-recovery-and-selective-disclosure) and its bounded proof evidence do not make it an SDK API. |
 | Scoped grants · C10–C12, P7 | **Implemented subset.** [Issue, use, revoke, and reconcile](/guides/devices-grants) paths enforce supported recipient, asset, caps, expiry, and caller constraints in the pinned ACC binding. | No general read/write/execute grant language, interoperable grant-request ceremony, or arbitrary dApp operation. The [Passport scoped-grants text](https://github.com/midnightntwrk/passport/blob/99062671d939641cb9ed9274d3d18fce764d539a/docs/mps-mip/mips/mip-xxxx-scoped-grants.md) is still a Draft with placeholder number. |
@@ -118,6 +156,51 @@ indexed SUCCESS and canonical finalized blocks after reload. It used a funded
 device wallet and local mock JubJub credential. It does not qualify real
 provider consent, online naming, or an independent inclusion proof beyond the
 configured indexer and node checks.
+
+A later [candidate-to-old connected browser run](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/candidate-to-old-connected-browser-night-20261123.json)
+qualified one local mixed-version name route and one fresh-process recovery
+after an interrupted recipient proof. The host pinned the old recipient's full
+verifier roster and binding in the original intent; the candidate sender's ACC
+signature covered the bridge withdrawal. This is bounded shared-chain,
+synthetic-credential evidence. It does not establish online name provenance,
+fresh candidate funding, physical passkey consent or a released binding.
+A later [fresh local candidate receipt](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/candidate-fresh-funding-named-night-20261123.json)
+qualifies one new synthetic ACC's 10 NIGHT credit, separate device-wallet
+DUST registration and 1 NIGHT candidate-to-old named send on the same shared
+chain. Node and Indexer API v4 confirmed both payment legs, with balances
+10/6 → 9/7. An earlier ambiguous funding original remains pending. Long-proof
+recovery, physical consent, online provenance and a released candidate binding
+are still unqualified.
+
+The later [isolated 0.36.1 routing-refusal evidence](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-native-routing-refusals-20261123.json)
+tests MIP-0007's address-class distinction for this local subset. A name with
+the bytes of a supported ACC but an `UnshieldedAddr` target was refused before
+owner review; the host did not treat it as a contract call. A separate live
+change from one supported ACC target to another during review retired the
+unsubmitted intent and required a new review before owner proof. The ACC
+signature still binds the withdrawal to the bridge, while the name and final
+recipient remain host-checked. This is not complete MIP-0007, online-provider,
+or real-passkey conformance.
+
+A later [isolated default-field routing check](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-native-default-field-contract-target-20261123.json) finalized two
+owner-authorized field updates so the name's default `profile` address was a
+different activated ACC from its contract target. The connected synthetic
+browser finalized a 1 NIGHT payment to the contract target; the
+source/target/default-field balances changed 4/3/7 → 3/4/7. The first
+browser harness used an obsolete single-history assertion; a read-only
+reconciliation verified the new archived intent, canonical originals and
+balances without replay. This supports the local contract-call target
+selection subset only; delegated operation-context routing remains absent.
+The current-source SDK port also permits an explicit `contract-call` query.
+The local Midnames adapter acknowledges that context only after selecting a
+contract target and checking the ACC binding; named deposit and NIGHT send
+reject a generic address hint without the acknowledgment. This improves the
+host boundary but does not turn the transitional registry into MIP-0007's
+proposed delegated resolver or authenticate a public provider by itself.
+An [exact-head connected local run](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-native-contract-call-context-20261123.json)
+exercised the explicit contract-call query with a name whose default field
+still pointed to a different ACC. One 1 NIGHT payment finalized to the
+contract target; source/target/default-field balances moved 3/4/7 → 2/5/7.
 
 A [fresh isolated Ledger 9 comparison](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/ledger9-night-by-name-prover-comparison-20261122.json)
 repeated the two-leg route on a release node and Indexer API v4. The release
@@ -194,6 +277,39 @@ withdrawal/deposit dispatch, and all three ACC balances stayed 10/0/0. The
 runner verified unchanged inputs, exact-owned cleanup and lease release.
 This is a local repoint refusal, not online provider agreement, human consent
 or the architecture's operation-context resolver.
+
+A later [isolated post-withdrawal repoint recovery](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-native-postwithdraw-repoint-recovery-20261123.json)
+at signed source `a215ba3` finalized one browser-reviewed withdrawal before
+the owner repointed the name to a second supported ACC. The connected browser
+then separately reviewed and deposited the exact saved output into the
+originally reviewed ACC, and a fresh browser found the archived review.
+The supervisor's obsolete balance assertion failed after payment; exact
+reconciliation confirmed both canonical originals, 8/6/0 → 7/7/0 balances,
+no replay, and cleanup. This remains local synthetic evidence, with no
+physical-passkey consent, online provider qualification, or ACC-signed name
+binding.
+
+The source now also offers a separate **direct original-output repair** when a
+saved withdrawal is final but the current name is absent, invalid/non-contract,
+expired, unsupported or unavailable. The user must review the unresolved
+status and original ACC, and the host rechecks both before deposit. The browser
+journal keeps the approval with the original withdrawal. Connected-host tests
+exercise an unavailable name service. An [isolated non-contract name repair](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-native-unresolved-name-original-repair-20261123.json)
+also passed in a connected mock-passkey browser at signed source `9a8fb50`:
+one canonical withdrawal, owner target-class change, explicit direct repair,
+and one deposit to the original ACC. A second
+[isolated self-target repair](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-native-selftarget-original-repair-20261123.json)
+at signed source `f788c47` recorded the name's owner-authorized repoint to
+the sender ACC after withdrawal. The connected browser separately reviewed
+`UnsupportedTarget` and finalized only the saved output at the original ACC;
+same-block balances moved 6/1/7 → 5/2/7, with an archived review and no
+second withdrawal. A third [isolated browser registry-outage repair](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/midnames-local/evidence/compact0361-native-unavailable-original-repair-20261123.json)
+at signed source `bdc40164` failed ten browser registry reads after withdrawal
+finality. The page reviewed `Unavailable` and deposited that saved output into
+the original ACC at block 1738; balances moved 5/2/7 → 4/3/7. This simulates
+one browser provider outage while the node and indexer remain healthy. Absent
+and expired native observations, physical passkeys, and an online name route
+remain unqualified.
 
 ## Security promises in the pinned architecture
 

@@ -5,7 +5,10 @@ import { tmpdir } from 'node:os';
 import { test } from 'node:test';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { checkMidnightRuntimeIdentity } from '../scripts/check-midnight-runtime-identity.mjs';
+import {
+  checkMidnightRuntimeIdentity,
+  CURRENT_SOURCE_RUNTIME_VERSIONS,
+} from '../scripts/check-midnight-runtime-identity.mjs';
 
 const compact = '@midnight-ntwrk/compact-js';
 const runtime = '@midnight-ntwrk/compact-runtime';
@@ -42,6 +45,19 @@ test('consumer runtime check accepts one physical copy and the explicit Ledger 8
   const { root } = fixture(t);
   const found = checkMidnightRuntimeIdentity(root, [protocol]);
   assert.deepEqual(Object.keys(found).sort(), Object.keys(versions).sort());
+});
+
+test('current source profile admits Ledger 9 1.0.0 while the published RC pin remains separate', (t) => {
+  const { root, put } = fixture(t);
+  put(root, ledger, '1.0.0');
+  assert.doesNotThrow(() =>
+    checkMidnightRuntimeIdentity(root, [protocol], CURRENT_SOURCE_RUNTIME_VERSIONS),
+  );
+  assert.throws(() => checkMidnightRuntimeIdentity(root, [protocol]), /expected 1.0.0-rc.5/);
+  assert.throws(
+    () => checkMidnightRuntimeIdentity(root, [protocol], { [ledger]: '1.0.0' }),
+    /Incomplete pinned Midnight runtime version profile/,
+  );
 });
 
 test('consumer runtime check rejects same-version ledger class copies', (t) => {

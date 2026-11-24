@@ -4,6 +4,49 @@ export interface DemoFundingAsset {
   readonly availability: 'available' | 'insufficient' | 'unavailable';
 }
 
+export function fundingStorageKeys(network: string, accountAddress: string, color: string) {
+  return {
+    current: `passport-demo:fund:${network}:${accountAddress}:${color}`,
+    legacy: `passport-demo:fund:${network}:${accountAddress}`,
+  };
+}
+
+export function storedFundingOriginal(
+  storage: Pick<Storage, 'getItem'>,
+  network: string,
+  accountAddress: string,
+  color: string,
+) {
+  const keys = fundingStorageKeys(network, accountAddress, color);
+  return (
+    storage.getItem(keys.current) ??
+    (color === '00'.repeat(32) ? null : storage.getItem(keys.legacy))
+  );
+}
+
+/** Saved IDs remain visible even when discovery fails after a browser reload. */
+export function savedFundingAssets(
+  storage: Pick<Storage, 'length' | 'key' | 'getItem'>,
+  network: string,
+  accountAddress: string,
+): DemoFundingAsset[] {
+  const prefix = `passport-demo:fund:${network}:${accountAddress}:`;
+  const colors = new Set<string>();
+  for (let index = 0; index < storage.length; index++) {
+    const key = storage.key(index);
+    if (!key?.startsWith(prefix)) continue;
+    const color = key.slice(prefix.length);
+    if (
+      /^[0-9a-f]{64}$/.test(color) &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        storage.getItem(key) ?? '',
+      )
+    )
+      colors.add(color);
+  }
+  return [...colors].map((color) => ({ color, amount: '0', availability: 'unavailable' }));
+}
+
 export function canFund(busy: boolean, accountOpen: boolean, asset: DemoFundingAsset | undefined) {
   return !busy && accountOpen && asset?.availability === 'available';
 }
@@ -48,6 +91,135 @@ export function fundingRequestFailure(input: {
 
 const object = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
+
+export interface FundingOriginalIdentity {
+  readonly requestId: string;
+  readonly accountAddress: string;
+  readonly color: string;
+  readonly amount?: string;
+}
+
+export interface FundingOriginalStatus {
+  readonly state: 'pending' | 'complete' | 'released';
+  readonly amount: string;
+  readonly result?: Record<string, unknown>;
+  readonly progress?: Record<string, unknown>;
+}
+
+/** The phase is an observation of the same original, never permission to retry it. */
+export function fundingProgressMessage(progress: FundingOriginalStatus['progress']): string {
+  switch (progress?.phase) {
+    case 'wallet-preparation':
+      return 'Funding wallet preparation started. Checking the saved request…';
+    case 'wallet-prepared':
+      return 'Funding wallet prepared. Checking the saved request…';
+    case 'acc-proof':
+      return 'ACC proof started. Checking the saved request…';
+    case 'wallet-balancing':
+      return 'Wallet balancing started. Checking the saved request…';
+    case 'acc-submitted':
+      return 'Deposit transaction ID saved. Checking its submission result…';
+    case 'credit-confirmation':
+      return 'Node submission returned. Checking confirmed ACC credit…';
+    default:
+      return progress?.depositTxId
+        ? 'Deposit transaction ID saved. Checking its submission result…'
+        : progress?.preparationTxId
+          ? 'Funding wallet prepared. Checking the saved request…'
+          : 'Funding request saved. Checking its progress after reload…';
+  }
+}
+
+export interface FundingConfirmation extends FundingOriginalIdentity {
+  readonly amount: string;
+  readonly txId: string;
+  readonly preparationTxId?: string;
+  readonly creditedBalance: string;
+}
+
+export function checkedFundingConfirmation(
+  result: Record<string, unknown>,
+  identity: FundingOriginalIdentity & { readonly amount: string },
+): FundingConfirmation {
+  const txId = result.txId;
+  const preparationTxId = result.preparationTxId;
+  const creditedBalance = result.creditedBalance;
+  if (
+    result.requestId !== identity.requestId ||
+    result.accountAddress !== identity.accountAddress ||
+    result.color !== identity.color ||
+    result.amount !== identity.amount ||
+    typeof txId !== 'string' ||
+    !/^(?:[0-9a-f]{64}|[0-9a-f]{66})$/.test(txId) ||
+    (preparationTxId !== undefined &&
+      (typeof preparationTxId !== 'string' ||
+        !/^(?:[0-9a-f]{64}|[0-9a-f]{66})$/.test(preparationTxId))) ||
+    typeof creditedBalance !== 'string' ||
+    !/^\d+$/.test(creditedBalance)
+  )
+    throw fundingUnsettled('Funding service returned an invalid confirmation');
+  return {
+    ...identity,
+    txId,
+    ...(preparationTxId && { preparationTxId }),
+    creditedBalance,
+  };
+}
+
+/** A status read never starts a wallet operation or changes the original request. */
+export function parseFundingOriginalStatus(
+  value: unknown,
+  identity: FundingOriginalIdentity,
+): FundingOriginalStatus {
+  if (
+    !object(value) ||
+    value.requestId !== identity.requestId ||
+    value.accountAddress !== identity.accountAddress ||
+    value.color !== identity.color ||
+    typeof value.amount !== 'string' ||
+    !/^[1-9][0-9]*$/.test(value.amount) ||
+    (identity.amount !== undefined && value.amount !== identity.amount) ||
+    !['pending', 'complete', 'released'].includes(String(value.state)) ||
+    (value.state === 'complete' &&
+      (!object(value.result) || value.result.requestId !== identity.requestId))
+  )
+    throw fundingUnsettled('Funding service returned an invalid original status.');
+  return {
+    state: value.state as FundingOriginalStatus['state'],
+    amount: value.amount,
+    ...(object(value.result) && { result: value.result }),
+    ...(object(value.progress) && { progress: value.progress }),
+  };
+}
+
+export async function waitForFundingOriginal(
+  read: () => Promise<unknown>,
+  identity: FundingOriginalIdentity,
+  onPending: (progress: FundingOriginalStatus['progress']) => void,
+  options: {
+    readonly now?: () => number;
+    readonly sleep?: (ms: number) => Promise<void>;
+    readonly timeoutMs?: number;
+    readonly pollMs?: number;
+  } = {},
+): Promise<FundingOriginalStatus> {
+  const now = options.now ?? Date.now;
+  const sleep =
+    options.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+  const timeoutMs = options.timeoutMs ?? 30 * 60_000;
+  const pollMs = options.pollMs ?? 5000;
+  const deadline = now() + timeoutMs;
+  for (;;) {
+    const status = parseFundingOriginalStatus(await read(), identity);
+    if (status.state !== 'pending') return status;
+    onPending(status.progress);
+    if (now() >= deadline)
+      throw fundingUnsettled(
+        'Funding is still pending. Continue funding later to check this same original request.',
+      );
+    await sleep(pollMs);
+  }
+}
 
 export function fundingUnsettled(message: string) {
   const error = new Error(message);

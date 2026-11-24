@@ -46,6 +46,7 @@ import type { PassportNameService } from '@input-output-hk/mn-passport-account/n
 import { showDemoNameService, showNameConfigurationError } from './name-service.js';
 import { configureMidnames } from './midnames/config.js';
 import { localCandidateAccount } from './midnames/candidate-account.js';
+import { supportsLocalNamedNightSend } from './midnames/night-send-profile.js';
 import { createNamedNightPage } from './midnames/night-send-page.js';
 import { localNightEndpoint, localNightNetwork } from './midnames/night-send-page-state.js';
 import { demoClaimPreparation } from './midnames/claim-demo-owner.js';
@@ -260,6 +261,7 @@ try {
     {
       claimSponsor: import.meta.env.VITE_MIDNAMES_CLAIM_SPONSOR,
       claimProtocolVersion: import.meta.env.VITE_MIDNAMES_CLAIM_PROTOCOL_VERSION,
+      isolated0361: import.meta.env.VITE_MIDNAMES_0361_ISOLATED,
       registryProfile: import.meta.env.VITE_MIDNAMES_REGISTRY_PROFILE,
       registryAddress: import.meta.env.VITE_MIDNAMES_REGISTRY_ADDRESS,
       namespace: import.meta.env.VITE_MIDNAMES_NAMESPACE,
@@ -281,14 +283,35 @@ try {
       () => appState.primaryAccount,
     ),
     candidateQualification,
+    import.meta.env.VITE_MIDNAMES_NIGHT_MIXED_RECIPIENT === '1' ? 'acc-s3r1.1' : undefined,
   );
-  showDemoNameService(naming ?? createMockNameService(network), network);
+  showDemoNameService(naming ?? createMockNameService(network), network, (address) => {
+    const input = byId<HTMLInputElement>('open-address');
+    const action = byId<HTMLButtonElement>('openAt');
+    if (input.disabled) return false;
+    const previous = input.value;
+    input.value = address;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    if (action.disabled) {
+      input.value = previous;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      return false;
+    }
+    workspace.show('overview');
+    byId<HTMLDetailsElement>('overview-open-address').open = true;
+    action.click();
+    return true;
+  });
   if (
     naming?.provider.mode === 'external' &&
     localNightNetwork(network) &&
     ARM === 'jubjub' &&
     import.meta.env.VITE_MIDNAMES_NIGHT_SEND === '1' &&
-    import.meta.env.VITE_MIDNAMES_REGISTRY_PROFILE === 'standalone-0.35' &&
+    supportsLocalNamedNightSend(
+      import.meta.env.VITE_MIDNAMES_REGISTRY_PROFILE,
+      import.meta.env.VITE_MIDNAMES_0361_ISOLATED,
+      candidateQualification,
+    ) &&
     localNightEndpoint(SERVICE_URL, 'http') &&
     localNightEndpoint(import.meta.env.VITE_MIDNAMES_INDEXER_URL, 'http') &&
     localNightEndpoint(import.meta.env.VITE_MIDNAMES_INDEXER_WS_URL, 'ws')

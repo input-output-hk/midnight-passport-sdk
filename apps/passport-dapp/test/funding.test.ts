@@ -8,6 +8,10 @@ import {
   canFund,
   preferredFundingAsset,
   fundingDescription,
+  parseFundingOriginalStatus,
+  waitForFundingOriginal,
+  savedFundingAssets,
+  fundingProgressMessage,
 } from '../src/funding.js';
 import { EventLog } from '../src/event-log.js';
 import { demoActivityObservation } from '../src/activity-observations.js';
@@ -15,6 +19,97 @@ import { plainError } from '../src/flows.js';
 
 const color = 'ab'.repeat(32);
 const row = { color, amount: '10', availability: 'insufficient' } as const;
+test('funding progress identifies the durable proof and balance phases', () => {
+  assert.match(fundingProgressMessage({ phase: 'wallet-preparation' }), /preparation started/);
+  assert.match(fundingProgressMessage({ phase: 'acc-proof' }), /proof started/);
+  assert.match(fundingProgressMessage({ phase: 'wallet-balancing' }), /balancing started/);
+  assert.match(fundingProgressMessage({ phase: 'acc-submitted' }), /ID saved/);
+  assert.match(
+    fundingProgressMessage({ phase: 'credit-confirmation' }),
+    /Checking confirmed ACC credit/,
+  );
+  assert.match(fundingProgressMessage({ depositTxId: 'deposit' }), /ID saved/);
+  assert.match(
+    fundingProgressMessage({ preparationTxId: 'prepared' }),
+    /Checking the saved request/,
+  );
+});
+test('saved funding remains selectable after inventory disappears on reload', () => {
+  const account = 'cd'.repeat(32);
+  const network = 'undeployed';
+  const original = '346b2744-dedb-432e-9cbd-2b56f64c5957';
+  const records = new Map([
+    [`passport-demo:fund:${network}:${account}:${color}`, original],
+    [`passport-demo:fund:${network}:${'ef'.repeat(32)}:${'00'.repeat(32)}`, original],
+    [`passport-demo:fund:${network}:${account}:${'xx'.repeat(32)}`, original],
+  ]);
+  const storage = {
+    get length() {
+      return records.size;
+    },
+    key: (index: number) => [...records.keys()][index] ?? null,
+    getItem: (key: string) => records.get(key) ?? null,
+  };
+  assert.deepEqual(savedFundingAssets(storage, network, account), [
+    { color, amount: '0', availability: 'unavailable' },
+  ]);
+  records.set(`passport-demo:fund:${network}:${account}:${color}`, 'invalid');
+  assert.deepEqual(savedFundingAssets(storage, network, account), []);
+});
+test('funding status resumes the original without a second request and checks exact identity', async () => {
+  const identity = {
+    requestId: 'original',
+    accountAddress: 'cd'.repeat(32),
+    color,
+    amount: '10',
+  };
+  let reads = 0;
+  let clock = 0;
+  const pending: unknown[] = [];
+  const result = await waitForFundingOriginal(
+    async () => {
+      reads++;
+      return reads === 1
+        ? { ...identity, state: 'pending', progress: { preparationTxId: 'prepared' } }
+        : { ...identity, state: 'complete', result: { requestId: identity.requestId, txId: 'tx' } };
+    },
+    identity,
+    (progress) => pending.push(progress),
+    {
+      now: () => clock,
+      sleep: async (ms) => {
+        clock += ms;
+      },
+      pollMs: 5,
+    },
+  );
+  assert.equal(result.result?.txId, 'tx');
+  assert.equal(reads, 2);
+  assert.deepEqual(pending, [{ preparationTxId: 'prepared' }]);
+  assert.equal(
+    parseFundingOriginalStatus(
+      { ...identity, amount: '11', state: 'pending' },
+      { requestId: identity.requestId, accountAddress: identity.accountAddress, color },
+    ).amount,
+    '11',
+    'a saved original remains observable if the current funding policy changed',
+  );
+  for (const bad of [
+    { ...identity, state: 'complete', result: { requestId: 'other' } },
+    { ...identity, color: 'ef'.repeat(32), state: 'pending' },
+    { ...identity, state: 'unknown' },
+  ])
+    assert.throws(() => parseFundingOriginalStatus(bad, identity));
+  await assert.rejects(
+    waitForFundingOriginal(
+      async () => ({ ...identity, state: 'pending' }),
+      identity,
+      () => {},
+      { now: () => 1, timeoutMs: 0 },
+    ),
+    { name: 'FundingRejected' },
+  );
+});
 test('inventory discovery preserves withdrawal assets but fails closed for deposits', () => {
   const bounded = Array.from({ length: 65 }, (_, i) => ({
     ...row,

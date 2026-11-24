@@ -25,6 +25,7 @@ const intent: NightSendIntent = {
   asset: 'NIGHT',
   amount: '4',
   target: 'c'.repeat(64),
+  recipientBindingId: 'acc-s3r1.1',
   providerId: 'midnames:' + 'd'.repeat(64),
   namespace: 'night',
   operations: NIGHT_SEND_OPERATIONS,
@@ -270,7 +271,7 @@ test('the owner callback durably fences the original in the browser journal befo
     names,
     journal,
     async isSupportedRecipient() {
-      return true;
+      return 'acc-s3r1.1';
     },
     async readSourceBalance() {
       return 10n;
@@ -338,7 +339,7 @@ test('a submit port that ignores callback refusal cannot retire an uncertain wit
     names,
     journal,
     async isSupportedRecipient() {
-      return true;
+      return 'acc-s3r1.1';
     },
     async readSourceBalance() {
       return 10n;
@@ -412,7 +413,7 @@ test('a name change before entering the owner port is audited and permits a new 
     names,
     journal,
     async isSupportedRecipient() {
-      return true;
+      return 'acc-s3r1.1';
     },
     async readSourceBalance() {
       return 10n;

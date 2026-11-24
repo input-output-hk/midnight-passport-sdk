@@ -3,6 +3,7 @@ import type { AddressInfo } from 'node:net';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { remoteV1Prover } from '@input-output-hk/mn-passport-adapter-service';
+import { pinnedVerifierRoster } from '@input-output-hk/mn-passport-contract';
 import {
   createFileFundingStore,
   createServer,
@@ -123,6 +124,7 @@ const backend = createWalletFundingBackend({
                 encryptionPublicKey: asHex(encryption),
               },
               prover: remoteV1Prover(service),
+              recipientVerifierRoster: pinnedVerifierRoster(config.bindingId),
               provisionalLocal: config.provisionalLocal,
             },
             wallet.providers.walletProvider,

@@ -7,6 +7,7 @@ import { createReadStream } from 'node:fs';
 import {
   constants,
   copyFileSync,
+  existsSync,
   lstatSync,
   mkdirSync,
   mkdtempSync,
@@ -182,7 +183,13 @@ export async function stageAccCandidateAssets({
   }
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+// Package managers expose bins through symlinks. Node resolves import.meta.url to
+// the package file, while argv[1] can still name the link; compare real paths.
+if (
+  process.argv[1] &&
+  existsSync(resolve(process.argv[1])) &&
+  realpathSync(resolve(process.argv[1])) === realpathSync(fileURLToPath(import.meta.url))
+) {
   const args = process.argv.slice(2);
   if (
     ![6, 7].includes(args.length) ||

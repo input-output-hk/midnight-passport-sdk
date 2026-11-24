@@ -27,7 +27,22 @@ async function proveClaim(input) {
     ownerSecretMustExist = false,
     operation = 'create_domain',
     newOwnerCommitment,
+    nameId,
+    newTargetAddress,
+    newTargetType,
   } = input;
+  assert.ok(
+    operation === 'create_domain' ||
+      operation === 'transfer_domain' ||
+      operation === 'update_target',
+  );
+  if (operation === 'transfer_domain') assert.match(newOwnerCommitment ?? '', /^[0-9a-f]{64}$/);
+  if (operation === 'update_target') {
+    assert.ok(ownerSecretFile && ownerSecretMustExist, 'Target control needs the existing owner.');
+    assert.match(nameId ?? '', /^[1-9][0-9]*$/);
+    assert.match(newTargetAddress ?? '', /^[0-9a-f]{64}$/);
+    assert.ok(newTargetType === 'contract' || newTargetType === 'unshielded');
+  }
   const get = (name) =>
     import(import.meta.resolve(name, pathToFileURL(ref + '/package.json').href));
   const [
@@ -77,8 +92,6 @@ async function proveClaim(input) {
     const nameKey = new Uint8Array(32).fill(255);
     nameKey.set(new TextEncoder().encode(label));
     phase = 'prepare';
-    assert.ok(operation === 'create_domain' || operation === 'transfer_domain');
-    if (operation === 'transfer_domain') assert.match(newOwnerCommitment ?? '', /^[0-9a-f]{64}$/);
     const args =
       operation === 'transfer_domain'
         ? [
@@ -87,17 +100,23 @@ async function proveClaim(input) {
             new Uint8Array(Buffer.from(newOwnerCommitment, 'hex')),
             { bytes: childOwnerAddress },
           ]
-        : [
-            { bytes: childOwnerAddress },
-            nameKey,
-            BigInt(label.length),
-            rootId,
-            new Uint8Array(Buffer.from(accountAddress, 'hex')),
-            AddressType.ContractAddr,
-            { is_some: false, value: '' },
-            childPrice,
-            Array.from({ length: 10 }, () => ({ is_some: false, value: ['', ''] })),
-          ];
+        : operation === 'update_target'
+          ? [
+              BigInt(nameId),
+              new Uint8Array(Buffer.from(newTargetAddress, 'hex')),
+              newTargetType === 'contract' ? AddressType.ContractAddr : AddressType.UnshieldedAddr,
+            ]
+          : [
+              { bytes: childOwnerAddress },
+              nameKey,
+              BigInt(label.length),
+              rootId,
+              new Uint8Array(Buffer.from(accountAddress, 'hex')),
+              AddressType.ContractAddr,
+              { is_some: false, value: '' },
+              childPrice,
+              Array.from({ length: 10 }, () => ({ is_some: false, value: ['', ''] })),
+            ];
     const result = await createUnprovenCallTx(providers, {
       compiledContract,
       contractAddress: registryAddress,

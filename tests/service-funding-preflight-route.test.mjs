@@ -105,7 +105,12 @@ test('proved preflight refusal durably tombstones the ID and frees quota without
   );
   assert.equal(f.calls(), 2, 'explicit new intent is admitted after quota release');
   assert.doesNotMatch(f.logs.join(' '), /secret/);
-  assert.equal(JSON.parse(f.logs[0] ?? '{}').submission, 'not-started');
+  assert.equal(
+    f.logs
+      .map((entry) => JSON.parse(entry))
+      .find((entry) => entry.code === 'FundingAssetUnavailable')?.submission,
+    'not-started',
+  );
 });
 
 for (const mode of ['no-marker', 'release-fails', 'generic', 'prepared']) {
@@ -120,6 +125,6 @@ for (const mode of ['no-marker', 'release-fails', 'generic', 'prepared']) {
     assert.equal((await f.post()).status, 409);
     assert.equal(f.calls(), 1);
     assert.doesNotMatch(JSON.stringify(body) + f.logs.join(' '), /secret/);
-    assert.equal(JSON.parse(f.logs[0] ?? '{}').code, 'FundingOutcomeUnknown');
+    assert.ok(f.logs.some((entry) => JSON.parse(entry).code === 'FundingOutcomeUnknown'));
   });
 }

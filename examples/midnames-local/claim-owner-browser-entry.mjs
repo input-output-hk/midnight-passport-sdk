@@ -1,4 +1,5 @@
 import { CompiledContract } from '@midnight-ntwrk/compact-js';
+import { ContractState as CompactContractState } from '@midnight-ntwrk/compact-runtime';
 import { createUnprovenCallTx } from '@midnight-ntwrk/midnight-js-contracts';
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
@@ -154,8 +155,10 @@ export async function prove(input, id, check = () => {}) {
       const nameKey = new Uint8Array(32).fill(255);
       nameKey.set(utf8(input.label));
       const source = indexerPublicDataProvider(input.indexerUrl, input.indexerWsUrl);
+      const release = manifest.runtime === '0.21.0';
       const result = await createUnprovenCallTx(
         {
+          ...(release && { config: { networkId: 'undeployed', ttlSeconds: 120 } }),
           publicDataProvider: source,
           walletProvider: {
             getCoinPublicKey: () => input.walletKeys.coin,
@@ -182,9 +185,21 @@ export async function prove(input, id, check = () => {}) {
       );
       const state = await source.queryContractState(input.registryAddress);
       if (!state) throw new Error('The pinned registry is absent.');
+      const rawResult = release
+        ? {
+            ...result,
+            private: {
+              ...result.private,
+              unprovenTx: result.private.unprovenTx.deserialize({ v9: ledgerV9.Transaction }),
+            },
+          }
+        : result;
+      const rawState = release
+        ? state.contractState.deserialize({ v9: ledgerV9.ContractState })
+        : state;
       const unprovenTx = withoutDeletionCredit(
-        result,
-        state,
+        rawResult,
+        rawState,
         'undeployed',
         ledgerV9,
         midnightTypes,
@@ -226,7 +241,14 @@ export async function proveReviewedClaim(quote, credentialId, check) {
   setNetworkId('undeployed');
   const source = indexerPublicDataProvider(context.indexerUrl, context.indexerWsUrl);
   const state = await source.queryContractState(quote.registryAddress);
-  const record = ledger(state.data);
+  if (!state) throw new Error('The pinned registry is absent.');
+  const record = ledger(
+    manifest.runtime === '0.21.0'
+      ? CompactContractState.deserialize(
+          state.contractState.deserialize({ v9: ledgerV9.ContractState }).serialize(),
+        ).data
+      : state.data,
+  );
   const rootId = record.ROOT_ZONE_ID;
   const parent = record.id_to_data.lookup(rootId);
   const label = quote.name.slice(0, -'.night'.length);

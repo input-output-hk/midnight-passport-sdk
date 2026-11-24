@@ -14,6 +14,7 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
+import { IDBFactory } from 'fake-indexeddb';
 import { openClaimDispatch } from '../../../examples/midnames-local/claim-dispatch.mts';
 import { createClaimSponsorHandler } from '../../../examples/midnames-local/claim-sponsor-http.mts';
 import {
@@ -22,6 +23,7 @@ import {
 } from '../../../examples/midnames-local/claim-preparation.mts';
 import { createOnce } from '../../../examples/midnames-local/create-once.mts';
 import { claimDispatchPath, isClaimSponsorOrigin } from '../src/midnames/claim-dispatch.js';
+import { openClaimJournal } from '../src/midnames/claim-journal.js';
 import {
   claimPreparePath,
   claimPreparedPath,
@@ -120,7 +122,11 @@ test('archives only an expired unprepared intent and releases the sponsor for a 
   await assert.rejects(reopened.findPrepared(siblingRequest), ClaimPreIntentRefusal);
   await assert.rejects(
     reopened.findPrepared({ ...siblingRequest, ownerCommitment: 'ff'.repeat(32) }),
-    /decision differs/,
+    ClaimPreIntentRefusal,
+  );
+  assert.deepEqual(
+    JSON.parse(readFileSync(join(archive, `quote-decision-${sibling.id}.json`), 'utf8')),
+    { kind: 'archive-refused', digest: await claimQuoteDigest(sibling) },
   );
   assert.equal(
     existsSync(join(archive, `quote-decision-${sibling.id}.json`)),
@@ -131,8 +137,142 @@ test('archives only an expired unprepared intent and releases the sponsor for a 
   await assert.rejects(
     reopened.findPrepared({ ...siblingRequest, quote: { ...sibling, night: '2' } }),
   );
+  // Older archives recorded the first lookup caller as an owner even though
+  // this quote never entered balance. That arbitrary field cannot strand the
+  // browser that actually holds the reservation.
+  writeFileSync(
+    join(archive, `quote-decision-${sibling.id}.json`),
+    JSON.stringify({
+      kind: 'archive-refused',
+      digest: await claimQuoteDigest(sibling),
+      ownerCommitment: siblingRequest.ownerCommitment,
+    }),
+  );
+  await assert.rejects(
+    reopened.findPrepared({ ...siblingRequest, ownerCommitment: 'ff'.repeat(32) }),
+    ClaimPreIntentRefusal,
+  );
   writeFileSync(join(archive, `quote-${sibling.id}.json`), '{broken');
   await assert.rejects(reopened.findPrepared(siblingRequest));
+  rmSync(archive, { recursive: true });
+  await assert.rejects(reopened.findPrepared(siblingRequest), /not issued/);
+});
+
+test('a competing browser recovers its own archived no-intent quote after an unrelated lookup', async (t) => {
+  const parent = realpathSync(mkdtempSync(join(tmpdir(), 'midnames-quote-browsers-')));
+  t.after(() => rmSync(parent, { recursive: true, force: true }));
+  const root = join(parent, 'claim-journal');
+  mkdirSync(root, { mode: 0o700 });
+  const destination = claimDestination(original);
+  const base = claimQuote({
+    ...destination,
+    id: 'a1'.repeat(32),
+    sponsorAddress: 'a2'.repeat(32),
+    sponsorPaymentAddress: 'a3'.repeat(32),
+    registryPayee: 'a4'.repeat(32),
+    night: '1',
+    maximumDust: '10000',
+    expiresAt: Date.now() + 60_000,
+  });
+  const competing = claimQuote({ ...base, id: 'b1'.repeat(32) });
+  const ownerA = 'e1'.repeat(32);
+  const ownerB = 'e2'.repeat(32);
+  const browserA = await openClaimJournal(new IDBFactory());
+  const browserBFactory = new IDBFactory();
+  let browserB = await openClaimJournal(browserBFactory);
+  t.after(() => {
+    browserA.close();
+    browserB.close();
+  });
+  const ports = {
+    issued: 0,
+    async issue() {
+      return this.issued++ === 0
+        ? base
+        : this.issued === 2
+          ? competing
+          : claimQuote({ ...base, id: 'c1'.repeat(32), expiresAt: Date.now() + 240_000 });
+    },
+    async authorizeQuote() {},
+    async balance() {
+      assert.fail('Recovering a no-intent quote cannot balance a transaction.');
+    },
+    async retireExpiredUnprepared(quote: typeof base) {
+      assert.deepEqual(quote, base);
+    },
+  };
+  const prep = createClaimPreparationJournal(root, openClaimDispatch(root), ports);
+  assert.deepEqual(await prep.issue(destination), base);
+  assert.deepEqual(await prep.issue(destination), competing);
+  for (const [browser, quote, credential, owner] of [
+    [browserA, base, 'f1'.repeat(32), ownerA],
+    [browserB, competing, 'f2'.repeat(32), ownerB],
+  ] as const) {
+    await browser.selectName(quote.registryAddress, quote.accountAddress, credential, quote.name);
+    await browser.reserve(quote, credential);
+    await browser.bindOwner(quote, credential, owner);
+  }
+  const digest = await claimQuoteDigest(base);
+  const intent = {
+    quoteId: base.id,
+    digest,
+    ownerCommitment: ownerA,
+    proofSha256: original.transaction.sha256,
+  };
+  createOnce(
+    join(root, `quote-decision-${base.id}.json`),
+    JSON.stringify({ kind: 'intent', ...intent }),
+  );
+  createOnce(join(root, 'claim-prepare-intent.json'), JSON.stringify(intent));
+  t.mock.method(Date, 'now', () => base.expiresAt + 1);
+  try {
+    assert.deepEqual(await prep.retireExpiredUnprepared({ quote: base, ownerCommitment: ownerA }), {
+      status: 'retired',
+    });
+  } finally {
+    t.mock.restoreAll();
+  }
+  const archive = join(parent, `claim-journal-unprepared-${base.id}`);
+  const reopened = createClaimPreparationJournal(root, openClaimDispatch(root), ports);
+  // The first caller is not the second browser's owner. It cannot bind the
+  // sponsor's no-intent decision to itself and strand that browser.
+  await assert.rejects(
+    reopened.findPrepared({ quote: competing, ownerCommitment: 'ee'.repeat(32) }),
+    ClaimPreIntentRefusal,
+  );
+  browserB.close();
+  browserB = await openClaimJournal(browserBFactory);
+  await assert.rejects(
+    reopened.findPrepared({ quote: competing, ownerCommitment: ownerB }),
+    ClaimPreIntentRefusal,
+  );
+  await assert.rejects(browserB.releaseRefused(competing, 'f2'.repeat(32), ownerA));
+  await browserB.releaseRefused(competing, 'f2'.repeat(32), ownerB);
+  assert.equal(
+    await browserB.readPreparation(competing.registryAddress, competing.name, 'f2'.repeat(32)),
+    undefined,
+  );
+  assert.deepEqual(
+    await browserA.readPreparation(base.registryAddress, base.name, 'f1'.repeat(32)),
+    { quote: base, ownerCommitment: ownerA },
+  );
+  assert.deepEqual(
+    JSON.parse(readFileSync(join(archive, `quote-decision-${competing.id}.json`), 'utf8')),
+    { kind: 'archive-refused', digest: await claimQuoteDigest(competing) },
+  );
+  const fresh = await reopened.issue(destination);
+  await browserB.selectName(
+    fresh.registryAddress,
+    fresh.accountAddress,
+    'f2'.repeat(32),
+    fresh.name,
+  );
+  await browserB.reserve(fresh, 'f2'.repeat(32));
+  assert.equal(
+    (await browserB.readPreparation(fresh.registryAddress, fresh.name, 'f2'.repeat(32)))?.quote.id,
+    fresh.id,
+  );
+  assert.notEqual(fresh.id, competing.id);
 });
 
 test('retires an expired issued quote whose prepare request never reached the sponsor', async (t) => {
@@ -514,6 +654,11 @@ test('recovers a retained sponsor preparation over HTTP after reopening the jour
   assert.equal((await post(claimPreparePath, { ...superseded, proof: '020305' })).status, 412);
   const lostRace = { quote: earlierQuotes[2], ownerCommitment: original.ownerCommitment };
   assert.equal((await post(claimPreparedPath, lostRace)).status, 412);
+  assert.equal(
+    (await post(claimPreparedPath, { ...lostRace, ownerCommitment: 'ff'.repeat(32) })).status,
+    409,
+    'a recorded owner decision remains bound to that owner',
+  );
   assert.equal((await post(claimPreparePath, { ...lostRace, proof: '020305' })).status, 412);
   assert.deepEqual(readFileSync(losingDecisionPath), losingDecision);
   assert.deepEqual(readFileSync(intentPath), originalIntent);
@@ -657,7 +802,7 @@ test('retires only the exact expired, unsent preparation and preserves its origi
   );
   await assert.rejects(
     reopened.findPrepared({ quote: sibling, ownerCommitment: 'ff'.repeat(32) }),
-    /decision differs/,
+    ClaimPreIntentRefusal,
   );
   assert.equal(confirmations, 1);
 });

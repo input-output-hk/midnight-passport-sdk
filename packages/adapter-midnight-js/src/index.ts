@@ -1,6 +1,7 @@
 export { createMidnightChain, createHeldCoinWitness } from './chain.js';
 export type { MidnightBinding } from './chain.js';
 export { assertNightDepositPreflight, proveUnboundNightDeposit } from './night-deposit.js';
+export { assertPinnedNightRecipientRoster } from './night-recipient-roster.js';
 export type { UnboundNightDepositRequest } from './night-deposit.js';
 export * from './hosted-chain.js';
 export * from './holdings.js';

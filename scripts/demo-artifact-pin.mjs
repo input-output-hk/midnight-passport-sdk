@@ -36,11 +36,19 @@ export function verifyDemoArtefacts(env, pins = { stable, candidate, packagedMod
   }
   if (bindingId !== 'acc-s3r1.1-zkir036' || !pins.candidate.provisional)
     throw new Error('Unknown provisional ACC binding.');
+  const shared035 =
+    env.MIDNIGHT_STACK === 'shared-ledger9' &&
+    env.VITE_MIDNAMES_REGISTRY_PROFILE === 'standalone-0.35' &&
+    env.PASSPORT_MIDNAMES_0361_ISOLATED !== '1';
+  const isolated0361 =
+    env.MIDNIGHT_STACK === 'isolated-ledger9' &&
+    env.VITE_MIDNAMES_REGISTRY_PROFILE === 'standalone-0.36.1' &&
+    env.VITE_MIDNAMES_0361_ISOLATED === '1' &&
+    env.PASSPORT_MIDNAMES_0361_ISOLATED === '1';
   if (
     env.PASSPORT_CANDIDATE_LOCAL !== '1' ||
-    env.MIDNIGHT_STACK !== 'shared-ledger9' ||
     env.MN_NETWORK_ID !== 'undeployed' ||
-    env.VITE_MIDNAMES_REGISTRY_PROFILE !== 'standalone-0.35' ||
+    !(shared035 || isolated0361) ||
     selectedManifest !== pins.candidate.manifestSha256
   )
     throw new Error('Candidate ACC requires the exact local Ledger 9 profile and manifest.');

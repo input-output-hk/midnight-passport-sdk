@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "kind": "isolated-ledger9-after-review-name-repoint-refusal",
+  "date": "2026-11-23",
+  "scope": "Retained isolated Ledger 9 chain, Indexer API v4, release prover 9.0.2, synthetic name owner, and connected mock-passkey Passport browser.",
+  "sourceCommit": "5a9062b5e6bc049498ae5aec101143cf863219c6",
+  "name": "v36claim23.night",
+  "registryAddress": "3d0502ab6b226f12ad621fb6c4e5e9882c75b2df479545cd65d1325f7ad30591",
+  "reviewedTarget": "14c1181524e783ac7a11d225583cb33c842a144aa89294b765393a5e12794053",
+  "changedTarget": "f746d060ef93d3264abf124cd0bee9498ee929aea02c8a18d5aef651f2a55bed",
+  "setup": {
+    "restoreOriginalHash": "33b850ace0a8b20556435258793ec5ec109d9957f57425a055e3568042bf08fb",
+    "restoreCanonicalBlock": {
+      "height": 1412,
+      "hash": "d79457188810bca0ffa50cd8733d5945b2e963cabc671871d9919cfb43311f35"
+    },
+    "beforeReviewBlock": {
+      "height": 1431,
+      "hash": "4e27b8c2550ca4c536cbc92f611a63e18a180e91e4048e886733ac9aa9ff49b8"
+    },
+    "sourceAndPriorRecipientNight": ["8", "6"]
+  },
+  "reviewBoundary": {
+    "browserReviews": 1,
+    "reviewed": "Name, registry, network, source ACC, original target ACC, amount, and both operations were present in the browser's one-call review.",
+    "ownerUpdateOriginalHash": "1cd46e1d5f862ec1f22baf37bb21bd4c3b4abad61b1035a94feccf31ddf1eefb",
+    "indexedStatus": "SUCCESS",
+    "canonicalBlock": {
+      "height": 1451,
+      "hash": "52d80b692b748e8b74a056648b61cf8cef57ab1289311c851f73da9c20cae5b9"
+    },
+    "sequence": "While the browser review was open, the retained owner proved update_target and durably saved one balanced original before submitting it. API v4 indexed the exact original and the node confirmed its canonical block. The changed target was verified before the browser review was accepted."
+  },
+  "connectedBrowser": {
+    "result": "NightSelfRecipient",
+    "journalRefusal": "name-recheck",
+    "activePaymentIntents": 0,
+    "archivedPaymentIntentsBefore": 2,
+    "archivedPaymentIntentsAfter": 3,
+    "newIntentOwnerStarted": false,
+    "newIntentWithdrawal": false,
+    "newIntentDeposit": false,
+    "interceptedProofRequests": 0,
+    "sourceAndPriorRecipientNightAfter": ["8", "6"],
+    "checks": "After review approval the connected page re-resolved the name, refused the stale target before owner proof or withdrawal, and archived the exact unsubmitted intent. At the same node-finalized block as the owner update, both ACC balances remained unchanged."
+  },
+  "cleanup": "The owner wallet, browser, services, exact isolated node/indexer containers, and native lease stopped or released; the original, volumes, and failed harness receipts remain private and retained.",
+  "privateReceiptSha256": {
+    "restore": "98be455cb94519bdbc23a7ff9940d7be103edadb21e35162a219a433e963e29e",
+    "mutation": "5f17245a17a57515604e7954d4fef10232cf01de61eb46c4ddf55b34d299b598",
+    "browser": "905e17e0f1d860cd323cba093d074e3232320ee91ebbb1d889f71b6878e1324d",
+    "beforeBalance": "3d6ef05c27ecfc2888e06217e196c11af333585528b74ee03e15dc101a192ac4",
+    "afterBalance": "c4673bc24d52a4b06228b0e730b7bb74c1e4c32d6d0a8dd0b57da13c54607b18",
+    "supervisor": "b2a4f3d604dc63878e1efbd3ff363d4b190e01f649dacd6448e958590c5dcffe"
+  },
+  "status": "PASS",
+  "limits": "This is a local synthetic after-review change to a self-recipient, not a real-provider or online run. It does not qualify a changed target to another supported ACC, non-contract target, unsupported asset, or full release acceptance."
+}

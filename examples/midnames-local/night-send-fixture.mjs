@@ -5,8 +5,10 @@ import { join } from 'node:path';
 import { createServer } from 'node:http';
 import { setTimeout as delay } from 'node:timers/promises';
 import { proveUnboundNightDeposit } from '../../packages/adapter-midnight-js/src/night-deposit.ts';
+import { pinnedVerifierRoster } from '../../packages/contract/dist/index.js';
 import {
   NightPaymentDeclined,
+  NightSendPreflightError,
   sendNightByName,
 } from '../../apps/passport-dapp/src/midnames/night-send.ts';
 import { createMidnamesNameService } from '../../apps/passport-dapp/src/midnames/resolver.ts';
@@ -36,8 +38,8 @@ function openJournal(directory) {
   };
 }
 
-async function withCandidateArtifacts(assets, run) {
-  const prefix = '/v1/zk/acc-s3r1.1-zkir036/';
+async function withPinnedArtifacts(assets, bindingId, run) {
+  const prefix = `/v1/zk/${bindingId}/`;
   const server = createServer((request, response) => {
     const path = new URL(request.url ?? '/', 'http://127.0.0.1').pathname;
     const file = path.startsWith(prefix) ? path.slice(prefix.length) : '';
@@ -133,11 +135,17 @@ export async function qualifyNightSend({
   ledger,
   binding,
   reads,
+  recipientReads = reads,
+  recipientBinding,
+  recipientAssets,
+  recipientProviders,
+  mixedRecipient = false,
   source,
   device,
   jubjubChallenges,
   registryAddress,
   target,
+  recipientName = 'alice.night',
   repointTarget,
   repointName,
   defaultField,
@@ -147,6 +155,7 @@ export async function qualifyNightSend({
   verifyHybridSource,
   candidateAssets,
   candidateManifestSha256,
+  probeRosterNegative,
   step,
 }) {
   const [{ versionOfRecord }, rx, types] = await Promise.all([
@@ -159,7 +168,7 @@ export async function qualifyNightSend({
   const networkId = 'undeployed';
   const names = createMidnamesNameService(
     { networkId, namespace: 'night', registryAddress },
-    reads,
+    recipientReads,
   );
   const color = new Uint8Array(32);
   const bridgeBytes = walletModule.userAddressBytes(wallet);
@@ -248,8 +257,10 @@ export async function qualifyNightSend({
     }
     throw new Error('The diagnostic withdrawal proof was not requested');
   };
-  const makeCall = async (address, circuitId, args) => {
-    const { privateStateProvider, ...publicProviders } = providers;
+  const makeCall = async (address, circuitId, args, selected = {}) => {
+    const callProviders = selected.providers ?? providers;
+    const callCompiled = selected.compiled ?? accountCompiled;
+    const { privateStateProvider, ...publicProviders } = callProviders;
     const captured = { snapshot: undefined };
     const pinned = new Proxy(publicProviders.publicDataProvider, {
       get(provider, property) {
@@ -266,7 +277,7 @@ export async function qualifyNightSend({
     const call = await contracts.createUnprovenCallTx(
       { ...publicProviders, publicDataProvider: pinned },
       {
-        compiledContract: accountCompiled,
+        compiledContract: callCompiled,
         contractAddress: address,
         circuitId,
         args,
@@ -287,15 +298,15 @@ export async function qualifyNightSend({
     }
     if (probeKeyDirectory && circuitId === 'withdraw_unshielded_with_jubjub')
       await probeWithdrawal(unprovenTx, address);
-    const proven = await providers.proofProvider.proveTx({ version: 'v9', tx: unprovenTx });
+    const proven = await callProviders.proofProvider.proveTx({ version: 'v9', tx: unprovenTx });
     assert.equal(proven.version, 'v9');
-    const balanced = await providers.walletProvider.balanceTx(proven);
+    const balanced = await callProviders.walletProvider.balanceTx(proven);
     assert.equal(balanced.version, 'v9');
     return balanced;
   };
   const request = {
     requestId: randomUUID(),
-    name: 'alice.night',
+    name: recipientName,
     networkId,
     source,
     bridge,
@@ -347,7 +358,7 @@ export async function qualifyNightSend({
   const openPorts = (beforeDeposit) => ({
     names,
     journal: openJournal(directory),
-    isSupportedRecipient: (address, network) => reads.isSupportedAccount(address, network),
+    isSupportedRecipient: (address, network) => recipientReads.isSupportedAccount(address, network),
     async readSourceBalance(address) {
       if (verifyHybridSource && address === source) {
         await verifyHybridSource();
@@ -437,24 +448,42 @@ export async function qualifyNightSend({
           hasExactNightBridgeCoin(await availableNight(), expected, encodedBridge),
         ),
       );
-      const balanced = candidateAssets
-        ? await withCandidateArtifacts(candidateAssets, async (artefactUrl) => {
+      const recipient = mixedRecipient
+        ? {
+            assets: recipientAssets,
+            binding: recipientBinding,
+            providers: recipientProviders,
+            bindingId: 'acc-s3r1.1',
+            manifestSha256: '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f',
+          }
+        : candidateAssets
+          ? {
+              assets: candidateAssets,
+              binding,
+              providers,
+              bindingId: 'acc-s3r1.1-zkir036',
+              manifestSha256: candidateManifestSha256,
+            }
+          : undefined;
+      const balanced = recipient
+        ? await withPinnedArtifacts(recipient.assets, recipient.bindingId, async (artefactUrl) => {
             const proven = await proveUnboundNightDeposit({
               network: {
                 networkId,
-                bindingId: 'acc-s3r1.1-zkir036',
-                manifestSha256: candidateManifestSha256,
+                bindingId: recipient.bindingId,
+                manifestSha256: recipient.manifestSha256,
                 nodeUrl: process.env.MN_NODE_URL + '/',
                 indexerUrl: process.env.MN_INDEXER_URL,
                 indexerWsUrl: process.env.MN_INDEXER_WS_URL,
                 artefactUrl,
               },
-              binding,
+              binding: recipient.binding,
+              recipientVerifierRoster: pinnedVerifierRoster(recipient.bindingId),
               target,
               amount: BigInt(intent.amount),
               walletKeys: {
-                coinPublicKey: providers.walletProvider.getCoinPublicKey(),
-                encryptionPublicKey: providers.walletProvider.getEncryptionPublicKey(),
+                coinPublicKey: recipient.providers.walletProvider.getCoinPublicKey(),
+                encryptionPublicKey: recipient.providers.walletProvider.getEncryptionPublicKey(),
               },
               prover: {
                 async proveTx(bytes) {
@@ -464,14 +493,17 @@ export async function qualifyNightSend({
                     'pre-binding',
                     bytes,
                   );
-                  const result = await providers.proofProvider.proveTx({ version: 'v9', tx });
+                  const result = await recipient.providers.proofProvider.proveTx({
+                    version: 'v9',
+                    tx,
+                  });
                   assert.equal(result.version, 'v9');
                   return { tx: result.tx.serialize() };
                 },
               },
               provisionalLocal: true,
             });
-            const result = await providers.walletProvider.balanceTx({
+            const result = await recipient.providers.walletProvider.balanceTx({
               version: 'v9',
               tx: ledger.Transaction.deserialize('signature', 'proof', 'pre-binding', proven),
             });
@@ -504,6 +536,98 @@ export async function qualifyNightSend({
         await providers.midnightProvider.submitTx(balanced);
       },
     };
+  }
+  if (candidateAssets) {
+    step('probe-pre-owner-night-refusals');
+    const cases = [
+      {
+        request: { ...request, requestId: randomUUID(), asset: 'shielded' },
+        code: 'NightUnsupportedRoute',
+      },
+      {
+        request: { ...request, requestId: randomUUID(), amount: String(fund + 1n) },
+        code: 'NightInsufficientBalance',
+      },
+    ];
+    for (const { request: refused, code } of cases) {
+      await assert.rejects(
+        () =>
+          sendNightByName(
+            refused,
+            openPorts(() => assert.fail('A refused route reached deposit preparation.')),
+          ),
+        (error) => error instanceof NightSendPreflightError && error.code === code,
+      );
+      assert.equal(approvals, 0);
+      assert.equal(signatures, 0);
+      assert.deepEqual(sent, { withdraw: 0, deposit: 0 });
+      assert.equal(await openJournal(directory).readIntent(), undefined);
+      assert.equal(await openJournal(directory).readLeg('withdraw'), undefined);
+      assert.equal(await openJournal(directory).readLeg('deposit'), undefined);
+      assert.deepEqual(
+        { source: String(await balance(source)), target: String(await balance(target)) },
+        { source: String(fund), target: '0' },
+      );
+    }
+    createOnce(
+      join(directory, 'pre-owner-refusals.json'),
+      JSON.stringify({
+        cases: cases.map(({ request: refused, code }) => ({
+          asset: refused.asset,
+          amount: refused.amount,
+          code,
+        })),
+        approvals,
+        signatures,
+        sent,
+        journalEmpty: true,
+        balances: { source: String(fund), target: '0' },
+      }),
+    );
+    step('verified-pre-owner-night-refusals');
+  }
+  let rosterRefusal;
+  if (probeRosterNegative) {
+    assert.ok(candidateAssets);
+    step('probe-native-recipient-roster-refusal');
+    rosterRefusal = await probeRosterNegative(async (wrongRosterTarget) => {
+      assert.equal(await reads.isSupportedAccount(wrongRosterTarget, networkId), false);
+      assert.equal(
+        (
+          await reads.readClaim(recipientName, {
+            networkId,
+            namespace: 'night',
+            registryAddress,
+          })
+        )?.target.address,
+        wrongRosterTarget,
+      );
+      await assert.rejects(
+        () =>
+          sendNightByName(
+            { ...request, requestId: randomUUID() },
+            openPorts(() => assert.fail('A changed roster reached deposit preparation.')),
+          ),
+        (error) => error?.name === 'PassportNameError' && error.code === 'InvalidRecord',
+      );
+      assert.equal(approvals, 0);
+      assert.equal(signatures, 0);
+      assert.deepEqual(sent, { withdraw: 0, deposit: 0 });
+      assert.equal(await openJournal(directory).readIntent(), undefined);
+      assert.equal(await openJournal(directory).readLeg('withdraw'), undefined);
+      assert.equal(await openJournal(directory).readLeg('deposit'), undefined);
+      assert.deepEqual(
+        {
+          source: String(await balance(source)),
+          target: String(await balance(target)),
+          wrongRoster: String(await balance(wrongRosterTarget)),
+        },
+        { source: '10', target: '0', wrongRoster: '0' },
+      );
+    });
+    assert.equal((await names.resolve({ name: recipientName, networkId }))?.accountAddress, target);
+    createOnce(join(directory, 'roster-refusal.json'), JSON.stringify(rosterRefusal));
+    step('verified-native-recipient-roster-refusal');
   }
   const interrupted = new Error('Injected interruption after withdrawal finality');
   step(browserDecline ? 'review-before-owner-signature' : 'withdraw-then-interrupt-before-deposit');
@@ -676,7 +800,9 @@ export async function qualifyNightSend({
     withdrawal,
     deposit,
     exactBridgeOutputConsumed: true,
-    candidateAdapterDeposit: Boolean(candidateAssets),
+    candidateAdapterDeposit: Boolean(candidateAssets) && !mixedRecipient,
+    mixedRecipient,
     replayBroadcasts: 0,
+    rosterRefusal,
   };
 }

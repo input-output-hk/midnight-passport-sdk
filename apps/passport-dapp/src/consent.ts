@@ -180,6 +180,7 @@ export function assertExactNamedNight(intent: NightSendIntent): void {
     approved.namedNight.providerId !== intent.providerId ||
     approved.namedNight.namespace !== intent.namespace ||
     approved.namedNight.target !== intent.target ||
+    approved.namedNight.recipientBindingId !== intent.recipientBindingId ||
     approved.namedNight.operations.length !== intent.operations.length ||
     approved.namedNight.operations.some(
       (operation, index) => operation !== intent.operations[index],

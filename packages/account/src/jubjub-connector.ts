@@ -23,6 +23,8 @@ import { withLoginSession } from './with-login-session.js';
 import { snapshotDeviceReader } from './request-snapshots.js';
 import { accountInboxReader, requireDeviceInbox, type InboxLedgerView } from './inbox-view.js';
 import { jubjubWithdrawals } from './jubjub-withdrawals.js';
+import { limitProvisionalJubjubAccount } from './jubjub-candidate-operations.js';
+import { createJubjubRun } from './jubjub-flow.js';
 import { lazyPort } from './lazy-port.js';
 import {
   PASSPORT_API_VERSION,
@@ -36,7 +38,7 @@ import {
 } from '@input-output-hk/mn-passport-protocol';
 import { fromHex, toHex } from './codec.js';
 import { PassportConnectorError } from './errors.js';
-import { startFlow, type Flow } from './flow.js';
+import type { Flow } from './flow.js';
 
 import { JUBJUB_READER_SCAN_LIMIT } from './jubjub-readers.js';
 import { createJubjubViewingRotation } from './jubjub-viewing-rotation.js';
@@ -72,18 +74,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
   const readBinding = lazyPort(ports.binding);
   const readChain = lazyPort(ports.chain);
   const fresh = ports.random ?? random;
-  const run = async <T>(
-    options: FlowOptions,
-    body: (flow: Flow) => Promise<T>,
-    onProgress?: Parameters<typeof startFlow>[2],
-  ): Promise<T> => {
-    const flow = startFlow(options, fresh, onProgress);
-    try {
-      return await body(flow);
-    } catch (error) {
-      throw flow.fail(error);
-    }
-  };
+  const run = createJubjubRun(fresh);
   const read = accountInboxReader(readChain);
   const recordPure = new WeakMap<JubjubHint, JubjubPureCircuits>();
   const readiness: JubjubReadinessHost = {
@@ -372,7 +363,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
     random: fresh,
     sleep,
   });
-  const account = (record: JubjubHint): PassportAccount => ({
+  const rawAccount = (record: JubjubHint): PassportAccount => ({
     address: record.address,
     networkId,
     bindingId: network.bindingId,
@@ -464,6 +455,8 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
         options,
       ),
   });
+  const account = (record: JubjubHint): PassportAccount =>
+    limitProvisionalJubjubAccount(network, rawAccount(record));
   const api: PassportConnectorAPI = {
     apiVersion: PASSPORT_API_VERSION,
     networkId,

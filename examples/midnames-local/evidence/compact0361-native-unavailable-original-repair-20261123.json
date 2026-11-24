@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "kind": "isolated-ledger9-browser-registry-unavailable-original-output-repair",
+  "date": "2026-11-23",
+  "sourceHead": "bdc40164544015a2d8641dd51436f3765ba9a1c0",
+  "status": "PASS",
+  "profile": "Standalone Midnames 0.36.1 and acc-s3r1.1-zkir036 on retained isolated Ledger 9, Indexer API v4, release prover 9.0.2; connected mock-passkey Passport browser.",
+  "name": "v36claim23.night",
+  "registryAddress": "3d0502ab6b226f12ad621fb6c4e5e9882c75b2df479545cd65d1325f7ad30591",
+  "sourceAcc": "f746d060ef93d3264abf124cd0bee9498ee929aea02c8a18d5aef651f2a55bed",
+  "originalReviewedAcc": "14c1181524e783ac7a11d225583cb33c842a144aa89294b765393a5e12794053",
+  "otherAcc": "c3ed40e0d020ee0be2b8df92cdb26bf69b9f50c6bcd81d8ebf43f2c3f667f756",
+  "intentId": "723b987d-7d23-4cf9-aa4b-2a5bd7fa65f0",
+  "ownerRestore": {
+    "originalHash": "3dfee2c84720b659d1c62864f6be4af30fe10d8e41ccd56ffaca7cf14c812e49",
+    "canonicalBlock": {
+      "height": 1708,
+      "hash": "fd221a418f5652880ccbc1765b9fff448cdac53522b6bd3cc887608dea4d5b3c"
+    },
+    "indexedStatus": "SUCCESS",
+    "targetClass": "contract"
+  },
+  "before": {
+    "canonicalBlock": {
+      "blockHeight": 1708,
+      "blockHash": "fd221a418f5652880ccbc1765b9fff448cdac53522b6bd3cc887608dea4d5b3c"
+    },
+    "balancesNight": {
+      "source": "5",
+      "original": "2",
+      "current": "7"
+    }
+  },
+  "withdrawal": {
+    "hash": "9bb867a98c6924e5e8ede250d8838c122e63d4534b00b2e097f57b7091ea185e",
+    "canonicalBlockHeight": 1725,
+    "depositProofInterruptedBeforeOriginal": true
+  },
+  "browserRegistryOutage": {
+    "mechanism": "Playwright aborted only browser GraphQL requests containing the pinned registry address after withdrawal finality; isolated indexer and node remained healthy.",
+    "failedRegistryReads": 10,
+    "observedReason": "Unavailable",
+    "directRepairReviews": 1,
+    "originalLegCheckConfirmations": 1
+  },
+  "recovery": {
+    "sameWithdrawalReused": true,
+    "secondWithdrawal": false,
+    "depositedToOriginalAcc": true,
+    "depositHash": "90c8f7c540fdd44d04c3b80b3d6310f8072fb80ada3a3c2033175c756adcb1f1",
+    "depositCanonicalBlockHeight": 1738,
+    "pageErrors": []
+  },
+  "after": {
+    "canonicalBlock": {
+      "blockHeight": 1739,
+      "blockHash": "0789879a0ed95fcb6022ee9c69441609fbc983f51af675f10c31e19ca6bdceb2"
+    },
+    "balancesNight": {
+      "source": "4",
+      "original": "3",
+      "current": "7"
+    }
+  },
+  "cleanup": {
+    "exactIsolatedContainersStopped": true,
+    "nativeLeaseReleased": true,
+    "sharedStackUntouched": true,
+    "volumesAndPrivateOriginalsPreserved": true
+  },
+  "privateReceiptSha256": {
+    "ownerRestore": "a1ff05aa507f5e396cfd5080b6721af6738d934ef62c601b14029d5132c7b3b8",
+    "beforeBalance": "145c7974f0ea8731780bc99104a5d462b4b4d3adfbe762a8102fdc655afd5903",
+    "interruptedBrowser": "2fb3e4465f78f01a98de5e8ef5c67e262b2d65dd0933827e733aa774e7e6f174",
+    "recoveredBrowser": "20dfcc1fce25a9647cc19908301d73884e9bd7434b8f0ce0e2836aac4a40174e",
+    "afterBalance": "8d8e77fab139babe8b145267e9b6997376ae5983ad8dc1b6de68b7126a679a76",
+    "supervisor": "e005187c5f9625c278681fd65e0631e90031667a75655ad7c130bac1bd191e6f"
+  },
+  "limits": "This qualifies one local synthetic browser registry-read failure after a real finalized withdrawal and explicit direct repair to the original supported ACC. The registry itself was not absent or unhealthy: the harness intercepted only browser reads. Absent/expired native cases, real passkeys, independent online providers, state inclusion proof and release remain open. The copied private harness has stale self-target/repoint step labels; transaction, balance and outage fields above are the verified events."
+}

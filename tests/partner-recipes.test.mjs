@@ -97,7 +97,13 @@ test('public-import host and journal examples compile strictly and emitted recip
   writeFileSync(join(scratch, 'compiled/package.json'), '{"type":"module"}');
   const reviewed = await exec(
     process.execPath,
-    ['--import', resolver, '--test', join(repository, 'tests/fixtures/reviewed-deposit-cases.mjs')],
+    [
+      '--import',
+      resolver,
+      '--test',
+      '--test-reporter=tap',
+      join(repository, 'tests/fixtures/reviewed-deposit-cases.mjs'),
+    ],
     {
       timeout: 30000,
       maxBuffer: 131072,

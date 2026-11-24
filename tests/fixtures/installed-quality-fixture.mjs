@@ -32,7 +32,7 @@ export function installedFixture() {
   const identities = {
     '@midnight-ntwrk/compact-js': '3.0.0-rc.3',
     '@midnight-ntwrk/compact-runtime': '0.20.0',
-    '@midnightntwrk/ledger-v9': '1.0.0-rc.5',
+    '@midnightntwrk/ledger-v9': '1.0.0',
   };
   for (const [name, version] of Object.entries(identities)) {
     const folder = join(consumer, 'node_modules', name);

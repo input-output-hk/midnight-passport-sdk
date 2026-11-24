@@ -20,6 +20,7 @@
   },
   "bin": {
     "mn-passport-restore-keys": "bin/restore-acc-keys.mjs",
+    "mn-passport-stage-candidate-assets": "bin/stage-acc-candidate-assets.mjs",
     "mn-passport-export-compact": "bin/export-acc-compact.mjs"
   },
   "files": [

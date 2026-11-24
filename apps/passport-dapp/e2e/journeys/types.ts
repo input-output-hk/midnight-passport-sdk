@@ -13,6 +13,10 @@ export interface FixtureState {
 }
 export interface JourneyFlags {
   unknownFunding: boolean;
+  asyncFunding?: boolean;
+  holdFundingProof?: boolean;
+  dropFundingAck?: boolean;
+  pendingFundingStatusReads?: number;
   emptyFunding?: boolean;
   multipleFundingAssets?: boolean;
   customFundingUnavailable?: boolean;
@@ -48,6 +52,7 @@ export interface JourneyHarness extends JourneyEvidence {
   calls: string[];
   fundingIds: string[];
   fundedIds: Map<string, number>;
+  heldFunding: Map<string, { color: string; phaseStartedAt: string }>;
   contexts: BrowserContext[];
   newPage(existing?: BrowserContext, reactExample?: boolean, fragment?: string): Promise<Page>;
   done(id: string): void;
